@@ -2,24 +2,52 @@
 import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChatMode } from './ModeSelector';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
   model: string;
   className?: string;
   title: string;
+  onModelChange?: (model: string) => void;
+  availableModels?: string[];
+  isCompareMode?: boolean;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, model, className, title }) => {
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
+  messages, 
+  model, 
+  className, 
+  title,
+  onModelChange,
+  availableModels = [],
+  isCompareMode = false
+}) => {
   const filteredMessages = messages.filter(msg => msg.sender === 'user' || msg.model === model);
   
   return (
     <div className={cn("flex flex-col h-full", className)}>
       <div className={cn(
-        "text-xl font-bold mb-4 p-2 text-center",
+        "p-2 text-center flex justify-center items-center",
         model.includes('gpt') || model.includes('llama') ? "text-inventu-blue" : "text-inventu-purple"
       )}>
-        {title}
+        {isCompareMode && onModelChange && availableModels.length > 0 ? (
+          <Select value={model} onValueChange={onModelChange}>
+            <SelectTrigger className="w-48 bg-inventu-card text-white border-inventu-gray/30 font-bold">
+              <SelectValue placeholder={title} />
+            </SelectTrigger>
+            <SelectContent>
+              {availableModels.map(modelOption => (
+                <SelectItem key={modelOption} value={modelOption}>
+                  {modelOption}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <div className="text-xl font-bold">{title}</div>
+        )}
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">

@@ -3,10 +3,17 @@ import React, { useState } from 'react';
 import AppHeader from '@/components/AppHeader';
 import ChatInterface from '@/components/ChatInterface';
 import ChatInput from '@/components/ChatInput';
-import CompareModelsButton from '@/components/CompareModelsButton';
 import { ChatMode } from '@/components/ModeSelector';
 import { MessageType } from '@/components/ChatMessage';
 import { v4 as uuidv4 } from 'uuid';
+
+// Model options for each mode - moved from ModelSelector to make it accessible here
+const MODEL_OPTIONS = {
+  text: ['gpt-4o', 'claude-3-opus', 'claude-3-sonnet', 'llama-3'],
+  image: ['gpt-4o-vision', 'claude-3-opus', 'gemini-pro-vision'],
+  video: ['gpt-4o-vision', 'claude-3-opus'],
+  audio: ['whisper-large-v3', 'deepgram-nova-2']
+};
 
 const Index: React.FC = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
@@ -22,6 +29,9 @@ const Index: React.FC = () => {
   };
 
   const handleSendMessage = (content: string, mode: ChatMode, model: string) => {
+    // Update active mode when message is sent
+    setActiveMode(mode);
+    
     const newUserMessage: MessageType = {
       id: uuidv4(),
       content,
@@ -107,6 +117,9 @@ const Index: React.FC = () => {
                 messages={messages} 
                 model={leftModel} 
                 title={leftModel}
+                onModelChange={setLeftModel}
+                availableModels={MODEL_OPTIONS[activeMode]}
+                isCompareMode={true}
               />
             </div>
             
@@ -115,13 +128,11 @@ const Index: React.FC = () => {
                 messages={messages} 
                 model={rightModel} 
                 title={rightModel}
+                onModelChange={setRightModel}
+                availableModels={MODEL_OPTIONS[activeMode]}
+                isCompareMode={true}
               />
             </div>
-            
-            <CompareModelsButton 
-              onClick={toggleComparing} 
-              isComparing={comparing} 
-            />
           </>
         ) : (
           <div className="flex-1">

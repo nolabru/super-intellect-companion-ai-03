@@ -22,13 +22,15 @@ interface ModelSelectorProps {
   selectedModel: string;
   onChange: (model: string) => void;
   className?: string;
+  disabled?: boolean;
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({ 
   mode, 
   selectedModel, 
   onChange,
-  className
+  className,
+  disabled = false
 }) => {
   // Get available models for the current mode
   const availableModels = MODEL_OPTIONS[mode];
@@ -41,7 +43,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   }, [mode, selectedModel, onChange, availableModels]);
 
   return (
-    <Select value={selectedModel} onValueChange={onChange}>
+    <Select value={selectedModel} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger className={className}>
         <SelectValue placeholder="Select model" />
       </SelectTrigger>

@@ -10,21 +10,21 @@ interface CompareModelsButtonProps {
 }
 
 const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onClick, isComparing }) => {
+  // This component is now only used in the chat input area
+  // The button in the middle of chats has been removed
   return (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-      <Button
-        onClick={onClick}
-        className={cn(
-          "bg-transparent border flex items-center gap-2 rounded-xl shadow-lg backdrop-blur-sm",
-          isComparing 
-            ? "border-inventu-purple text-inventu-purple hover:bg-inventu-purple/10" 
-            : "border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10"
-        )}
-      >
-        <MessagesSquare size={18} />
-        <span>{isComparing ? "Modo único" : "Comparar"}</span>
-      </Button>
-    </div>
+    <Button
+      onClick={onClick}
+      className={cn(
+        "bg-transparent border flex items-center gap-2 rounded-xl",
+        isComparing 
+          ? "border-inventu-purple text-inventu-purple hover:bg-inventu-purple/10" 
+          : "border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10"
+      )}
+    >
+      <MessagesSquare size={18} />
+      <span>{isComparing ? "Modo único" : "Comparar"}</span>
+    </Button>
   );
 };
 
