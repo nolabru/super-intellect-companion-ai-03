@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Book, MessagesSquare, SettingsIcon } from 'lucide-react';
+import { Book, SettingsIcon, MessagesSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -31,8 +31,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, className }) => {
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Digite sua mensagem aqui..."
-          className="chat-input"
+          placeholder="Digite sua mensagem..."
+          className="w-full bg-inventu-card border border-inventu-gray/30 rounded-lg p-4 text-white focus:outline-none focus:ring-2 focus:ring-inventu-blue"
         />
         
         <div className="flex items-center justify-between mt-3">
@@ -40,7 +40,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, className }) => {
             <Button
               type="button"
               variant="outline"
-              className="btn-secondary flex items-center gap-2"
+              className="bg-inventu-card border-inventu-gray/30 hover:bg-inventu-gray/50 text-gray-300 flex items-center gap-2"
             >
               <Book size={18} />
               <span>Modelos</span>
@@ -49,7 +49,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, className }) => {
             <Button
               type="button"
               variant="outline"
-              className="btn-secondary flex items-center gap-2"
+              className="bg-inventu-card border-inventu-gray/30 hover:bg-inventu-gray/50 text-gray-300 flex items-center gap-2"
             >
               <SettingsIcon size={18} />
               <span>MCP Tools</span>
@@ -57,14 +57,14 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, className }) => {
             
             <Button
               type="button"
-              className="btn-secondary bg-transparent border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10 flex items-center gap-2"
+              className="bg-transparent border border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10 flex items-center gap-2"
             >
               <MessagesSquare size={18} />
               <span>Comparar</span>
             </Button>
           </div>
           
-          <Button type="submit" className="btn-primary">
+          <Button type="submit" className="bg-inventu-blue hover:bg-inventu-darkBlue text-white px-6">
             Enviar
           </Button>
         </div>

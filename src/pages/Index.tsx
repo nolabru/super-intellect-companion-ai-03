@@ -54,7 +54,7 @@ const Index: React.FC = () => {
     <div className="flex flex-col h-screen bg-inventu-darker">
       <AppHeader />
       
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative rounded-xl mx-4 my-2 bg-inventu-dark">
         {comparing ? (
           <>
             <div className="flex-1 border-r border-inventu-gray/30">

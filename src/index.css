@@ -58,10 +58,6 @@
     @apply bg-inventu-card text-white;
   }
 
-  .chat-input {
-    @apply w-full bg-inventu-card border border-inventu-gray/30 rounded-lg p-4 text-white focus:outline-none focus:ring-2 focus:ring-inventu-blue;
-  }
-
   .btn-primary {
     @apply bg-inventu-blue hover:bg-inventu-darkBlue text-white px-4 py-2 rounded-lg transition-colors;
   }

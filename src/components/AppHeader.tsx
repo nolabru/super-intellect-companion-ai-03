@@ -9,7 +9,7 @@ const AppHeader: React.FC = () => {
       <p className="text-lg text-gray-300 mb-4">Super Agente</p>
       <Button 
         variant="outline" 
-        className="btn-secondary text-sm"
+        className="bg-inventu-card border-inventu-gray/30 hover:bg-inventu-gray/50 text-gray-300 text-sm px-6"
       >
         API Diagnostics
       </Button>
