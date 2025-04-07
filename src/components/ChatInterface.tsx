@@ -13,6 +13,7 @@ interface ChatInterfaceProps {
   onModelChange?: (model: string) => void;
   availableModels?: string[];
   isCompareMode?: boolean;
+  loading?: boolean;
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ 
@@ -22,7 +23,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   title,
   onModelChange,
   availableModels = [],
-  isCompareMode = false
+  isCompareMode = false,
+  loading = false
 }) => {
   const filteredMessages = messages.filter(msg => msg.sender === 'user' || msg.model === model);
   
@@ -48,7 +50,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {filteredMessages.length > 0 ? (
+        {loading ? (
+          <div className="flex items-center justify-center h-full text-gray-400">
+            Carregando...
+          </div>
+        ) : filteredMessages.length > 0 ? (
           filteredMessages.map((message) => (
             <ChatMessage key={message.id} message={message} />
           ))

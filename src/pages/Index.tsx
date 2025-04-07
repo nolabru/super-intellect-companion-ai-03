@@ -4,8 +4,8 @@ import AppHeader from '@/components/AppHeader';
 import ChatInterface from '@/components/ChatInterface';
 import ChatInput from '@/components/ChatInput';
 import { ChatMode } from '@/components/ModeSelector';
-import { MessageType } from '@/components/ChatMessage';
-import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '@/contexts/AuthContext';
+import { useConversation } from '@/hooks/useConversation';
 
 // Model options for each mode
 const MODEL_OPTIONS = {
@@ -16,81 +16,30 @@ const MODEL_OPTIONS = {
 };
 
 const Index: React.FC = () => {
-  const [messages, setMessages] = useState<MessageType[]>([]);
   const [comparing, setComparing] = useState(true);
   const [isLinked, setIsLinked] = useState(true);
   const [leftModel, setLeftModel] = useState('gpt-4o');
   const [rightModel, setRightModel] = useState('claude-3-opus');
   const [activeMode, setActiveMode] = useState<ChatMode>('text');
-
-  const formatTime = (): string => {
-    const now = new Date();
-    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
+  const { loading: authLoading } = useAuth();
+  const { 
+    messages, 
+    sendMessage, 
+    loading: messagesLoading 
+  } = useConversation();
 
   const handleSendMessage = (content: string, mode: ChatMode, model: string) => {
     // Update active mode when message is sent
     setActiveMode(mode);
     
-    const newUserMessage: MessageType = {
-      id: uuidv4(),
-      content,
-      sender: 'user',
-      model: 'user',
-      timestamp: formatTime(),
-      mode
-    };
-
-    let newMessages = [...messages, newUserMessage];
-
-    if (comparing && isLinked) {
-      // Simulate responses from both models
-      const gpt4Response: MessageType = {
-        id: uuidv4(),
-        content: `Resposta do ${leftModel} para: "${content}"`,
-        sender: 'ai',
-        model: leftModel,
-        timestamp: formatTime(),
-        mode
-      };
-
-      const claudeResponse: MessageType = {
-        id: uuidv4(),
-        content: `Resposta do ${rightModel} para: "${content}"`,
-        sender: 'ai',
-        model: rightModel,
-        timestamp: formatTime(),
-        mode
-      };
-
-      newMessages = [...newMessages, gpt4Response, claudeResponse];
-    } else if (comparing && !isLinked) {
-      // Only respond with the selected model
-      const response: MessageType = {
-        id: uuidv4(),
-        content: `Resposta do ${model} para: "${content}"`,
-        sender: 'ai',
-        model,
-        timestamp: formatTime(),
-        mode
-      };
-
-      newMessages = [...newMessages, response];
-    } else {
-      // Single view mode
-      const response: MessageType = {
-        id: uuidv4(),
-        content: `Resposta do ${model} para: "${content}"`,
-        sender: 'ai',
-        model,
-        timestamp: formatTime(),
-        mode
-      };
-
-      newMessages = [...newMessages, response];
-    }
-
-    setMessages(newMessages);
+    sendMessage(
+      content, 
+      mode, 
+      model, 
+      comparing, 
+      leftModel, 
+      rightModel
+    );
   };
 
   const toggleComparing = () => {
@@ -120,6 +69,7 @@ const Index: React.FC = () => {
                 onModelChange={setLeftModel}
                 availableModels={MODEL_OPTIONS[activeMode]}
                 isCompareMode={true}
+                loading={authLoading || messagesLoading}
               />
             </div>
             
@@ -131,6 +81,7 @@ const Index: React.FC = () => {
                 onModelChange={setRightModel}
                 availableModels={MODEL_OPTIONS[activeMode]}
                 isCompareMode={true}
+                loading={authLoading || messagesLoading}
               />
             </div>
           </>
@@ -143,6 +94,7 @@ const Index: React.FC = () => {
               onModelChange={setLeftModel}
               availableModels={MODEL_OPTIONS[activeMode]}
               isCompareMode={false}
+              loading={authLoading || messagesLoading}
             />
           </div>
         )}
