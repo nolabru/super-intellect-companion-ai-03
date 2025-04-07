@@ -7,7 +7,7 @@ import { ChatMode } from '@/components/ModeSelector';
 import { MessageType } from '@/components/ChatMessage';
 import { v4 as uuidv4 } from 'uuid';
 
-// Model options for each mode - moved from ModelSelector to make it accessible here
+// Model options for each mode
 const MODEL_OPTIONS = {
   text: ['gpt-4o', 'claude-3-opus', 'claude-3-sonnet', 'llama-3'],
   image: ['gpt-4o-vision', 'claude-3-opus', 'gemini-pro-vision'],
@@ -140,6 +140,9 @@ const Index: React.FC = () => {
               messages={messages} 
               model={leftModel} 
               title={leftModel}
+              onModelChange={setLeftModel}
+              availableModels={MODEL_OPTIONS[activeMode]}
+              isCompareMode={false}
             />
           </div>
         )}

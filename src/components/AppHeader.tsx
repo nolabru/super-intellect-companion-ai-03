@@ -1,18 +1,14 @@
 
 import React from 'react';
-import { Button } from '@/components/ui/button';
 
 const AppHeader: React.FC = () => {
   return (
-    <div className="flex flex-col items-center justify-center py-6 border-b border-inventu-gray/30">
-      <h1 className="text-3xl font-bold text-inventu-blue mb-1">Inventu</h1>
-      <p className="text-lg text-gray-300 mb-4">Super Agente</p>
-      <Button 
-        variant="outline" 
-        className="bg-inventu-card border-inventu-gray/30 hover:bg-inventu-gray/50 text-gray-300 text-sm px-6"
-      >
-        API Diagnostics
-      </Button>
+    <div className="flex items-center justify-center py-6 border-b border-inventu-gray/30">
+      <img 
+        src="/lovable-uploads/5ba95823-628d-4cf9-bb1b-05ee42b0730f.png" 
+        alt="InventuAi Logo" 
+        className="h-16"
+      />
     </div>
   );
 };

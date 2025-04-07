@@ -10,8 +10,6 @@ interface CompareModelsButtonProps {
 }
 
 const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onClick, isComparing }) => {
-  // This component is now only used in the chat input area
-  // The button in the middle of chats has been removed
   return (
     <Button
       onClick={onClick}

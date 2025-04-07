@@ -32,22 +32,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         "p-2 text-center flex justify-center items-center",
         model.includes('gpt') || model.includes('llama') ? "text-inventu-blue" : "text-inventu-purple"
       )}>
-        {isCompareMode && onModelChange && availableModels.length > 0 ? (
-          <Select value={model} onValueChange={onModelChange}>
-            <SelectTrigger className="w-48 bg-inventu-card text-white border-inventu-gray/30 font-bold">
-              <SelectValue placeholder={title} />
-            </SelectTrigger>
-            <SelectContent>
-              {availableModels.map(modelOption => (
-                <SelectItem key={modelOption} value={modelOption}>
-                  {modelOption}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <div className="text-xl font-bold">{title}</div>
-        )}
+        {/* Always show a model selector in the header */}
+        <Select value={model} onValueChange={onModelChange || (() => {})}>
+          <SelectTrigger className="w-48 bg-inventu-card text-white border-inventu-gray/30 font-bold">
+            <SelectValue placeholder={title} />
+          </SelectTrigger>
+          <SelectContent>
+            {availableModels.map(modelOption => (
+              <SelectItem key={modelOption} value={modelOption}>
+                {modelOption}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
