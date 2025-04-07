@@ -69,4 +69,17 @@
   .btn-accent {
     @apply bg-inventu-purple hover:bg-inventu-purple/80 text-white px-4 py-2 rounded-lg transition-colors;
   }
+  
+  /* Mode selector button styles */
+  .mode-selector-btn {
+    @apply p-2 rounded transition-colors;
+  }
+  
+  .mode-selector-btn.active {
+    @apply bg-inventu-gray text-white;
+  }
+  
+  .mode-selector-btn.inactive {
+    @apply text-gray-400 hover:text-gray-200;
+  }
 }

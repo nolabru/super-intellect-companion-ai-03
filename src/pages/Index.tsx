@@ -4,50 +4,95 @@ import AppHeader from '@/components/AppHeader';
 import ChatInterface from '@/components/ChatInterface';
 import ChatInput from '@/components/ChatInput';
 import CompareModelsButton from '@/components/CompareModelsButton';
+import { ChatMode } from '@/components/ModeSelector';
 import { MessageType } from '@/components/ChatMessage';
 import { v4 as uuidv4 } from 'uuid';
 
 const Index: React.FC = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [comparing, setComparing] = useState(true);
+  const [isLinked, setIsLinked] = useState(true);
+  const [leftModel, setLeftModel] = useState('gpt-4o');
+  const [rightModel, setRightModel] = useState('claude-3-opus');
+  const [activeMode, setActiveMode] = useState<ChatMode>('text');
 
   const formatTime = (): string => {
     const now = new Date();
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = (content: string, mode: ChatMode, model: string) => {
     const newUserMessage: MessageType = {
       id: uuidv4(),
       content,
       sender: 'user',
       model: 'user',
       timestamp: formatTime(),
+      mode
     };
 
-    // Simulate GPT-4 response
-    const gpt4Response: MessageType = {
-      id: uuidv4(),
-      content: "Olá! Como posso ajudar você hoje?",
-      sender: 'ai',
-      model: 'gpt4',
-      timestamp: formatTime(),
-    };
+    let newMessages = [...messages, newUserMessage];
 
-    // Simulate Claude response
-    const claudeResponse: MessageType = {
-      id: uuidv4(),
-      content: "Olá! Como posso ajudar você hoje?",
-      sender: 'ai',
-      model: 'claude',
-      timestamp: formatTime(),
-    };
+    if (comparing && isLinked) {
+      // Simulate responses from both models
+      const gpt4Response: MessageType = {
+        id: uuidv4(),
+        content: `Resposta do ${leftModel} para: "${content}"`,
+        sender: 'ai',
+        model: leftModel,
+        timestamp: formatTime(),
+        mode
+      };
 
-    setMessages([...messages, newUserMessage, gpt4Response, claudeResponse]);
+      const claudeResponse: MessageType = {
+        id: uuidv4(),
+        content: `Resposta do ${rightModel} para: "${content}"`,
+        sender: 'ai',
+        model: rightModel,
+        timestamp: formatTime(),
+        mode
+      };
+
+      newMessages = [...newMessages, gpt4Response, claudeResponse];
+    } else if (comparing && !isLinked) {
+      // Only respond with the selected model
+      const response: MessageType = {
+        id: uuidv4(),
+        content: `Resposta do ${model} para: "${content}"`,
+        sender: 'ai',
+        model,
+        timestamp: formatTime(),
+        mode
+      };
+
+      newMessages = [...newMessages, response];
+    } else {
+      // Single view mode
+      const response: MessageType = {
+        id: uuidv4(),
+        content: `Resposta do ${model} para: "${content}"`,
+        sender: 'ai',
+        model,
+        timestamp: formatTime(),
+        mode
+      };
+
+      newMessages = [...newMessages, response];
+    }
+
+    setMessages(newMessages);
   };
 
   const toggleComparing = () => {
     setComparing(!comparing);
+    if (!comparing) {
+      // When switching to comparison mode, link the chats by default
+      setIsLinked(true);
+    }
+  };
+
+  const toggleLink = () => {
+    setIsLinked(!isLinked);
   };
 
   return (
@@ -60,33 +105,46 @@ const Index: React.FC = () => {
             <div className="flex-1 border-r border-inventu-gray/30">
               <ChatInterface 
                 messages={messages} 
-                model="gpt4" 
-                title="OpenAI GPT-4"
+                model={leftModel} 
+                title={leftModel}
               />
             </div>
             
             <div className="flex-1">
               <ChatInterface 
                 messages={messages} 
-                model="claude" 
-                title="Anthropic Claude"
+                model={rightModel} 
+                title={rightModel}
               />
             </div>
             
-            <CompareModelsButton onClick={toggleComparing} />
+            <CompareModelsButton 
+              onClick={toggleComparing} 
+              isComparing={comparing} 
+            />
           </>
         ) : (
           <div className="flex-1">
             <ChatInterface 
               messages={messages} 
-              model="gpt4" 
-              title="OpenAI GPT-4"
+              model={leftModel} 
+              title={leftModel}
             />
           </div>
         )}
       </div>
       
-      <ChatInput onSendMessage={handleSendMessage} />
+      <ChatInput 
+        onSendMessage={handleSendMessage} 
+        isLinked={isLinked}
+        onToggleLink={toggleLink}
+        onToggleCompare={toggleComparing}
+        isSplitView={comparing}
+        activeModelLeft={leftModel}
+        activeModelRight={rightModel}
+        onModelChangeLeft={setLeftModel}
+        onModelChangeRight={setRightModel}
+      />
     </div>
   );
 };
