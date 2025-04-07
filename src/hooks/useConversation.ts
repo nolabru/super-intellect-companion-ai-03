@@ -220,7 +220,7 @@ export const useConversation = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
           },
           body: JSON.stringify({
             prompt: content,
@@ -235,7 +235,7 @@ export const useConversation = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
           },
           body: JSON.stringify({
             prompt: content,
@@ -277,7 +277,7 @@ export const useConversation = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
           },
           body: JSON.stringify({
             prompt: content,

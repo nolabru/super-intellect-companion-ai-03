@@ -1,184 +1,138 @@
-
-import React, { useState } from 'react';
-import { Link, MessagesSquare, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Send, 
+  Clipboard, 
+  Link as LinkIcon, 
+  Link2Off, 
+  FileImage, 
+  Mic, 
+  Video, 
+  TextCursor,
+  Menu
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import ModeSelector, { ChatMode } from './ModeSelector';
-import { Input } from '@/components/ui/input';
+import ModelSelector from './ModelSelector';
+import CompareModelsButton from './CompareModelsButton';
+import { toast } from '@/components/ui/use-toast';
 
 interface ChatInputProps {
   onSendMessage: (message: string, mode: ChatMode, model: string) => void;
-  className?: string;
   isLinked: boolean;
   onToggleLink: () => void;
   onToggleCompare: () => void;
   isSplitView: boolean;
-  activeModelLeft?: string;
-  activeModelRight?: string;
-  onModelChangeLeft?: (model: string) => void;
-  onModelChangeRight?: (model: string) => void;
+  activeModelLeft: string;
+  activeModelRight: string;
+  onModelChangeLeft: (model: string) => void;
+  onModelChangeRight: (model: string) => void;
+  onToggleSidebar?: () => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({ 
   onSendMessage, 
-  className,
-  isLinked,
-  onToggleLink,
-  onToggleCompare,
+  isLinked, 
+  onToggleLink, 
+  onToggleCompare, 
   isSplitView,
-  activeModelLeft = 'gpt-4o',
-  activeModelRight = 'claude-3-opus',
+  activeModelLeft,
+  activeModelRight,
+  onModelChangeLeft,
+  onModelChangeRight,
+  onToggleSidebar
 }) => {
   const [message, setMessage] = useState('');
-  const [activeMode, setActiveMode] = useState<ChatMode>('text');
+  const [mode, setMode] = useState<ChatMode>('text');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [message]);
+
+  const handleSendMessage = () => {
     if (message.trim()) {
-      // Use the appropriate model based on whether we're in split view
-      if (isSplitView && !isLinked) {
-        // In unlinked mode, we would need to determine which chat to send to
-        // For now, we'll just use activeModelLeft as default
-        onSendMessage(message, activeMode, activeModelLeft);
-      } else {
-        // In linked mode or single mode, we use activeModelLeft
-        onSendMessage(message, activeMode, activeModelLeft);
-      }
+      onSendMessage(message, mode, isSplitView ? activeModelLeft : activeModelLeft);
       setMessage('');
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
+    } else {
+      toast({
+        title: "Alerta",
+        description: "Por favor, insira uma mensagem.",
+      });
     }
   };
 
-  // If in split view and not linked, we render two separate inputs
-  if (isSplitView && !isLinked) {
-    return (
-      <div className={cn("px-4 py-3 border-t border-inventu-gray/30 bg-inventu-darker", className)}>
-        <div className="flex justify-between items-center mb-3">
-          <div className="flex items-center space-x-3">
-            <ModeSelector activeMode={activeMode} onChange={setActiveMode} />
-            
-            <Button
-              type="button"
-              variant="outline"
-              className="bg-transparent border border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10 flex items-center gap-2"
-              onClick={onToggleLink}
-            >
-              <Link size={18} />
-              <span>Vincular chats</span>
-            </Button>
-          </div>
-          
-          <Button
-            type="button"
-            className={cn(
-              "bg-transparent hover:bg-inventu-blue/10 flex items-center gap-2",
-              isSplitView ? "border border-inventu-purple text-inventu-purple" : "border border-inventu-blue text-inventu-blue"
-            )}
-            onClick={onToggleCompare}
-          >
-            <MessagesSquare size={18} />
-            <span>Modo único</span>
-          </Button>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          {/* Left chat input */}
-          <form onSubmit={handleSubmit} className="relative">
-            <Input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Digite sua mensagem..."
-              className="w-full bg-inventu-card border border-inventu-gray/30 rounded-lg pr-14 py-6 text-white focus:outline-none focus:ring-2 focus:ring-inventu-blue"
-            />
-            <Button 
-              type="submit" 
-              size="icon"
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-inventu-blue hover:bg-inventu-darkBlue text-white rounded-full p-2"
-            >
-              <Send size={18} />
-            </Button>
-          </form>
-          
-          {/* Right chat input */}
-          <form onSubmit={handleSubmit} className="relative">
-            <Input
-              type="text"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Digite sua mensagem..."
-              className="w-full bg-inventu-card border border-inventu-gray/30 rounded-lg pr-14 py-6 text-white focus:outline-none focus:ring-2 focus:ring-inventu-blue"
-            />
-            <Button 
-              type="submit" 
-              size="icon"
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-inventu-blue hover:bg-inventu-darkBlue text-white rounded-full p-2"
-            >
-              <Send size={18} />
-            </Button>
-          </form>
-        </div>
-        
-        <div className="text-xs text-gray-400 mt-2">
-          Pressione Ctrl+Enter ou Cmd+Enter para enviar
-        </div>
-      </div>
-    );
-  }
-
-  // For single view or linked chats
   return (
-    <div className={cn("px-4 py-3 border-t border-inventu-gray/30 bg-inventu-darker", className)}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex space-x-3 items-center">
-          <ModeSelector activeMode={activeMode} onChange={setActiveMode} />
-        </div>
-        
-        <div className="flex items-center space-x-3">
-          {isSplitView && (
+    <div className="border-t border-inventu-gray/30 p-4 bg-inventu-dark">
+      <div className="flex flex-col md:flex-row gap-2">
+        <div className="flex md:flex-1 gap-2 items-center">
+          {onToggleSidebar && (
             <Button
               type="button"
-              variant="outline"
-              className="bg-transparent border border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10 flex items-center gap-2"
-              onClick={onToggleLink}
+              size="icon"
+              variant="ghost"
+              onClick={onToggleSidebar}
+              className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
             >
-              <Link size={18} />
-              <span>Desvincular</span>
+              <Menu className="h-5 w-5" />
             </Button>
           )}
           
-          <Button
-            type="button"
-            className={cn(
-              "bg-transparent hover:bg-inventu-blue/10 flex items-center gap-2",
-              isSplitView ? "border border-inventu-purple text-inventu-purple" : "border border-inventu-blue text-inventu-blue"
-            )}
-            onClick={onToggleCompare}
-          >
-            <MessagesSquare size={18} />
-            <span>{isSplitView ? "Modo único" : "Comparar"}</span>
-          </Button>
+          <ModeSelector activeMode={mode} onModeChange={setMode} />
+          
+          {isSplitView ? (
+            <>
+              <ModelSelector model={activeModelLeft} onModelChange={onModelChangeLeft} />
+              {isLinked && <LinkIcon className="h-5 w-5 text-inventu-gray" />}
+              {!isLinked && <Link2Off className="h-5 w-5 text-inventu-gray" />}
+              <Button 
+                onClick={onToggleLink} 
+                variant="ghost" 
+                size="icon"
+                className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+              >
+                {isLinked ? <LinkIcon className="h-5 w-5" /> : <Link2Off className="h-5 w-5" />}
+              </Button>
+              <ModelSelector model={activeModelRight} onModelChange={onModelChangeRight} />
+            </>
+          ) : (
+            <ModelSelector model={activeModelLeft} onModelChange={onModelChangeLeft} />
+          )}
         </div>
+        
+        <CompareModelsButton isSplitView={isSplitView} onToggleCompare={onToggleCompare} />
       </div>
       
-      <form onSubmit={handleSubmit} className="relative">
-        <Input
-          type="text"
+      <div className="mt-2 relative">
+        <textarea
+          ref={textareaRef}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSendMessage();
+            }
+          }}
           placeholder="Digite sua mensagem..."
-          className="w-full bg-inventu-card border border-inventu-gray/30 rounded-lg pr-14 py-6 text-white focus:outline-none focus:ring-2 focus:ring-inventu-blue"
+          className="w-full pl-4 pr-12 py-2 rounded-lg border border-inventu-gray/30 bg-inventu-card text-white resize-none overflow-hidden focus:outline-none focus:border-inventu-blue"
+          rows={1}
         />
-        <Button 
-          type="submit" 
-          size="icon"
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-inventu-blue hover:bg-inventu-darkBlue text-white rounded-full p-2"
-        >
-          <Send size={18} />
-        </Button>
-      </form>
-      
-      <div className="text-xs text-gray-400 mt-2">
-        Pressione Ctrl+Enter ou Cmd+Enter para enviar
+        <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
+          <Button 
+            onClick={handleSendMessage}
+            variant="ghost" 
+            size="icon"
+            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+          >
+            <Send className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
     </div>
   );
