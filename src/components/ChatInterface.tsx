@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
-  model: 'gpt4' | 'claude';
+  model: string;
   className?: string;
   title: string;
 }
@@ -17,7 +17,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ messages, model, classNam
     <div className={cn("flex flex-col h-full", className)}>
       <div className={cn(
         "text-xl font-bold mb-4 p-2 text-center",
-        model === 'gpt4' ? "text-inventu-blue" : "text-inventu-purple"
+        model.includes('gpt') || model.includes('llama') ? "text-inventu-blue" : "text-inventu-purple"
       )}>
         {title}
       </div>

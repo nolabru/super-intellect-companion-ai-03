@@ -15,7 +15,7 @@ const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onClick, isCo
       <Button
         onClick={onClick}
         className={cn(
-          "bg-transparent border flex items-center gap-2",
+          "bg-transparent border flex items-center gap-2 rounded-xl shadow-lg backdrop-blur-sm",
           isComparing 
             ? "border-inventu-purple text-inventu-purple hover:bg-inventu-purple/10" 
             : "border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10"
