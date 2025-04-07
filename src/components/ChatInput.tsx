@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, 
@@ -83,11 +84,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </Button>
           )}
           
-          <ModeSelector activeMode={mode} onModeChange={setMode} />
+          <ModeSelector activeMode={mode} onChange={setMode} />
           
           {isSplitView ? (
             <>
-              <ModelSelector model={activeModelLeft} onModelChange={onModelChangeLeft} />
+              <ModelSelector selectedModel={activeModelLeft} onChange={onModelChangeLeft} mode={mode} />
               {isLinked && <LinkIcon className="h-5 w-5 text-inventu-gray" />}
               {!isLinked && <Link2Off className="h-5 w-5 text-inventu-gray" />}
               <Button 
@@ -98,14 +99,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
               >
                 {isLinked ? <LinkIcon className="h-5 w-5" /> : <Link2Off className="h-5 w-5" />}
               </Button>
-              <ModelSelector model={activeModelRight} onModelChange={onModelChangeRight} />
+              <ModelSelector selectedModel={activeModelRight} onChange={onModelChangeRight} mode={mode} />
             </>
           ) : (
-            <ModelSelector model={activeModelLeft} onModelChange={onModelChangeLeft} />
+            <ModelSelector selectedModel={activeModelLeft} onChange={onModelChangeLeft} mode={mode} />
           )}
         </div>
         
-        <CompareModelsButton isSplitView={isSplitView} onToggleCompare={onToggleCompare} />
+        <CompareModelsButton isComparing={isSplitView} onToggleCompare={onToggleCompare} />
       </div>
       
       <div className="mt-2 relative">

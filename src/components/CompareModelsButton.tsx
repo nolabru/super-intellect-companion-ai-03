@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface CompareModelsButtonProps {
-  onClick: () => void;
+  onToggleCompare: () => void;
   isComparing: boolean;
 }
 
-const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onClick, isComparing }) => {
+const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onToggleCompare, isComparing }) => {
   return (
     <Button
-      onClick={onClick}
+      onClick={onToggleCompare}
       className={cn(
         "bg-transparent border flex items-center gap-2 rounded-xl",
         isComparing 

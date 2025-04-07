@@ -18,7 +18,7 @@ const MODEL_OPTIONS = {
 };
 
 interface ModelSelectorProps {
-  mode: ChatMode;
+  mode?: ChatMode;
   selectedModel: string;
   onChange: (model: string) => void;
   className?: string;
@@ -26,7 +26,7 @@ interface ModelSelectorProps {
 }
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({ 
-  mode, 
+  mode = 'text', 
   selectedModel, 
   onChange,
   className,

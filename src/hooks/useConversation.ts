@@ -79,8 +79,8 @@ export const useConversation = () => {
         const formattedMessages = data.map(msg => ({
           id: msg.id,
           content: msg.content,
-          sender: msg.sender,
-          model: msg.model,
+          sender: msg.sender === 'user' ? 'user' : 'ai' as 'user' | 'ai',
+          model: msg.model || '',
           timestamp: new Date(msg.timestamp).toLocaleTimeString([], { 
             hour: '2-digit', minute: '2-digit', second: '2-digit' 
           }),
