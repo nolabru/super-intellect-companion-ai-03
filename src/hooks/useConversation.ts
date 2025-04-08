@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,6 +5,18 @@ import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
+
+interface MessageData {
+  id: string;
+  content: string;
+  conversation_id: string;
+  sender: string;
+  model: string | null;
+  timestamp: string;
+  mode: string;
+  media_url?: string | null;
+  audio_data?: string | null;
+}
 
 export const useConversation = () => {
   const [messages, setMessages] = useState<MessageType[]>([]);
@@ -19,7 +30,6 @@ export const useConversation = () => {
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   };
 
-  // Carregar conversas do usuário
   useEffect(() => {
     if (user) {
       loadConversations();
@@ -30,7 +40,6 @@ export const useConversation = () => {
     }
   }, [user]);
 
-  // Carregar mensagens da conversa atual
   useEffect(() => {
     if (currentConversationId) {
       loadMessages(currentConversationId);
@@ -50,7 +59,6 @@ export const useConversation = () => {
       
       setConversations(data || []);
       
-      // Se houver conversas, selecione a mais recente
       if (data && data.length > 0 && !currentConversationId) {
         setCurrentConversationId(data[0].id);
       }
@@ -76,7 +84,7 @@ export const useConversation = () => {
       if (error) throw error;
       
       if (data) {
-        const formattedMessages = data.map(msg => ({
+        const formattedMessages = (data as unknown as MessageData[]).map(msg => ({
           id: msg.id,
           content: msg.content,
           sender: msg.sender === 'user' ? 'user' : 'ai' as 'user' | 'ai',
@@ -143,13 +151,11 @@ export const useConversation = () => {
   ) => {
     let conversationId = currentConversationId;
     
-    // Se não houver uma conversa ativa, criar uma nova
     if (!conversationId && user) {
       conversationId = await createNewConversation();
       if (!conversationId) return;
     }
     
-    // Se o usuário não estiver logado, apenas simular respostas sem salvar
     if (!user || !conversationId) {
       const newUserMessage: MessageType = {
         id: uuidv4(),
@@ -164,7 +170,6 @@ export const useConversation = () => {
       let newMessages = [...messages, newUserMessage];
 
       if (isComparing) {
-        // Simular respostas dos dois modelos
         const leftResponse: MessageType = {
           id: uuidv4(),
           content: `Resposta do ${leftModel} para: "${content}"`,
@@ -185,7 +190,6 @@ export const useConversation = () => {
 
         newMessages = [...newMessages, leftResponse, rightResponse];
       } else {
-        // Modo único
         const response: MessageType = {
           id: uuidv4(),
           content: `Resposta do ${model} para: "${content}"`,
@@ -202,9 +206,7 @@ export const useConversation = () => {
       return;
     }
 
-    // Usuário está logado e temos uma conversa ativa
     try {
-      // Adicionar mensagem do usuário imediatamente na UI
       const userMessageId = uuidv4();
       const newUserMessage: MessageType = {
         id: userMessageId,
@@ -218,9 +220,7 @@ export const useConversation = () => {
       
       setMessages(prev => [...prev, newUserMessage]);
 
-      // Chamar a Edge Function para obter respostas
       if (isComparing) {
-        // Chamar para o modelo da esquerda
         const leftResponsePromise = fetch('https://vygluorjwehcdigzxbaa.supabase.co/functions/v1/ai-chat', {
           method: 'POST',
           headers: {
@@ -236,7 +236,6 @@ export const useConversation = () => {
           })
         }).then(res => res.json());
 
-        // Chamar para o modelo da direita
         const rightResponsePromise = fetch('https://vygluorjwehcdigzxbaa.supabase.co/functions/v1/ai-chat', {
           method: 'POST',
           headers: {
@@ -252,10 +251,8 @@ export const useConversation = () => {
           })
         }).then(res => res.json());
 
-        // Resolver as duas promessas
         const [leftResult, rightResult] = await Promise.all([leftResponsePromise, rightResponsePromise]);
 
-        // Atualizar a UI com as respostas
         const leftResponseId = uuidv4();
         const rightResponseId = uuidv4();
 
@@ -283,7 +280,6 @@ export const useConversation = () => {
 
         setMessages(prev => [...prev, leftResponse, rightResponse]);
       } else {
-        // Modo único
         const response = await fetch('https://vygluorjwehcdigzxbaa.supabase.co/functions/v1/ai-chat', {
           method: 'POST',
           headers: {
@@ -314,9 +310,7 @@ export const useConversation = () => {
         setMessages(prev => [...prev, aiResponse]);
       }
 
-      // Recarregar as mensagens do banco de dados para sincronizar
       await loadMessages(conversationId);
-      
     } catch (error: any) {
       console.error('Erro ao enviar mensagem:', error);
       toast({
