@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,7 +6,6 @@ import { ChatMode } from '@/components/ModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 
-// Interface para os dados recebidos da API
 interface MessageData {
   id: string;
   content: string;
@@ -146,7 +144,6 @@ export const useConversation = () => {
     if (!user) return;
     
     try {
-      // Deletar todas as mensagens da conversa
       const { error: messagesError } = await supabase
         .from('messages')
         .delete()
@@ -154,7 +151,6 @@ export const useConversation = () => {
         
       if (messagesError) throw messagesError;
       
-      // Deletar a conversa
       const { error } = await supabase
         .from('conversations')
         .delete()
@@ -162,10 +158,8 @@ export const useConversation = () => {
         
       if (error) throw error;
       
-      // Atualizar a lista de conversas
       await loadConversations();
       
-      // Se a conversa deletada era a atual, selecionar outra conversa
       if (currentConversationId === conversationId) {
         if (conversations.length > 1) {
           const newCurrentConversation = conversations.find(c => c.id !== conversationId);
@@ -204,7 +198,6 @@ export const useConversation = () => {
         
       if (error) throw error;
       
-      // Atualizar lista de conversas
       await loadConversations();
       
       toast({
@@ -230,7 +223,6 @@ export const useConversation = () => {
     rightModel: string = '',
     files?: string[]
   ) => {
-    // Adicione estado de carregamento
     setLoading(true);
     
     let conversationId = currentConversationId;
@@ -243,7 +235,6 @@ export const useConversation = () => {
       }
     }
     
-    // Modo demonstração (sem autenticação)
     if (!user || !conversationId) {
       const newUserMessage: MessageType = {
         id: uuidv4(),
@@ -296,7 +287,6 @@ export const useConversation = () => {
     }
 
     try {
-      // Adicionar mensagem do usuário imediatamente na UI
       const userMessageId = uuidv4();
       const newUserMessage: MessageType = {
         id: userMessageId,
@@ -308,10 +298,8 @@ export const useConversation = () => {
         mediaUrl: files && files.length > 0 ? files[0] : undefined
       };
       
-      // Adiciona a mensagem do usuário ao estado local antes da resposta da API
       setMessages(prev => [...prev, newUserMessage]);
       
-      // Indicador visual temporário "Gerando..." para cada modelo
       let loadingIds: string[] = [];
       
       if (isComparing) {
@@ -345,7 +333,9 @@ export const useConversation = () => {
         
         const loadingResponse: MessageType = {
           id: loadingId,
-          content: "Gerando resposta...",
+          content: mode === 'video' ? 
+            "Gerando vídeo. Este processo pode levar até 2 minutos..." : 
+            "Gerando resposta...",
           sender: 'ai',
           model,
           timestamp: formatTime(),
@@ -389,58 +379,48 @@ export const useConversation = () => {
 
           const [leftResult, rightResult] = await Promise.all([leftResponsePromise, rightResponsePromise]);
 
-          // Remover mensagens de carregamento temporárias
-          setMessages(prev => prev.filter(msg => 
-            msg.id !== `loading-left-${userMessageId}` && 
-            msg.id !== `loading-right-${userMessageId}`
-          ));
-
-          const leftResponseId = uuidv4();
-          const rightResponseId = uuidv4();
-
-          const leftResponse: MessageType = {
-            id: leftResponseId,
-            content: leftResult.content || "Erro ao processar resposta",
-            sender: 'ai',
-            model: leftModel,
-            timestamp: formatTime(),
-            mode,
-            mediaUrl: leftResult.mediaUrl,
-            audioData: leftResult.audioData
-          };
-
-          const rightResponse: MessageType = {
-            id: rightResponseId,
-            content: rightResult.content || "Erro ao processar resposta",
-            sender: 'ai',
-            model: rightModel,
-            timestamp: formatTime(),
-            mode,
-            mediaUrl: rightResult.mediaUrl,
-            audioData: rightResult.audioData
-          };
-
-          setMessages(prev => {
-            // Filtrar mensagens temporárias de "carregando"
-            const filteredMessages = prev.filter(m => 
-              m.id !== `loading-left-${userMessageId}` && 
-              m.id !== `loading-right-${userMessageId}`
-            );
-            
-            // Adicionar novas respostas
-            return [...filteredMessages, leftResponse, rightResponse];
-          });
-        } catch (error: any) {
-          console.error("Erro na chamada da API:", error);
-          
-          // Remover mensagens de carregamento e mostrar erro
           setMessages(prev => {
             const filteredMessages = prev.filter(msg => 
               msg.id !== `loading-left-${userMessageId}` && 
               msg.id !== `loading-right-${userMessageId}`
             );
             
-            // Adicionar mensagens de erro
+            const leftResponseId = uuidv4();
+            const rightResponseId = uuidv4();
+
+            const leftResponse: MessageType = {
+              id: leftResponseId,
+              content: leftResult.content || "Erro ao processar resposta",
+              sender: 'ai',
+              model: leftModel,
+              timestamp: formatTime(),
+              mode,
+              mediaUrl: leftResult.mediaUrl,
+              audioData: leftResult.audioData
+            };
+
+            const rightResponse: MessageType = {
+              id: rightResponseId,
+              content: rightResult.content || "Erro ao processar resposta",
+              sender: 'ai',
+              model: rightModel,
+              timestamp: formatTime(),
+              mode,
+              mediaUrl: rightResult.mediaUrl,
+              audioData: rightResult.audioData
+            };
+
+            return [...filteredMessages, leftResponse, rightResponse];
+          });
+        } catch (error: any) {
+          console.error("Erro na chamada da API:", error);
+          
+          setMessages(prev => {
+            const filteredMessages = prev.filter(msg => 
+              msg.id !== `loading-left-${userMessageId}` && 
+              msg.id !== `loading-right-${userMessageId}`
+            );
+            
             const leftErrorMessage: MessageType = {
               id: uuidv4(),
               content: "Erro ao obter resposta do modelo. Por favor, tente novamente.",
@@ -494,20 +474,20 @@ export const useConversation = () => {
           });
           
           if (!response.ok) {
-            throw new Error(`HTTP error: ${response.status}`);
+            const errorResponse = await response.json().catch(() => ({}));
+            const errorMessage = errorResponse.details || errorResponse.error || `HTTP error: ${response.status}`;
+            console.error(`Erro na resposta da API: ${response.status}`, errorResponse);
+            throw new Error(errorMessage);
           }
           
           const result = await response.json();
           console.log("Resposta recebida da API:", result);
 
-          // Remover mensagem de carregamento temporária
           const loadingId = `loading-${userMessageId}`;
           
           setMessages(prev => {
-            // Filtrar mensagem temporária de "carregando"
             const filteredMessages = prev.filter(msg => msg.id !== loadingId);
             
-            // Criar a mensagem de resposta
             const aiResponse: MessageType = {
               id: uuidv4(),
               content: result.content || "Erro ao processar resposta",
@@ -519,20 +499,25 @@ export const useConversation = () => {
               audioData: result.audioData
             };
             
-            // Adicionar a nova resposta
             return [...filteredMessages, aiResponse];
           });
         } catch (error: any) {
           console.error("Erro na chamada da API:", error);
           
-          // Remover mensagem de carregamento e mostrar erro
           const loadingId = `loading-${userMessageId}`;
           
           setMessages(prev => {
             const filteredMessages = prev.filter(msg => msg.id !== loadingId);
+            
+            let errorContent = "Erro ao obter resposta do modelo. Por favor, tente novamente.";
+            
+            if (mode === 'video') {
+              errorContent = `Erro ao gerar o vídeo: ${error.message}. Por favor, tente com um prompt diferente ou use outro modelo.`;
+            }
+            
             const errorMessage: MessageType = {
               id: uuidv4(),
-              content: "Erro ao obter resposta do modelo. Por favor, tente novamente.",
+              content: errorContent,
               sender: 'ai',
               model,
               timestamp: formatTime(),
@@ -543,14 +528,11 @@ export const useConversation = () => {
           
           toast({
             title: "Erro",
-            description: "Falha ao se comunicar com o modelo AI: " + error.message,
+            description: `Falha ao se comunicar com o modelo AI: ${error.message}`,
             variant: "destructive",
           });
         }
       }
-
-      // Não recarregar as mensagens do banco de dados para evitar problemas com o estado
-      // await loadMessages(conversationId);
     } catch (error: any) {
       console.error('Erro ao enviar mensagem:', error);
       toast({

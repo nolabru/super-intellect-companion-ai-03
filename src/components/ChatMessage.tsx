@@ -23,6 +23,7 @@ interface ChatMessageProps {
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
   const isUser = message.sender === 'user';
   const isLoading = message.id?.startsWith('loading-');
+  const isVideo = message.mode === 'video';
   
   const renderModeIcon = () => {
     switch (message.mode) {
@@ -67,6 +68,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
   // Conteúdo limpo para exibição
   const displayContent = hasEmbeddedMedia ? cleanContent(message.content) : message.content;
   
+  // Renderizar um indicador de carregamento de vídeo personalizado
+  const renderVideoLoading = () => {
+    if (isLoading && isVideo) {
+      return (
+        <div className="flex flex-col items-center justify-center p-4 my-2 bg-inventu-darker/20 rounded-lg">
+          <Loader2 className="h-10 w-10 mb-2 animate-spin text-inventu-gray" />
+          <p className="text-sm text-inventu-gray">Gerando seu vídeo...</p>
+          <p className="text-xs text-inventu-gray/70 mt-1">
+            Isso pode levar alguns instantes. Por favor, aguarde.
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+  
   return (
     <div className={cn(
       "flex flex-col mb-4 animate-fade-in",
@@ -93,9 +110,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
         isUser ? "user-bubble" : "ai-bubble",
         "break-words p-3 rounded-xl max-w-[80%]",
         isUser ? "bg-inventu-blue/20 text-white" : "bg-inventu-card text-white",
-        isLoading && "animate-pulse"
+        isLoading && !isVideo && "animate-pulse"
       )}>
-        {isLoading ? (
+        {isLoading && !isVideo ? (
           <div className="flex items-center">
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             {displayContent}
@@ -103,6 +120,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
         ) : (
           displayContent
         )}
+        
+        {/* Indicador de carregamento de vídeo */}
+        {renderVideoLoading()}
         
         {/* Renderizar mídia se estiver presente */}
         {mediaUrl && message.mode === 'image' && (

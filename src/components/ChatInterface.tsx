@@ -64,6 +64,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
   
+  // Verificar se há mensagens de carregamento de vídeo
+  const hasVideoLoadingMessage = filteredMessages.some(msg => 
+    msg.id?.startsWith('loading-') && 
+    msg.mode === 'video' && 
+    msg.model === model
+  );
+  
   return (
     <div className={cn("flex flex-col h-full", className)}>
       <div className={cn(
@@ -95,9 +102,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <span>Carregando mensagens...</span>
           </div>
         ) : filteredMessages.length > 0 ? (
-          filteredMessages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))
+          <>
+            {filteredMessages.map((message) => (
+              <ChatMessage key={message.id} message={message} />
+            ))}
+            
+            {/* Informação adicional para geração de vídeo */}
+            {hasVideoLoadingMessage && (
+              <div className="text-center p-2 text-xs text-gray-400">
+                <p>A geração de vídeo pode levar até 2 minutos para ser concluída.</p>
+                <p>Por favor, aguarde enquanto o vídeo é processado.</p>
+              </div>
+            )}
+          </>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-400">
             Nenhuma mensagem ainda. Comece uma conversa!
