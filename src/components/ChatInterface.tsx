@@ -34,7 +34,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         "p-2 text-center flex justify-center items-center",
         model.includes('gpt') || model.includes('llama') ? "text-inventu-blue" : "text-inventu-purple"
       )}>
-        {/* Always show a model selector in the header */}
+        {/* Model selector in the header */}
         <Select value={model} onValueChange={onModelChange || (() => {})}>
           <SelectTrigger className="w-48 bg-inventu-card text-white border-inventu-gray/30 font-bold">
             <SelectValue placeholder={title} />
