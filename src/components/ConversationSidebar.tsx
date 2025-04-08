@@ -1,13 +1,17 @@
 
 import React from 'react';
-import { PlusCircle, MessageCircle, History } from 'lucide-react';
+import { PlusCircle, MessageCircle, History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const ConversationSidebar: React.FC = () => {
+interface ConversationSidebarProps {
+  onToggleSidebar?: () => void;
+}
+
+const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ onToggleSidebar }) => {
   const { 
     conversations, 
     currentConversationId, 
@@ -33,15 +37,27 @@ const ConversationSidebar: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-inventu-dark border-r border-inventu-gray/30">
-      <div className="p-4 border-b border-inventu-gray/30">
+      <div className="p-4 border-b border-inventu-gray/30 flex items-center gap-2">
         <Button 
           onClick={handleNewConversation}
-          className="w-full bg-inventu-blue hover:bg-inventu-blue/80 text-white"
+          className="flex-1 bg-inventu-blue hover:bg-inventu-blue/80 text-white"
           disabled={!user}
         >
           <PlusCircle className="mr-2 h-4 w-4" />
           Nova Conversa
         </Button>
+        
+        {onToggleSidebar && (
+          <Button
+            onClick={onToggleSidebar}
+            size="icon"
+            variant="ghost"
+            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            title="Minimizar menu"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center p-4 text-inventu-gray border-b border-inventu-gray/30">

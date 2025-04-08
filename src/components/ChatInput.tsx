@@ -1,49 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Send, 
-  Clipboard, 
-  Link as LinkIcon, 
-  Link2Off, 
-  FileImage, 
-  Mic, 
-  Video, 
-  TextCursor,
-  Menu
-} from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import ModeSelector, { ChatMode } from './ModeSelector';
-import ModelSelector from './ModelSelector';
-import CompareModelsButton from './CompareModelsButton';
 import { toast } from '@/components/ui/use-toast';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, mode: ChatMode, model: string) => void;
-  isLinked: boolean;
-  onToggleLink: () => void;
-  onToggleCompare: () => void;
-  isSplitView: boolean;
-  activeModelLeft: string;
-  activeModelRight: string;
-  onModelChangeLeft: (model: string) => void;
-  onModelChangeRight: (model: string) => void;
-  onToggleSidebar?: () => void;
+  onSendMessage: (message: string) => void;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ 
-  onSendMessage, 
-  isLinked, 
-  onToggleLink, 
-  onToggleCompare, 
-  isSplitView,
-  activeModelLeft,
-  activeModelRight,
-  onModelChangeLeft,
-  onModelChangeRight,
-  onToggleSidebar
-}) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
   const [message, setMessage] = useState('');
-  const [mode, setMode] = useState<ChatMode>('text');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -55,7 +21,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleSendMessage = () => {
     if (message.trim()) {
-      onSendMessage(message, mode, isSplitView ? activeModelLeft : activeModelLeft);
+      onSendMessage(message);
       setMessage('');
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
@@ -70,46 +36,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <div className="border-t border-inventu-gray/30 p-4 bg-inventu-dark">
-      <div className="flex flex-col md:flex-row gap-2">
-        <div className="flex md:flex-1 gap-2 items-center">
-          {onToggleSidebar && (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              onClick={onToggleSidebar}
-              className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
-          
-          <ModeSelector activeMode={mode} onChange={setMode} />
-          
-          {isSplitView ? (
-            <>
-              <ModelSelector selectedModel={activeModelLeft} onChange={onModelChangeLeft} mode={mode} />
-              {isLinked && <LinkIcon className="h-5 w-5 text-inventu-gray" />}
-              {!isLinked && <Link2Off className="h-5 w-5 text-inventu-gray" />}
-              <Button 
-                onClick={onToggleLink} 
-                variant="ghost" 
-                size="icon"
-                className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-              >
-                {isLinked ? <LinkIcon className="h-5 w-5" /> : <Link2Off className="h-5 w-5" />}
-              </Button>
-              <ModelSelector selectedModel={activeModelRight} onChange={onModelChangeRight} mode={mode} />
-            </>
-          ) : (
-            <ModelSelector selectedModel={activeModelLeft} onChange={onModelChangeLeft} mode={mode} />
-          )}
-        </div>
-        
-        <CompareModelsButton isComparing={isSplitView} onToggleCompare={onToggleCompare} />
-      </div>
-      
-      <div className="mt-2 relative">
+      <div className="relative">
         <textarea
           ref={textareaRef}
           value={message}

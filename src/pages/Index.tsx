@@ -7,6 +7,11 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import { ChatMode } from '@/components/ModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversation } from '@/hooks/useConversation';
+import ModeSelector from '@/components/ModeSelector';
+import ModelSelector from '@/components/ModelSelector';
+import CompareModelsButton from '@/components/CompareModelsButton';
+import { Button } from '@/components/ui/button';
+import { Link as LinkIcon, Link2Off } from 'lucide-react';
 
 // Model options for each mode
 const MODEL_OPTIONS = {
@@ -30,14 +35,12 @@ const Index: React.FC = () => {
     loading: messagesLoading 
   } = useConversation();
 
-  const handleSendMessage = (content: string, mode: ChatMode, model: string) => {
+  const handleSendMessage = (content: string) => {
     // Update active mode when message is sent
-    setActiveMode(mode);
-    
     sendMessage(
       content, 
-      mode, 
-      model, 
+      activeMode, 
+      comparing ? leftModel : leftModel, 
       comparing, 
       leftModel, 
       rightModel
@@ -67,11 +70,36 @@ const Index: React.FC = () => {
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen && (
           <div className="w-64 flex-shrink-0">
-            <ConversationSidebar />
+            <ConversationSidebar onToggleSidebar={toggleSidebar} />
           </div>
         )}
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="p-4 border-b border-inventu-gray/30 flex flex-wrap items-center gap-2 bg-inventu-dark">
+            <ModeSelector activeMode={activeMode} onChange={setActiveMode} />
+            
+            {comparing ? (
+              <div className="flex items-center gap-2">
+                <ModelSelector selectedModel={leftModel} onChange={setLeftModel} mode={activeMode} />
+                <Button 
+                  onClick={toggleLink} 
+                  variant="ghost" 
+                  size="icon"
+                  className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+                >
+                  {isLinked ? <LinkIcon className="h-5 w-5" /> : <Link2Off className="h-5 w-5" />}
+                </Button>
+                <ModelSelector selectedModel={rightModel} onChange={setRightModel} mode={activeMode} />
+              </div>
+            ) : (
+              <ModelSelector selectedModel={leftModel} onChange={setLeftModel} mode={activeMode} />
+            )}
+            
+            <div className="ml-auto">
+              <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
+            </div>
+          </div>
+          
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative rounded-xl mx-4 my-2 bg-inventu-dark">
             {comparing ? (
               <>
@@ -116,15 +144,6 @@ const Index: React.FC = () => {
           
           <ChatInput 
             onSendMessage={handleSendMessage} 
-            isLinked={isLinked}
-            onToggleLink={toggleLink}
-            onToggleCompare={toggleComparing}
-            isSplitView={comparing}
-            activeModelLeft={leftModel}
-            activeModelRight={rightModel}
-            onModelChangeLeft={setLeftModel}
-            onModelChangeRight={setRightModel}
-            onToggleSidebar={toggleSidebar}
           />
         </div>
       </div>
