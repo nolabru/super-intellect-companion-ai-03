@@ -3,7 +3,6 @@ import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChatMode } from './ModeSelector';
 import { Loader2 } from 'lucide-react';
 import { AVAILABLE_MODELS } from './ModelSelector';
 
