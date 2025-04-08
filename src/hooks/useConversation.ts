@@ -85,8 +85,8 @@ export const useConversation = () => {
             hour: '2-digit', minute: '2-digit', second: '2-digit' 
           }),
           mode: msg.mode as ChatMode,
-          mediaUrl: msg.media_url,
-          audioData: msg.audio_data
+          mediaUrl: msg.media_url || undefined,
+          audioData: msg.audio_data || undefined
         }));
         
         setMessages(formattedMessages);
