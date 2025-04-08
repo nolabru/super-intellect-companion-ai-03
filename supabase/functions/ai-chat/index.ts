@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -384,11 +385,12 @@ async function callKligin(prompt: string, model: string, mode: string) {
       
       console.log(`[Kligin] Enviando payload para criação de tarefa:`, JSON.stringify(createTaskPayload));
       
-      const createTaskResponse = await fetch("https://gateway.appypie.com/kling-ai-video/v1/getVideoTask", {
+      // Corrigindo o endpoint para o Kligin API
+      const createTaskResponse = await fetch("https://api.klign.ai/video/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": API_KEYS.kligin
+          "Authorization": `Bearer ${API_KEYS.kligin}`
         },
         body: JSON.stringify(createTaskPayload)
       });
@@ -411,12 +413,12 @@ async function callKligin(prompt: string, model: string, mode: string) {
         throw new Error(`Erro ao processar resposta da API Kligin: ${parseError.message}`);
       }
       
-      if (!taskData.task_id) {
+      if (!taskData.id) {
         console.error("[Kligin] task_id não encontrado na resposta:", taskData);
         throw new Error("Kligin não retornou um task_id válido");
       }
       
-      const taskId = taskData.task_id;
+      const taskId = taskData.id;
       console.log(`[Kligin] Task ID obtido: ${taskId}`);
       
       // Etapa 2: Verificar status da tarefa periodicamente até concluir
@@ -434,11 +436,12 @@ async function callKligin(prompt: string, model: string, mode: string) {
         await new Promise(resolve => setTimeout(resolve, pollingInterval));
         
         console.log(`[Kligin] Verificando status da tarefa ${taskId}`);
-        const statusResponse = await fetch(`https://gateway.appypie.com/kling-ai-video/v1/getVideoTaskStatus/${taskId}`, {
+        // Corrigindo o endpoint para verificação de status
+        const statusResponse = await fetch(`https://api.klign.ai/video/status/${taskId}`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": API_KEYS.kligin
+            "Authorization": `Bearer ${API_KEYS.kligin}`
           }
         });
         
