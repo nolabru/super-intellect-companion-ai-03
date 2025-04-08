@@ -69,15 +69,23 @@ async function callOpenAI(prompt: string, model: string, mode: string, files?: s
       body: formData
     });
     
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro OpenAI (audio): ${response.status} - ${errorText}`);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+    
     const data = await response.json();
     return {
-      content: data.text,
+      content: data.text || "Erro ao processar resposta",
       model: model,
       provider: "openai"
     };
   }
   
   if (mode !== 'audio') {
+    console.log(`Enviando para OpenAI (${mode}):`, JSON.stringify(requestBody).substring(0, 200) + "...");
+    
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -87,7 +95,15 @@ async function callOpenAI(prompt: string, model: string, mode: string, files?: s
       body: JSON.stringify(requestBody)
     });
     
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro OpenAI: ${response.status} - ${errorText}`);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
+    
     const data = await response.json();
+    console.log("Resposta OpenAI recebida:", JSON.stringify(data).substring(0, 200) + "...");
+    
     return {
       content: data.choices?.[0]?.message?.content || "Erro ao processar resposta",
       model: model,
@@ -122,6 +138,8 @@ async function callAnthropic(prompt: string, model: string, mode: string, files?
     }
   }
   
+  console.log(`Enviando para Anthropic:`, JSON.stringify(messages).substring(0, 200) + "...");
+  
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -136,7 +154,15 @@ async function callAnthropic(prompt: string, model: string, mode: string, files?
     })
   });
   
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Erro Anthropic: ${response.status} - ${errorText}`);
+    throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+  }
+  
   const data = await response.json();
+  console.log("Resposta Anthropic recebida:", JSON.stringify(data).substring(0, 200) + "...");
+  
   return {
     content: data.content?.[0]?.text || "Erro ao processar resposta",
     model: model,
@@ -185,6 +211,8 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
     };
   }
   
+  console.log(`Enviando para Google:`, JSON.stringify(requestBody).substring(0, 200) + "...");
+  
   const response = await fetch(`${endpoint}?key=${API_KEYS.google}`, {
     method: "POST",
     headers: {
@@ -193,7 +221,15 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
     body: JSON.stringify(requestBody)
   });
   
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Erro Google: ${response.status} - ${errorText}`);
+    throw new Error(`Google API error: ${response.status} - ${errorText}`);
+  }
+  
   const data = await response.json();
+  console.log("Resposta Google recebida:", JSON.stringify(data).substring(0, 200) + "...");
+  
   return {
     content: data.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao processar resposta",
     model: model,
@@ -209,24 +245,39 @@ async function callKligin(prompt: string, model: string, mode: string) {
     ? "https://api.kligin.ai/v1/image/generations" 
     : "https://api.kligin.ai/v1/video/generations";
   
+  const requestBody = {
+    prompt: prompt,
+    n: 1,
+    size: mode === 'image' ? "1024x1024" : "720x1280", // tamanho padrão
+    response_format: "url"
+  };
+  
+  console.log(`Enviando para Kligin:`, JSON.stringify(requestBody));
+  
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${API_KEYS.kligin}`
     },
-    body: JSON.stringify({
-      prompt: prompt,
-      n: 1,
-      size: mode === 'image' ? "1024x1024" : "720x1280", // tamanho padrão
-      response_format: "url"
-    })
+    body: JSON.stringify(requestBody)
   });
   
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Erro Kligin: ${response.status} - ${errorText}`);
+    throw new Error(`Kligin API error: ${response.status} - ${errorText}`);
+  }
+  
   const data = await response.json();
+  console.log("Resposta Kligin recebida:", JSON.stringify(data).substring(0, 200) + "...");
   
   // Para geração de imagens/vídeos, retornamos o URL do arquivo gerado
   const mediaUrl = data.data?.[0]?.url || "";
+  
+  if (!mediaUrl) {
+    throw new Error("Kligin não retornou uma URL de mídia válida");
+  }
   
   return {
     content: `[${mode === 'image' ? 'Imagem' : 'Vídeo'} gerado]: ${mediaUrl}`,
@@ -240,23 +291,38 @@ async function callKligin(prompt: string, model: string, mode: string) {
 async function callIdeogram(prompt: string, model: string) {
   console.log(`Chamando Ideogram com modelo ${model}`);
   
+  const requestBody = {
+    prompt: prompt,
+    style: "photographic",
+    aspect_ratio: "1:1"
+  };
+  
+  console.log(`Enviando para Ideogram:`, JSON.stringify(requestBody));
+  
   const response = await fetch("https://api.ideogram.ai/api/v1/images", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${API_KEYS.ideogram}`
     },
-    body: JSON.stringify({
-      prompt: prompt,
-      style: "photographic",
-      aspect_ratio: "1:1"
-    })
+    body: JSON.stringify(requestBody)
   });
   
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Erro Ideogram: ${response.status} - ${errorText}`);
+    throw new Error(`Ideogram API error: ${response.status} - ${errorText}`);
+  }
+  
   const data = await response.json();
+  console.log("Resposta Ideogram recebida:", JSON.stringify(data).substring(0, 200) + "...");
   
   // Ideogram retorna informações da imagem gerada
   const imageUrl = data.images?.[0]?.url || "";
+  
+  if (!imageUrl) {
+    throw new Error("Ideogram não retornou uma URL de imagem válida");
+  }
   
   return {
     content: `[Imagem gerada]: ${imageUrl}`,
@@ -270,23 +336,38 @@ async function callIdeogram(prompt: string, model: string) {
 async function callMinimax(prompt: string, model: string) {
   console.log(`Chamando Minimax com modelo ${model}`);
   
+  const requestBody = {
+    prompt: prompt,
+    duration: 10, // duração em segundos
+    resolution: "720p"
+  };
+  
+  console.log(`Enviando para Minimax:`, JSON.stringify(requestBody));
+  
   const response = await fetch("https://api.minimax.ai/v1/video/create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${API_KEYS.minimax}`
     },
-    body: JSON.stringify({
-      prompt: prompt,
-      duration: 10, // duração em segundos
-      resolution: "720p"
-    })
+    body: JSON.stringify(requestBody)
   });
   
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Erro Minimax: ${response.status} - ${errorText}`);
+    throw new Error(`Minimax API error: ${response.status} - ${errorText}`);
+  }
+  
   const data = await response.json();
+  console.log("Resposta Minimax recebida:", JSON.stringify(data).substring(0, 200) + "...");
   
   // Minimax retorna informações do vídeo gerado
   const videoUrl = data.result?.video_url || "";
+  
+  if (!videoUrl) {
+    throw new Error("Minimax não retornou uma URL de vídeo válida");
+  }
   
   return {
     content: `[Vídeo gerado]: ${videoUrl}`,
@@ -302,21 +383,31 @@ async function callElevenLabs(text: string, model: string) {
   
   const voice_id = "pFZP5JQG7iQjIQuC4Bku"; // Lily voice (default)
   
+  const requestBody = {
+    text: text,
+    model_id: "eleven_multilingual_v2",
+    voice_settings: {
+      stability: 0.5,
+      similarity_boost: 0.75
+    }
+  };
+  
+  console.log(`Enviando para ElevenLabs:`, JSON.stringify(requestBody));
+  
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "xi-api-key": API_KEYS.elevenlabs
     },
-    body: JSON.stringify({
-      text: text,
-      model_id: "eleven_multilingual_v2",
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75
-      }
-    })
+    body: JSON.stringify(requestBody)
   });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Erro ElevenLabs: ${response.status} - ${errorText}`);
+    throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+  }
   
   // ElevenLabs retorna o áudio como blob
   const audioBlob = await response.blob();
@@ -327,6 +418,8 @@ async function callElevenLabs(text: string, model: string) {
     reader.onloadend = () => resolve(reader.result);
     reader.readAsDataURL(audioBlob);
   });
+  
+  console.log("Áudio ElevenLabs gerado com sucesso");
   
   return {
     content: `[Áudio gerado]`,
@@ -339,18 +432,27 @@ async function callElevenLabs(text: string, model: string) {
 serve(async (req) => {
   // Tratar requisições OPTIONS (CORS preflight)
   if (req.method === 'OPTIONS') {
+    console.log("Recebida requisição CORS preflight");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     // Obter parâmetros da requisição
-    const { prompt, model, mode, conversationId, files } = await req.json();
+    const reqData = await req.json();
+    const { prompt, model, mode, conversationId, files } = reqData;
     
     console.log(`Recebida requisição para modelo: ${model}, modo: ${mode}`);
+    console.log(`Prompt: ${prompt ? prompt.substring(0, 50) + "..." : "vazio"}`);
+    console.log(`ConversationId: ${conversationId || "não fornecido"}`);
+    console.log(`Files: ${files && files.length > 0 ? "sim, " + files.length + " arquivo(s)" : "não"}`);
     
     if (!prompt || !model || !mode) {
+      console.error("Parâmetros obrigatórios ausentes");
       return new Response(
-        JSON.stringify({ error: 'Parâmetros obrigatórios ausentes' }),
+        JSON.stringify({ 
+          error: 'Parâmetros obrigatórios ausentes',
+          content: 'Ocorreu um erro: parâmetros obrigatórios ausentes (prompt, model, mode).'
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
@@ -359,31 +461,66 @@ serve(async (req) => {
     let response;
     try {
       if (model.startsWith('gpt-') || model === 'whisper-large-v3' || model === 'deepgram-nova-2') {
+        // Verificar se a API key está configurada
+        if (!API_KEYS.openai) {
+          throw new Error("API key da OpenAI não configurada");
+        }
         response = await callOpenAI(prompt, model, mode, files);
       } else if (model.includes('claude')) {
+        if (!API_KEYS.anthropic) {
+          throw new Error("API key da Anthropic não configurada");
+        }
         response = await callAnthropic(prompt, model, mode, files);
       } else if (model.includes('gemini') || model === 'llama-3') {
+        if (!API_KEYS.google) {
+          throw new Error("API key do Google não configurada");
+        }
         response = await callGoogle(prompt, model, mode, files);
       } else if (model.includes('kligin')) {
+        if (!API_KEYS.kligin) {
+          throw new Error("API key da Kligin não configurada");
+        }
         response = await callKligin(prompt, model, mode);
       } else if (model === 'ideogram') {
+        if (!API_KEYS.ideogram) {
+          throw new Error("API key da Ideogram não configurada");
+        }
         response = await callIdeogram(prompt, model);
       } else if (model === 'minimax-video') {
+        if (!API_KEYS.minimax) {
+          throw new Error("API key da Minimax não configurada");
+        }
         response = await callMinimax(prompt, model);
       } else if (model === 'eleven-labs') {
+        if (!API_KEYS.elevenlabs) {
+          throw new Error("API key da ElevenLabs não configurada");
+        }
         response = await callElevenLabs(prompt, model);
       } else {
         throw new Error(`Modelo não suportado: ${model}`);
       }
       
       console.log(`Resposta obtida do modelo ${model}:`, response ? 'sucesso' : 'falha');
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao chamar API para modelo ${model}:`, error);
+      
+      // Verificar se é um erro de API key não configurada
+      if (error.message && error.message.includes("API key")) {
+        return new Response(
+          JSON.stringify({ 
+            error: `API key não configurada para o provedor do modelo ${model}`, 
+            details: error.message,
+            content: `Erro: A API key necessária para o modelo ${model} não está configurada. Por favor, configure a API key através da interface administrativa.`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           error: `Erro ao processar com o modelo ${model}`, 
           details: error.message,
-          content: `Ocorreu um erro ao processar sua solicitação com o modelo ${model}. Por favor, tente novamente.`
+          content: `Ocorreu um erro ao processar sua solicitação com o modelo ${model}: ${error.message}. Por favor, tente novamente.`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
@@ -391,15 +528,23 @@ serve(async (req) => {
 
     // Se um conversationId foi fornecido, salvar a mensagem no Supabase
     if (conversationId) {
-      // Criar cliente Supabase
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
-      // Salvar a mensagem do usuário e a resposta do modelo
       try {
+        // Criar cliente Supabase
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+        
+        if (!supabaseUrl || !supabaseKey) {
+          console.error("Credenciais do Supabase não configuradas");
+          throw new Error("Credenciais do Supabase não configuradas");
+        }
+        
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Salvar a mensagem do usuário e a resposta do modelo
+        console.log("Salvando mensagens no banco de dados...");
+        
         // Primeiro, salvar a mensagem do usuário
-        await supabase.from('messages').insert({
+        const userMsgResult = await supabase.from('messages').insert({
           conversation_id: conversationId,
           content: prompt,
           sender: 'user',
@@ -407,9 +552,14 @@ serve(async (req) => {
           mode: mode,
           media_url: files && files.length > 0 ? files[0] : null
         });
-
+        
+        if (userMsgResult.error) {
+          console.error("Erro ao salvar mensagem do usuário:", userMsgResult.error);
+          throw userMsgResult.error;
+        }
+        
         // Depois, salvar a resposta do modelo
-        await supabase.from('messages').insert({
+        const aiMsgResult = await supabase.from('messages').insert({
           conversation_id: conversationId,
           content: response.content,
           sender: 'ai',
@@ -419,18 +569,26 @@ serve(async (req) => {
           audio_data: response.audioData || null
         });
         
+        if (aiMsgResult.error) {
+          console.error("Erro ao salvar resposta do modelo:", aiMsgResult.error);
+          throw aiMsgResult.error;
+        }
+        
         console.log('Mensagens salvas no banco de dados com sucesso');
-      } catch (error) {
+      } catch (error: any) {
         console.error('Erro ao salvar mensagens:', error);
+        // Não interromper o fluxo em caso de erro ao salvar no banco
+        // Apenas continuar e retornar a resposta da API
       }
     }
 
     // Retornar a resposta
+    console.log("Retornando resposta para o cliente");
     return new Response(
       JSON.stringify(response),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Erro no servidor:', error);
     return new Response(
       JSON.stringify({ 

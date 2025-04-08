@@ -2,7 +2,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { ChatMode } from './ModeSelector';
-import { Image, Video, AudioLines, Text } from 'lucide-react';
+import { Image, Video, AudioLines, Text, Loader2 } from 'lucide-react';
 
 export type MessageType = {
   id: string;
@@ -22,6 +22,7 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
   const isUser = message.sender === 'user';
+  const isLoading = message.id?.startsWith('loading-');
   
   const renderModeIcon = () => {
     switch (message.mode) {
@@ -90,9 +91,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
       <div className={cn(
         "chat-bubble",
         isUser ? "user-bubble" : "ai-bubble",
-        "break-words"
+        "break-words p-3 rounded-xl max-w-[80%]",
+        isUser ? "bg-inventu-blue/20 text-white" : "bg-inventu-card text-white",
+        isLoading && "animate-pulse"
       )}>
-        {displayContent}
+        {isLoading ? (
+          <div className="flex items-center">
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            {displayContent}
+          </div>
+        ) : (
+          displayContent
+        )}
         
         {/* Renderizar mídia se estiver presente */}
         {mediaUrl && message.mode === 'image' && (

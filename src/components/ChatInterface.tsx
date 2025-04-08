@@ -4,6 +4,7 @@ import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatMode } from './ModeSelector';
+import { Loader2 } from 'lucide-react';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -26,7 +27,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
-  const filteredMessages = messages.filter(msg => msg.sender === 'user' || msg.model === model);
+  const filteredMessages = messages.filter(msg => 
+    msg.sender === 'user' || 
+    msg.model === model || 
+    (msg.id && msg.id.startsWith('loading-') && msg.model === model)
+  );
   
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -49,10 +54,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         </Select>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {loading ? (
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
+        {loading && filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-400">
-            Carregando...
+            <Loader2 className="h-8 w-8 mr-2 animate-spin" />
+            <span>Carregando mensagens...</span>
           </div>
         ) : filteredMessages.length > 0 ? (
           filteredMessages.map((message) => (

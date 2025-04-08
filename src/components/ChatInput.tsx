@@ -15,6 +15,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
+  const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -32,10 +33,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
   }, [mode]);
 
   const handleSendMessage = async () => {
-    if (message.trim()) {
+    if (message.trim() || (files.length > 0 && mode !== 'text')) {
       try {
+        setIsSending(true);
         const fileUrls = await uploadFiles();
-        onSendMessage(message, fileUrls.length > 0 ? fileUrls : undefined);
+        onSendMessage(message.trim() || `[${mode} anexado]`, fileUrls.length > 0 ? fileUrls : undefined);
         setMessage('');
         setFiles([]);
         setFilePreviewUrls([]);
@@ -49,11 +51,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
           description: "Não foi possível enviar a mensagem",
           variant: "destructive",
         });
+      } finally {
+        setIsSending(false);
       }
     } else {
       toast({
         title: "Alerta",
-        description: "Por favor, insira uma mensagem.",
+        description: "Por favor, insira uma mensagem ou anexe um arquivo compatível com o modo selecionado.",
       });
     }
   };
@@ -177,6 +181,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
           placeholder={model ? `Pergunte ao ${model}...` : "Digite sua mensagem..."}
           className="w-full pl-4 pr-20 py-2 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none"
           rows={1}
+          disabled={isSending}
         />
         <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
           {/* Input oculto para arquivos */}
@@ -201,6 +206,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
               size="icon"
               className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
               title={`Anexar ${mode}`}
+              disabled={isSending}
             >
               <Paperclip className="h-5 w-5" />
             </Button>
@@ -211,11 +217,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
             variant="ghost" 
             size="icon"
             className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            disabled={isSending}
           >
             <Send className="h-5 w-5" />
           </Button>
         </div>
       </div>
+      
+      {/* Indicador de envio */}
+      {isSending && (
+        <div className="text-xs text-center mt-1 text-inventu-gray animate-pulse">
+          Enviando mensagem...
+        </div>
+      )}
     </div>
   );
 };
