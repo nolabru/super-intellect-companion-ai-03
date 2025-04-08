@@ -10,13 +10,13 @@ const corsHeaders = {
 
 // API Keys dos provedores
 const API_KEYS = {
-  openai: Deno.env.get("OPENAI_API_KEY") || "",
-  anthropic: Deno.env.get("ANTHROPIC_API_KEY") || "",
-  google: Deno.env.get("GOOGLE_API_KEY") || "",
-  kligin: Deno.env.get("KLIGIN_API_KEY") || "",
-  ideogram: Deno.env.get("IDEOGRAM_API_KEY") || "",
-  minimax: Deno.env.get("MINIMAX_API_KEY") || "",
-  elevenlabs: Deno.env.get("ELEVENLABS_API_KEY") || "",
+  openai: "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",
+  anthropic: "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",
+  google: "AIzaSyDkLxRKHXGDvuoVYjVw4Yp6dtcYXCv_ZNk",
+  kligin: "f42311adb24f4699a2ab1fe37f6cab31",
+  ideogram: "yBYG6LzvTePXFhOVttXVaGlMyIQ0jntxkVeU92rWnMPoMoreJ38-HN_M6OE3wEX5NQdqa-5wg3VtFq7u7QymDA",
+  minimax: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJJemFpYXMgUGVydHJlbGx5IiwiVXNlck5hbWUiOiJJemFpYXMgUGVydHJlbGx5IiwiQWNjb3VudCI6IiIsIlN1YmplY3RJRCI6IjE4Nzk1MjUwMzE3MDExMjM2MjUiLCJQaG9uZSI6IiIsIkdyb3VwSUQiOiIxODc5NTI1MDMxNjk2OTI5MzIxIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoicGVydHJlbGx5QHNhdWRlYmx1ZS5jb20iLCJDcmVhdGVUaW1lIjoiMjAyNS0wNC0wNSAwODozMzoxNCIsIlRva2VuVHlwZSI6MSwiaXNzIjoibWluaW1heCJ9.x1nBetn2kwR1FJ1BQSuqJA-qa1FjeNbtwLIe3L8T8JptrhsBkj6G2gtwke2iGT58VLQ5hbwAoookds53G_MX6w1UQL9ESwrORbryWUrhznIdSjgNQE6SlxZgyGYn42c1WHsh75Xys23nkwL1EKcM2ja2XbhQTU-2wAvuwB0iDvcNrgdFKeBv-tW21MtCUvgSh6Gx6bQ972MrENu_YxZVHmqwVrNWIxm4zPeBClLXHnIPAzEwnJSvbAKcen9e9R9K1AlxjIioN_a-nbBHOWbIPnI3pTPE4rzEw5pz_MVuRWtB9GxxdInErCVRofP-YGzLR16zkOkL2JYEKLITBNZsjw",
+  elevenlabs: "sk_2d89d7152d9db6a072828eaca081c4722dc403c5dc2511e6",
 };
 
 // Chamada para o OpenAI (GPT-4o, GPT-4o Vision, Whisper)
@@ -461,40 +461,18 @@ serve(async (req) => {
     let response;
     try {
       if (model.startsWith('gpt-') || model === 'whisper-large-v3' || model === 'deepgram-nova-2') {
-        // Verificar se a API key está configurada
-        if (!API_KEYS.openai) {
-          throw new Error("API key da OpenAI não configurada");
-        }
         response = await callOpenAI(prompt, model, mode, files);
       } else if (model.includes('claude')) {
-        if (!API_KEYS.anthropic) {
-          throw new Error("API key da Anthropic não configurada");
-        }
         response = await callAnthropic(prompt, model, mode, files);
       } else if (model.includes('gemini') || model === 'llama-3') {
-        if (!API_KEYS.google) {
-          throw new Error("API key do Google não configurada");
-        }
         response = await callGoogle(prompt, model, mode, files);
       } else if (model.includes('kligin')) {
-        if (!API_KEYS.kligin) {
-          throw new Error("API key da Kligin não configurada");
-        }
         response = await callKligin(prompt, model, mode);
       } else if (model === 'ideogram') {
-        if (!API_KEYS.ideogram) {
-          throw new Error("API key da Ideogram não configurada");
-        }
         response = await callIdeogram(prompt, model);
       } else if (model === 'minimax-video') {
-        if (!API_KEYS.minimax) {
-          throw new Error("API key da Minimax não configurada");
-        }
         response = await callMinimax(prompt, model);
       } else if (model === 'eleven-labs') {
-        if (!API_KEYS.elevenlabs) {
-          throw new Error("API key da ElevenLabs não configurada");
-        }
         response = await callElevenLabs(prompt, model);
       } else {
         throw new Error(`Modelo não suportado: ${model}`);
@@ -503,18 +481,6 @@ serve(async (req) => {
       console.log(`Resposta obtida do modelo ${model}:`, response ? 'sucesso' : 'falha');
     } catch (error: any) {
       console.error(`Erro ao chamar API para modelo ${model}:`, error);
-      
-      // Verificar se é um erro de API key não configurada
-      if (error.message && error.message.includes("API key")) {
-        return new Response(
-          JSON.stringify({ 
-            error: `API key não configurada para o provedor do modelo ${model}`, 
-            details: error.message,
-            content: `Erro: A API key necessária para o modelo ${model} não está configurada. Por favor, configure a API key através da interface administrativa.`
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-        );
-      }
       
       return new Response(
         JSON.stringify({ 
