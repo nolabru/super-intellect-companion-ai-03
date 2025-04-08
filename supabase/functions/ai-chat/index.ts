@@ -346,6 +346,8 @@ serve(async (req) => {
     // Obter parâmetros da requisição
     const { prompt, model, mode, conversationId, files } = await req.json();
     
+    console.log(`Recebida requisição para modelo: ${model}, modo: ${mode}`);
+    
     if (!prompt || !model || !mode) {
       return new Response(
         JSON.stringify({ error: 'Parâmetros obrigatórios ausentes' }),
@@ -355,24 +357,35 @@ serve(async (req) => {
 
     // Determinar qual API chamar com base no modelo e mode
     let response;
-    if (model.startsWith('gpt-') || model === 'whisper-large-v3' || model === 'deepgram-nova-2') {
-      response = await callOpenAI(prompt, model, mode, files);
-    } else if (model.includes('claude')) {
-      response = await callAnthropic(prompt, model, mode, files);
-    } else if (model.includes('gemini') || model === 'llama-3') {
-      response = await callGoogle(prompt, model, mode, files);
-    } else if (model.includes('kligin')) {
-      response = await callKligin(prompt, model, mode);
-    } else if (model === 'ideogram') {
-      response = await callIdeogram(prompt, model);
-    } else if (model === 'minimax-video') {
-      response = await callMinimax(prompt, model);
-    } else if (model === 'eleven-labs') {
-      response = await callElevenLabs(prompt, model);
-    } else {
+    try {
+      if (model.startsWith('gpt-') || model === 'whisper-large-v3' || model === 'deepgram-nova-2') {
+        response = await callOpenAI(prompt, model, mode, files);
+      } else if (model.includes('claude')) {
+        response = await callAnthropic(prompt, model, mode, files);
+      } else if (model.includes('gemini') || model === 'llama-3') {
+        response = await callGoogle(prompt, model, mode, files);
+      } else if (model.includes('kligin')) {
+        response = await callKligin(prompt, model, mode);
+      } else if (model === 'ideogram') {
+        response = await callIdeogram(prompt, model);
+      } else if (model === 'minimax-video') {
+        response = await callMinimax(prompt, model);
+      } else if (model === 'eleven-labs') {
+        response = await callElevenLabs(prompt, model);
+      } else {
+        throw new Error(`Modelo não suportado: ${model}`);
+      }
+      
+      console.log(`Resposta obtida do modelo ${model}:`, response ? 'sucesso' : 'falha');
+    } catch (error) {
+      console.error(`Erro ao chamar API para modelo ${model}:`, error);
       return new Response(
-        JSON.stringify({ error: 'Modelo não suportado' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        JSON.stringify({ 
+          error: `Erro ao processar com o modelo ${model}`, 
+          details: error.message,
+          content: `Ocorreu um erro ao processar sua solicitação com o modelo ${model}. Por favor, tente novamente.`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
 
@@ -405,6 +418,8 @@ serve(async (req) => {
           media_url: response.mediaUrl || null,
           audio_data: response.audioData || null
         });
+        
+        console.log('Mensagens salvas no banco de dados com sucesso');
       } catch (error) {
         console.error('Erro ao salvar mensagens:', error);
       }
@@ -418,7 +433,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('Erro no servidor:', error);
     return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor', details: error.message }),
+      JSON.stringify({ 
+        error: 'Erro interno do servidor', 
+        details: error.message,
+        content: 'Ocorreu um erro interno ao processar sua solicitação. Por favor, tente novamente.'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AppHeader from '@/components/AppHeader';
 import ChatInterface from '@/components/ChatInterface';
 import ChatInput from '@/components/ChatInput';
@@ -10,8 +10,7 @@ import { useConversation } from '@/hooks/useConversation';
 import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
-import { getModelsByMode } from '@/components/ModelSelector';
-import { Button } from '@/components/ui/button';
+import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(true);
@@ -26,6 +25,22 @@ const Index: React.FC = () => {
     sendMessage, 
     loading: messagesLoading 
   } = useConversation();
+
+  // Quando o modo muda, atualize os modelos para modelos compatíveis com o novo modo
+  useEffect(() => {
+    const availableModels = getModelsByMode(activeMode).map(model => model.id);
+    
+    // Verificar se os modelos atuais estão disponíveis no novo modo
+    if (!availableModels.includes(leftModel)) {
+      setLeftModel(availableModels[0] || '');
+    }
+    
+    if (!availableModels.includes(rightModel)) {
+      // Escolha um modelo diferente do leftModel para evitar comparações do mesmo modelo
+      const differentModel = availableModels.find(m => m !== leftModel) || availableModels[0] || '';
+      setRightModel(differentModel);
+    }
+  }, [activeMode, leftModel, rightModel]);
 
   const handleSendMessage = (content: string, files?: string[], targetModel?: string) => {
     // Se os chats estiverem vinculados ou não estiver no modo de comparação,
@@ -75,6 +90,11 @@ const Index: React.FC = () => {
 
   // Obter modelos disponíveis para o modo atual
   const availableModels = getModelsByMode(activeMode).map(model => model.id);
+
+  const handleModeChange = (newMode: ChatMode) => {
+    setActiveMode(newMode);
+    // Os modelos serão atualizados pelo useEffect
+  };
 
   return (
     <div className="flex flex-col h-screen bg-inventu-darker">
@@ -154,7 +174,7 @@ const Index: React.FC = () => {
           <div className="p-4 border-t border-inventu-gray/30 bg-inventu-dark">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
-                <ModeSelector activeMode={activeMode} onChange={setActiveMode} />
+                <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
