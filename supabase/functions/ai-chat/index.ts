@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -369,12 +368,10 @@ async function callKligin(prompt: string, model: string, mode: string) {
     }
   }
 
-  // Implementação corrigida para geração de vídeo no Kligin AI
   if (mode === 'video') {
     console.log(`[Kligin] Iniciando processo de geração de vídeo para o prompt: "${prompt}"`);
     
     try {
-      // Etapa 1: Criar tarefa de geração de vídeo
       console.log("[Kligin] Etapa 1: Criando tarefa de geração de vídeo");
       
       const createTaskPayload = {
@@ -385,15 +382,41 @@ async function callKligin(prompt: string, model: string, mode: string) {
       
       console.log(`[Kligin] Enviando payload para criação de tarefa:`, JSON.stringify(createTaskPayload));
       
-      // Corrigindo o endpoint para o Kligin API
-      const createTaskResponse = await fetch("https://api.klign.ai/video/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_KEYS.kligin}`
-        },
-        body: JSON.stringify(createTaskPayload)
-      });
+      let createTaskResponse;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`[Kligin] Tentativa ${retryCount + 1} de ${maxRetries} para criar tarefa`);
+          createTaskResponse = await fetch("https://api.klign.ai/video/generate", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${API_KEYS.kligin}`
+            },
+            body: JSON.stringify(createTaskPayload)
+          });
+          
+          break;
+        } catch (error) {
+          retryCount++;
+          console.error(`[Kligin] Erro de rede na tentativa ${retryCount}:`, error);
+          
+          if (retryCount >= maxRetries) {
+            console.error("[Kligin] Número máximo de tentativas excedido");
+            throw new Error(`Erro de conexão com a API Kligin: ${error.message}. Verifique sua conexão ou tente novamente mais tarde.`);
+          }
+          
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(`[Kligin] Aguardando ${delay}ms antes de tentar novamente...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      
+      if (!createTaskResponse) {
+        throw new Error("Não foi possível estabelecer conexão com a API Kligin após várias tentativas.");
+      }
       
       const createTaskResponseStatus = createTaskResponse.status;
       console.log(`[Kligin] Status da resposta de criação de tarefa: ${createTaskResponseStatus}`);
@@ -401,7 +424,16 @@ async function callKligin(prompt: string, model: string, mode: string) {
       if (!createTaskResponse.ok) {
         const errorText = await createTaskResponse.text();
         console.error(`[Kligin] Erro ao criar tarefa de vídeo: ${createTaskResponseStatus} - ${errorText}`);
-        throw new Error(`Kligin API error (criação de tarefa): ${createTaskResponseStatus} - ${errorText}`);
+        
+        if (createTaskResponseStatus === 401) {
+          throw new Error("Erro de autenticação com a API Kligin. Verifique se o token de API é válido.");
+        }
+        
+        if (createTaskResponseStatus === 429) {
+          throw new Error("Limite de requisições excedido na API Kligin. Tente novamente mais tarde.");
+        }
+        
+        throw new Error(`Erro na API Kligin (${createTaskResponseStatus}): ${errorText}`);
       }
       
       let taskData;
@@ -414,36 +446,40 @@ async function callKligin(prompt: string, model: string, mode: string) {
       }
       
       if (!taskData.id) {
-        console.error("[Kligin] task_id não encontrado na resposta:", taskData);
-        throw new Error("Kligin não retornou um task_id válido");
+        console.error("[Kligin] ID não encontrado na resposta:", taskData);
+        throw new Error("API Kligin não retornou um ID válido");
       }
       
       const taskId = taskData.id;
       console.log(`[Kligin] Task ID obtido: ${taskId}`);
       
-      // Etapa 2: Verificar status da tarefa periodicamente até concluir
       console.log(`[Kligin] Etapa 2: Verificando status da tarefa ${taskId}`);
       let videoUrl = null;
       let attempts = 0;
-      const maxAttempts = 20; // Aumentando o número de tentativas
-      const pollingInterval = 5000; // 5 segundos
+      const maxAttempts = 30;
+      const pollingInterval = 5000;
       
       while (attempts < maxAttempts) {
         attempts++;
         console.log(`[Kligin] Tentativa ${attempts} de ${maxAttempts} para verificar status da tarefa ${taskId}`);
         
-        // Aguardar entre as verificações
         await new Promise(resolve => setTimeout(resolve, pollingInterval));
         
         console.log(`[Kligin] Verificando status da tarefa ${taskId}`);
-        // Corrigindo o endpoint para verificação de status
-        const statusResponse = await fetch(`https://api.klign.ai/video/status/${taskId}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${API_KEYS.kligin}`
-          }
-        });
+        
+        let statusResponse;
+        try {
+          statusResponse = await fetch(`https://api.klign.ai/video/status/${taskId}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${API_KEYS.kligin}`
+            }
+          });
+        } catch (networkError) {
+          console.error(`[Kligin] Erro de rede ao verificar status:`, networkError);
+          continue;
+        }
         
         const statusResponseStatus = statusResponse.status;
         console.log(`[Kligin] Status da resposta de verificação: ${statusResponseStatus}`);
@@ -456,7 +492,7 @@ async function callKligin(prompt: string, model: string, mode: string) {
             throw new Error(`Erro ao verificar status da tarefa após ${maxAttempts} tentativas: ${errorText}`);
           }
           
-          continue; // Tentar novamente
+          continue;
         }
         
         let statusData;
@@ -470,13 +506,12 @@ async function callKligin(prompt: string, model: string, mode: string) {
             throw new Error(`Erro ao processar resposta de status após ${maxAttempts} tentativas: ${parseError.message}`);
           }
           
-          continue; // Tentar novamente
+          continue;
         }
         
-        // Verificar o campo status na resposta
         if (!statusData.status) {
           console.error("[Kligin] Campo 'status' não encontrado na resposta:", statusData);
-          continue; // Continuar tentando
+          continue;
         }
         
         if (statusData.status === "completed" && statusData.video_url) {
@@ -490,7 +525,6 @@ async function callKligin(prompt: string, model: string, mode: string) {
           throw new Error(`Falha na geração do vídeo: ${statusData.message || "motivo desconhecido"}`);
         }
         
-        // Se ainda está em processamento, continuamos o loop
         if (statusData.status === "processing" || statusData.status === "pending") {
           console.log(`[Kligin] Vídeo ainda em processamento (${statusData.status}), aguardando...`);
           continue;
@@ -504,7 +538,6 @@ async function callKligin(prompt: string, model: string, mode: string) {
         throw new Error("Tempo esgotado aguardando a geração do vídeo. Por favor, tente novamente.");
       }
       
-      // Etapa 3: Retornar a URL do vídeo gerado
       console.log("[Kligin] Etapa 3: Retornando resultado do vídeo gerado");
       return {
         content: `Vídeo gerado com base no prompt: "${prompt}"`,
@@ -516,8 +549,13 @@ async function callKligin(prompt: string, model: string, mode: string) {
     } catch (error) {
       console.error("[Kligin] Erro na chamada à API para geração de vídeo:", error);
       
-      // Em caso de erro, retornamos o erro para ser tratado pelo chamador
-      throw error;
+      console.log("[Kligin] Tentando fallback para Minimax Video...");
+      try {
+        return await callMinimax(prompt, "minimax-video");
+      } catch (fallbackError) {
+        console.error("[Kligin] Fallback para Minimax falhou:", fallbackError);
+        throw error;
+      }
     }
   }
   
@@ -530,9 +568,6 @@ async function callMinimax(prompt: string, model: string) {
   
   try {
     console.log(`[Minimax] Iniciando processo de geração de vídeo para o prompt: "${prompt}"`);
-    
-    // Etapa 1: Criar tarefa de geração de vídeo
-    console.log("[Minimax] Etapa 1: Criando tarefa de geração de vídeo");
     
     const createTaskPayload = {
       prompt: prompt,
@@ -577,18 +612,15 @@ async function callMinimax(prompt: string, model: string) {
     const taskId = taskData.task_id;
     console.log(`[Minimax] Task ID obtido: ${taskId}`);
     
-    // Etapa 2: Verificar status da tarefa periodicamente até concluir
-    console.log(`[Minimax] Etapa 2: Verificando status da tarefa ${taskId}`);
     let videoUrl = null;
     let attempts = 0;
-    const maxAttempts = 20; // Aumentando o número de tentativas
-    const pollingInterval = 5000; // 5 segundos
+    const maxAttempts = 20;
+    const pollingInterval = 5000;
     
     while (attempts < maxAttempts) {
       attempts++;
       console.log(`[Minimax] Tentativa ${attempts} de ${maxAttempts} para verificar status da tarefa ${taskId}`);
       
-      // Aguardar entre as verificações
       await new Promise(resolve => setTimeout(resolve, pollingInterval));
       
       console.log(`[Minimax] Verificando status da tarefa ${taskId}`);
@@ -611,7 +643,7 @@ async function callMinimax(prompt: string, model: string) {
           throw new Error(`Erro ao verificar status da tarefa após ${maxAttempts} tentativas: ${errorText}`);
         }
         
-        continue; // Tentar novamente
+        continue;
       }
       
       let statusData;
@@ -625,13 +657,12 @@ async function callMinimax(prompt: string, model: string) {
           throw new Error(`Erro ao processar resposta de status após ${maxAttempts} tentativas: ${parseError.message}`);
         }
         
-        continue; // Tentar novamente
+        continue;
       }
       
-      // Verificar o campo status na resposta
       if (!statusData.status) {
         console.error("[Minimax] Campo 'status' não encontrado na resposta:", statusData);
-        continue; // Continuar tentando
+        continue;
       }
       
       if (statusData.status === "completed" && statusData.video_url) {
@@ -645,7 +676,6 @@ async function callMinimax(prompt: string, model: string) {
         throw new Error(`Falha na geração do vídeo: ${statusData.message || "motivo desconhecido"}`);
       }
       
-      // Se ainda está em processamento, continuamos o loop
       if (statusData.status === "processing" || statusData.status === "pending") {
         console.log(`[Minimax] Vídeo ainda em processamento (${statusData.status}), aguardando...`);
         continue;
@@ -659,7 +689,6 @@ async function callMinimax(prompt: string, model: string) {
       throw new Error("Tempo esgotado aguardando a geração do vídeo. Por favor, tente novamente.");
     }
     
-    // Etapa 3: Retornar a URL do vídeo gerado
     console.log("[Minimax] Etapa 3: Retornando resultado do vídeo gerado");
     return {
       content: `Vídeo gerado com base no prompt: "${prompt}"`,
@@ -667,11 +696,8 @@ async function callMinimax(prompt: string, model: string) {
       model: model,
       provider: "minimax"
     };
-    
   } catch (error) {
     console.error("[Minimax] Erro na chamada à API para geração de vídeo:", error);
-    
-    // Em caso de erro, não tentamos fallback e retornamos o erro original
     throw error;
   }
 }
@@ -680,7 +706,6 @@ async function callMinimax(prompt: string, model: string) {
 async function callIdeogram(prompt: string, model: string) {
   console.log(`Chamando Ideogram com modelo ${model}`);
   
-  // Usando DALL-E 3 como fallback para geração de imagens
   try {
     return await callOpenAIImage(prompt);
   } catch (error) {
@@ -722,10 +747,8 @@ async function callElevenLabs(prompt: string, model: string) {
       throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
     }
     
-    // ElevenLabs retorna o áudio como blob
     const audioBlob = await response.blob();
     
-    // Precisamos converter para base64 para enviar pelo json
     const audioBase64 = await new Promise(resolve => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
@@ -747,14 +770,12 @@ async function callElevenLabs(prompt: string, model: string) {
 }
 
 serve(async (req) => {
-  // Tratar requisições OPTIONS (CORS preflight)
   if (req.method === 'OPTIONS') {
     console.log("Recebida requisição CORS preflight");
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Obter parâmetros da requisição
     const reqData = await req.json();
     const { prompt, model, mode, conversationId, files } = reqData;
     
@@ -774,7 +795,6 @@ serve(async (req) => {
       );
     }
 
-    // Determinar qual API chamar com base no modelo e mode
     let response;
     try {
       if (model.startsWith('gpt-') || model === 'whisper-large-v3' || model === 'deepgram-nova-2') {
@@ -799,7 +819,6 @@ serve(async (req) => {
     } catch (error: any) {
       console.error(`Erro ao chamar API para modelo ${model}:`, error);
       
-      // Retornar uma mensagem de erro clara para o usuário
       return new Response(
         JSON.stringify({ 
           error: `Erro ao processar com o modelo ${model}`, 
@@ -810,10 +829,8 @@ serve(async (req) => {
       );
     }
 
-    // Se um conversationId foi fornecido, salvar a mensagem no Supabase
     if (conversationId) {
       try {
-        // Criar cliente Supabase
         const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://vygluorjwehcdigzxbaa.supabase.co';
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
         
@@ -823,10 +840,6 @@ serve(async (req) => {
         
         const supabase = createClient(supabaseUrl, supabaseKey);
 
-        // Salvar a mensagem do usuário e a resposta do modelo
-        console.log("Salvando mensagens no banco de dados...");
-        
-        // Primeiro, salvar a mensagem do usuário
         const userMsgResult = await supabase.from('messages').insert({
           conversation_id: conversationId,
           content: prompt,
@@ -841,7 +854,6 @@ serve(async (req) => {
           throw userMsgResult.error;
         }
         
-        // Depois, salvar a resposta do modelo
         const aiMsgResult = await supabase.from('messages').insert({
           conversation_id: conversationId,
           content: response.content,
@@ -861,11 +873,9 @@ serve(async (req) => {
       } catch (error: any) {
         console.error('Erro ao salvar mensagens:', error);
         // Não interromper o fluxo em caso de erro ao salvar no banco
-        // Apenas continuar e retornar a resposta da API
       }
     }
 
-    // Retornar a resposta
     console.log("Retornando resposta para o cliente");
     return new Response(
       JSON.stringify(response),
