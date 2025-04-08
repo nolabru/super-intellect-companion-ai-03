@@ -77,6 +77,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     msg.mode === 'video' && 
     msg.model === model
   );
+
+  // Verificar se está usando o modelo kligin-video
+  const isKliginVideo = model === 'kligin-video';
   
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -117,16 +120,53 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             {/* Informação adicional para geração de vídeo */}
             {hasVideoLoadingMessage && (
               <div className="text-center p-3 bg-inventu-darker/20 rounded-lg my-4 text-gray-300">
-                <p className="text-sm">A geração de vídeo pode levar até 3 minutos para ser concluída.</p>
-                <p className="text-xs mt-1 text-gray-400">O sistema está processando seu pedido. Por favor, aguarde.</p>
-                {videoLoadingMessage?.content && videoLoadingMessage.content.includes("processamento") && (
-                  <div className="mt-2 flex justify-center">
+                <p className="text-sm font-medium">
+                  {isKliginVideo ? 
+                    "A geração de vídeo pode levar até 3 minutos para ser concluída." :
+                    "Processando sua solicitação de vídeo..."
+                  }
+                </p>
+                <p className="text-xs mt-1 text-gray-400">
+                  {isKliginVideo ?
+                    "O sistema está conectando ao serviço do Kligin AI. Por favor, aguarde." :
+                    "Estamos trabalhando na sua solicitação. Isso pode levar alguns instantes."
+                  }
+                </p>
+                
+                {videoLoadingMessage?.content && (
+                  <div className="mt-3 flex justify-center">
                     <div className="bg-inventu-blue/20 px-3 py-1 rounded-full text-xs flex items-center">
                       <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                      <span>Processando vídeo...</span>
+                      <span>
+                        {videoLoadingMessage.content.includes("processamento") ? 
+                          "Processando vídeo..." : 
+                          "Conectando ao serviço de vídeo..."
+                        }
+                      </span>
                     </div>
                   </div>
                 )}
+                
+                {/* Barra de progresso indeterminada */}
+                <div className="mt-3 h-1 w-full bg-gray-700 rounded overflow-hidden">
+                  <div 
+                    className="h-full bg-inventu-blue opacity-80"
+                    style={{
+                      width: '30%',
+                      animation: 'progressAnimation 2s ease-in-out infinite'
+                    }}
+                  ></div>
+                </div>
+                <style jsx>{`
+                  @keyframes progressAnimation {
+                    0% {
+                      margin-left: -30%;
+                    }
+                    100% {
+                      margin-left: 100%;
+                    }
+                  }
+                `}</style>
               </div>
             )}
           </>

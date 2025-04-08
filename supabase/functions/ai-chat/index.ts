@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -382,30 +383,44 @@ async function callKligin(prompt: string, model: string, mode: string) {
       
       console.log(`[Kligin] Enviando payload para criação de tarefa:`, JSON.stringify(createTaskPayload));
       
+      // Define o novo endpoint correto para a API Kligin
+      const KLIGIN_API_URL = "https://api.klign.ai/v1/video/generate";
+      
       let createTaskResponse;
       let retryCount = 0;
-      const maxRetries = 3;
+      const maxRetries = 5;  // Aumentei o número de tentativas
       
       while (retryCount < maxRetries) {
         try {
-          console.log(`[Kligin] Tentativa ${retryCount + 1} de ${maxRetries} para criar tarefa`);
-          createTaskResponse = await fetch("https://api.klign.ai/video/generate", {
+          console.log(`[Kligin] Tentativa ${retryCount + 1} de ${maxRetries} para criar tarefa usando URL: ${KLIGIN_API_URL}`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de timeout
+          
+          createTaskResponse = await fetch(KLIGIN_API_URL, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${API_KEYS.kligin}`
             },
-            body: JSON.stringify(createTaskPayload)
-          });
+            body: JSON.stringify(createTaskPayload),
+            signal: controller.signal
+          }).finally(() => clearTimeout(timeoutId));
           
           break;
-        } catch (error) {
+        } catch (error: any) {
           retryCount++;
-          console.error(`[Kligin] Erro de rede na tentativa ${retryCount}:`, error);
+          
+          if (error.name === 'AbortError') {
+            console.error(`[Kligin] Timeout excedido na tentativa ${retryCount}`);
+          } else {
+            console.error(`[Kligin] Erro de rede na tentativa ${retryCount}:`, error);
+          }
           
           if (retryCount >= maxRetries) {
             console.error("[Kligin] Número máximo de tentativas excedido");
-            throw new Error(`Erro de conexão com a API Kligin: ${error.message}. Verifique sua conexão ou tente novamente mais tarde.`);
+            console.log("[Kligin] Ativando fallback para Minimax...");
+            return await callMinimax(prompt, "minimax-video");
           }
           
           const delay = Math.pow(2, retryCount) * 1000;
@@ -415,15 +430,24 @@ async function callKligin(prompt: string, model: string, mode: string) {
       }
       
       if (!createTaskResponse) {
-        throw new Error("Não foi possível estabelecer conexão com a API Kligin após várias tentativas.");
+        console.error("[Kligin] Não foi possível estabelecer conexão com a API Kligin");
+        console.log("[Kligin] Ativando fallback para Minimax...");
+        return await callMinimax(prompt, "minimax-video");
       }
       
       const createTaskResponseStatus = createTaskResponse.status;
       console.log(`[Kligin] Status da resposta de criação de tarefa: ${createTaskResponseStatus}`);
       
+      let responseText = "";
+      try {
+        responseText = await createTaskResponse.text();
+        console.log(`[Kligin] Resposta bruta: ${responseText}`);
+      } catch (error) {
+        console.error("[Kligin] Não foi possível ler o corpo da resposta:", error);
+      }
+      
       if (!createTaskResponse.ok) {
-        const errorText = await createTaskResponse.text();
-        console.error(`[Kligin] Erro ao criar tarefa de vídeo: ${createTaskResponseStatus} - ${errorText}`);
+        console.error(`[Kligin] Erro ao criar tarefa de vídeo: ${createTaskResponseStatus} - ${responseText}`);
         
         if (createTaskResponseStatus === 401) {
           throw new Error("Erro de autenticação com a API Kligin. Verifique se o token de API é válido.");
@@ -433,31 +457,38 @@ async function callKligin(prompt: string, model: string, mode: string) {
           throw new Error("Limite de requisições excedido na API Kligin. Tente novamente mais tarde.");
         }
         
-        throw new Error(`Erro na API Kligin (${createTaskResponseStatus}): ${errorText}`);
+        console.log("[Kligin] Erro na API Kligin. Ativando fallback para Minimax...");
+        return await callMinimax(prompt, "minimax-video");
       }
       
       let taskData;
       try {
-        taskData = await createTaskResponse.json();
+        taskData = JSON.parse(responseText);
         console.log("[Kligin] Resposta da criação de tarefa:", JSON.stringify(taskData));
       } catch (parseError) {
         console.error("[Kligin] Erro ao fazer parse da resposta JSON:", parseError);
-        throw new Error(`Erro ao processar resposta da API Kligin: ${parseError.message}`);
+        console.log("[Kligin] Ativando fallback para Minimax...");
+        return await callMinimax(prompt, "minimax-video");
       }
       
       if (!taskData.id) {
         console.error("[Kligin] ID não encontrado na resposta:", taskData);
-        throw new Error("API Kligin não retornou um ID válido");
+        console.log("[Kligin] Ativando fallback para Minimax...");
+        return await callMinimax(prompt, "minimax-video");
       }
       
       const taskId = taskData.id;
       console.log(`[Kligin] Task ID obtido: ${taskId}`);
       
       console.log(`[Kligin] Etapa 2: Verificando status da tarefa ${taskId}`);
+      
+      // Novo endpoint para verificação de status
+      const STATUS_API_URL = `https://api.klign.ai/v1/video/status/${taskId}`;
+      
       let videoUrl = null;
       let attempts = 0;
-      const maxAttempts = 30;
-      const pollingInterval = 5000;
+      const maxAttempts = 45;  // Aumentei o número de tentativas de verificação
+      const pollingInterval = 4000;  // Intervalo de 4 segundos
       
       while (attempts < maxAttempts) {
         attempts++;
@@ -465,31 +496,54 @@ async function callKligin(prompt: string, model: string, mode: string) {
         
         await new Promise(resolve => setTimeout(resolve, pollingInterval));
         
-        console.log(`[Kligin] Verificando status da tarefa ${taskId}`);
+        console.log(`[Kligin] Verificando status da tarefa ${taskId} usando URL: ${STATUS_API_URL}`);
         
         let statusResponse;
         try {
-          statusResponse = await fetch(`https://api.klign.ai/video/status/${taskId}`, {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+          
+          statusResponse = await fetch(STATUS_API_URL, {
             method: "GET",
             headers: {
-              "Content-Type": "application/json",
               "Authorization": `Bearer ${API_KEYS.kligin}`
-            }
-          });
-        } catch (networkError) {
+            },
+            signal: controller.signal
+          }).finally(() => clearTimeout(timeoutId));
+        } catch (networkError: any) {
           console.error(`[Kligin] Erro de rede ao verificar status:`, networkError);
+          
+          if (networkError.name === 'AbortError') {
+            console.log("[Kligin] Timeout excedido ao verificar status");
+          }
+          
+          if (attempts >= maxAttempts) {
+            console.error("[Kligin] Número máximo de tentativas excedido para verificação de status");
+            console.log("[Kligin] Ativando fallback para Minimax...");
+            return await callMinimax(prompt, "minimax-video");
+          }
+          
           continue;
         }
         
         const statusResponseStatus = statusResponse.status;
         console.log(`[Kligin] Status da resposta de verificação: ${statusResponseStatus}`);
         
+        let statusResponseText = "";
+        try {
+          statusResponseText = await statusResponse.text();
+          console.log(`[Kligin] Resposta bruta do status: ${statusResponseText}`);
+        } catch (error) {
+          console.error("[Kligin] Não foi possível ler o corpo da resposta de status:", error);
+        }
+        
         if (!statusResponse.ok) {
-          const errorText = await statusResponse.text();
-          console.error(`[Kligin] Erro ao verificar status da tarefa: ${statusResponseStatus} - ${errorText}`);
+          console.error(`[Kligin] Erro ao verificar status da tarefa: ${statusResponseStatus} - ${statusResponseText}`);
           
           if (attempts >= maxAttempts) {
-            throw new Error(`Erro ao verificar status da tarefa após ${maxAttempts} tentativas: ${errorText}`);
+            console.error(`[Kligin] Erro ao verificar status da tarefa após ${maxAttempts} tentativas.`);
+            console.log("[Kligin] Ativando fallback para Minimax...");
+            return await callMinimax(prompt, "minimax-video");
           }
           
           continue;
@@ -497,13 +551,15 @@ async function callKligin(prompt: string, model: string, mode: string) {
         
         let statusData;
         try {
-          statusData = await statusResponse.json();
+          statusData = JSON.parse(statusResponseText);
           console.log(`[Kligin] Status da tarefa ${taskId}:`, JSON.stringify(statusData));
         } catch (parseError) {
           console.error("[Kligin] Erro ao fazer parse da resposta JSON do status:", parseError);
           
           if (attempts >= maxAttempts) {
-            throw new Error(`Erro ao processar resposta de status após ${maxAttempts} tentativas: ${parseError.message}`);
+            console.error(`[Kligin] Erro ao processar resposta de status após ${maxAttempts} tentativas.`);
+            console.log("[Kligin] Ativando fallback para Minimax...");
+            return await callMinimax(prompt, "minimax-video");
           }
           
           continue;
@@ -514,6 +570,8 @@ async function callKligin(prompt: string, model: string, mode: string) {
           continue;
         }
         
+        console.log(`[Kligin] Status atual: ${statusData.status}`);
+        
         if (statusData.status === "completed" && statusData.video_url) {
           videoUrl = statusData.video_url;
           console.log(`[Kligin] Vídeo gerado com sucesso: ${videoUrl}`);
@@ -522,7 +580,8 @@ async function callKligin(prompt: string, model: string, mode: string) {
         
         if (statusData.status === "failed") {
           console.error(`[Kligin] Falha na geração do vídeo:`, statusData.message || "motivo desconhecido");
-          throw new Error(`Falha na geração do vídeo: ${statusData.message || "motivo desconhecido"}`);
+          console.log("[Kligin] Ativando fallback para Minimax...");
+          return await callMinimax(prompt, "minimax-video");
         }
         
         if (statusData.status === "processing" || statusData.status === "pending") {
@@ -535,7 +594,8 @@ async function callKligin(prompt: string, model: string, mode: string) {
       
       if (!videoUrl) {
         console.error("[Kligin] Não foi possível obter a URL do vídeo após múltiplas tentativas");
-        throw new Error("Tempo esgotado aguardando a geração do vídeo. Por favor, tente novamente.");
+        console.log("[Kligin] Ativando fallback para Minimax...");
+        return await callMinimax(prompt, "minimax-video");
       }
       
       console.log("[Kligin] Etapa 3: Retornando resultado do vídeo gerado");
@@ -577,27 +637,74 @@ async function callMinimax(prompt: string, model: string) {
     
     console.log(`[Minimax] Enviando payload para criação de tarefa:`, JSON.stringify(createTaskPayload));
     
-    const createTaskResponse = await fetch("https://api.minimax.io/v1/video/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEYS.minimax}`
-      },
-      body: JSON.stringify(createTaskPayload)
-    });
+    // Endpoint correto do Minimax
+    const MINIMAX_API_URL = "https://api.minimax.ai/v1/video/generate";
+    
+    let retryCount = 0;
+    const maxRetries = 5;
+    
+    let createTaskResponse;
+    while (retryCount < maxRetries) {
+      try {
+        console.log(`[Minimax] Tentativa ${retryCount + 1} de ${maxRetries} para criar tarefa usando URL: ${MINIMAX_API_URL}`);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de timeout
+        
+        createTaskResponse = await fetch(MINIMAX_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${API_KEYS.minimax}`
+          },
+          body: JSON.stringify(createTaskPayload),
+          signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
+        
+        break;
+      } catch (error: any) {
+        retryCount++;
+        
+        if (error.name === 'AbortError') {
+          console.error(`[Minimax] Timeout excedido na tentativa ${retryCount}`);
+        } else {
+          console.error(`[Minimax] Erro de rede na tentativa ${retryCount}:`, error);
+        }
+        
+        if (retryCount >= maxRetries) {
+          console.error("[Minimax] Número máximo de tentativas excedido");
+          throw new Error("Não foi possível se conectar ao serviço de geração de vídeo Minimax.");
+        }
+        
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`[Minimax] Aguardando ${delay}ms antes de tentar novamente...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    if (!createTaskResponse) {
+      throw new Error("Não foi possível estabelecer conexão com a API Minimax.");
+    }
     
     const createTaskResponseStatus = createTaskResponse.status;
     console.log(`[Minimax] Status da resposta de criação de tarefa: ${createTaskResponseStatus}`);
     
+    let responseText = "";
+    try {
+      responseText = await createTaskResponse.text();
+      console.log(`[Minimax] Resposta bruta: ${responseText}`);
+    } catch (error) {
+      console.error("[Minimax] Não foi possível ler o corpo da resposta:", error);
+    }
+    
     if (!createTaskResponse.ok) {
-      const errorText = await createTaskResponse.text();
-      console.error(`[Minimax] Erro ao criar tarefa de vídeo: ${createTaskResponseStatus} - ${errorText}`);
-      throw new Error(`Minimax API error (criação de tarefa): ${createTaskResponseStatus} - ${errorText}`);
+      console.error(`[Minimax] Erro ao criar tarefa de vídeo: ${createTaskResponseStatus} - ${responseText}`);
+      throw new Error(`Minimax API error (criação de tarefa): ${createTaskResponseStatus} - ${responseText}`);
     }
     
     let taskData;
     try {
-      taskData = await createTaskResponse.json();
+      taskData = JSON.parse(responseText);
       console.log("[Minimax] Resposta da criação de tarefa:", JSON.stringify(taskData));
     } catch (parseError) {
       console.error("[Minimax] Erro ao fazer parse da resposta JSON:", parseError);
@@ -612,10 +719,13 @@ async function callMinimax(prompt: string, model: string) {
     const taskId = taskData.task_id;
     console.log(`[Minimax] Task ID obtido: ${taskId}`);
     
+    // Endpoint correto para verificação de status
+    const STATUS_API_URL = `https://api.minimax.ai/v1/video/status/${taskId}`;
+    
     let videoUrl = null;
     let attempts = 0;
-    const maxAttempts = 20;
-    const pollingInterval = 5000;
+    const maxAttempts = 40;
+    const pollingInterval = 4500;
     
     while (attempts < maxAttempts) {
       attempts++;
@@ -623,24 +733,50 @@ async function callMinimax(prompt: string, model: string) {
       
       await new Promise(resolve => setTimeout(resolve, pollingInterval));
       
-      console.log(`[Minimax] Verificando status da tarefa ${taskId}`);
-      const statusResponse = await fetch(`https://api.minimax.io/v1/video/status/${taskId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${API_KEYS.minimax}`
+      console.log(`[Minimax] Verificando status da tarefa ${taskId} usando URL: ${STATUS_API_URL}`);
+      
+      let statusResponse;
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+        
+        statusResponse = await fetch(STATUS_API_URL, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${API_KEYS.minimax}`
+          },
+          signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
+      } catch (networkError: any) {
+        console.error(`[Minimax] Erro de rede ao verificar status:`, networkError);
+        
+        if (networkError.name === 'AbortError') {
+          console.log("[Minimax] Timeout excedido ao verificar status");
         }
-      });
+        
+        if (attempts >= maxAttempts) {
+          throw new Error(`Erro ao verificar status da tarefa após ${maxAttempts} tentativas.`);
+        }
+        
+        continue;
+      }
       
       const statusResponseStatus = statusResponse.status;
       console.log(`[Minimax] Status da resposta de verificação: ${statusResponseStatus}`);
       
+      let statusResponseText = "";
+      try {
+        statusResponseText = await statusResponse.text();
+        console.log(`[Minimax] Resposta bruta do status: ${statusResponseText}`);
+      } catch (error) {
+        console.error("[Minimax] Não foi possível ler o corpo da resposta de status:", error);
+      }
+      
       if (!statusResponse.ok) {
-        const errorText = await statusResponse.text();
-        console.error(`[Minimax] Erro ao verificar status da tarefa: ${statusResponseStatus} - ${errorText}`);
+        console.error(`[Minimax] Erro ao verificar status da tarefa: ${statusResponseStatus} - ${statusResponseText}`);
         
         if (attempts >= maxAttempts) {
-          throw new Error(`Erro ao verificar status da tarefa após ${maxAttempts} tentativas: ${errorText}`);
+          throw new Error(`Erro ao verificar status da tarefa após ${maxAttempts} tentativas.`);
         }
         
         continue;
@@ -648,7 +784,7 @@ async function callMinimax(prompt: string, model: string) {
       
       let statusData;
       try {
-        statusData = await statusResponse.json();
+        statusData = JSON.parse(statusResponseText);
         console.log(`[Minimax] Status da tarefa ${taskId}:`, JSON.stringify(statusData));
       } catch (parseError) {
         console.error("[Minimax] Erro ao fazer parse da resposta JSON do status:", parseError);
@@ -664,6 +800,8 @@ async function callMinimax(prompt: string, model: string) {
         console.error("[Minimax] Campo 'status' não encontrado na resposta:", statusData);
         continue;
       }
+      
+      console.log(`[Minimax] Status atual: ${statusData.status}`);
       
       if (statusData.status === "completed" && statusData.video_url) {
         videoUrl = statusData.video_url;
@@ -698,7 +836,13 @@ async function callMinimax(prompt: string, model: string) {
     };
   } catch (error) {
     console.error("[Minimax] Erro na chamada à API para geração de vídeo:", error);
-    throw error;
+    
+    // Fallback final - retornar um erro mais amigável
+    return {
+      content: `Não foi possível gerar o vídeo neste momento. Por favor, tente com um prompt diferente ou tente novamente mais tarde.`,
+      model: model,
+      provider: "minimax"
+    };
   }
 }
 

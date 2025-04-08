@@ -65,5 +65,5 @@ backend = "postgres"
 
 [function.ai-chat]
 verify_jwt = true
-# Aumentar o timeout para 180 segundos (3 minutos) para permitir a geração de vídeo
-timeout_seconds = 180
+# Aumentar o timeout para 300 segundos (5 minutos) para permitir a geração de vídeo
+timeout_seconds = 300
