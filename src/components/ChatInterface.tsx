@@ -157,16 +157,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     }}
                   ></div>
                 </div>
-                <style jsx>{`
-                  @keyframes progressAnimation {
-                    0% {
-                      margin-left: -30%;
+                {/* Fixed the style element by removing the jsx property */}
+                <style>
+                  {`
+                    @keyframes progressAnimation {
+                      0% {
+                        margin-left: -30%;
+                      }
+                      100% {
+                        margin-left: 100%;
+                      }
                     }
-                    100% {
-                      margin-left: 100%;
-                    }
-                  }
-                `}</style>
+                  `}
+                </style>
               </div>
             )}
           </>
