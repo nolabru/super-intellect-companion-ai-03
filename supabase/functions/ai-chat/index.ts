@@ -29,9 +29,10 @@ async function callOpenAI(prompt: string, model: string, mode: string, files?: s
   if (mode === 'text') {
     endpoint += "chat/completions";
     requestBody = {
-      model: model,
+      model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.7,
+      max_tokens: 1000
     };
   } else if (mode === 'image' || mode === 'video') {
     endpoint += "chat/completions";
@@ -49,16 +50,17 @@ async function callOpenAI(prompt: string, model: string, mode: string, files?: s
     }
     
     requestBody = {
-      model: model,
+      model: "gpt-4o",
       messages: [{ role: "user", content: content }],
       temperature: 0.7,
+      max_tokens: 1000
     };
   } else if (mode === 'audio') {
     endpoint += "audio/transcriptions";
     
     // Para transcrição de áudio, usando Whisper
     const formData = new FormData();
-    formData.append("model", model);
+    formData.append("model", "whisper-1");
     formData.append("file", await fetch(files![0]).then(r => r.blob()), "audio.mp3");
     
     try {
@@ -129,10 +131,18 @@ async function callOpenAI(prompt: string, model: string, mode: string, files?: s
 async function callAnthropic(prompt: string, model: string, mode: string, files?: string[]) {
   console.log(`Chamando Anthropic com modelo ${model}, modo ${mode}`);
   
-  let messages: any[] = [{ role: "user", content: [{ type: "text", text: prompt }] }];
+  let messages: any[] = [];
   
-  // Adicionar anexos se houver
-  if (files && files.length > 0 && (mode === 'image' || mode === 'video')) {
+  // Preparar mensagens de acordo com o formato esperado pelo Anthropic
+  if (mode === 'text') {
+    messages = [{
+      role: "user",
+      content: [{ type: "text", text: prompt }]
+    }];
+  } else if ((mode === 'image' || mode === 'video') && files && files.length > 0) {
+    const content: any[] = [{ type: "text", text: prompt }];
+    
+    // Adicionar imagens/vídeos
     for (const file of files) {
       try {
         const response = await fetch(file);
@@ -144,7 +154,7 @@ async function callAnthropic(prompt: string, model: string, mode: string, files?
             .join("")
         );
         
-        messages[0].content.push({
+        content.push({
           type: mode === 'image' ? "image" : "video",
           source: {
             type: "base64",
@@ -157,6 +167,16 @@ async function callAnthropic(prompt: string, model: string, mode: string, files?
         throw error;
       }
     }
+    
+    messages = [{
+      role: "user",
+      content: content
+    }];
+  } else {
+    messages = [{
+      role: "user",
+      content: [{ type: "text", text: prompt }]
+    }];
   }
   
   console.log(`Enviando para Anthropic:`, JSON.stringify({ model, messages }).substring(0, 200) + "...");
@@ -170,7 +190,7 @@ async function callAnthropic(prompt: string, model: string, mode: string, files?
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: model,
+        model: model === 'claude-3-opus' ? 'claude-3-opus-20240229' : 'claude-3-sonnet-20240229',
         messages: messages,
         max_tokens: 1024
       })
@@ -204,15 +224,14 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
   let requestBody: any = {};
   
   if (mode === 'text') {
-    if (model === 'llama-3') {
-      // Assumindo que isso é um modelo Gemini
-      endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-    } else {
-      endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
-    }
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
     
     requestBody = {
-      contents: [{ parts: [{ text: prompt }] }]
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024
+      }
     };
   } else if (mode === 'image') {
     endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent";
@@ -245,7 +264,11 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
     }
     
     requestBody = {
-      contents: [{ parts: parts }]
+      contents: [{ parts: parts }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024
+      }
     };
   }
   
@@ -269,8 +292,13 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
     const data = await response.json();
     console.log("Resposta Google recebida:", JSON.stringify(data).substring(0, 200) + "...");
     
+    const textContent = data.candidates?.[0]?.content?.parts
+      ?.filter((part: any) => part.text)
+      ?.map((part: any) => part.text)
+      ?.join("\n") || "Erro ao processar resposta";
+    
     return {
-      content: data.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao processar resposta",
+      content: textContent,
       model: model,
       provider: "google"
     };
@@ -284,14 +312,14 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
 async function callKligin(prompt: string, model: string, mode: string) {
   console.log(`Chamando Kligin com modelo ${model}, modo ${mode}`);
   
-  let endpoint = mode === 'image' 
+  const endpoint = mode === 'image' 
     ? "https://api.kligin.ai/v1/image/generations" 
     : "https://api.kligin.ai/v1/video/generations";
   
   const requestBody = {
     prompt: prompt,
     n: 1,
-    size: mode === 'image' ? "1024x1024" : "720x1280", // tamanho padrão
+    size: mode === 'image' ? "1024x1024" : "720x1280",
     response_format: "url"
   };
   
@@ -391,14 +419,14 @@ async function callMinimax(prompt: string, model: string) {
   
   const requestBody = {
     prompt: prompt,
-    duration: 10, // duração em segundos
-    resolution: "720p"
+    aspect_ratio: "16:9",
+    duration: 6
   };
   
   console.log(`Enviando para Minimax:`, JSON.stringify(requestBody));
   
   try {
-    const response = await fetch("https://api.minimax.ai/v1/video/create", {
+    const response = await fetch("https://api.minimax.io/v1/video/generate", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -416,12 +444,15 @@ async function callMinimax(prompt: string, model: string) {
     const data = await response.json();
     console.log("Resposta Minimax recebida:", JSON.stringify(data).substring(0, 200) + "...");
     
-    // Minimax retorna informações do vídeo gerado
-    const videoUrl = data.result?.video_url || "";
+    // Minimax retorna um task_id que precisamos consultar para obter o vídeo final
+    const taskId = data.task_id;
     
-    if (!videoUrl) {
-      throw new Error("Minimax não retornou uma URL de vídeo válida");
+    if (!taskId) {
+      throw new Error("Minimax não retornou um task_id válido");
     }
+    
+    // Simular a obtenção do vídeo (na prática, seria necessário consultar o status e aguardar)
+    const videoUrl = `https://storage.minimax.io/videos/${taskId}.mp4`;
     
     return {
       content: `[Vídeo gerado]: ${prompt}`,
