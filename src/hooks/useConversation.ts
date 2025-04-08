@@ -84,7 +84,9 @@ export const useConversation = () => {
           timestamp: new Date(msg.timestamp).toLocaleTimeString([], { 
             hour: '2-digit', minute: '2-digit', second: '2-digit' 
           }),
-          mode: msg.mode as ChatMode
+          mode: msg.mode as ChatMode,
+          mediaUrl: msg.media_url,
+          audioData: msg.audio_data
         }));
         
         setMessages(formattedMessages);
@@ -136,7 +138,8 @@ export const useConversation = () => {
     model: string, 
     isComparing: boolean = false,
     leftModel: string = '',
-    rightModel: string = ''
+    rightModel: string = '',
+    files?: string[]
   ) => {
     let conversationId = currentConversationId;
     
@@ -154,7 +157,8 @@ export const useConversation = () => {
         sender: 'user',
         model: 'user',
         timestamp: formatTime(),
-        mode
+        mode,
+        mediaUrl: files && files.length > 0 ? files[0] : undefined
       };
 
       let newMessages = [...messages, newUserMessage];
@@ -208,7 +212,8 @@ export const useConversation = () => {
         sender: 'user',
         model: 'user',
         timestamp: formatTime(),
-        mode
+        mode,
+        mediaUrl: files && files.length > 0 ? files[0] : undefined
       };
       
       setMessages(prev => [...prev, newUserMessage]);
@@ -226,7 +231,8 @@ export const useConversation = () => {
             prompt: content,
             model: leftModel,
             mode,
-            conversationId
+            conversationId,
+            files
           })
         }).then(res => res.json());
 
@@ -241,7 +247,8 @@ export const useConversation = () => {
             prompt: content,
             model: rightModel,
             mode,
-            conversationId
+            conversationId,
+            files
           })
         }).then(res => res.json());
 
@@ -258,7 +265,9 @@ export const useConversation = () => {
           sender: 'ai',
           model: leftModel,
           timestamp: formatTime(),
-          mode
+          mode,
+          mediaUrl: leftResult.mediaUrl,
+          audioData: leftResult.audioData
         };
 
         const rightResponse: MessageType = {
@@ -267,7 +276,9 @@ export const useConversation = () => {
           sender: 'ai',
           model: rightModel,
           timestamp: formatTime(),
-          mode
+          mode,
+          mediaUrl: rightResult.mediaUrl,
+          audioData: rightResult.audioData
         };
 
         setMessages(prev => [...prev, leftResponse, rightResponse]);
@@ -283,7 +294,8 @@ export const useConversation = () => {
             prompt: content,
             model,
             mode,
-            conversationId
+            conversationId,
+            files
           })
         }).then(res => res.json());
 
@@ -294,7 +306,9 @@ export const useConversation = () => {
           sender: 'ai',
           model,
           timestamp: formatTime(),
-          mode
+          mode,
+          mediaUrl: response.mediaUrl,
+          audioData: response.audioData
         };
 
         setMessages(prev => [...prev, aiResponse]);

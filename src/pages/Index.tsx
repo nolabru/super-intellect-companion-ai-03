@@ -10,22 +10,15 @@ import { useConversation } from '@/hooks/useConversation';
 import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
+import { getModelsByMode } from '@/components/ModelSelector';
 import { Button } from '@/components/ui/button';
-
-// Model options for each mode
-const MODEL_OPTIONS = {
-  text: ['gpt-4o', 'claude-3-opus', 'claude-3-sonnet', 'llama-3'],
-  image: ['gpt-4o-vision', 'claude-3-opus', 'gemini-pro-vision'],
-  video: ['gpt-4o-vision', 'claude-3-opus'],
-  audio: ['whisper-large-v3', 'deepgram-nova-2']
-};
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(true);
   const [isLinked, setIsLinked] = useState(true);
+  const [activeMode, setActiveMode] = useState<ChatMode>('text');
   const [leftModel, setLeftModel] = useState('gpt-4o');
   const [rightModel, setRightModel] = useState('claude-3-opus');
-  const [activeMode, setActiveMode] = useState<ChatMode>('text');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { loading: authLoading } = useAuth();
   const { 
@@ -34,7 +27,7 @@ const Index: React.FC = () => {
     loading: messagesLoading 
   } = useConversation();
 
-  const handleSendMessage = (content: string, targetModel?: string) => {
+  const handleSendMessage = (content: string, files?: string[], targetModel?: string) => {
     // Se os chats estiverem vinculados ou não estiver no modo de comparação,
     // envia a mensagem normalmente
     if (!comparing || isLinked) {
@@ -44,7 +37,8 @@ const Index: React.FC = () => {
         comparing ? leftModel : leftModel, 
         comparing, 
         leftModel, 
-        rightModel
+        rightModel,
+        files
       );
     } else {
       // Se os chats estiverem desvinculados, envia apenas para o modelo especificado
@@ -57,7 +51,8 @@ const Index: React.FC = () => {
         targetModel || leftModel,
         false, // Sem comparação quando desvinculado
         actualLeftModel,
-        actualRightModel
+        actualRightModel,
+        files
       );
     }
   };
@@ -77,6 +72,9 @@ const Index: React.FC = () => {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  // Obter modelos disponíveis para o modo atual
+  const availableModels = getModelsByMode(activeMode).map(model => model.id);
 
   return (
     <div className="flex flex-col h-screen bg-inventu-darker">
@@ -101,15 +99,16 @@ const Index: React.FC = () => {
                     model={leftModel} 
                     title={leftModel}
                     onModelChange={setLeftModel}
-                    availableModels={MODEL_OPTIONS[activeMode]}
+                    availableModels={availableModels}
                     isCompareMode={true}
                     loading={authLoading || messagesLoading}
                   />
                   {!isLinked && (
                     <div className="p-4 border-t border-inventu-gray/30">
                       <ChatInput 
-                        onSendMessage={(content) => handleSendMessage(content, leftModel)}
+                        onSendMessage={(content, files) => handleSendMessage(content, files, leftModel)}
                         model={leftModel}
+                        mode={activeMode}
                       />
                     </div>
                   )}
@@ -121,15 +120,16 @@ const Index: React.FC = () => {
                     model={rightModel} 
                     title={rightModel}
                     onModelChange={setRightModel}
-                    availableModels={MODEL_OPTIONS[activeMode]}
+                    availableModels={availableModels}
                     isCompareMode={true}
                     loading={authLoading || messagesLoading}
                   />
                   {!isLinked && (
                     <div className="p-4 border-t border-inventu-gray/30">
                       <ChatInput 
-                        onSendMessage={(content) => handleSendMessage(content, rightModel)}
+                        onSendMessage={(content, files) => handleSendMessage(content, files, rightModel)}
                         model={rightModel}
+                        mode={activeMode}
                       />
                     </div>
                   )}
@@ -142,7 +142,7 @@ const Index: React.FC = () => {
                   model={leftModel} 
                   title={leftModel}
                   onModelChange={setLeftModel}
-                  availableModels={MODEL_OPTIONS[activeMode]}
+                  availableModels={availableModels}
                   isCompareMode={false}
                   loading={authLoading || messagesLoading}
                 />
@@ -166,6 +166,7 @@ const Index: React.FC = () => {
             {(!comparing || isLinked) && (
               <ChatInput 
                 onSendMessage={handleSendMessage} 
+                mode={activeMode}
               />
             )}
           </div>
