@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send } from 'lucide-react';
+import { Send, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
+  model?: string;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model }) => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -34,6 +35,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
     }
   };
 
+  const handleAttachment = () => {
+    toast({
+      title: "Informação",
+      description: "Funcionalidade de anexo em desenvolvimento.",
+    });
+  };
+
   return (
     <div className="relative mt-3">
       <textarea
@@ -46,11 +54,19 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage }) => {
             handleSendMessage();
           }
         }}
-        placeholder="Digite sua mensagem..."
-        className="w-full pl-4 pr-12 py-2 rounded-lg border border-inventu-gray/30 bg-inventu-card text-white resize-none overflow-hidden focus:outline-none focus:border-inventu-blue"
+        placeholder={model ? `Pergunte ao ${model}...` : "Digite sua mensagem..."}
+        className="w-full pl-4 pr-20 py-2 rounded-lg border border-inventu-gray/30 bg-inventu-card text-white resize-none overflow-hidden focus:outline-none focus:border-inventu-blue"
         rows={1}
       />
       <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
+        <Button 
+          onClick={handleAttachment}
+          variant="ghost" 
+          size="icon"
+          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+        >
+          <Paperclip className="h-5 w-5" />
+        </Button>
         <Button 
           onClick={handleSendMessage}
           variant="ghost" 

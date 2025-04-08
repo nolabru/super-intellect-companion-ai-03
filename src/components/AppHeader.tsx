@@ -1,16 +1,35 @@
 
 import React from 'react';
 import UserMenu from './UserMenu';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
 
-const AppHeader: React.FC = () => {
+interface AppHeaderProps {
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+}
+
+const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
   return (
     <div className="flex items-center justify-between py-3 px-6 border-b border-inventu-gray/30 bg-inventu-darker">
       <div className="flex items-center">
         <img 
-          src="/lovable-uploads/5ba95823-628d-4cf9-bb1b-05ee42b0730f.png" 
+          src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
           alt="InventuAi Logo" 
-          className="h-20" 
+          className="h-14" 
         />
+        
+        {!sidebarOpen && onToggleSidebar && (
+          <Button
+            onClick={onToggleSidebar}
+            size="icon"
+            variant="ghost"
+            className="ml-3 text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            title="Abrir menu"
+          >
+            <ChevronLeft className="h-5 w-5 rotate-180" />
+          </Button>
+        )}
       </div>
       
       <UserMenu />

@@ -9,9 +9,13 @@ import { ptBR } from 'date-fns/locale';
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
+  isOpen?: boolean;
 }
 
-const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ onToggleSidebar }) => {
+const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ 
+  onToggleSidebar,
+  isOpen = true
+}) => {
   const { 
     conversations, 
     currentConversationId, 
@@ -34,6 +38,23 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ onToggleSideb
       return dateString;
     }
   };
+
+  // Se o sidebar estiver minimizado, mostrar apenas o botão para reabri-lo
+  if (!isOpen && onToggleSidebar) {
+    return (
+      <div className="absolute left-0 top-24 z-10">
+        <Button
+          onClick={onToggleSidebar}
+          size="icon"
+          variant="secondary"
+          className="rounded-r-md rounded-l-none border-l-0"
+          title="Abrir menu"
+        >
+          <ChevronLeft className="h-5 w-5 rotate-180" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-inventu-dark border-r border-inventu-gray/30">
