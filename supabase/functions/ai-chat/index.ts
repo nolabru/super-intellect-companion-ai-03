@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -358,7 +359,6 @@ async function callOpenAIImage(prompt: string) {
 async function callKligin(prompt: string, model: string, mode: string) {
   console.log(`Chamando Kligin com modelo ${model}, modo ${mode}`);
   
-  // Usando DALL-E 3 como fallback para geração de imagens
   if (mode === 'image') {
     try {
       return await callOpenAIImage(prompt);
@@ -368,22 +368,111 @@ async function callKligin(prompt: string, model: string, mode: string) {
     }
   }
 
-  // Se modo for vídeo, tenta chamar a API do Kligin
-  // (implementação adaptada pois a API original apresenta problemas)
-  try {
-    // Como estamos tendo problemas com a API real, retornaremos uma resposta simulada
-    console.log(`Simulando resposta de vídeo do Kligin para o prompt: ${prompt}`);
+  // Implementação correta para geração de vídeo no Kligin AI
+  if (mode === 'video') {
+    console.log(`Iniciando processo de geração de vídeo com Kligin para o prompt: ${prompt}`);
     
-    return {
-      content: `[Vídeo gerado]: ${prompt}`,
-      mediaUrl: "https://storage.googleapis.com/gt-vision-public/deep-fake-detection/videos/i-only-watch-films-real.mp4", // URL de vídeo demo
-      model: model,
-      provider: "kligin"
-    };
-  } catch (error) {
-    console.error("Erro na simulação de resposta Kligin:", error);
-    throw error;
+    try {
+      // Etapa 1: Criar tarefa de geração de vídeo
+      console.log("Etapa 1: Criando tarefa de geração de vídeo");
+      const createTaskResponse = await fetch("https://gateway.appypie.com/kling-ai-video/v1/getVideoTask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEYS.kligin
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          aspect_ratio: "16:9",
+          duration: 6
+        })
+      });
+      
+      if (!createTaskResponse.ok) {
+        const errorText = await createTaskResponse.text();
+        console.error(`Erro ao criar tarefa de vídeo Kligin: ${createTaskResponse.status} - ${errorText}`);
+        throw new Error(`Kligin API error: ${createTaskResponse.status} - ${errorText}`);
+      }
+      
+      const taskData = await createTaskResponse.json();
+      console.log("Resposta da criação de tarefa:", taskData);
+      
+      if (!taskData.task_id) {
+        throw new Error("Kligin não retornou um task_id válido");
+      }
+      
+      const taskId = taskData.task_id;
+      
+      // Etapa 2: Verificar status da tarefa periodicamente até concluir
+      console.log(`Etapa 2: Verificando status da tarefa ${taskId}`);
+      let videoUrl = null;
+      let attempts = 0;
+      const maxAttempts = 10;
+      
+      while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`Tentativa ${attempts} de ${maxAttempts} para verificar status da tarefa ${taskId}`);
+        
+        // Aguardar um pouco entre as verificações
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        const statusResponse = await fetch(`https://gateway.appypie.com/kling-ai-video/v1/getVideoTaskStatus/${taskId}`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": API_KEYS.kligin
+          }
+        });
+        
+        if (!statusResponse.ok) {
+          const errorText = await statusResponse.text();
+          console.error(`Erro ao verificar status da tarefa: ${statusResponse.status} - ${errorText}`);
+          continue; // Continua tentando mesmo com erro
+        }
+        
+        const statusData = await statusResponse.json();
+        console.log(`Status da tarefa ${taskId}:`, statusData);
+        
+        if (statusData.status === "completed" && statusData.video_url) {
+          videoUrl = statusData.video_url;
+          console.log(`Vídeo gerado com sucesso: ${videoUrl}`);
+          break;
+        }
+        
+        if (statusData.status === "failed") {
+          throw new Error(`Falha na geração do vídeo: ${statusData.message || "motivo desconhecido"}`);
+        }
+        
+        // Se ainda está em processamento, continuamos o loop
+        if (statusData.status === "processing") {
+          console.log(`Vídeo ainda em processamento, aguardando...`);
+          continue;
+        }
+      }
+      
+      if (!videoUrl) {
+        throw new Error("Tempo esgotado aguardando a geração do vídeo");
+      }
+      
+      // Etapa 3: Retornar a URL do vídeo gerado
+      console.log("Etapa 3: Retornando resultado do vídeo gerado");
+      return {
+        content: `Vídeo gerado com base no prompt: "${prompt}"`,
+        mediaUrl: videoUrl,
+        model: model,
+        provider: "kligin"
+      };
+      
+    } catch (error) {
+      console.error("Erro na chamada à API Kligin para geração de vídeo:", error);
+      
+      // Em caso de erro, retornamos o erro para ser tratado pelo chamador
+      // em vez de usar um vídeo fake como fallback
+      throw error;
+    }
   }
+  
+  throw new Error(`Modo não suportado pelo Kligin: ${mode}`);
 }
 
 // Chamada para o Ideogram (imagens)
@@ -403,20 +492,116 @@ async function callIdeogram(prompt: string, model: string) {
 async function callMinimax(prompt: string, model: string) {
   console.log(`Chamando Minimax com modelo ${model}`);
   
-  // Como a API do Minimax está apresentando problemas, usamos uma resposta simulada
   try {
-    console.log(`Simulando resposta de vídeo do Minimax para o prompt: ${prompt}`);
+    console.log(`Iniciando processo de geração de vídeo com Minimax para o prompt: ${prompt}`);
     
-    // Retornar um vídeo de exemplo
+    // Etapa 1: Criar tarefa de geração de vídeo
+    console.log("Etapa 1: Criando tarefa de geração de vídeo no Minimax");
+    const createTaskResponse = await fetch("https://api.minimax.io/v1/video/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_KEYS.minimax}`
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        aspect_ratio: "16:9",
+        duration: 6
+      })
+    });
+    
+    if (!createTaskResponse.ok) {
+      const errorText = await createTaskResponse.text();
+      console.error(`Erro ao criar tarefa de vídeo Minimax: ${createTaskResponse.status} - ${errorText}`);
+      throw new Error(`Minimax API error: ${createTaskResponse.status} - ${errorText}`);
+    }
+    
+    const taskData = await createTaskResponse.json();
+    console.log("Resposta da criação de tarefa Minimax:", taskData);
+    
+    if (!taskData.task_id) {
+      throw new Error("Minimax não retornou um task_id válido");
+    }
+    
+    const taskId = taskData.task_id;
+    
+    // Etapa 2: Verificar status da tarefa periodicamente até concluir
+    console.log(`Etapa 2: Verificando status da tarefa ${taskId}`);
+    let videoUrl = null;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      attempts++;
+      console.log(`Tentativa ${attempts} de ${maxAttempts} para verificar status da tarefa ${taskId}`);
+      
+      // Aguardar um pouco entre as verificações
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      const statusResponse = await fetch(`https://api.minimax.io/v1/video/status/${taskId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${API_KEYS.minimax}`
+        }
+      });
+      
+      if (!statusResponse.ok) {
+        const errorText = await statusResponse.text();
+        console.error(`Erro ao verificar status da tarefa Minimax: ${statusResponse.status} - ${errorText}`);
+        continue; // Continua tentando mesmo com erro
+      }
+      
+      const statusData = await statusResponse.json();
+      console.log(`Status da tarefa Minimax ${taskId}:`, statusData);
+      
+      if (statusData.status === "completed" && statusData.video_url) {
+        videoUrl = statusData.video_url;
+        console.log(`Vídeo Minimax gerado com sucesso: ${videoUrl}`);
+        break;
+      }
+      
+      if (statusData.status === "failed") {
+        throw new Error(`Falha na geração do vídeo Minimax: ${statusData.message || "motivo desconhecido"}`);
+      }
+      
+      // Se ainda está em processamento, continuamos o loop
+      if (statusData.status === "processing") {
+        console.log(`Vídeo Minimax ainda em processamento, aguardando...`);
+        continue;
+      }
+    }
+    
+    if (!videoUrl) {
+      throw new Error("Tempo esgotado aguardando a geração do vídeo Minimax");
+    }
+    
+    // Etapa 3: Retornar a URL do vídeo gerado
     return {
-      content: `[Vídeo gerado]: ${prompt}`,
-      mediaUrl: "https://storage.googleapis.com/gt-vision-public/deep-fake-detection/videos/fake-trump-speech-original.mp4", // URL de vídeo demo
+      content: `Vídeo gerado com base no prompt: "${prompt}"`,
+      mediaUrl: videoUrl,
       model: model,
       provider: "minimax"
     };
+    
   } catch (error) {
-    console.error("Erro na simulação de resposta Minimax:", error);
-    throw error;
+    console.error("Erro na chamada à API Minimax para geração de vídeo:", error);
+    
+    // Em caso de erro, tentamos usar o OpenAI DALL-E para gerar pelo menos uma imagem
+    try {
+      console.log("Tentando gerar uma imagem com OpenAI DALL-E como alternativa");
+      const imageResult = await callOpenAIImage(prompt);
+      
+      return {
+        content: `Não foi possível gerar um vídeo, mas aqui está uma imagem baseada no seu prompt: "${prompt}"`,
+        mediaUrl: imageResult.mediaUrl,
+        model: "openai-image",
+        provider: "openai"
+      };
+    } catch (fallbackError) {
+      console.error("Fallback para OpenAI DALL-E também falhou:", fallbackError);
+      throw error; // Retorna o erro original
+    }
   }
 }
 
@@ -530,11 +715,13 @@ serve(async (req) => {
     } catch (error: any) {
       console.error(`Erro ao chamar API para modelo ${model}:`, error);
       
+      // Se ocorrer um erro durante a geração de vídeo, retornar uma mensagem de erro clara
+      // em vez de um vídeo fake
       return new Response(
         JSON.stringify({ 
           error: `Erro ao processar com o modelo ${model}`, 
           details: error.message,
-          content: `Ocorreu um erro ao processar sua solicitação com o modelo ${model}: ${error.message}. Por favor, tente novamente.`
+          content: `Ocorreu um erro ao processar sua solicitação com o modelo ${model}: ${error.message}. Por favor, tente novamente com um prompt diferente ou use outro modelo.`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
