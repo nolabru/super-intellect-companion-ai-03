@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChatMode } from './ModeSelector';
 import { Loader2 } from 'lucide-react';
+import { AVAILABLE_MODELS } from './ModelSelector';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -33,23 +34,57 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     (msg.id && msg.id.startsWith('loading-') && msg.model === model)
   );
   
+  // Encontrar o displayName do modelo atual para exibição
+  const getModelDisplayName = (modelId: string) => {
+    const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
+    return modelInfo?.displayName || modelId;
+  };
+
+  // Determinando a cor do modelo com base no provedor
+  const getModelColor = (modelId: string) => {
+    const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
+    if (!modelInfo) return "text-inventu-blue";
+    
+    switch (modelInfo.provider) {
+      case 'openai':
+        return "text-inventu-blue";
+      case 'anthropic':
+        return "text-inventu-purple";
+      case 'google':
+        return "text-green-500";
+      case 'kligin':
+        return "text-orange-500";
+      case 'ideogram':
+        return "text-yellow-500";
+      case 'minimax':
+        return "text-pink-500";
+      case 'elevenlabs':
+        return "text-cyan-500";
+      default:
+        return "text-inventu-blue";
+    }
+  };
+  
   return (
     <div className={cn("flex flex-col h-full", className)}>
       <div className={cn(
         "p-2 text-center flex justify-center items-center",
-        model.includes('gpt') || model.includes('llama') ? "text-inventu-blue" : "text-inventu-purple"
+        getModelColor(model)
       )}>
         {/* Model selector in the header */}
         <Select value={model} onValueChange={onModelChange || (() => {})}>
           <SelectTrigger className="w-48 bg-inventu-card text-white border-inventu-gray/30 font-bold">
-            <SelectValue placeholder={title} />
+            <SelectValue placeholder={getModelDisplayName(model)} />
           </SelectTrigger>
           <SelectContent>
-            {availableModels.map(modelOption => (
-              <SelectItem key={modelOption} value={modelOption}>
-                {modelOption}
-              </SelectItem>
-            ))}
+            {availableModels.map(modelOption => {
+              const displayName = getModelDisplayName(modelOption);
+              return (
+                <SelectItem key={modelOption} value={modelOption}>
+                  {displayName}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>

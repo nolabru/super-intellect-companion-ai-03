@@ -142,6 +142,85 @@ export const useConversation = () => {
     }
   };
 
+  const deleteConversation = async (conversationId: string) => {
+    if (!user) return;
+    
+    try {
+      // Deletar todas as mensagens da conversa
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+        
+      if (messagesError) throw messagesError;
+      
+      // Deletar a conversa
+      const { error } = await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conversationId);
+        
+      if (error) throw error;
+      
+      // Atualizar a lista de conversas
+      await loadConversations();
+      
+      // Se a conversa deletada era a atual, selecionar outra conversa
+      if (currentConversationId === conversationId) {
+        if (conversations.length > 1) {
+          const newCurrentConversation = conversations.find(c => c.id !== conversationId);
+          if (newCurrentConversation) {
+            setCurrentConversationId(newCurrentConversation.id);
+          } else {
+            setCurrentConversationId(null);
+          }
+        } else {
+          setCurrentConversationId(null);
+        }
+      }
+      
+      toast({
+        title: "Sucesso",
+        description: "Conversa excluída com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao excluir conversa:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a conversa",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const renameConversation = async (conversationId: string, newTitle: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ title: newTitle })
+        .eq('id', conversationId);
+        
+      if (error) throw error;
+      
+      // Atualizar lista de conversas
+      await loadConversations();
+      
+      toast({
+        title: "Sucesso",
+        description: "Conversa renomeada com sucesso",
+      });
+    } catch (error: any) {
+      console.error('Erro ao renomear conversa:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível renomear a conversa",
+        variant: "destructive",
+      });
+    }
+  };
+
   const sendMessage = async (
     content: string, 
     mode: ChatMode, 
@@ -490,6 +569,8 @@ export const useConversation = () => {
     currentConversationId,
     setCurrentConversationId,
     createNewConversation,
+    deleteConversation,
+    renameConversation,
     sendMessage,
     loading
   };

@@ -61,54 +61,67 @@ async function callOpenAI(prompt: string, model: string, mode: string, files?: s
     formData.append("model", model);
     formData.append("file", await fetch(files![0]).then(r => r.blob()), "audio.mp3");
     
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${API_KEYS.openai}`
-      },
-      body: formData
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Erro OpenAI (audio): ${response.status} - ${errorText}`);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    try {
+      console.log(`Enviando para OpenAI audio transcription`);
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${API_KEYS.openai}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Erro OpenAI (audio): ${response.status} - ${errorText}`);
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log("Resposta OpenAI audio recebida:", data);
+      
+      return {
+        content: data.text || "Erro ao processar resposta",
+        model: model,
+        provider: "openai"
+      };
+    } catch (error) {
+      console.error("Erro na transcrição de áudio:", error);
+      throw error;
     }
-    
-    const data = await response.json();
-    return {
-      content: data.text || "Erro ao processar resposta",
-      model: model,
-      provider: "openai"
-    };
   }
   
   if (mode !== 'audio') {
     console.log(`Enviando para OpenAI (${mode}):`, JSON.stringify(requestBody).substring(0, 200) + "...");
     
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${API_KEYS.openai}`
-      },
-      body: JSON.stringify(requestBody)
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Erro OpenAI: ${response.status} - ${errorText}`);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${API_KEYS.openai}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Erro OpenAI: ${response.status} - ${errorText}`);
+        throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log("Resposta OpenAI recebida:", JSON.stringify(data).substring(0, 200) + "...");
+      
+      return {
+        content: data.choices?.[0]?.message?.content || "Erro ao processar resposta",
+        model: model,
+        provider: "openai"
+      };
+    } catch (error) {
+      console.error("Erro na chamada à API OpenAI:", error);
+      throw error;
     }
-    
-    const data = await response.json();
-    console.log("Resposta OpenAI recebida:", JSON.stringify(data).substring(0, 200) + "...");
-    
-    return {
-      content: data.choices?.[0]?.message?.content || "Erro ao processar resposta",
-      model: model,
-      provider: "openai"
-    };
   }
 }
 
@@ -121,64 +134,83 @@ async function callAnthropic(prompt: string, model: string, mode: string, files?
   // Adicionar anexos se houver
   if (files && files.length > 0 && (mode === 'image' || mode === 'video')) {
     for (const file of files) {
-      messages[0].content.push({
-        type: mode === 'image' ? "image" : "video",
-        source: {
-          type: "base64",
-          media_type: mode === 'image' ? "image/jpeg" : "video/mp4",
-          data: await fetch(file)
-            .then(response => response.arrayBuffer())
-            .then(buffer => btoa(
-              Array.from(new Uint8Array(buffer))
-                .map(byte => String.fromCharCode(byte))
-                .join("")
-            ))
-        }
-      });
+      try {
+        const response = await fetch(file);
+        const fileBuffer = await response.arrayBuffer();
+        
+        const base64Data = btoa(
+          Array.from(new Uint8Array(fileBuffer))
+            .map(byte => String.fromCharCode(byte))
+            .join("")
+        );
+        
+        messages[0].content.push({
+          type: mode === 'image' ? "image" : "video",
+          source: {
+            type: "base64",
+            media_type: mode === 'image' ? "image/jpeg" : "video/mp4",
+            data: base64Data
+          }
+        });
+      } catch (error) {
+        console.error(`Erro ao processar arquivo para Anthropic:`, error);
+        throw error;
+      }
     }
   }
   
-  console.log(`Enviando para Anthropic:`, JSON.stringify(messages).substring(0, 200) + "...");
+  console.log(`Enviando para Anthropic:`, JSON.stringify({ model, messages }).substring(0, 200) + "...");
   
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": API_KEYS.anthropic,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": API_KEYS.anthropic,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: model,
+        messages: messages,
+        max_tokens: 1024
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro Anthropic: ${response.status} - ${errorText}`);
+      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Resposta Anthropic recebida:", JSON.stringify(data).substring(0, 200) + "...");
+    
+    return {
+      content: data.content?.[0]?.text || "Erro ao processar resposta",
       model: model,
-      messages: messages,
-      max_tokens: 1024
-    })
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Erro Anthropic: ${response.status} - ${errorText}`);
-    throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
+      provider: "anthropic"
+    };
+  } catch (error) {
+    console.error("Erro na chamada à API Anthropic:", error);
+    throw error;
   }
-  
-  const data = await response.json();
-  console.log("Resposta Anthropic recebida:", JSON.stringify(data).substring(0, 200) + "...");
-  
-  return {
-    content: data.content?.[0]?.text || "Erro ao processar resposta",
-    model: model,
-    provider: "anthropic"
-  };
 }
 
 // Chamada para o Google (Gemini)
 async function callGoogle(prompt: string, model: string, mode: string, files?: string[]) {
   console.log(`Chamando Google com modelo ${model}, modo ${mode}`);
   
-  let endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro";
+  let endpoint = "";
   let requestBody: any = {};
   
   if (mode === 'text') {
-    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+    if (model === 'llama-3') {
+      // Assumindo que isso é um modelo Gemini
+      endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+    } else {
+      endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+    }
+    
     requestBody = {
       contents: [{ parts: [{ text: prompt }] }]
     };
@@ -189,20 +221,26 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
     
     if (files && files.length > 0) {
       for (const file of files) {
-        const imageData = await fetch(file)
-          .then(response => response.arrayBuffer())
-          .then(buffer => btoa(
-            Array.from(new Uint8Array(buffer))
+        try {
+          const response = await fetch(file);
+          const imageBuffer = await response.arrayBuffer();
+          
+          const base64Data = btoa(
+            Array.from(new Uint8Array(imageBuffer))
               .map(byte => String.fromCharCode(byte))
               .join("")
-          ));
-        
-        parts.push({
-          inline_data: {
-            mime_type: "image/jpeg",
-            data: imageData
-          }
-        });
+          );
+          
+          parts.push({
+            inline_data: {
+              mime_type: "image/jpeg",
+              data: base64Data
+            }
+          });
+        } catch (error) {
+          console.error(`Erro ao processar imagem para Google:`, error);
+          throw error;
+        }
       }
     }
     
@@ -213,28 +251,33 @@ async function callGoogle(prompt: string, model: string, mode: string, files?: s
   
   console.log(`Enviando para Google:`, JSON.stringify(requestBody).substring(0, 200) + "...");
   
-  const response = await fetch(`${endpoint}?key=${API_KEYS.google}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Erro Google: ${response.status} - ${errorText}`);
-    throw new Error(`Google API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch(`${endpoint}?key=${API_KEYS.google}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro Google: ${response.status} - ${errorText}`);
+      throw new Error(`Google API error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Resposta Google recebida:", JSON.stringify(data).substring(0, 200) + "...");
+    
+    return {
+      content: data.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao processar resposta",
+      model: model,
+      provider: "google"
+    };
+  } catch (error) {
+    console.error("Erro na chamada à API Google:", error);
+    throw error;
   }
-  
-  const data = await response.json();
-  console.log("Resposta Google recebida:", JSON.stringify(data).substring(0, 200) + "...");
-  
-  return {
-    content: data.candidates?.[0]?.content?.parts?.[0]?.text || "Erro ao processar resposta",
-    model: model,
-    provider: "google"
-  };
 }
 
 // Chamada para o Kligin AI (imagem e vídeo)
@@ -254,37 +297,42 @@ async function callKligin(prompt: string, model: string, mode: string) {
   
   console.log(`Enviando para Kligin:`, JSON.stringify(requestBody));
   
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEYS.kligin}`
-    },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Erro Kligin: ${response.status} - ${errorText}`);
-    throw new Error(`Kligin API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_KEYS.kligin}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro Kligin: ${response.status} - ${errorText}`);
+      throw new Error(`Kligin API error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Resposta Kligin recebida:", JSON.stringify(data).substring(0, 200) + "...");
+    
+    // Para geração de imagens/vídeos, retornamos o URL do arquivo gerado
+    const mediaUrl = data.data?.[0]?.url || "";
+    
+    if (!mediaUrl) {
+      throw new Error("Kligin não retornou uma URL de mídia válida");
+    }
+    
+    return {
+      content: `[${mode === 'image' ? 'Imagem' : 'Vídeo'} gerado]: ${prompt}`,
+      mediaUrl: mediaUrl,
+      model: model,
+      provider: "kligin"
+    };
+  } catch (error) {
+    console.error("Erro na chamada à API Kligin:", error);
+    throw error;
   }
-  
-  const data = await response.json();
-  console.log("Resposta Kligin recebida:", JSON.stringify(data).substring(0, 200) + "...");
-  
-  // Para geração de imagens/vídeos, retornamos o URL do arquivo gerado
-  const mediaUrl = data.data?.[0]?.url || "";
-  
-  if (!mediaUrl) {
-    throw new Error("Kligin não retornou uma URL de mídia válida");
-  }
-  
-  return {
-    content: `[${mode === 'image' ? 'Imagem' : 'Vídeo'} gerado]: ${mediaUrl}`,
-    mediaUrl: mediaUrl,
-    model: model,
-    provider: "kligin"
-  };
 }
 
 // Chamada para o Ideogram (imagens)
@@ -299,37 +347,42 @@ async function callIdeogram(prompt: string, model: string) {
   
   console.log(`Enviando para Ideogram:`, JSON.stringify(requestBody));
   
-  const response = await fetch("https://api.ideogram.ai/api/v1/images", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEYS.ideogram}`
-    },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Erro Ideogram: ${response.status} - ${errorText}`);
-    throw new Error(`Ideogram API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch("https://api.ideogram.ai/api/v1/images", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_KEYS.ideogram}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro Ideogram: ${response.status} - ${errorText}`);
+      throw new Error(`Ideogram API error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Resposta Ideogram recebida:", JSON.stringify(data).substring(0, 200) + "...");
+    
+    // Ideogram retorna informações da imagem gerada
+    const imageUrl = data.images?.[0]?.url || "";
+    
+    if (!imageUrl) {
+      throw new Error("Ideogram não retornou uma URL de imagem válida");
+    }
+    
+    return {
+      content: `[Imagem gerada]: ${prompt}`,
+      mediaUrl: imageUrl,
+      model: model,
+      provider: "ideogram"
+    };
+  } catch (error) {
+    console.error("Erro na chamada à API Ideogram:", error);
+    throw error;
   }
-  
-  const data = await response.json();
-  console.log("Resposta Ideogram recebida:", JSON.stringify(data).substring(0, 200) + "...");
-  
-  // Ideogram retorna informações da imagem gerada
-  const imageUrl = data.images?.[0]?.url || "";
-  
-  if (!imageUrl) {
-    throw new Error("Ideogram não retornou uma URL de imagem válida");
-  }
-  
-  return {
-    content: `[Imagem gerada]: ${imageUrl}`,
-    mediaUrl: imageUrl,
-    model: model,
-    provider: "ideogram"
-  };
 }
 
 // Chamada para o Minimax (vídeo)
@@ -344,47 +397,52 @@ async function callMinimax(prompt: string, model: string) {
   
   console.log(`Enviando para Minimax:`, JSON.stringify(requestBody));
   
-  const response = await fetch("https://api.minimax.ai/v1/video/create", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${API_KEYS.minimax}`
-    },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Erro Minimax: ${response.status} - ${errorText}`);
-    throw new Error(`Minimax API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch("https://api.minimax.ai/v1/video/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${API_KEYS.minimax}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro Minimax: ${response.status} - ${errorText}`);
+      throw new Error(`Minimax API error: ${response.status} - ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Resposta Minimax recebida:", JSON.stringify(data).substring(0, 200) + "...");
+    
+    // Minimax retorna informações do vídeo gerado
+    const videoUrl = data.result?.video_url || "";
+    
+    if (!videoUrl) {
+      throw new Error("Minimax não retornou uma URL de vídeo válida");
+    }
+    
+    return {
+      content: `[Vídeo gerado]: ${prompt}`,
+      mediaUrl: videoUrl,
+      model: model,
+      provider: "minimax"
+    };
+  } catch (error) {
+    console.error("Erro na chamada à API Minimax:", error);
+    throw error;
   }
-  
-  const data = await response.json();
-  console.log("Resposta Minimax recebida:", JSON.stringify(data).substring(0, 200) + "...");
-  
-  // Minimax retorna informações do vídeo gerado
-  const videoUrl = data.result?.video_url || "";
-  
-  if (!videoUrl) {
-    throw new Error("Minimax não retornou uma URL de vídeo válida");
-  }
-  
-  return {
-    content: `[Vídeo gerado]: ${videoUrl}`,
-    mediaUrl: videoUrl,
-    model: model,
-    provider: "minimax"
-  };
 }
 
 // Chamada para o ElevenLabs (áudio)
-async function callElevenLabs(text: string, model: string) {
+async function callElevenLabs(prompt: string, model: string) {
   console.log(`Chamando ElevenLabs com modelo ${model}`);
   
   const voice_id = "pFZP5JQG7iQjIQuC4Bku"; // Lily voice (default)
   
   const requestBody = {
-    text: text,
+    text: prompt,
     model_id: "eleven_multilingual_v2",
     voice_settings: {
       stability: 0.5,
@@ -394,39 +452,44 @@ async function callElevenLabs(text: string, model: string) {
   
   console.log(`Enviando para ElevenLabs:`, JSON.stringify(requestBody));
   
-  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "xi-api-key": API_KEYS.elevenlabs
-    },
-    body: JSON.stringify(requestBody)
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Erro ElevenLabs: ${response.status} - ${errorText}`);
-    throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+  try {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "xi-api-key": API_KEYS.elevenlabs
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Erro ElevenLabs: ${response.status} - ${errorText}`);
+      throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
+    }
+    
+    // ElevenLabs retorna o áudio como blob
+    const audioBlob = await response.blob();
+    
+    // Precisamos converter para base64 para enviar pelo json
+    const audioBase64 = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.readAsDataURL(audioBlob);
+    });
+    
+    console.log("Áudio ElevenLabs gerado com sucesso");
+    
+    return {
+      content: `[Áudio gerado]: ${prompt.substring(0, 50)}...`,
+      audioData: audioBase64,
+      model: model,
+      provider: "elevenlabs"
+    };
+  } catch (error) {
+    console.error("Erro na chamada à API ElevenLabs:", error);
+    throw error;
   }
-  
-  // ElevenLabs retorna o áudio como blob
-  const audioBlob = await response.blob();
-  
-  // Precisamos converter para base64 para enviar pelo json
-  const audioBase64 = await new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.readAsDataURL(audioBlob);
-  });
-  
-  console.log("Áudio ElevenLabs gerado com sucesso");
-  
-  return {
-    content: `[Áudio gerado]`,
-    audioData: audioBase64,
-    model: model,
-    provider: "elevenlabs"
-  };
 }
 
 serve(async (req) => {
@@ -496,12 +559,11 @@ serve(async (req) => {
     if (conversationId) {
       try {
         // Criar cliente Supabase
-        const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://vygluorjwehcdigzxbaa.supabase.co';
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
         
         if (!supabaseUrl || !supabaseKey) {
-          console.error("Credenciais do Supabase não configuradas");
-          throw new Error("Credenciais do Supabase não configuradas");
+          console.error("Usando apenas o URL básico do Supabase sem chave de serviço");
         }
         
         const supabase = createClient(supabaseUrl, supabaseKey);

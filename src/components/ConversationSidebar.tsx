@@ -1,31 +1,66 @@
 
-import React from 'react';
-import { PlusCircle, MessageCircle, History, ChevronLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from '@/components/ui/use-toast';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
   isOpen?: boolean;
 }
 
-const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ 
-  onToggleSidebar,
-  isOpen = true
-}) => {
-  const { 
-    conversations, 
-    currentConversationId, 
-    setCurrentConversationId, 
-    createNewConversation 
-  } = useConversation();
-  const { user } = useAuth();
+interface ConversationItemProps {
+  conversation: any;
+  isActive: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  onRename: (newTitle: string) => void;
+}
 
-  const handleNewConversation = async () => {
-    await createNewConversation();
+const ConversationItem: React.FC<ConversationItemProps> = ({ 
+  conversation, 
+  isActive, 
+  onSelect, 
+  onDelete,
+  onRename
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [newTitle, setNewTitle] = useState(conversation.title);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const handleRename = () => {
+    if (newTitle.trim() === '') {
+      toast({
+        title: "Erro",
+        description: "O título não pode estar vazio",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    onRename(newTitle);
+    setIsEditing(false);
   };
 
   const formatDate = (dateString: string) => {
@@ -37,6 +72,131 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     } catch (e) {
       return dateString;
     }
+  };
+
+  if (isEditing) {
+    return (
+      <div className={`flex items-center p-2 rounded-md ${isActive ? 'bg-inventu-gray/20 text-white' : 'text-inventu-gray'}`}>
+        <div className="flex-1 flex items-center gap-2">
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="h-8 bg-inventu-card border-inventu-gray/50"
+            autoFocus
+          />
+          <Button 
+            size="icon" 
+            variant="ghost" 
+            className="h-8 w-8 text-green-500 hover:text-white hover:bg-green-500/20"
+            onClick={handleRename}
+          >
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button 
+            size="icon" 
+            variant="ghost"
+            className="h-8 w-8 text-red-500 hover:text-white hover:bg-red-500/20"
+            onClick={() => {
+              setIsEditing(false);
+              setNewTitle(conversation.title);
+            }}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div
+        className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
+          isActive
+            ? 'bg-inventu-gray/20 text-white'
+            : 'hover:bg-inventu-gray/10 text-inventu-gray'
+        }`}
+      >
+        <div className="flex-1 min-w-0" onClick={onSelect}>
+          <div className="flex items-center">
+            <MessageCircle className="mr-2 h-4 w-4 flex-shrink-0" />
+            <p className="truncate">{conversation.title}</p>
+          </div>
+          <p className="text-xs text-inventu-gray/70 truncate">
+            {formatDate(conversation.updated_at)}
+          </p>
+        </div>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-inventu-gray/70 hover:text-white hover:bg-inventu-gray/20"
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-inventu-card border-inventu-gray/30">
+            <DropdownMenuItem 
+              className="text-white hover:bg-inventu-gray/20 cursor-pointer"
+              onClick={() => setIsEditing(true)}
+            >
+              <Edit2 className="mr-2 h-4 w-4" />
+              Renomear
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              className="text-red-500 hover:bg-red-500/10 cursor-pointer"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-inventu-card border-inventu-gray/30 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conversa</AlertDialogTitle>
+            <AlertDialogDescription className="text-inventu-gray">
+              Tem certeza que deseja excluir a conversa "{conversation.title}"? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-inventu-gray/20 text-white hover:bg-inventu-gray/40 border-inventu-gray/40">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
+              onClick={onDelete}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};
+
+const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ 
+  onToggleSidebar,
+  isOpen = true
+}) => {
+  const { 
+    conversations, 
+    currentConversationId, 
+    setCurrentConversationId, 
+    createNewConversation,
+    deleteConversation,
+    renameConversation 
+  } = useConversation();
+  const { user } = useAuth();
+
+  const handleNewConversation = async () => {
+    await createNewConversation();
   };
 
   // Se o sidebar estiver minimizado, mostrar apenas o botão para reabri-lo
@@ -91,23 +251,14 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           conversations.length > 0 ? (
             <div className="space-y-1 p-2">
               {conversations.map((conv) => (
-                <div
+                <ConversationItem
                   key={conv.id}
-                  className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
-                    currentConversationId === conv.id
-                      ? 'bg-inventu-gray/20 text-white'
-                      : 'hover:bg-inventu-gray/10 text-inventu-gray'
-                  }`}
-                  onClick={() => setCurrentConversationId(conv.id)}
-                >
-                  <MessageCircle className="mr-2 h-4 w-4 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate">{conv.title}</p>
-                    <p className="text-xs text-inventu-gray/70 truncate">
-                      {formatDate(conv.updated_at)}
-                    </p>
-                  </div>
-                </div>
+                  conversation={conv}
+                  isActive={currentConversationId === conv.id}
+                  onSelect={() => setCurrentConversationId(conv.id)}
+                  onDelete={() => deleteConversation(conv.id)}
+                  onRename={(newTitle) => renameConversation(conv.id, newTitle)}
+                />
               ))}
             </div>
           ) : (
