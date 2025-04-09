@@ -9,7 +9,7 @@ export interface ResponseData {
   files?: string[];
 }
 
-// Função para verificar se a chave API do OpenAI está configurada
+// Function to verify if OpenAI API key is configured
 export function verifyApiKey(): string {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) {
@@ -18,23 +18,24 @@ export function verifyApiKey(): string {
   return apiKey;
 }
 
-// Função para gerar resposta de texto com OpenAI
+// Function to generate text response with OpenAI
 export async function generateText(
   prompt: string,
   modelId: string = "gpt-4o"
 ): Promise<ResponseData> {
   try {
-    // Validar API key da OpenAI
+    // Validate OpenAI API key
     const apiKey = verifyApiKey();
+    validateApiKey("OPENAI_API_KEY", apiKey);
     
     console.log(`Iniciando solicitação de texto ao modelo ${modelId} da OpenAI`);
     
-    // Instanciar cliente OpenAI com a API key
+    // Instantiate OpenAI client with API key
     const openai = new OpenAI({
       apiKey: apiKey,
     });
     
-    // Criar a solicitação de chat
+    // Create chat completion request
     const response = await openai.chat.completions.create({
       model: modelId,
       messages: [
@@ -46,7 +47,7 @@ export async function generateText(
       temperature: 0.7,
     });
     
-    // Extrair o conteúdo da resposta
+    // Extract response content
     const content = response.choices[0]?.message?.content || "Não foi possível gerar uma resposta.";
     console.log(`Resposta OpenAI recebida (${content.length} caracteres)`);
     
@@ -60,24 +61,25 @@ export async function generateText(
   }
 }
 
-// Função para processar imagem com GPT-4 Vision
+// Function to process image with GPT-4 Vision
 export async function processImage(
   prompt: string,
   imageUrl: string,
   modelId: string = "gpt-4o"
 ): Promise<ResponseData> {
   try {
-    // Validar API key da OpenAI
+    // Validate OpenAI API key
     const apiKey = verifyApiKey();
+    validateApiKey("OPENAI_API_KEY", apiKey);
     
     console.log(`Iniciando análise de imagem com ${modelId}, URL da imagem: ${imageUrl}`);
     
-    // Instanciar cliente OpenAI com a API key
+    // Instantiate OpenAI client with API key
     const openai = new OpenAI({
       apiKey: apiKey,
     });
     
-    // Criar a solicitação de chat com a imagem como conteúdo
+    // Create chat completion request with image content
     const response = await openai.chat.completions.create({
       model: modelId,
       messages: [
@@ -92,7 +94,7 @@ export async function processImage(
       max_tokens: 1000,
     });
     
-    // Extrair o conteúdo da resposta
+    // Extract response content
     const content = response.choices[0]?.message?.content || "Não foi possível analisar a imagem.";
     console.log(`Análise de imagem concluída (${content.length} caracteres)`);
     

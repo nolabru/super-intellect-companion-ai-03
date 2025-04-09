@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
 
-// Importar serviços de modelos
+// Import model services
 import * as lumaService from "./services/models/luma.ts";
 import * as mockService from "./services/models/mock.ts";
 import * as openaiService from "./services/models/openai.ts";
@@ -29,23 +29,23 @@ async function handleAIChat(req: Request): Promise<Response> {
       content: "Não foi possível processar sua solicitação."
     };
     
-    // Atualizar manualmente a API KEY com a fornecida (se necessário para teste)
+    // Update manually the API KEY with the one provided (if necessary for testing)
     const apiKey = Deno.env.get("LUMA_API_KEY");
     const apiKeyToUse = apiKey || "luma-daf72961-1c29-40ed-9bfb-9b603aefd583-7b4a016e-0207-4ccc-baea-b9c9f6c8fe39";
     
     if (!apiKey) {
       console.log("LUMA_API_KEY não encontrada nas variáveis de ambiente, usando chave fornecida manualmente");
-      // Define a variável de ambiente temporariamente
-      // @ts-ignore - Deno permite isso mesmo que TypeScript reclame
+      // Set the environment variable temporarily
+      // @ts-ignore - Deno allows this even if TypeScript complains
       Deno.env.set("LUMA_API_KEY", apiKeyToUse);
     }
     
     // Process based on model and mode
     try {
-      // Verificação específica para modelos OpenAI
+      // Special check for OpenAI models
       if (modelId.includes("gpt")) {
         try {
-          // Verifica a chave OpenAI antes de prosseguir
+          // Verify OpenAI API key before proceeding
           openaiService.verifyApiKey();
         } catch (error) {
           return new Response(
@@ -55,7 +55,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 500,
+              status: 400, // Using 400 instead of 500 for configuration errors
             }
           );
         }
@@ -103,7 +103,7 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
-      // Simulação para outros modelos
+      // Simulation for other models
       else if (modelId.includes("ideogram") && mode === "image") {
         response = mockService.generateImage(content, "Ideogram");
       } 
@@ -121,14 +121,25 @@ async function handleAIChat(req: Request): Promise<Response> {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logError("SERVICE_ERROR", { error: errorMessage, model: modelId, mode });
       
+      let friendlyError = `Erro ao processar solicitação: ${errorMessage}`;
+      
+      // Customize error message based on model/mode
+      if (modelId.includes("gpt")) {
+        if (errorMessage.includes("API key")) {
+          friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada ou é inválida. Por favor, verifique suas configurações.";
+        } else if (errorMessage.includes("429")) {
+          friendlyError = "Limite de requisições excedido na API do OpenAI. Por favor, tente novamente mais tarde.";
+        }
+      }
+      
       return new Response(
         JSON.stringify({
-          content: `Erro: ${errorMessage}`,
+          content: friendlyError,
           error: errorMessage,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
+          status: 400,
         }
       );
     }
