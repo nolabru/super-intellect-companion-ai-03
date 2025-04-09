@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -92,12 +93,26 @@ async function handleAIChat(req: Request): Promise<Response> {
       if (modelId === "luma-video" && mode === "video") {
         console.log("Iniciando processamento de vídeo com Luma AI");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
-        response = await lumaService.generateVideo(content, params, imageUrl);
+        
+        // Se não houver parâmetros definidos, use valores padrão para o modelo Luma
+        const videoParams = {
+          ...params,
+          model: params?.model || "luma-1.1"
+        };
+        
+        response = await lumaService.generateVideo(content, videoParams, imageUrl);
         console.log("Processamento de vídeo concluído com sucesso");
       } 
       else if (modelId === "luma-image" && mode === "image") {
         console.log("Iniciando processamento de imagem com Luma AI");
-        response = await lumaService.generateImage(content, params);
+        
+        // Se não houver parâmetros definidos, use valores padrão para o modelo Luma
+        const imageParams = {
+          ...params,
+          model: params?.model || "luma-1.1"
+        };
+        
+        response = await lumaService.generateImage(content, imageParams);
         console.log("Processamento de imagem concluído com sucesso");
       }
       
