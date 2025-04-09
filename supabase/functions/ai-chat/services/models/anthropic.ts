@@ -28,15 +28,8 @@ export async function generateText(
     const apiKey = verifyApiKey();
     validateApiKey("ANTHROPIC_API_KEY", apiKey);
     
-    // Map model ID to available Anthropic models
-    const anthropicModelMap: Record<string, string> = {
-      "claude-3-opus": "claude-3-haiku-20240307",
-      "claude-3-sonnet": "claude-3-haiku-20240307",
-      "claude-3-haiku": "claude-3-haiku-20240307"
-    };
-    
-    // Use mapped model or default to claude-3-haiku
-    const actualModelId = anthropicModelMap[modelId] || "claude-3-haiku-20240307";
+    // Only use Claude 3 Haiku as the actual model, regardless of input
+    const actualModelId = "claude-3-haiku-20240307";
     
     console.log(`Usando ANTHROPIC_API_KEY: ${apiKey.substring(0, 10)}...`);
     console.log(`Iniciando solicitação de texto ao modelo ${actualModelId} da Anthropic`);
@@ -87,15 +80,8 @@ export async function processImage(
     const apiKey = verifyApiKey();
     validateApiKey("ANTHROPIC_API_KEY", apiKey);
     
-    // Map model ID to available Anthropic models
-    const anthropicModelMap: Record<string, string> = {
-      "claude-3-opus": "claude-3-haiku-20240307",
-      "claude-3-sonnet": "claude-3-haiku-20240307",
-      "claude-3-haiku": "claude-3-haiku-20240307"
-    };
-    
-    // Use mapped model or default to claude-3-haiku
-    const actualModelId = anthropicModelMap[modelId] || "claude-3-haiku-20240307";
+    // Only use Claude 3 Haiku as the actual model, regardless of input
+    const actualModelId = "claude-3-haiku-20240307";
     
     console.log(`Iniciando análise de imagem com ${actualModelId}, URL da imagem: ${imageUrl}`);
     

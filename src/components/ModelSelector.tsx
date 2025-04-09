@@ -22,13 +22,12 @@ export interface ModelOption {
 export const AVAILABLE_MODELS: ModelOption[] = [
   // Modelos de texto
   { id: 'gpt-4o', name: 'GPT-4o', displayName: 'ChatGPT', provider: 'openai', modes: ['text'] },
-  { id: 'claude-3-opus', name: 'Claude 3 Opus', displayName: 'Claude', provider: 'anthropic', modes: ['text'] },
   { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', displayName: 'Claude', provider: 'anthropic', modes: ['text'] },
   { id: 'llama-3', name: 'Llama 3', displayName: 'Google AI', provider: 'google', modes: ['text'] },
   
   // Modelos de imagem
   { id: 'gpt-4o-vision', name: 'GPT-4o Vision', displayName: 'ChatGPT Vision', provider: 'openai', modes: ['image'] },
-  { id: 'claude-3-opus', name: 'Claude 3 Opus', displayName: 'Claude', provider: 'anthropic', modes: ['image'] },
+  { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', displayName: 'Claude', provider: 'anthropic', modes: ['image'] },
   { id: 'gemini-pro-vision', name: 'Gemini Pro Vision', displayName: 'Google AI', provider: 'google', modes: ['image'] },
   { id: 'kligin-image', name: 'Kligin AI', displayName: 'Kligin AI', provider: 'kligin', modes: ['image'] },
   { id: 'ideogram', name: 'Ideogram', displayName: 'Ideogram', provider: 'ideogram', modes: ['image'] },
@@ -36,7 +35,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   
   // Modelos de vídeo
   { id: 'gpt-4o-vision', name: 'GPT-4o Vision', displayName: 'ChatGPT Vision', provider: 'openai', modes: ['video'] },
-  { id: 'claude-3-opus', name: 'Claude 3 Opus', displayName: 'Claude', provider: 'anthropic', modes: ['video'] },
+  { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', displayName: 'Claude', provider: 'anthropic', modes: ['video'] },
   { id: 'kligin-video', name: 'Kligin AI', displayName: 'Kligin AI', provider: 'kligin', modes: ['video'] },
   { id: 'minimax-video', name: 'Minimax', displayName: 'Minimax', provider: 'minimax', modes: ['video'] },
   { id: 'luma-video', name: 'Luma AI', displayName: 'Luma AI', provider: 'luma', modes: ['video'] },
