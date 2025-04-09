@@ -1,4 +1,3 @@
-
 import { fetchWithRetry } from "../../utils/logging.ts";
 import { logError } from "../../utils/logging.ts";
 import { validateApiKey, ensureValue } from "../../utils/validation.ts";
@@ -310,7 +309,7 @@ export async function generateVideo(
     let videoUrl: string | null = null;
     let completed = false;
     let attempts = 0;
-    const maxAttempts = 90; // Aumentado para 90 tentativas (7.5 minutos com 5 segundos de intervalo)
+    const maxAttempts = 60; // Reduzi para 60 tentativas (5 minutos com 5 segundos de intervalo)
     let statusData: any = null;
     
     while (!completed && attempts < maxAttempts) {
@@ -343,10 +342,9 @@ export async function generateVideo(
         
         statusData = await statusResponse.json();
         console.log(`Status do vídeo (${attempts}/${maxAttempts}):`, statusData?.status);
-        console.log("Dados da resposta:", JSON.stringify(statusData, null, 2));
         
         // Verificar estrutura da resposta completa para debug
-        if (attempts % 5 === 0) {
+        if (attempts % 5 === 0 || statusData?.status === "done" || statusData?.state === "completed") {
           console.log("Estrutura completa da resposta:", JSON.stringify(statusData, null, 2));
         }
         
@@ -422,7 +420,7 @@ export async function generateVideo(
           
           // Procurar pelo ID específico
           const matchingGeneration = Array.isArray(listData) && 
-                                    listData.find((gen: any) => gen.id === generation.id);
+                                   listData.find((gen: any) => gen.id === generation.id);
           
           if (matchingGeneration) {
             console.log("Geração encontrada na listagem:", matchingGeneration);
@@ -460,6 +458,23 @@ export async function generateVideo(
         content: `Vídeo processado pelo Luma AI, mas a URL não pôde ser recuperada. Você pode verificar o vídeo no painel do Luma AI usando o ID: ${generation.id}`,
         files: []
       };
+    }
+    
+    console.log("Retornando URL de vídeo para o frontend:", videoUrl);
+    
+    // Validar se a URL retornada é válida
+    try {
+      const testResponse = await fetch(videoUrl, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        console.error("A URL do vídeo não está acessível:", testResponse.status, testResponse.statusText);
+        return {
+          content: `Vídeo gerado, mas a URL fornecida parece estar inacessível (status: ${testResponse.status}). Você pode tentar acessar diretamente: ${videoUrl} ou verificar no painel da Luma AI com o ID: ${generation.id}`,
+          files: [videoUrl] // Enviar a URL mesmo assim, para o caso de ser um problema temporário
+        };
+      }
+    } catch (error) {
+      console.warn("Erro ao validar URL do vídeo:", error);
+      // Continuar, pois pode ser apenas um problema de CORS
     }
     
     return {

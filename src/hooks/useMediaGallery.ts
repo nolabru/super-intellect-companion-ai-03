@@ -27,6 +27,26 @@ export const useMediaGallery = () => {
         return;
       }
 
+      // Verificar se a URL de mídia é válida
+      if (!mediaUrl || typeof mediaUrl !== 'string') {
+        throw new Error('URL de mídia inválida');
+      }
+
+      // Validar URL para mídia de vídeo e imagem
+      if (mediaType === 'video' || mediaType === 'image') {
+        try {
+          // Verificar se a URL é válida tentando criar um objeto URL
+          new URL(mediaUrl);
+          
+          // Tentar acessar o recurso (pode falhar devido a CORS, mas é uma verificação adicional)
+          await fetch(mediaUrl, { method: 'HEAD' })
+            .catch(err => console.warn('Aviso ao verificar URL da mídia (pode ser CORS):', err));
+        } catch (error) {
+          console.error('URL da mídia inválida:', error);
+          throw new Error('A URL da mídia parece ser inválida');
+        }
+      }
+
       // Preparar os dados para inserção
       const mediaData = {
         id: uuidv4(),
@@ -35,7 +55,11 @@ export const useMediaGallery = () => {
         prompt,
         media_type: mediaType,
         model_id: modelId,
-        metadata
+        metadata: {
+          ...metadata,
+          saved_at: new Date().toISOString(),
+          source: 'chat'
+        }
       };
 
       // Inserir na tabela de mídia
@@ -50,13 +74,17 @@ export const useMediaGallery = () => {
         title: "Sucesso",
         description: "Mídia salva na galeria com sucesso",
       });
+      
+      return true;
     } catch (error) {
       console.error('Erro ao salvar mídia na galeria:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível salvar a mídia na galeria",
+        description: "Não foi possível salvar a mídia na galeria: " + 
+          (error instanceof Error ? error.message : "Erro desconhecido"),
         variant: "destructive",
       });
+      return false;
     } finally {
       setSaving(false);
     }

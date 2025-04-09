@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatMode } from './ModeSelector';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,8 +36,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isError = message.error;
   
   // Estado para rastrear erros de carregamento de mídia
-  const [mediaError, setMediaError] = React.useState(false);
-  const [isMediaLoading, setIsMediaLoading] = React.useState(true);
+  const [mediaError, setMediaError] = useState(false);
+  const [isMediaLoading, setIsMediaLoading] = useState(true);
+  const [videoLoadingTimedOut, setVideoLoadingTimedOut] = useState(false);
 
   // Verificar se a mensagem contém uma URL de mídia embutida
   const hasEmbeddedMedia = message.content.includes('[Imagem gerada]:') || 
@@ -70,6 +71,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     return null;
   }, [message.mediaUrl, message.files, message.content, hasEmbeddedMedia]);
   
+  // Verificar se existe ID de geração da Luma na mensagem
+  const hasLumaId = message.content && message.content.includes('ID:') && message.model && message.model.includes('luma');
+  
+  // Efeito para redefinir o erro de carregamento de mídia quando a URL mudar
+  useEffect(() => {
+    if (mediaUrl) {
+      setMediaError(false);
+      setIsMediaLoading(true);
+    }
+  }, [mediaUrl]);
+  
   // Conteúdo limpo para exibição
   const displayContent = hasEmbeddedMedia ? cleanContent(message.content) : message.content;
   
@@ -81,18 +93,23 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
   // Função para lidar com erros de mídia
   const handleMediaError = (e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement | HTMLAudioElement>) => {
-    console.error(`Erro ao carregar mídia (${message.mode}):`, mediaUrl);
+    console.error(`Erro ao carregar mídia (${message.mode}):`, mediaUrl, e);
     setMediaError(true);
     setIsMediaLoading(false);
-    e.currentTarget.style.display = 'none';
-    toast.error(`Não foi possível carregar a ${message.mode === 'image' ? 'imagem' : message.mode === 'video' ? 'vídeo' : 'mídia'}`);
+    
+    // Não esconder o elemento se for vídeo, para permitir nova tentativa
+    if (!isVideo) {
+      e.currentTarget.style.display = 'none';
+    }
+    
+    toast.error(`Não foi possível carregar ${isImage ? 'a imagem' : isVideo ? 'o vídeo' : 'o áudio'}`);
   };
 
   // Função para tentar novamente o carregamento de mídia
   const retryMediaLoad = () => {
     setMediaError(false);
     setIsMediaLoading(true);
-    toast.info(`Tentando carregar ${message.mode === 'image' ? 'imagem' : message.mode === 'video' ? 'vídeo' : 'mídia'} novamente...`);
+    toast.info(`Tentando carregar ${isImage ? 'imagem' : isVideo ? 'vídeo' : 'áudio'} novamente...`);
   };
   
   // Abrir mídia em nova aba
@@ -100,6 +117,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     if (mediaUrl) {
       window.open(mediaUrl, '_blank');
       toast.success('Abrindo mídia em nova aba');
+    }
+  };
+  
+  // Lidar com timeout do carregamento de vídeo
+  const handleVideoLoadingTimeout = () => {
+    setVideoLoadingTimedOut(true);
+    // Se há URL de mídia, tentar carregar, caso contrário apenas mostrar mensagem
+    if (mediaUrl) {
+      setIsMediaLoading(false);
+    } else {
+      toast.error('Tempo limite excedido para carregamento do vídeo');
     }
   };
   
@@ -142,6 +170,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           isLoading={isLoading} 
           isVideo={isVideo} 
           model={message.model || ''}
+          onTimeout={handleVideoLoadingTimeout}
         />
         
         {/* Renderizar mídia se estiver presente */}
@@ -155,6 +184,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           retryMediaLoad={retryMediaLoad}
           openMediaInNewTab={openMediaInNewTab}
           audioData={message.audioData}
+          prompt={message.content}
+          modelId={message.model}
         />
       </div>
     </div>

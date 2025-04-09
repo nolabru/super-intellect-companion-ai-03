@@ -1,5 +1,4 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertTriangle, ExternalLink, Loader2, RefreshCw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -37,6 +36,19 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   const isVideo = mode === 'video';
   const isAudio = mode === 'audio';
   const { saveMediaToGallery, saving } = useMediaGallery();
+  const [retryCount, setRetryCount] = useState(0);
+  
+  useEffect(() => {
+    if (mediaError && isVideo && mediaUrl && retryCount < 3) {
+      const retryTimer = setTimeout(() => {
+        console.log(`Tentativa automática ${retryCount + 1} de carregar o vídeo`);
+        retryMediaLoad();
+        setRetryCount(prev => prev + 1);
+      }, 3000);
+      
+      return () => clearTimeout(retryTimer);
+    }
+  }, [mediaError, isVideo, mediaUrl, retryCount, retryMediaLoad]);
 
   const handleSaveToGallery = async () => {
     if (!mediaUrl && !audioData) {
@@ -44,14 +56,19 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
       return;
     }
 
-    await saveMediaToGallery(
-      mediaUrl || audioData || '',
-      prompt,
-      mode,
-      modelId
-    );
+    try {
+      await saveMediaToGallery(
+        mediaUrl || audioData || '',
+        prompt,
+        mode,
+        modelId
+      );
 
-    toast.success('Mídia salva na galeria com sucesso');
+      toast.success('Mídia salva na galeria com sucesso');
+    } catch (error) {
+      console.error('Erro ao salvar na galeria:', error);
+      toast.error('Não foi possível salvar a mídia na galeria');
+    }
   };
   
   if (mediaError) {
@@ -59,7 +76,11 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
       <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
         <p className="text-sm text-red-400 flex items-start">
           <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-          <span>Não foi possível carregar a mídia. Isto pode ocorrer devido a erros na API do {isAudio ? 'ElevenLabs' : 'Luma'} ou problemas temporários de conexão.</span>
+          <span>
+            Não foi possível carregar a mídia. 
+            {isVideo && "Isso pode ocorrer porque o vídeo ainda está sendo processado ou devido a limitações temporárias."}
+            {!isVideo && "Isto pode ocorrer devido a erros na API ou problemas temporários de conexão."}
+          </span>
         </p>
         <div className="mt-2 flex space-x-2">
           <button 
@@ -145,6 +166,8 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           onError={onMediaError}
           autoPlay={false}
           preload="metadata"
+          playsInline
+          controlsList="nodownload"
         />
         {!isMediaLoading && (
           <div className="mt-1 flex justify-end gap-2">
