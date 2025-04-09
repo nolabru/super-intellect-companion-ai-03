@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -76,6 +77,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   );
 
   const isKliginVideo = model === 'kligin-video';
+  const isLumaVideo = model === 'luma-video';
   
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -117,12 +119,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <p className="text-sm font-medium">
                   {isKliginVideo ? 
                     "A geração de vídeo pode levar até 3 minutos para ser concluída." :
+                    isLumaVideo ?
+                    "A Luma AI está processando sua solicitação de vídeo. Isso pode levar alguns minutos." :
                     "Processando sua solicitação de vídeo..."
                   }
                 </p>
                 <p className="text-xs mt-1 text-gray-400">
                   {isKliginVideo ?
                     "O sistema está conectando ao serviço do Kligin AI. Por favor, aguarde." :
+                    isLumaVideo ?
+                    "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade." :
                     "Estamos trabalhando na sua solicitação. Isso pode levar alguns instantes."
                   }
                 </p>

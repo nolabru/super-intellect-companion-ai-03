@@ -63,8 +63,8 @@ const Index: React.FC = () => {
     }
   }, [comparing, leftModel, rightModel, activeMode]);
 
-  const handleSendMessage = (content: string, files?: string[], targetModel?: string) => {
-    console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`);
+  const handleSendMessage = (content: string, files?: string[], params?: any, targetModel?: string) => {
+    console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`, params);
     
     // Se os chats estiverem vinculados ou não estiver no modo de comparação,
     // envia a mensagem normalmente
@@ -76,7 +76,8 @@ const Index: React.FC = () => {
         comparing, 
         leftModel, 
         rightModel,
-        files
+        files,
+        params
       );
     } else {
       // Se os chats estiverem desvinculados, envia apenas para o modelo especificado
@@ -90,7 +91,8 @@ const Index: React.FC = () => {
         false, // Sem comparação quando desvinculado
         actualLeftModel,
         actualRightModel,
-        files
+        files,
+        params
       );
     }
   };
@@ -180,7 +182,7 @@ const Index: React.FC = () => {
                   {!isLinked && (
                     <div className="p-4 border-t border-inventu-gray/30">
                       <ChatInput 
-                        onSendMessage={(content, files) => handleSendMessage(content, files, leftModel)}
+                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
                         model={leftModel}
                         mode={activeMode}
                       />
@@ -201,7 +203,7 @@ const Index: React.FC = () => {
                   {!isLinked && (
                     <div className="p-4 border-t border-inventu-gray/30">
                       <ChatInput 
-                        onSendMessage={(content, files) => handleSendMessage(content, files, rightModel)}
+                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
                         model={rightModel}
                         mode={activeMode}
                       />

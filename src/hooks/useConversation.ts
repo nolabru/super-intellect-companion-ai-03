@@ -1,559 +1,223 @@
+
 import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/integrations/supabase/client';
 import { MessageType } from '@/components/ChatMessage';
+import { LumaParams } from '@/components/LumaParamsButton';
 import { ChatMode } from '@/components/ModeSelector';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/use-toast';
 
-interface MessageData {
-  id: string;
-  content: string;
-  conversation_id: string;
-  sender: string;
-  model: string | null;
-  timestamp: string;
-  mode: string;
-  media_url?: string | null;
-  audio_data?: string | null;
-}
+// Inicializar o cliente Supabase
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export const useConversation = () => {
+export function useConversation() {
   const [messages, setMessages] = useState<MessageType[]>([]);
-  const [conversations, setConversations] = useState<any[]>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
-  const formatTime = (): string => {
-    const now = new Date();
-    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  };
-
-  useEffect(() => {
-    if (user) {
-      loadConversations();
-    } else {
-      setConversations([]);
-      setCurrentConversationId(null);
-      setMessages([]);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (currentConversationId) {
-      loadMessages(currentConversationId);
-    } else {
-      setMessages([]);
-    }
-  }, [currentConversationId]);
-
-  const loadConversations = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .select('*')
-        .order('updated_at', { ascending: false });
-
-      if (error) throw error;
-      
-      setConversations(data || []);
-      
-      if (data && data.length > 0 && !currentConversationId) {
-        setCurrentConversationId(data[0].id);
-      }
-    } catch (error: any) {
-      console.error('Erro ao carregar conversas:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as conversas",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const loadMessages = async (conversationId: string) => {
+  // Função para enviar uma mensagem
+  const sendMessage = async (
+    content: string,
+    mode: ChatMode = 'text',
+    modelId: string,
+    isComparing = false,
+    leftModelId?: string | null,
+    rightModelId?: string | null,
+    files?: string[],
+    params?: LumaParams
+  ) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('timestamp', { ascending: true });
-
-      if (error) throw error;
       
-      if (data) {
-        const formattedMessages = (data as MessageData[]).map(msg => ({
-          id: msg.id,
-          content: msg.content,
-          sender: msg.sender === 'user' ? 'user' : 'ai' as 'user' | 'ai',
-          model: msg.model || '',
-          timestamp: new Date(msg.timestamp).toLocaleTimeString([], { 
-            hour: '2-digit', minute: '2-digit', second: '2-digit' 
-          }),
-          mode: msg.mode as ChatMode,
-          mediaUrl: msg.media_url || undefined,
-          audioData: msg.audio_data || undefined
-        }));
-        
-        setMessages(formattedMessages);
-      }
-    } catch (error: any) {
-      console.error('Erro ao carregar mensagens:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as mensagens",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const createNewConversation = async (title: string = "Nova conversa") => {
-    if (!user) return null;
-    
-    try {
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert([{ title, user_id: user.id }])
-        .select();
-
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        await loadConversations();
-        setCurrentConversationId(data[0].id);
-        return data[0].id;
-      }
-      
-      return null;
-    } catch (error: any) {
-      console.error('Erro ao criar conversa:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível criar uma nova conversa",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  const deleteConversation = async (conversationId: string) => {
-    if (!user) return;
-    
-    try {
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .eq('conversation_id', conversationId);
-        
-      if (messagesError) throw messagesError;
-      
-      const { error } = await supabase
-        .from('conversations')
-        .delete()
-        .eq('id', conversationId);
-        
-      if (error) throw error;
-      
-      await loadConversations();
-      
-      if (currentConversationId === conversationId) {
-        if (conversations.length > 1) {
-          const newCurrentConversation = conversations.find(c => c.id !== conversationId);
-          if (newCurrentConversation) {
-            setCurrentConversationId(newCurrentConversation.id);
-          } else {
-            setCurrentConversationId(null);
-          }
-        } else {
-          setCurrentConversationId(null);
-        }
-      }
-      
-      toast({
-        title: "Sucesso",
-        description: "Conversa excluída com sucesso",
-      });
-    } catch (error: any) {
-      console.error('Erro ao excluir conversa:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a conversa",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const renameConversation = async (conversationId: string, newTitle: string) => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('conversations')
-        .update({ title: newTitle })
-        .eq('id', conversationId);
-        
-      if (error) throw error;
-      
-      await loadConversations();
-      
-      toast({
-        title: "Sucesso",
-        description: "Conversa renomeada com sucesso",
-      });
-    } catch (error: any) {
-      console.error('Erro ao renomear conversa:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível renomear a conversa",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const sendMessage = async (
-    content: string, 
-    mode: ChatMode, 
-    model: string, 
-    isComparing: boolean = false,
-    leftModel: string = '',
-    rightModel: string = '',
-    files?: string[]
-  ) => {
-    setLoading(true);
-    
-    let conversationId = currentConversationId;
-    
-    if (!conversationId && user) {
-      conversationId = await createNewConversation();
-      if (!conversationId) {
-        setLoading(false);
-        return;
-      }
-    }
-    
-    if (!user || !conversationId) {
-      const newUserMessage: MessageType = {
-        id: uuidv4(),
-        content,
-        sender: 'user',
-        model: 'user',
-        timestamp: formatTime(),
-        mode,
-        mediaUrl: files && files.length > 0 ? files[0] : undefined
-      };
-
-      let newMessages = [...messages, newUserMessage];
-
-      if (isComparing) {
-        const leftResponse: MessageType = {
-          id: uuidv4(),
-          content: `Resposta do ${leftModel} para: "${content}"`,
-          sender: 'ai',
-          model: leftModel,
-          timestamp: formatTime(),
-          mode
-        };
-
-        const rightResponse: MessageType = {
-          id: uuidv4(),
-          content: `Resposta do ${rightModel} para: "${content}"`,
-          sender: 'ai',
-          model: rightModel,
-          timestamp: formatTime(),
-          mode
-        };
-
-        newMessages = [...newMessages, leftResponse, rightResponse];
-      } else {
-        const response: MessageType = {
-          id: uuidv4(),
-          content: `Resposta do ${model} para: "${content}"`,
-          sender: 'ai',
-          model,
-          timestamp: formatTime(),
-          mode
-        };
-
-        newMessages = [...newMessages, response];
-      }
-
-      setMessages(newMessages);
-      setLoading(false);
-      return;
-    }
-
-    try {
+      // Adicionar mensagem do usuário primeiro
       const userMessageId = uuidv4();
-      const newUserMessage: MessageType = {
+      const userMessage: MessageType = {
         id: userMessageId,
         content,
         sender: 'user',
-        model: 'user',
-        timestamp: formatTime(),
+        timestamp: new Date().toISOString(),
         mode,
-        mediaUrl: files && files.length > 0 ? files[0] : undefined
+        files
       };
       
-      setMessages(prev => [...prev, newUserMessage]);
+      setMessages((prevMessages) => [...prevMessages, userMessage]);
       
-      let loadingIds: string[] = [];
-      
-      if (isComparing) {
-        const loadingLeftId = `loading-left-${userMessageId}`;
-        const loadingRightId = `loading-right-${userMessageId}`;
+      // Se estiver no modo de comparação, precisamos adicionar uma mensagem de carregamento para cada modelo
+      if (isComparing && leftModelId && rightModelId) {
+        // Adicionar mensagens de carregamento
+        const loadingIdLeft = `loading-${leftModelId}-${uuidv4()}`;
+        const loadingIdRight = `loading-${rightModelId}-${uuidv4()}`;
         
-        loadingIds = [loadingLeftId, loadingRightId];
-        
-        const loadingLeftResponse: MessageType = {
-          id: loadingLeftId,
-          content: "Gerando resposta...",
-          sender: 'ai',
-          model: leftModel,
-          timestamp: formatTime(),
-          mode
-        };
-        
-        const loadingRightResponse: MessageType = {
-          id: loadingRightId,
-          content: "Gerando resposta...",
-          sender: 'ai',
-          model: rightModel,
-          timestamp: formatTime(),
-          mode
-        };
-        
-        setMessages(prev => [...prev, loadingLeftResponse, loadingRightResponse]);
-      } else {
-        const loadingId = `loading-${userMessageId}`;
-        loadingIds = [loadingId];
-        
-        const loadingResponse: MessageType = {
-          id: loadingId,
-          content: mode === 'video' ? 
-            "Gerando vídeo. Este processo pode levar até 2 minutos..." : 
-            "Gerando resposta...",
-          sender: 'ai',
-          model,
-          timestamp: formatTime(),
-          mode
-        };
-        
-        setMessages(prev => [...prev, loadingResponse]);
-      }
-
-      if (isComparing) {
-        try {
-          const leftResponsePromise = fetch('https://vygluorjwehcdigzxbaa.supabase.co/functions/v1/ai-chat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            },
-            body: JSON.stringify({
-              prompt: content,
-              model: leftModel,
-              mode,
-              conversationId,
-              files
-            })
-          }).then(res => res.json());
-
-          const rightResponsePromise = fetch('https://vygluorjwehcdigzxbaa.supabase.co/functions/v1/ai-chat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            },
-            body: JSON.stringify({
-              prompt: content,
-              model: rightModel,
-              mode,
-              conversationId,
-              files
-            })
-          }).then(res => res.json());
-
-          const [leftResult, rightResult] = await Promise.all([leftResponsePromise, rightResponsePromise]);
-
-          setMessages(prev => {
-            const filteredMessages = prev.filter(msg => 
-              msg.id !== `loading-left-${userMessageId}` && 
-              msg.id !== `loading-right-${userMessageId}`
-            );
-            
-            const leftResponseId = uuidv4();
-            const rightResponseId = uuidv4();
-
-            const leftResponse: MessageType = {
-              id: leftResponseId,
-              content: leftResult.content || "Erro ao processar resposta",
-              sender: 'ai',
-              model: leftModel,
-              timestamp: formatTime(),
-              mode,
-              mediaUrl: leftResult.mediaUrl,
-              audioData: leftResult.audioData
-            };
-
-            const rightResponse: MessageType = {
-              id: rightResponseId,
-              content: rightResult.content || "Erro ao processar resposta",
-              sender: 'ai',
-              model: rightModel,
-              timestamp: formatTime(),
-              mode,
-              mediaUrl: rightResult.mediaUrl,
-              audioData: rightResult.audioData
-            };
-
-            return [...filteredMessages, leftResponse, rightResponse];
-          });
-        } catch (error: any) {
-          console.error("Erro na chamada da API:", error);
-          
-          setMessages(prev => {
-            const filteredMessages = prev.filter(msg => 
-              msg.id !== `loading-left-${userMessageId}` && 
-              msg.id !== `loading-right-${userMessageId}`
-            );
-            
-            const leftErrorMessage: MessageType = {
-              id: uuidv4(),
-              content: "Erro ao obter resposta do modelo. Por favor, tente novamente.",
-              sender: 'ai',
-              model: leftModel,
-              timestamp: formatTime(),
-              mode
-            };
-            
-            const rightErrorMessage: MessageType = {
-              id: uuidv4(),
-              content: "Erro ao obter resposta do modelo. Por favor, tente novamente.",
-              sender: 'ai',
-              model: rightModel,
-              timestamp: formatTime(),
-              mode
-            };
-            
-            return [...filteredMessages, leftErrorMessage, rightErrorMessage];
-          });
-          
-          toast({
-            title: "Erro",
-            description: "Falha ao se comunicar com o modelo AI",
-            variant: "destructive",
-          });
-        }
-      } else {
-        try {
-          console.log("Enviando requisição para a API com:", {
-            prompt: content,
-            model,
+        const loadingMessages: MessageType[] = [
+          {
+            id: loadingIdLeft,
+            content: 'Gerando resposta...',
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: leftModelId,
             mode,
-            conversationId,
-            files
-          });
-          
-          const response = await fetch('https://vygluorjwehcdigzxbaa.supabase.co/functions/v1/ai-chat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-            },
-            body: JSON.stringify({
-              prompt: content,
-              model,
-              mode,
-              conversationId,
-              files
-            })
-          });
-          
-          if (!response.ok) {
-            const errorResponse = await response.json().catch(() => ({}));
-            const errorMessage = errorResponse.details || errorResponse.error || `HTTP error: ${response.status}`;
-            console.error(`Erro na resposta da API: ${response.status}`, errorResponse);
-            throw new Error(errorMessage);
+            loading: true
+          },
+          {
+            id: loadingIdRight,
+            content: 'Gerando resposta...',
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: rightModelId,
+            mode,
+            loading: true
           }
-          
-          const result = await response.json();
-          console.log("Resposta recebida da API:", result);
-
-          const loadingId = `loading-${userMessageId}`;
-          
-          setMessages(prev => {
-            const filteredMessages = prev.filter(msg => msg.id !== loadingId);
-            
-            const aiResponse: MessageType = {
-              id: uuidv4(),
-              content: result.content || "Erro ao processar resposta",
-              sender: 'ai',
-              model,
-              timestamp: formatTime(),
-              mode,
-              mediaUrl: result.mediaUrl,
-              audioData: result.audioData
-            };
-            
-            return [...filteredMessages, aiResponse];
-          });
-        } catch (error: any) {
-          console.error("Erro na chamada da API:", error);
-          
-          const loadingId = `loading-${userMessageId}`;
-          
-          setMessages(prev => {
-            const filteredMessages = prev.filter(msg => msg.id !== loadingId);
-            
-            let errorContent = "Erro ao obter resposta do modelo. Por favor, tente novamente.";
-            
-            if (mode === 'video') {
-              errorContent = `Erro ao gerar o vídeo: ${error.message}. Por favor, tente com um prompt diferente ou use outro modelo.`;
-            }
-            
-            const errorMessage: MessageType = {
-              id: uuidv4(),
-              content: errorContent,
-              sender: 'ai',
-              model,
-              timestamp: formatTime(),
-              mode
-            };
-            return [...filteredMessages, errorMessage];
-          });
-          
-          toast({
-            title: "Erro",
-            description: `Falha ao se comunicar com o modelo AI: ${error.message}`,
-            variant: "destructive",
-          });
+        ];
+        
+        setMessages((prevMessages) => [...prevMessages, ...loadingMessages]);
+        
+        // Enviar para a API para ambos os modelos em paralelo
+        const [responseLeft, responseRight] = await Promise.all([
+          sendToAI(content, mode, leftModelId, files, params),
+          sendToAI(content, mode, rightModelId, files, params)
+        ]);
+        
+        // Remover mensagens de carregamento
+        setMessages((prevMessages) => 
+          prevMessages.filter(msg => msg.id !== loadingIdLeft && msg.id !== loadingIdRight)
+        );
+        
+        // Adicionar respostas reais
+        const newMessages: MessageType[] = [
+          {
+            id: uuidv4(),
+            content: responseLeft.content,
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: leftModelId,
+            mode,
+            files: responseLeft.files
+          },
+          {
+            id: uuidv4(),
+            content: responseRight.content,
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: rightModelId,
+            mode,
+            files: responseRight.files
+          }
+        ];
+        
+        setMessages((prevMessages) => [...prevMessages, ...newMessages]);
+      } else {
+        // Adicionar mensagem de carregamento
+        const loadingId = `loading-${modelId}-${uuidv4()}`;
+        
+        let loadingMessage = 'Gerando resposta...';
+        
+        // Mensagens de carregamento específicas para vídeo
+        if (mode === 'video') {
+          if (modelId === 'luma-video') {
+            loadingMessage = 'Conectando ao serviço Luma AI para processamento de vídeo...';
+          } else if (modelId === 'kligin-video') {
+            loadingMessage = 'Aguardando processamento do serviço Kligin AI...';
+          }
         }
+        
+        const loadingMsg: MessageType = {
+          id: loadingId,
+          content: loadingMessage,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: modelId,
+          mode,
+          loading: true
+        };
+        
+        setMessages((prevMessages) => [...prevMessages, loadingMsg]);
+        
+        // Enviar para a API
+        const response = await sendToAI(content, mode, modelId, files, params);
+        
+        // Remover mensagem de carregamento
+        setMessages((prevMessages) => 
+          prevMessages.filter(msg => msg.id !== loadingId)
+        );
+        
+        // Adicionar resposta real
+        const newMessage: MessageType = {
+          id: uuidv4(),
+          content: response.content,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: modelId,
+          mode,
+          files: response.files
+        };
+        
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
       }
-    } catch (error: any) {
-      console.error('Erro ao enviar mensagem:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível enviar a mensagem: " + error.message,
-        variant: "destructive",
-      });
+    } catch (err) {
+      console.error('Erro ao enviar mensagem:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido ao enviar mensagem');
+      
+      // Remover mensagens de carregamento
+      setMessages((prevMessages) => 
+        prevMessages.filter(msg => !msg.id?.startsWith('loading-'))
+      );
+      
+      // Adicionar mensagem de erro
+      const errorMessage: MessageType = {
+        id: uuidv4(),
+        content: 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
+        sender: 'assistant',
+        timestamp: new Date().toISOString(),
+        model: modelId,
+        mode,
+        error: true
+      };
+      
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
     } finally {
       setLoading(false);
     }
   };
-
+  
+  const sendToAI = async (
+    content: string, 
+    mode: ChatMode, 
+    modelId: string, 
+    files?: string[],
+    params?: LumaParams
+  ): Promise<{ content: string, files?: string[] }> => {
+    try {
+      // Mapear para modelos no backend
+      // Este é um exemplo simplificado, pode precisar de mais lógica dependendo da sua API
+      
+      // Chamar a Edge Function
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          content,
+          mode,
+          modelId,
+          files,
+          params
+        },
+      });
+      
+      if (error) {
+        console.error('Erro ao chamar a Edge Function:', error);
+        throw new Error(`Erro ao chamar a API: ${error.message}`);
+      }
+      
+      return data;
+    } catch (err) {
+      console.error('Erro ao enviar para a API:', err);
+      throw err;
+    }
+  };
+  
   return {
     messages,
-    conversations,
-    currentConversationId,
-    setCurrentConversationId,
-    createNewConversation,
-    deleteConversation,
-    renameConversation,
     sendMessage,
-    loading
+    loading,
+    error
   };
-};
+}

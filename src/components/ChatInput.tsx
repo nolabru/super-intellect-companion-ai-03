@@ -4,18 +4,20 @@ import { Send, Paperclip, X, AudioLines } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
+import LumaParamsButton, { LumaParams, defaultLumaParams } from './LumaParamsButton';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, files?: string[]) => void;
+  onSendMessage: (message: string, files?: string[], params?: any) => void;
   model?: string;
   mode?: ChatMode;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'text' }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode = 'text' }) => {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [lumaParams, setLumaParams] = useState<LumaParams>(defaultLumaParams);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,7 +39,16 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
       try {
         setIsSending(true);
         const fileUrls = await uploadFiles();
-        onSendMessage(message.trim() || `[${mode} anexado]`, fileUrls.length > 0 ? fileUrls : undefined);
+        
+        // Include Luma parameters if using a Luma model
+        const params = model.includes('luma') ? lumaParams : undefined;
+        
+        onSendMessage(
+          message.trim() || `[${mode} anexado]`, 
+          fileUrls.length > 0 ? fileUrls : undefined,
+          params
+        );
+        
         setMessage('');
         setFiles([]);
         setFilePreviewUrls([]);
@@ -134,8 +145,24 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model, mode = 'tex
     return filePreviewUrls;
   };
 
+  const handleLumaParamsChange = (params: LumaParams) => {
+    setLumaParams(params);
+  };
+
   return (
     <div className="relative mt-3">
+      {/* Luma AI Parameters Button */}
+      {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
+        <div className="flex justify-end mb-2">
+          <LumaParamsButton 
+            mode={mode} 
+            model={model} 
+            params={lumaParams} 
+            onParamsChange={handleLumaParamsChange} 
+          />
+        </div>
+      )}
+      
       {/* Previews dos arquivos */}
       {filePreviewUrls.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">

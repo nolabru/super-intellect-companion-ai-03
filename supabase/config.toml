@@ -92,4 +92,4 @@ detailed_errors = false
 [experimental.functions.ai-chat]
 port = 54327
 verify_jwt = true
-timeout_seconds = 240
+timeout_seconds = 600
