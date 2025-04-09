@@ -1,5 +1,8 @@
+
 import React from 'react';
 import { ChatMode } from './ModeSelector';
+import { Text, Image, Video, AudioLines, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export interface MessageType {
   id: string;
@@ -11,6 +14,8 @@ export interface MessageType {
   loading?: boolean;
   error?: boolean;
   files?: string[];
+  mediaUrl?: string;
+  audioData?: string;
 }
 
 interface ChatMessageProps {

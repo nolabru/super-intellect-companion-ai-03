@@ -24,10 +24,16 @@ export function useConversation() {
   const createNewConversation = async () => {
     try {
       setLoading(true);
+      const user = await supabase.auth.getUser();
+      
+      if (!user.data.user) {
+        throw new Error("User is not authenticated");
+      }
+      
       const { data, error } = await supabase
         .from('conversations')
         .insert([
-          { title: 'Nova Conversa', user_id: supabase.auth.getUser() }
+          { title: 'Nova Conversa', user_id: user.data.user.id }
         ])
         .select();
 
