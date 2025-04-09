@@ -1,10 +1,13 @@
 
 import React from 'react';
 import { ChatMode } from './ModeSelector';
-import { Text, Image, Video, AudioLines, Loader2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import ModeIcon from './chat/ModeIcon';
+import ChatMessageContent from './chat/ChatMessageContent';
+import MediaContainer from './chat/MediaContainer';
+import VideoLoading from './chat/VideoLoading';
 
 export interface MessageType {
   id: string;
@@ -35,20 +38,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   // Estado para rastrear erros de carregamento de mídia
   const [mediaError, setMediaError] = React.useState(false);
   const [isMediaLoading, setIsMediaLoading] = React.useState(true);
-  
-  const renderModeIcon = () => {
-    switch (message.mode) {
-      case 'image':
-        return <Image size={14} className="mr-1" />;
-      case 'video':
-        return <Video size={14} className="mr-1" />;
-      case 'audio':
-        return <AudioLines size={14} className="mr-1" />;
-      case 'text':
-      default:
-        return <Text size={14} className="mr-1" />;
-    }
-  };
 
   // Verificar se a mensagem contém uma URL de mídia embutida
   const hasEmbeddedMedia = message.content.includes('[Imagem gerada]:') || 
@@ -84,22 +73,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   // Conteúdo limpo para exibição
   const displayContent = hasEmbeddedMedia ? cleanContent(message.content) : message.content;
   
-  // Renderizar um indicador de carregamento de vídeo personalizado
-  const renderVideoLoading = () => {
-    if (isLoading && isVideo) {
-      return (
-        <div className="flex flex-col items-center justify-center p-4 my-2 bg-inventu-darker/20 rounded-lg">
-          <Loader2 className="h-10 w-10 mb-2 animate-spin text-inventu-gray" />
-          <p className="text-sm text-inventu-gray">Gerando seu vídeo...</p>
-          <p className="text-xs text-inventu-gray/70 mt-1">
-            Isso pode levar alguns instantes. Por favor, aguarde.
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   // Função para lidar com carregamento de mídia bem-sucedido
   const handleMediaLoaded = () => {
     setIsMediaLoading(false);
@@ -143,7 +116,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         )}
         {isUser && <span className="font-medium mr-2">Você</span>}
         <div className="flex items-center mr-2">
-          {renderModeIcon()}
+          <ModeIcon mode={message.mode} />
           <span className="capitalize">{message.mode || 'text'}</span>
         </div>
         <span>{message.timestamp}</span>
@@ -158,133 +131,31 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         isLoading && !isVideo && "animate-pulse",
         isError && "bg-red-900/20 border border-red-500/30"
       )}>
-        {isLoading && !isVideo ? (
-          <div className="flex items-center">
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            {displayContent}
-          </div>
-        ) : isError ? (
-          <div className="flex flex-col">
-            <div className="text-red-400 font-medium mb-1 flex items-center">
-              <AlertTriangle size={16} className="mr-1" /> Erro
-            </div>
-            <div>{displayContent}</div>
-            <div className="mt-2 text-sm text-red-400/80">
-              Por favor, tente novamente ou escolha um parâmetro diferente.
-            </div>
-          </div>
-        ) : (
-          displayContent
-        )}
+        <ChatMessageContent 
+          content={displayContent}
+          isLoading={isLoading && !isVideo}
+          isError={isError}
+        />
         
         {/* Indicador de carregamento de vídeo */}
-        {renderVideoLoading()}
+        <VideoLoading 
+          isLoading={isLoading} 
+          isVideo={isVideo} 
+          model={message.model || ''}
+        />
         
         {/* Renderizar mídia se estiver presente */}
-        {mediaUrl && isImage && !isLoading && !mediaError && (
-          <div className="mt-2 relative">
-            {isMediaLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
-                <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
-              </div>
-            )}
-            <img 
-              src={mediaUrl} 
-              alt="Imagem gerada" 
-              className="max-w-full rounded-lg max-h-80 object-contain" 
-              onLoad={handleMediaLoaded}
-              onError={handleMediaError}
-            />
-            {!isMediaLoading && (
-              <div className="mt-1 flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs flex items-center text-inventu-gray hover:text-white"
-                  onClick={openMediaInNewTab}
-                >
-                  <ExternalLink size={12} className="mr-1" />
-                  Abrir em nova aba
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {mediaUrl && isVideo && !isLoading && !mediaError && (
-          <div className="mt-2 relative">
-            {isMediaLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
-                <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
-              </div>
-            )}
-            <video 
-              src={mediaUrl} 
-              controls 
-              className="max-w-full rounded-lg max-h-80"
-              onLoadedData={handleMediaLoaded}
-              onError={handleMediaError}
-            />
-            {!isMediaLoading && (
-              <div className="mt-1 flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs flex items-center text-inventu-gray hover:text-white"
-                  onClick={openMediaInNewTab}
-                >
-                  <ExternalLink size={12} className="mr-1" />
-                  Abrir em nova aba
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-        
-        {message.audioData && isAudio && !isLoading && !mediaError && (
-          <div className="mt-2 relative">
-            {isMediaLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
-                <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
-              </div>
-            )}
-            <audio 
-              src={message.audioData} 
-              controls 
-              className="w-full"
-              onLoadedData={handleMediaLoaded}
-              onError={handleMediaError}
-            />
-          </div>
-        )}
-        
-        {/* Mostrar botão para tentar novamente se houver erro de mídia */}
-        {mediaError && (
-          <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-            <p className="text-sm text-red-400 flex items-start">
-              <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-              <span>Não foi possível carregar a mídia. Isto pode ocorrer devido a erros na API do Luma ou problemas temporários de conexão.</span>
-            </p>
-            <div className="mt-2 flex space-x-2">
-              <button 
-                onClick={retryMediaLoad}
-                className="text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded flex items-center"
-              >
-                <RefreshCw size={12} className="mr-1" />
-                Tentar novamente
-              </button>
-              {mediaUrl && (
-                <button 
-                  onClick={openMediaInNewTab}
-                  className="text-xs bg-inventu-darker/50 hover:bg-inventu-darker/80 text-white py-1 px-2 rounded flex items-center"
-                >
-                  <ExternalLink size={12} className="mr-1" />
-                  Abrir link diretamente
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        <MediaContainer 
+          mediaUrl={mediaUrl}
+          mode={message.mode || 'text'}
+          onMediaLoaded={handleMediaLoaded}
+          onMediaError={handleMediaError}
+          mediaError={mediaError}
+          isMediaLoading={isMediaLoading}
+          retryMediaLoad={retryMediaLoad}
+          openMediaInNewTab={openMediaInNewTab}
+          audioData={message.audioData}
+        />
       </div>
     </div>
   );
