@@ -26,24 +26,39 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
     
     console.log("Formato da chave de teste:", apiKey.startsWith("luma_") ? "luma_" : apiKey.startsWith("luma-") ? "luma-" : "desconhecido");
     
-    // Verificação simplificada com chamada direta à API Luma
-    const response = await fetch("https://api.lumalabs.ai/v1/ping", {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+    // Usar um endpoint mais confiável para validação - o /v1/models geralmente existe em APIs de IA
+    // e retorna uma lista de modelos disponíveis, sendo mais estável para validação
+    try {
+      const response = await fetch("https://api.lumalabs.ai/v1/models", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (response.ok) {
+        console.log("API key validada com sucesso! Status:", response.status);
+        return true;
+      } else {
+        console.error(`Falha na validação da API key: ${response.status} ${response.statusText}`);
+        
+        // Tentar obter detalhes do erro para diagnóstico
+        try {
+          const errorBody = await response.text();
+          console.error("Detalhes do erro de validação:", errorBody);
+        } catch (e) {
+          console.error("Não foi possível ler detalhes do erro");
+        }
+        
+        return false;
       }
-    });
-    
-    if (response.ok) {
-      console.log("API key validada com sucesso!");
-      return true;
-    } else {
-      console.error(`Falha na validação da API key: ${response.status} ${response.statusText}`);
+    } catch (error) {
+      console.error("Erro na requisição de validação:", error);
       return false;
     }
   } catch (error) {
-    console.error("Erro ao configurar teste de API key:", error);
+    console.error("Erro ao validar API key:", error);
     return false;
   }
 }
@@ -61,6 +76,13 @@ export async function generateImage(
     const apiKey = Deno.env.get("LUMA_API_KEY");
     if (!apiKey) {
       throw new Error("LUMA_API_KEY não configurada");
+    }
+    
+    // Verificar validade da chave antes de prosseguir
+    console.log("Verificando validade da chave antes de gerar imagem...");
+    const isKeyValid = await testApiKey(apiKey);
+    if (!isKeyValid) {
+      throw new Error("A chave API da Luma é inválida ou expirou");
     }
     
     // Parâmetros para a requisição
@@ -87,7 +109,7 @@ export async function generateImage(
       const errorText = await response.text();
       console.error("Erro na API Luma (status):", response.status, response.statusText);
       console.error("Detalhes do erro:", errorText);
-      throw new Error(`Erro na API Luma: ${response.status} ${response.statusText}`);
+      throw new Error(`Erro na API Luma: ${response.status} ${response.statusText} - ${errorText}`);
     }
     
     const generation = await response.json();
@@ -184,6 +206,13 @@ export async function generateVideo(
       throw new Error("LUMA_API_KEY não configurada");
     }
     
+    // Verificar validade da chave antes de prosseguir
+    console.log("Verificando validade da chave antes de gerar vídeo...");
+    const isKeyValid = await testApiKey(apiKey);
+    if (!isKeyValid) {
+      throw new Error("A chave API da Luma é inválida ou expirou");
+    }
+    
     // Configurar parâmetros para a solicitação de vídeo
     const requestBody: any = {
       prompt: prompt,
@@ -213,7 +242,7 @@ export async function generateVideo(
       const errorText = await response.text();
       console.error("Erro na API Luma (status):", response.status, response.statusText);
       console.error("Detalhes do erro:", errorText);
-      throw new Error(`Erro na API Luma: ${response.status} ${response.statusText}`);
+      throw new Error(`Erro na API Luma: ${response.status} ${response.statusText} - ${errorText}`);
     }
     
     const generation = await response.json();

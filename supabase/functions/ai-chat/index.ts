@@ -63,7 +63,8 @@ async function handleAIChat(req: Request): Promise<Response> {
           );
         }
         
-        // Testar a validade da chave API
+        // Testar a validade da chave API sem falhar a função principal
+        // para conseguir mais informações para diagnóstico
         console.log("Testando validade da chave API Luma...");
         try {
           const isValid = await lumaService.testApiKey(apiKey);
