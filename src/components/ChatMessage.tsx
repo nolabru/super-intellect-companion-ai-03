@@ -155,6 +155,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           retryMediaLoad={retryMediaLoad}
           openMediaInNewTab={openMediaInNewTab}
           audioData={message.audioData}
+          prompt={isUser ? message.content : ''}
         />
       </div>
     </div>

@@ -1,8 +1,10 @@
+
 import React from 'react';
-import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Loader2, RefreshCw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ChatMode } from '../ModeSelector';
+import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 interface MediaContainerProps {
   mediaUrl: string | null;
@@ -14,6 +16,7 @@ interface MediaContainerProps {
   retryMediaLoad: () => void;
   openMediaInNewTab: () => void;
   audioData?: string;
+  prompt?: string;
 }
 
 const MediaContainer: React.FC<MediaContainerProps> = ({
@@ -25,11 +28,29 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   isMediaLoading,
   retryMediaLoad,
   openMediaInNewTab,
-  audioData
+  audioData,
+  prompt = ''
 }) => {
   const isImage = mode === 'image';
   const isVideo = mode === 'video';
   const isAudio = mode === 'audio';
+  const { saveMediaItem } = useMediaGallery();
+  
+  const handleSaveToGallery = async () => {
+    const url = mediaUrl || audioData || '';
+    if (!url) {
+      toast.error('Não há mídia para salvar');
+      return;
+    }
+    
+    const mediaType = isImage ? 'image' : isVideo ? 'video' : 'audio';
+    const promptText = prompt || 'Sem descrição';
+    
+    const saved = await saveMediaItem(url, mediaType, promptText);
+    if (saved) {
+      toast.success(`${mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Áudio'} salva na galeria`);
+    }
+  };
   
   if (mediaError) {
     return (
@@ -80,6 +101,15 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
             <Button
               variant="ghost"
               size="sm"
+              className="text-xs flex items-center text-inventu-gray hover:text-white mr-2"
+              onClick={handleSaveToGallery}
+            >
+              <Save size={12} className="mr-1" />
+              Salvar na galeria
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-xs flex items-center text-inventu-gray hover:text-white"
               onClick={openMediaInNewTab}
             >
@@ -112,6 +142,15 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
             <Button
               variant="ghost"
               size="sm"
+              className="text-xs flex items-center text-inventu-gray hover:text-white mr-2"
+              onClick={handleSaveToGallery}
+            >
+              <Save size={12} className="mr-1" />
+              Salvar na galeria
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-xs flex items-center text-inventu-gray hover:text-white"
               onClick={openMediaInNewTab}
             >
@@ -139,6 +178,19 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           onLoadedData={onMediaLoaded}
           onError={onMediaError}
         />
+        {!isMediaLoading && (
+          <div className="mt-1 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs flex items-center text-inventu-gray hover:text-white"
+              onClick={handleSaveToGallery}
+            >
+              <Save size={12} className="mr-1" />
+              Salvar na galeria
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
