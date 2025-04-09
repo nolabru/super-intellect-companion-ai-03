@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -29,10 +28,10 @@ async function handleAIChat(req: Request): Promise<Response> {
       content: "Não foi possível processar sua solicitação."
     };
     
-    // Mostrar o valor da API KEY da Luma (primeiro 5 caracteres)
+    // Verificando a API KEY da Luma (primeiros 5 caracteres)
     const apiKey = Deno.env.get("LUMA_API_KEY");
     if (apiKey) {
-      console.log(`LUMA_API_KEY encontrada, começa com: ${apiKey.substring(0, 5)}...`);
+      console.log(`LUMA_API_KEY encontrada: ${apiKey.substring(0, 5)}...`);
     } else {
       console.log("LUMA_API_KEY não encontrada nas variáveis de ambiente");
       if (modelId.includes("luma")) {
@@ -154,26 +153,14 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       let friendlyError = `Erro ao processar solicitação: ${errorMessage}`;
       
-      // Customize error message based on model/mode
-      if (modelId.includes("gpt")) {
-        if (errorMessage.includes("API key")) {
-          friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada ou é inválida. Por favor, verifique suas configurações.";
-        } else if (errorMessage.includes("429")) {
-          friendlyError = "Limite de requisições excedido na API do OpenAI. Por favor, tente novamente mais tarde.";
-        }
-      } else if (modelId.includes("claude")) {
-        if (errorMessage.includes("API key")) {
-          friendlyError = "Erro de configuração: A chave API da Anthropic não está configurada ou é inválida. Por favor, verifique suas configurações.";
-        } else if (errorMessage.includes("429")) {
-          friendlyError = "Limite de requisições excedido na API da Anthropic. Por favor, tente novamente mais tarde.";
-        } else if (errorMessage.includes("not_found_error") || errorMessage.includes("model:")) {
-          friendlyError = "O modelo Claude especificado não está disponível. Estamos utilizando o Claude 3 Haiku como alternativa.";
-        }
-      } else if (modelId.includes("luma")) {
-        if (errorMessage.includes("API key")) {
-          friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada ou é inválida. Por favor, verifique suas configurações.";
+      // Mensagens de erro específicas
+      if (modelId.includes("luma")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("Authorization")) {
+          friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
-          friendlyError = "O endpoint da API Luma não foi encontrado. A API pode ter sido atualizada. Verifique a documentação mais recente.";
+          friendlyError = "Erro na API Luma: Endpoint não encontrado. A API pode ter sido atualizada.";
+        } else {
+          friendlyError = `Erro na geração do ${mode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
         }
       }
       
