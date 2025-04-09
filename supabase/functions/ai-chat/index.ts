@@ -29,28 +29,40 @@ async function handleAIChat(req: Request): Promise<Response> {
       content: "Não foi possível processar sua solicitação."
     };
     
-    // Verificando a API KEY da Luma (primeiros 5 caracteres)
-    const apiKey = Deno.env.get("LUMA_API_KEY");
-    if (apiKey) {
-      console.log(`LUMA_API_KEY encontrada: ${apiKey.substring(0, 5)}...`);
-    } else {
-      console.log("LUMA_API_KEY não encontrada nas variáveis de ambiente");
-      if (modelId.includes("luma")) {
-        return new Response(
-          JSON.stringify({
-            content: "Chave API da Luma não configurada no servidor. Por favor, configure a chave LUMA_API_KEY nas variáveis de ambiente.",
-            error: "LUMA_API_KEY não configurada",
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
-          }
-        );
-      }
-    }
-    
     // Process based on model and mode
     try {
+      // Verificação específica para modelos Luma
+      if (modelId.includes("luma")) {
+        try {
+          // Verificar a API KEY da Luma
+          const apiKey = Deno.env.get("LUMA_API_KEY");
+          if (!apiKey) {
+            return new Response(
+              JSON.stringify({
+                content: "Chave API da Luma não configurada no servidor. Por favor, configure a chave LUMA_API_KEY nas variáveis de ambiente.",
+                error: "LUMA_API_KEY não configurada",
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          }
+          console.log(`LUMA_API_KEY encontrada: ${apiKey.substring(0, 5)}...`);
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "LUMA_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
+      }
+      
       // Special check for OpenAI models
       if (modelId.includes("gpt")) {
         try {
