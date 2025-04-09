@@ -13,12 +13,19 @@ interface ResponseData {
   files?: string[];
 }
 
-// Define a logger function to write to a log file
+// Enhanced error logging function with detailed information
 function logError(errorType: string, details: any) {
-  console.error(`AI-CHAT ERROR [${errorType}]:`, JSON.stringify(details, null, 2));
+  const timestamp = new Date().toISOString();
+  const errorLog = {
+    timestamp,
+    type: errorType,
+    details: details
+  };
+  
+  console.error(`AI-CHAT ERROR [${errorType}] [${timestamp}]:`, JSON.stringify(errorLog, null, 2));
 }
 
-// Function to handle requests with retries
+// Function to handle requests with retries and exponential backoff
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
@@ -31,9 +38,9 @@ async function fetchWithRetry(
     try {
       const response = await fetch(url, options);
       
-      // If we get a 429 (Too Many Requests), wait and retry
-      if (response.status === 429) {
-        console.log(`Rate limited (attempt ${attempt + 1}/${maxRetries}), waiting before retry...`);
+      // If we get a 429 (Too Many Requests) or 5xx (Server Error), wait and retry
+      if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+        console.log(`Request failed with status ${response.status} (attempt ${attempt + 1}/${maxRetries}), waiting before retry...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)));
         continue;
       }
@@ -58,7 +65,7 @@ async function generateLumaVideo(
   params: any = {},
   imageUrl?: string
 ): Promise<ResponseData> {
-  console.log("Iniciando geração de vídeo Luma AI com parâmetros:", params);
+  console.log("Iniciando geração de vídeo Luma AI com parâmetros:", JSON.stringify(params, null, 2));
   
   const apiKey = Deno.env.get("LUMA_API_KEY");
   if (!apiKey) {
@@ -94,7 +101,7 @@ async function generateLumaVideo(
     };
   }
   
-  console.log(`Enviando requisição para Luma AI (${isImageToVideo ? 'Image-to-Video' : 'Text-to-Video'}):`, payload);
+  console.log(`Enviando requisição para Luma AI (${isImageToVideo ? 'Image-to-Video' : 'Text-to-Video'}):`, JSON.stringify(payload, null, 2));
   
   try {
     // Create generation
@@ -114,13 +121,21 @@ async function generateLumaVideo(
     
     if (!generationResponse.ok) {
       const errorText = await generationResponse.text();
-      const errorDetails = `Erro ao criar geração Luma AI: ${generationResponse.status} ${errorText}`;
+      const status = generationResponse.status;
+      const errorDetails = `Erro ao criar geração Luma AI: ${status} ${errorText}`;
       logError("API_ERROR", { 
-        status: generationResponse.status, 
+        status: status, 
         response: errorText,
         requestPayload: payload 
       });
-      throw new Error(errorDetails);
+      
+      if (status === 401) {
+        throw new Error("API Key inválida ou expirada. Verifique suas credenciais Luma AI.");
+      } else if (status === 400) {
+        throw new Error(`Erro na requisição: ${errorText}`);
+      } else {
+        throw new Error(errorDetails);
+      }
     }
     
     const generationData = await generationResponse.json();
@@ -134,7 +149,7 @@ async function generateLumaVideo(
     
     console.log("Geração Luma AI iniciada com ID:", generationId);
     
-    // Poll for completion (up to 3 minutes)
+    // Poll for completion (up to 5 minutes)
     let videoUrl: string | null = null;
     let completed = false;
     let attempts = 0;
@@ -159,22 +174,24 @@ async function generateLumaVideo(
         );
         
         if (!statusResponse.ok) {
-          console.error(`Erro ao verificar status: ${statusResponse.status}`);
+          const errorText = await statusResponse.text();
+          console.error(`Erro ao verificar status: ${statusResponse.status} - ${errorText}`);
           // Continue polling despite error
           await new Promise(resolve => setTimeout(resolve, 10000));
           continue;
         }
         
         const statusData = await statusResponse.json();
-        console.log(`Status atual: ${statusData.state}`);
+        console.log(`Status atual: ${statusData.state} (tentativa ${attempts}/${maxAttempts})`);
         
         if (statusData.state === "completed") {
           completed = true;
           videoUrl = statusData.assets?.video || null;
           console.log("Geração concluída com sucesso, URL do vídeo:", videoUrl);
         } else if (statusData.state === "failed") {
-          const error = `Geração falhou: ${statusData.failure_reason || "Motivo desconhecido"}`;
-          logError("GENERATION_ERROR", { id: generationId, reason: statusData.failure_reason });
+          const failureReason = statusData.failure_reason || "Motivo desconhecido";
+          const error = `Geração falhou: ${failureReason}`;
+          logError("GENERATION_ERROR", { id: generationId, reason: failureReason });
           throw new Error(error);
         } else {
           // Still processing, wait 10 seconds
@@ -182,6 +199,11 @@ async function generateLumaVideo(
         }
       } catch (error) {
         console.error("Erro ao verificar status:", error);
+        logError("STATUS_CHECK_ERROR", { 
+          id: generationId, 
+          attempt: attempts, 
+          error: error instanceof Error ? error.message : String(error) 
+        });
         // Wait and continue
         await new Promise(resolve => setTimeout(resolve, 10000));
       }
@@ -189,7 +211,7 @@ async function generateLumaVideo(
     
     if (!completed) {
       const error = "Tempo limite excedido aguardando a geração do vídeo";
-      logError("TIMEOUT_ERROR", { id: generationId });
+      logError("TIMEOUT_ERROR", { id: generationId, attempts });
       throw new Error(error);
     }
     
@@ -199,13 +221,21 @@ async function generateLumaVideo(
       throw new Error(error);
     }
     
+    console.log("Vídeo gerado com sucesso, retornando URL:", videoUrl);
+    
     return {
       content: "Vídeo gerado com sucesso pelo Luma AI.",
       files: [videoUrl]
     };
   } catch (error) {
     // Re-throw the error to be handled by the caller
-    logError("VIDEO_GENERATION_ERROR", { error: error.message, prompt, params });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError("VIDEO_GENERATION_ERROR", { 
+      error: errorMessage, 
+      prompt, 
+      params,
+      imageUrl: imageUrl ? "Present" : "Not provided" 
+    });
     throw error;
   }
 }
@@ -215,7 +245,7 @@ async function generateLumaImage(
   prompt: string,
   params: any = {}
 ): Promise<ResponseData> {
-  console.log("Iniciando geração de imagem Luma AI com parâmetros:", params);
+  console.log("Iniciando geração de imagem Luma AI com parâmetros:", JSON.stringify(params, null, 2));
   
   const apiKey = Deno.env.get("LUMA_API_KEY");
   if (!apiKey) {
@@ -238,7 +268,7 @@ async function generateLumaImage(
     payload.aspect_ratio = params.aspectRatio;
   }
   
-  console.log("Enviando requisição para geração de imagem Luma AI:", payload);
+  console.log("Enviando requisição para geração de imagem Luma AI:", JSON.stringify(payload, null, 2));
   
   try {
     // Create generation
@@ -258,13 +288,21 @@ async function generateLumaImage(
     
     if (!generationResponse.ok) {
       const errorText = await generationResponse.text();
-      const errorDetails = `Erro ao criar geração de imagem Luma AI: ${generationResponse.status} ${errorText}`;
+      const status = generationResponse.status;
+      const errorDetails = `Erro ao criar geração de imagem Luma AI: ${status} ${errorText}`;
       logError("API_ERROR", { 
-        status: generationResponse.status, 
+        status: status, 
         response: errorText,
         requestPayload: payload 
       });
-      throw new Error(errorDetails);
+      
+      if (status === 401) {
+        throw new Error("API Key inválida ou expirada. Verifique suas credenciais Luma AI.");
+      } else if (status === 400) {
+        throw new Error(`Erro na requisição: ${errorText}`);
+      } else {
+        throw new Error(errorDetails);
+      }
     }
     
     const generationData = await generationResponse.json();
@@ -303,22 +341,24 @@ async function generateLumaImage(
         );
         
         if (!statusResponse.ok) {
-          console.error(`Erro ao verificar status de imagem: ${statusResponse.status}`);
+          const errorText = await statusResponse.text();
+          console.error(`Erro ao verificar status de imagem: ${statusResponse.status} - ${errorText}`);
           // Continue polling despite error
           await new Promise(resolve => setTimeout(resolve, 6000));
           continue;
         }
         
         const statusData = await statusResponse.json();
-        console.log(`Status atual da imagem: ${statusData.state}`);
+        console.log(`Status atual da imagem: ${statusData.state} (tentativa ${attempts}/${maxAttempts})`);
         
         if (statusData.state === "completed") {
           completed = true;
           imageUrl = statusData.assets?.image || null;
           console.log("Geração de imagem concluída com sucesso, URL:", imageUrl);
         } else if (statusData.state === "failed") {
-          const error = `Geração de imagem falhou: ${statusData.failure_reason || "Motivo desconhecido"}`;
-          logError("GENERATION_ERROR", { id: generationId, reason: statusData.failure_reason });
+          const failureReason = statusData.failure_reason || "Motivo desconhecido";
+          const error = `Geração de imagem falhou: ${failureReason}`;
+          logError("GENERATION_ERROR", { id: generationId, reason: failureReason });
           throw new Error(error);
         } else {
           // Still processing, wait 6 seconds
@@ -326,6 +366,11 @@ async function generateLumaImage(
         }
       } catch (error) {
         console.error("Erro ao verificar status de imagem:", error);
+        logError("STATUS_CHECK_ERROR", { 
+          id: generationId, 
+          attempt: attempts, 
+          error: error instanceof Error ? error.message : String(error) 
+        });
         // Wait and continue
         await new Promise(resolve => setTimeout(resolve, 6000));
       }
@@ -333,7 +378,7 @@ async function generateLumaImage(
     
     if (!completed) {
       const error = "Tempo limite excedido aguardando a geração da imagem";
-      logError("TIMEOUT_ERROR", { id: generationId });
+      logError("TIMEOUT_ERROR", { id: generationId, attempts });
       throw new Error(error);
     }
     
@@ -343,13 +388,16 @@ async function generateLumaImage(
       throw new Error(error);
     }
     
+    console.log("Imagem gerada com sucesso, retornando URL:", imageUrl);
+    
     return {
       content: "Imagem gerada com sucesso pelo Luma AI.",
       files: [imageUrl]
     };
   } catch (error) {
     // Re-throw the error to be handled by the caller
-    logError("IMAGE_GENERATION_ERROR", { error: error.message, prompt, params });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError("IMAGE_GENERATION_ERROR", { error: errorMessage, prompt, params });
     throw error;
   }
 }
@@ -361,12 +409,30 @@ async function handleAIChat(req: Request): Promise<Response> {
     console.log(`Recebida solicitação para modelo ${modelId} no modo ${mode}`, {
       contentLength: content?.length,
       filesCount: files?.length,
-      params
+      paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none'
     });
     
     let response: ResponseData = {
       content: "Não foi possível processar sua solicitação."
     };
+    
+    // Validate API key for Luma models
+    if (modelId.includes("luma")) {
+      const apiKey = Deno.env.get("LUMA_API_KEY");
+      if (!apiKey) {
+        logError("MISSING_API_KEY", { model: modelId, mode });
+        return new Response(
+          JSON.stringify({
+            content: "Erro: A chave de API do Luma não está configurada. Por favor, configure esta chave nas configurações do projeto.",
+            error: "LUMA_API_KEY não configurada",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+    }
     
     // Process based on model and mode
     if (modelId.includes("luma")) {

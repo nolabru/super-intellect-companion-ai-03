@@ -28,6 +28,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isVideo = message.mode === 'video';
   const isError = message.error;
   
+  // Estado para rastrear erros de carregamento de mídia
+  const [mediaError, setMediaError] = React.useState(false);
+  
   const renderModeIcon = () => {
     switch (message.mode) {
       case 'image':
@@ -88,6 +91,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     }
     return null;
   };
+
+  // Função para lidar com erros de mídia
+  const handleMediaError = (e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement | HTMLAudioElement>) => {
+    console.error(`Erro ao carregar mídia (${message.mode}):`, mediaUrl);
+    setMediaError(true);
+    e.currentTarget.style.display = 'none';
+  };
+
+  // Função para tentar novamente o carregamento de mídia
+  const retryMediaLoad = () => {
+    setMediaError(false);
+  };
   
   return (
     <div className={cn(
@@ -138,45 +153,49 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         {renderVideoLoading()}
         
         {/* Renderizar mídia se estiver presente */}
-        {mediaUrl && message.mode === 'image' && !isLoading && (
+        {mediaUrl && message.mode === 'image' && !isLoading && !mediaError && (
           <div className="mt-2">
             <img 
               src={mediaUrl} 
               alt="Imagem gerada" 
               className="max-w-full rounded-lg max-h-80 object-contain" 
-              onError={(e) => {
-                console.error("Erro ao carregar imagem:", mediaUrl);
-                e.currentTarget.style.display = 'none';
-              }}
+              onError={handleMediaError}
             />
           </div>
         )}
         
-        {mediaUrl && message.mode === 'video' && !isLoading && (
+        {mediaUrl && message.mode === 'video' && !isLoading && !mediaError && (
           <div className="mt-2">
             <video 
               src={mediaUrl} 
               controls 
               className="max-w-full rounded-lg max-h-80"
-              onError={(e) => {
-                console.error("Erro ao carregar vídeo:", mediaUrl);
-                e.currentTarget.style.display = 'none';
-              }}
+              onError={handleMediaError}
             />
           </div>
         )}
         
-        {message.audioData && message.mode === 'audio' && !isLoading && (
+        {message.audioData && message.mode === 'audio' && !isLoading && !mediaError && (
           <div className="mt-2">
             <audio 
               src={message.audioData} 
               controls 
               className="w-full"
-              onError={(e) => {
-                console.error("Erro ao carregar áudio:", message.audioData);
-                e.currentTarget.style.display = 'none';
-              }} 
+              onError={handleMediaError}
             />
+          </div>
+        )}
+        
+        {/* Mostrar botão para tentar novamente se houver erro de mídia */}
+        {mediaError && (
+          <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+            <p className="text-sm text-red-400">Não foi possível carregar a mídia.</p>
+            <button 
+              onClick={retryMediaLoad}
+              className="mt-2 text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded"
+            >
+              Tentar novamente
+            </button>
           </div>
         )}
       </div>
