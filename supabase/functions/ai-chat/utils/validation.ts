@@ -1,6 +1,8 @@
 
 // Validate required API key
 export function validateApiKey(apiKeyName: string, apiKey: string | undefined): void {
+  console.log(`Validating ${apiKeyName}...`);
+  
   if (!apiKey) {
     const error = `${apiKeyName} não está configurada. Por favor, adicione esta chave nas variáveis de ambiente da sua função Edge.`;
     console.error(error);
@@ -18,8 +20,8 @@ export function validateApiKey(apiKeyName: string, apiKey: string | undefined): 
     console.warn(`Aviso: ${apiKeyName} parece não estar no formato esperado (esperado: 'luma_...')`);
   }
   
-  // Remover mensagem de log com valor parcial da chave para evitar problemas de segurança
-  console.log(`Usando ${apiKeyName}`);
+  // Log seguro para confirmar que a chave foi encontrada (sem expor a chave completa)
+  console.log(`${apiKeyName} encontrada. Primeiros 5 caracteres: ${apiKey.substring(0, 5)}...`);
 }
 
 // Função para verificar se uma string é vazia ou whitespace

@@ -12,16 +12,24 @@ export interface ResponseData {
 
 // Função para criar e gerenciar o cliente Luma
 function createLumaClient() {
-  const apiKey = Deno.env.get("LUMA_API_KEY");
-  validateApiKey("LUMA_API_KEY", apiKey);
-  
-  // Cria cliente com a API key do ambiente
-  const client = new LumaAI({
-    authToken: apiKey,
-    maxRetries: 2,
-  });
-  
-  return client;
+  try {
+    const apiKey = Deno.env.get("LUMA_API_KEY");
+    console.log("Attempting to get LUMA_API_KEY from environment...");
+    
+    validateApiKey("LUMA_API_KEY", apiKey);
+    
+    // Cria cliente com a API key do ambiente
+    console.log("Inicializando cliente LumaAI SDK...");
+    const client = new LumaAI({
+      authToken: apiKey,
+      maxRetries: 2,
+    });
+    
+    return client;
+  } catch (error) {
+    console.error("Erro ao criar cliente Luma:", error);
+    throw error;
+  }
 }
 
 // Função para testar a chave API da Luma
@@ -35,12 +43,14 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
     }
     
     // Criar um cliente de teste com a API key fornecida
+    console.log("Criando cliente de teste Luma com a chave fornecida...");
     const testClient = new LumaAI({
       authToken: apiKey,
     });
     
     // Tente fazer uma requisição simples para validar a API key
     try {
+      console.log("Tentando listar gerações para validar API key...");
       await testClient.generations.list();
       console.log("API key validada com sucesso!");
       return true;

@@ -34,6 +34,15 @@ async function handleAIChat(req: Request): Promise<Response> {
       if (modelId.includes("luma")) {
         // Obter a API KEY da Luma
         const apiKey = Deno.env.get("LUMA_API_KEY");
+        console.log("Verificando variáveis de ambiente disponíveis:");
+        console.log("Variáveis disponíveis:", Object.keys(Deno.env.toObject()).join(", "));
+        
+        // Log para debug
+        console.log("LUMA_API_KEY está definida?", apiKey ? "Sim" : "Não");
+        if (apiKey) {
+          console.log("Formato da chave:", apiKey.startsWith("luma_") ? "Correto (começa com luma_)" : "Incorreto (não começa com luma_)");
+          console.log("Comprimento da chave:", apiKey.length);
+        }
         
         // Verificar se a chave existe
         if (!apiKey || apiKey.trim() === '') {
