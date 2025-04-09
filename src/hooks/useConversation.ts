@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -19,7 +18,8 @@ import {
 } from '@/utils/conversationUtils';
 import { createMessageService } from '@/services/messageService';
 
-export { ConversationType };
+// Use export type for re-exporting types when isolatedModules is enabled
+export type { ConversationType };
 
 export function useConversation() {
   const [messages, setMessages] = useState<MessageType[]>([]);
@@ -28,12 +28,12 @@ export function useConversation() {
   const [conversations, setConversations] = useState<ConversationType[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const apiService = useApiService();
-  const { saveMediaToGallery } = useMediaGallery();
+  const { saveMediaToGallery, saving } = useMediaGallery();
   
-  // Create message service
+  // Create message service with complete mediaGallery object including the 'saving' property
   const messageService = createMessageService(
     apiService,
-    { saveMediaToGallery },
+    { saveMediaToGallery, saving },
     setMessages,
     setError
   );
