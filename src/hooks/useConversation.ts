@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -6,6 +5,7 @@ import { LumaParams } from '@/components/LumaParamsButton';
 import { ChatMode } from '@/components/ModeSelector';
 import { createClient } from '@supabase/supabase-js';
 import { useApiService } from './useApiService';
+import { useMediaGallery } from './useMediaGallery';
 
 // Corrigindo o cliente Supabase com URL e chave anônima
 const supabaseUrl = 'https://vygluorjwehcdigzxbaa.supabase.co';
@@ -26,6 +26,7 @@ export function useConversation() {
   const [conversations, setConversations] = useState<ConversationType[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const apiService = useApiService();
+  const { saveMediaToGallery } = useMediaGallery();
 
   // Função para criar uma nova conversa
   const createNewConversation = async () => {
@@ -192,6 +193,31 @@ export function useConversation() {
         ];
         
         setMessages((prevMessages) => [...prevMessages, ...newMessages]);
+        
+        // Salvar mídias na galeria se existirem
+        if (mode !== 'text') {
+          // Para o modelo da esquerda
+          if (responseLeft.files && responseLeft.files.length > 0) {
+            await saveMediaToGallery(
+              responseLeft.files[0],
+              content,
+              mode,
+              leftModelId,
+              params
+            );
+          }
+          
+          // Para o modelo da direita
+          if (responseRight.files && responseRight.files.length > 0) {
+            await saveMediaToGallery(
+              responseRight.files[0],
+              content,
+              mode,
+              rightModelId,
+              params
+            );
+          }
+        }
       } else {
         // Mensagem única - adicionar mensagem de carregamento
         const loadingId = `loading-${modelId}-${uuidv4()}`;
@@ -250,6 +276,17 @@ export function useConversation() {
           };
           
           setMessages((prevMessages) => [...prevMessages, newMessage]);
+          
+          // Salvar mídia na galeria se existir
+          if (mode !== 'text' && response.files && response.files.length > 0) {
+            await saveMediaToGallery(
+              response.files[0],
+              content,
+              mode,
+              modelId,
+              params
+            );
+          }
         } catch (err) {
           console.error("Erro durante solicitação:", err);
           

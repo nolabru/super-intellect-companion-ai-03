@@ -1,8 +1,10 @@
-import React from 'react';
-import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+
+import React, { useEffect } from 'react';
+import { AlertTriangle, ExternalLink, Loader2, RefreshCw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { ChatMode } from '../ModeSelector';
+import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 interface MediaContainerProps {
   mediaUrl: string | null;
@@ -14,6 +16,8 @@ interface MediaContainerProps {
   retryMediaLoad: () => void;
   openMediaInNewTab: () => void;
   audioData?: string;
+  prompt?: string;
+  modelId?: string;
 }
 
 const MediaContainer: React.FC<MediaContainerProps> = ({
@@ -25,11 +29,30 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   isMediaLoading,
   retryMediaLoad,
   openMediaInNewTab,
-  audioData
+  audioData,
+  prompt = '',
+  modelId
 }) => {
   const isImage = mode === 'image';
   const isVideo = mode === 'video';
   const isAudio = mode === 'audio';
+  const { saveMediaToGallery, saving } = useMediaGallery();
+
+  const handleSaveToGallery = async () => {
+    if (!mediaUrl && !audioData) {
+      toast.error('Não há mídia para salvar na galeria');
+      return;
+    }
+
+    await saveMediaToGallery(
+      mediaUrl || audioData || '',
+      prompt,
+      mode,
+      modelId
+    );
+
+    toast.success('Mídia salva na galeria com sucesso');
+  };
   
   if (mediaError) {
     return (
@@ -76,7 +99,21 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           onError={onMediaError}
         />
         {!isMediaLoading && (
-          <div className="mt-1 flex justify-end">
+          <div className="mt-1 flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs flex items-center text-inventu-gray hover:text-white"
+              onClick={handleSaveToGallery}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 size={12} className="mr-1 animate-spin" />
+              ) : (
+                <Save size={12} className="mr-1" />
+              )}
+              Salvar na galeria
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -108,7 +145,21 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           onError={onMediaError}
         />
         {!isMediaLoading && (
-          <div className="mt-1 flex justify-end">
+          <div className="mt-1 flex justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs flex items-center text-inventu-gray hover:text-white"
+              onClick={handleSaveToGallery}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 size={12} className="mr-1 animate-spin" />
+              ) : (
+                <Save size={12} className="mr-1" />
+              )}
+              Salvar na galeria
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -139,6 +190,24 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           onLoadedData={onMediaLoaded}
           onError={onMediaError}
         />
+        {!isMediaLoading && (
+          <div className="mt-1 flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs flex items-center text-inventu-gray hover:text-white"
+              onClick={handleSaveToGallery}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 size={12} className="mr-1 animate-spin" />
+              ) : (
+                <Save size={12} className="mr-1" />
+              )}
+              Salvar na galeria
+            </Button>
+          </div>
+        )}
       </div>
     );
   }

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X } from 'lucide-react';
+import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
+import { Link, useLocation } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -194,6 +195,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     renameConversation 
   } = useConversation();
   const { user } = useAuth();
+  const location = useLocation();
 
   const handleNewConversation = async () => {
     await createNewConversation();
@@ -218,28 +220,56 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   return (
     <div className="h-full flex flex-col bg-inventu-dark border-r border-inventu-gray/30">
-      <div className="p-4 border-b border-inventu-gray/30 flex items-center gap-2">
-        <Button 
-          onClick={handleNewConversation}
-          className="flex-1 bg-inventu-blue hover:bg-inventu-blue/80 text-white"
-          disabled={!user}
-        >
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nova Conversa
-        </Button>
-        
-        {onToggleSidebar && (
-          <Button
-            onClick={onToggleSidebar}
-            size="icon"
-            variant="ghost"
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-            title="Minimizar menu"
+      <div className="p-4 border-b border-inventu-gray/30">
+        <div className="flex flex-col gap-2">
+          <Button 
+            onClick={handleNewConversation}
+            className="flex-1 bg-inventu-blue hover:bg-inventu-blue/80 text-white"
+            disabled={!user}
           >
-            <ChevronLeft className="h-5 w-5" />
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nova Conversa
           </Button>
-        )}
+          
+          <div className="grid grid-cols-2 gap-2">
+            <Link to="/" className="flex-1">
+              <Button 
+                variant={location.pathname === '/' ? "default" : "outline"}
+                className={`w-full ${location.pathname === '/' 
+                  ? 'bg-inventu-gray text-white' 
+                  : 'border-inventu-gray/30 text-inventu-gray hover:text-white'}`}
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Chat
+              </Button>
+            </Link>
+            
+            <Link to="/gallery" className="flex-1">
+              <Button 
+                variant={location.pathname === '/gallery' ? "default" : "outline"}
+                className={`w-full ${location.pathname === '/gallery' 
+                  ? 'bg-inventu-gray text-white' 
+                  : 'border-inventu-gray/30 text-inventu-gray hover:text-white'}`}
+              >
+                <Image className="mr-2 h-4 w-4" />
+                Galeria
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
+      
+      {onToggleSidebar && (
+        <Button
+          onClick={onToggleSidebar}
+          size="icon"
+          variant="ghost"
+          className="absolute right-2 top-4 text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+          title="Minimizar menu"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+      )}
 
       <div className="flex items-center p-4 text-inventu-gray border-b border-inventu-gray/30">
         <History className="mr-2 h-4 w-4" />
