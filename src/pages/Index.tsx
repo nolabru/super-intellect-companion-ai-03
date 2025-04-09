@@ -23,7 +23,8 @@ const Index: React.FC = () => {
   const { 
     messages, 
     sendMessage, 
-    loading: messagesLoading 
+    loading: messagesLoading,
+    initialLoadDone 
   } = useConversation();
 
   // Quando o modo muda, atualize os modelos para modelos compatíveis com o novo modo
@@ -177,7 +178,7 @@ const Index: React.FC = () => {
                     onModelChange={handleLeftModelChange}
                     availableModels={availableModels}
                     isCompareMode={true}
-                    loading={authLoading || messagesLoading}
+                    loading={authLoading || (messagesLoading && !initialLoadDone)}
                   />
                   {!isLinked && (
                     <div className="p-4 border-t border-inventu-gray/30">
@@ -198,7 +199,7 @@ const Index: React.FC = () => {
                     onModelChange={handleRightModelChange}
                     availableModels={availableModels}
                     isCompareMode={true}
-                    loading={authLoading || messagesLoading}
+                    loading={authLoading || (messagesLoading && !initialLoadDone)}
                   />
                   {!isLinked && (
                     <div className="p-4 border-t border-inventu-gray/30">
@@ -220,7 +221,7 @@ const Index: React.FC = () => {
                   onModelChange={handleLeftModelChange}
                   availableModels={availableModels}
                   isCompareMode={false}
-                  loading={authLoading || messagesLoading}
+                  loading={authLoading || (messagesLoading && !initialLoadDone)}
                 />
               </div>
             )}

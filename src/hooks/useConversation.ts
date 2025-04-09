@@ -9,14 +9,16 @@ import {
   loadMessages,
   handleTitleUpdate
 } from './conversationActions';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function useConversation() {
   const conversationState = useConversationState();
   const messagesState = useConversationMessages();
   
-  // Reference to track if messages are already being loaded
+  // Flag to prevent multiple simultaneous loading operations
   const loadingRef = useRef(false);
+  // Track if initial load has been performed
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   
   const { 
     conversations,
@@ -54,13 +56,16 @@ export function useConversation() {
     handleTitleUpdate.bind(null, conversations, updateConversationTitle)
   );
 
-  // Load messages when conversation changes - com proteção contra loops
+  // Load messages when conversation changes - improved protection against loops
   useEffect(() => {
     if (currentConversationId && !loadingRef.current) {
       console.log(`[useConversation] Current conversation changed to ${currentConversationId}, loading messages`);
       
-      // Definir flag para evitar múltiplas chamadas
+      // Set flag to prevent multiple calls
       loadingRef.current = true;
+      
+      // Important: Clear messages BEFORE loading new ones
+      clearMessages();
       
       loadMessages(
         currentConversationId,
@@ -68,13 +73,22 @@ export function useConversation() {
         setMessages,
         clearMessages,
         setError
-      ).finally(() => {
-        // Resetar flag quando a operação terminar
+      )
+      .then(() => {
+        setInitialLoadDone(true);
+      })
+      .catch((err) => {
+        console.error("[useConversation] Error loading messages:", err);
+        setError(err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens');
+      })
+      .finally(() => {
+        // Always reset loading flag when operation finishes
         loadingRef.current = false;
       });
     } else if (!currentConversationId) {
       console.log('[useConversation] No conversation selected, clearing messages');
       clearMessages();
+      setInitialLoadDone(false);
     }
   }, [currentConversationId, clearMessages, setMessages, setLoading, setError]);
 
@@ -138,6 +152,7 @@ export function useConversation() {
     currentConversationId,
     loading,
     error,
+    initialLoadDone,
     
     // State setters
     setMessages,

@@ -16,7 +16,7 @@ export const loadMessages = async (
     
     setLoading(true);
     
-    // Limpar mensagens antes de carregar novas
+    // Clear messages before loading new ones - this is crucial to prevent duplicates
     clearMessages();
     
     const { data, error } = await loadConversationMessages(conversationId);
@@ -29,7 +29,12 @@ export const loadMessages = async (
     
     if (data) {
       console.log(`[conversationActions] Setting ${data.length} messages from conversation ${conversationId}`);
+      // Double check that messages array is clean before setting new messages
       setMessages(data as MessageType[]);
+    } else {
+      console.log(`[conversationActions] No messages found for conversation ${conversationId}`);
+      // Ensure messages are cleared if no data is found
+      setMessages([]);
     }
     
     return true;
@@ -64,8 +69,9 @@ export const createNewConversation = async (
     
     if (data) {
       console.log('[conversationActions] New conversation created:', data.id);
-      addConversation(data);
+      // Important: Clear messages before adding new conversation
       clearMessages();
+      addConversation(data);
       return true;
     }
     
