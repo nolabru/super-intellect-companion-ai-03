@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { ChatMode } from './ModeSelector';
-import { Text, Image, Video, AudioLines, Loader2 } from 'lucide-react';
+import { Text, Image, Video, AudioLines, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export interface MessageType {
   id: string;
@@ -26,10 +27,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.sender === 'user';
   const isLoading = message.loading || message.id?.startsWith('loading-');
   const isVideo = message.mode === 'video';
+  const isImage = message.mode === 'image';
+  const isAudio = message.mode === 'audio';
   const isError = message.error;
   
   // Estado para rastrear erros de carregamento de mídia
   const [mediaError, setMediaError] = React.useState(false);
+  const [isMediaLoading, setIsMediaLoading] = React.useState(true);
   
   const renderModeIcon = () => {
     switch (message.mode) {
@@ -92,16 +96,26 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     return null;
   };
 
+  // Função para lidar com carregamento de mídia bem-sucedido
+  const handleMediaLoaded = () => {
+    setIsMediaLoading(false);
+    console.log(`Mídia (${message.mode}) carregada com sucesso:`, mediaUrl);
+  };
+
   // Função para lidar com erros de mídia
   const handleMediaError = (e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement | HTMLAudioElement>) => {
     console.error(`Erro ao carregar mídia (${message.mode}):`, mediaUrl);
     setMediaError(true);
+    setIsMediaLoading(false);
     e.currentTarget.style.display = 'none';
+    toast.error(`Não foi possível carregar a ${message.mode === 'image' ? 'imagem' : message.mode === 'video' ? 'vídeo' : 'mídia'}`);
   };
 
   // Função para tentar novamente o carregamento de mídia
   const retryMediaLoad = () => {
     setMediaError(false);
+    setIsMediaLoading(true);
+    toast.info(`Tentando carregar ${message.mode === 'image' ? 'imagem' : message.mode === 'video' ? 'vídeo' : 'mídia'} novamente...`);
   };
   
   return (
@@ -139,7 +153,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           </div>
         ) : isError ? (
           <div className="flex flex-col">
-            <div className="text-red-400 font-medium mb-1">Erro</div>
+            <div className="text-red-400 font-medium mb-1 flex items-center">
+              <AlertTriangle size={16} className="mr-1" /> Erro
+            </div>
             <div>{displayContent}</div>
             <div className="mt-2 text-sm text-red-400/80">
               Por favor, tente novamente ou escolha um parâmetro diferente.
@@ -153,34 +169,52 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         {renderVideoLoading()}
         
         {/* Renderizar mídia se estiver presente */}
-        {mediaUrl && message.mode === 'image' && !isLoading && !mediaError && (
-          <div className="mt-2">
+        {mediaUrl && isImage && !isLoading && !mediaError && (
+          <div className="mt-2 relative">
+            {isMediaLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
+                <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
+              </div>
+            )}
             <img 
               src={mediaUrl} 
               alt="Imagem gerada" 
               className="max-w-full rounded-lg max-h-80 object-contain" 
+              onLoad={handleMediaLoaded}
               onError={handleMediaError}
             />
           </div>
         )}
         
-        {mediaUrl && message.mode === 'video' && !isLoading && !mediaError && (
-          <div className="mt-2">
+        {mediaUrl && isVideo && !isLoading && !mediaError && (
+          <div className="mt-2 relative">
+            {isMediaLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
+                <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
+              </div>
+            )}
             <video 
               src={mediaUrl} 
               controls 
               className="max-w-full rounded-lg max-h-80"
+              onLoadedData={handleMediaLoaded}
               onError={handleMediaError}
             />
           </div>
         )}
         
-        {message.audioData && message.mode === 'audio' && !isLoading && !mediaError && (
-          <div className="mt-2">
+        {message.audioData && isAudio && !isLoading && !mediaError && (
+          <div className="mt-2 relative">
+            {isMediaLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
+                <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
+              </div>
+            )}
             <audio 
               src={message.audioData} 
               controls 
               className="w-full"
+              onLoadedData={handleMediaLoaded}
               onError={handleMediaError}
             />
           </div>
@@ -189,11 +223,15 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         {/* Mostrar botão para tentar novamente se houver erro de mídia */}
         {mediaError && (
           <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-            <p className="text-sm text-red-400">Não foi possível carregar a mídia.</p>
+            <p className="text-sm text-red-400 flex items-start">
+              <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
+              <span>Não foi possível carregar a mídia. Isto pode ocorrer devido a erros na API do Luma ou problemas temporários de conexão.</span>
+            </p>
             <button 
               onClick={retryMediaLoad}
-              className="mt-2 text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded"
+              className="mt-2 text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded flex items-center"
             >
+              <RefreshCw size={12} className="mr-1" />
               Tentar novamente
             </button>
           </div>

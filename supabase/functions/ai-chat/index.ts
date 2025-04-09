@@ -104,9 +104,9 @@ async function generateLumaVideo(
   console.log(`Enviando requisição para Luma AI (${isImageToVideo ? 'Image-to-Video' : 'Text-to-Video'}):`, JSON.stringify(payload, null, 2));
   
   try {
-    // Create generation
+    // Create generation - FIXED URL to use the v2 endpoint
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/dream-machine/v1/generations",
+      "https://api.lumalabs.ai/v2/video-generations",
       {
         method: "POST",
         headers: {
@@ -133,6 +133,8 @@ async function generateLumaVideo(
         throw new Error("API Key inválida ou expirada. Verifique suas credenciais Luma AI.");
       } else if (status === 400) {
         throw new Error(`Erro na requisição: ${errorText}`);
+      } else if (status === 404) {
+        throw new Error("Endpoint de API não encontrado. Verifique a documentação Luma AI para endpoints corretos.");
       } else {
         throw new Error(errorDetails);
       }
@@ -161,8 +163,9 @@ async function generateLumaVideo(
       try {
         console.log(`Verificando status da geração (tentativa ${attempts}/${maxAttempts})...`);
         
+        // FIXED URL to use the v2 endpoint
         const statusResponse = await fetchWithRetry(
-          `https://api.lumalabs.ai/dream-machine/v1/generations/${generationId}`,
+          `https://api.lumalabs.ai/v2/video-generations/${generationId}`,
           {
             method: "GET",
             headers: {
@@ -186,7 +189,8 @@ async function generateLumaVideo(
         
         if (statusData.state === "completed") {
           completed = true;
-          videoUrl = statusData.assets?.video || null;
+          // FIXED: Access video URL using the correct path in response
+          videoUrl = statusData.video?.url || statusData.assets?.video || null;
           console.log("Geração concluída com sucesso, URL do vídeo:", videoUrl);
         } else if (statusData.state === "failed") {
           const failureReason = statusData.failure_reason || "Motivo desconhecido";
@@ -271,9 +275,9 @@ async function generateLumaImage(
   console.log("Enviando requisição para geração de imagem Luma AI:", JSON.stringify(payload, null, 2));
   
   try {
-    // Create generation
+    // Create generation - FIXED URL to use the v2 endpoint
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/dream-machine/v1/image-generations",
+      "https://api.lumalabs.ai/v2/image-generations",
       {
         method: "POST",
         headers: {
@@ -300,6 +304,8 @@ async function generateLumaImage(
         throw new Error("API Key inválida ou expirada. Verifique suas credenciais Luma AI.");
       } else if (status === 400) {
         throw new Error(`Erro na requisição: ${errorText}`);
+      } else if (status === 404) {
+        throw new Error("Endpoint de API não encontrado. Verifique a documentação Luma AI para endpoints corretos.");
       } else {
         throw new Error(errorDetails);
       }
@@ -328,8 +334,9 @@ async function generateLumaImage(
       try {
         console.log(`Verificando status da geração de imagem (tentativa ${attempts}/${maxAttempts})...`);
         
+        // FIXED URL to use the v2 endpoint
         const statusResponse = await fetchWithRetry(
-          `https://api.lumalabs.ai/dream-machine/v1/image-generations/${generationId}`,
+          `https://api.lumalabs.ai/v2/image-generations/${generationId}`,
           {
             method: "GET",
             headers: {
@@ -353,7 +360,8 @@ async function generateLumaImage(
         
         if (statusData.state === "completed") {
           completed = true;
-          imageUrl = statusData.assets?.image || null;
+          // FIXED: Access image URL using the correct path in response
+          imageUrl = statusData.image?.url || statusData.assets?.image || null;
           console.log("Geração de imagem concluída com sucesso, URL:", imageUrl);
         } else if (statusData.state === "failed") {
           const failureReason = statusData.failure_reason || "Motivo desconhecido";
@@ -431,6 +439,34 @@ async function handleAIChat(req: Request): Promise<Response> {
             status: 500,
           }
         );
+      }
+      
+      // Test API key validity
+      try {
+        const testResponse = await fetch("https://api.lumalabs.ai/v2/me", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+          },
+        });
+        
+        if (!testResponse.ok) {
+          const errorText = await testResponse.text();
+          logError("INVALID_API_KEY", { status: testResponse.status, response: errorText });
+          return new Response(
+            JSON.stringify({
+              content: "Erro: A chave de API do Luma é inválida ou expirou. Por favor, verifique sua chave API.",
+              error: "LUMA_API_KEY inválida",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
+        }
+      } catch (error) {
+        logError("API_KEY_TEST_ERROR", { error: error instanceof Error ? error.message : String(error) });
+        // Continue even if test fails, the actual request might still work
       }
     }
     

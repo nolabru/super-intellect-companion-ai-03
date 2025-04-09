@@ -4,7 +4,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { LumaParams } from '@/components/LumaParamsButton';
 import { ChatMode } from '@/components/ModeSelector';
-import { supabase } from '@/integrations/supabase/client';
+import { createClient } from '@supabase/supabase-js';
+
+// Corrigindo o cliente Supabase com URL e chave anônima
+const supabaseUrl = 'https://vygluorjwehcdigzxbaa.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Z2x1b3Jqd2VoY2RpZ3p4YmFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDI2NjcsImV4cCI6MjA1OTYxODY2N30.uuV_JYIUKuv1rV3-MicDiTT28azOWdhJoVjpHMfzVGg';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export interface ConversationType {
   id: string;
@@ -169,7 +174,8 @@ export function useConversation() {
             timestamp: new Date().toISOString(),
             model: leftModelId,
             mode,
-            files: responseLeft.files
+            files: responseLeft.files,
+            mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
           },
           {
             id: uuidv4(),
@@ -178,7 +184,8 @@ export function useConversation() {
             timestamp: new Date().toISOString(),
             model: rightModelId,
             mode,
-            files: responseRight.files
+            files: responseRight.files,
+            mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
           }
         ];
         
@@ -196,6 +203,10 @@ export function useConversation() {
           } else if (modelId === 'kligin-video') {
             loadingMessage = 'Aguardando processamento do serviço Kligin AI...';
           }
+        } else if (mode === 'image') {
+          if (modelId === 'luma-image') {
+            loadingMessage = 'Conectando ao serviço Luma AI para geração de imagem...';
+          }
         }
         
         const loadingMsg: MessageType = {
@@ -210,53 +221,95 @@ export function useConversation() {
         
         setMessages((prevMessages) => [...prevMessages, loadingMsg]);
         
-        // Enviar para a API
-        const response = await sendToAI(content, mode, modelId, files, params);
-        
-        // Remover mensagem de carregamento
-        setMessages((prevMessages) => 
-          prevMessages.filter(msg => msg.id !== loadingId)
-        );
-        
-        // Adicionar resposta real
-        const newMessage: MessageType = {
-          id: uuidv4(),
-          content: response.content,
-          sender: 'assistant',
-          timestamp: new Date().toISOString(),
-          model: modelId,
-          mode,
-          files: response.files
-        };
-        
-        setMessages((prevMessages) => [...prevMessages, newMessage]);
+        try {
+          // Enviar para a API com timeout de 3 minutos
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("Tempo limite excedido na solicitação")), 180000);
+          });
+          
+          const responsePromise = sendToAI(content, mode, modelId, files, params);
+          const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
+          
+          // Remover mensagem de carregamento
+          setMessages((prevMessages) => 
+            prevMessages.filter(msg => msg.id !== loadingId)
+          );
+          
+          // Adicionar resposta real
+          const newMessage: MessageType = {
+            id: uuidv4(),
+            content: response.content,
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: modelId,
+            mode,
+            files: response.files,
+            mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
+          };
+          
+          setMessages((prevMessages) => [...prevMessages, newMessage]);
+        } catch (err) {
+          console.error("Erro durante solicitação:", err);
+          
+          // Remover mensagem de carregamento
+          setMessages((prevMessages) => 
+            prevMessages.filter(msg => msg.id !== loadingId)
+          );
+          
+          // Adicionar mensagem de erro específica baseada no modo e erro
+          const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
+          let friendlyError = `Ocorreu um erro ao processar sua solicitação. ${errorMsg}`;
+          
+          if (mode === 'video' && modelId.includes('luma')) {
+            friendlyError = `Erro na geração de vídeo: ${errorMsg}. Verifique se a chave API da Luma está configurada corretamente.`;
+          } else if (mode === 'image' && modelId.includes('luma')) {
+            friendlyError = `Erro na geração de imagem: ${errorMsg}. Verifique se a chave API da Luma está configurada corretamente.`;
+          }
+          
+          const errorMessage: MessageType = {
+            id: uuidv4(),
+            content: friendlyError,
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: modelId,
+            mode,
+            error: true
+          };
+          
+          setMessages((prevMessages) => [...prevMessages, errorMessage]);
+          throw err; // Re-throw para ser capturado pelo catch externo
+        }
       }
     } catch (err) {
       console.error('Erro ao enviar mensagem:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao enviar mensagem');
       
-      // Remover mensagens de carregamento
-      setMessages((prevMessages) => 
-        prevMessages.filter(msg => !msg.id?.startsWith('loading-'))
-      );
-      
-      // Adicionar mensagem de erro
-      const errorMessage: MessageType = {
-        id: uuidv4(),
-        content: 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
-        sender: 'assistant',
-        timestamp: new Date().toISOString(),
-        model: modelId,
-        mode,
-        error: true
-      };
-      
-      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      // Se ainda não adicionamos uma mensagem de erro (no bloco try interno), adicionamos aqui
+      if (!messages.some(msg => msg.error && msg.timestamp > new Date(Date.now() - 5000).toISOString())) {
+        // Remover mensagens de carregamento
+        setMessages((prevMessages) => 
+          prevMessages.filter(msg => !msg.id?.startsWith('loading-'))
+        );
+        
+        // Adicionar mensagem de erro
+        const errorMessage: MessageType = {
+          id: uuidv4(),
+          content: 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: modelId,
+          mode,
+          error: true
+        };
+        
+        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      }
     } finally {
       setLoading(false);
     }
   };
   
+  // Função melhorada para enviar solicitações à API com retry e melhor tratamento de erros
   const sendToAI = async (
     content: string, 
     mode: ChatMode, 
@@ -264,28 +317,48 @@ export function useConversation() {
     files?: string[],
     params?: LumaParams
   ): Promise<{ content: string, files?: string[] }> => {
-    try {
-      // Chamar a Edge Function
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
-          content,
-          mode,
-          modelId,
-          files,
-          params
-        },
-      });
-      
-      if (error) {
-        console.error('Erro ao chamar a Edge Function:', error);
-        throw new Error(`Erro ao chamar a API: ${error.message}`);
+    const maxRetries = 2;
+    let lastError;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Registrar tentativas de retry
+        if (attempt > 0) {
+          console.log(`Tentativa ${attempt}/${maxRetries} de chamar a Edge Function...`);
+        }
+        
+        // Chamar a Edge Function
+        const { data, error } = await supabase.functions.invoke('ai-chat', {
+          body: {
+            content,
+            mode,
+            modelId,
+            files,
+            params
+          },
+        });
+        
+        if (error) {
+          console.error('Erro ao chamar a Edge Function:', error);
+          throw new Error(`Erro ao chamar a API: ${error.message}`);
+        }
+        
+        return data;
+      } catch (err) {
+        console.error(`Erro ao enviar para a API (tentativa ${attempt + 1}/${maxRetries + 1}):`, err);
+        lastError = err;
+        
+        // Se não é a última tentativa, aguardar antes de tentar novamente
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000; // Backoff exponencial
+          console.log(`Aguardando ${delay}ms antes da próxima tentativa...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
       }
-      
-      return data;
-    } catch (err) {
-      console.error('Erro ao enviar para a API:', err);
-      throw err;
     }
+    
+    // Se chegamos aqui, todas as tentativas falharam
+    throw lastError || new Error("Falha após tentativas máximas");
   };
   
   return {
