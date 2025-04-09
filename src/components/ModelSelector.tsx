@@ -16,7 +16,8 @@ export interface ModelOption {
   displayName: string; // Nome simplificado para exibição
   provider: 'openai' | 'anthropic' | 'google' | 'kligin' | 'ideogram' | 'minimax' | 'elevenlabs' | 'luma';
   modes: ChatMode[];
-  canGenerateImages?: boolean; // Novo campo para indicar se o modelo pode gerar imagens
+  canGenerateImages?: boolean; // Campo para indicar se o modelo pode gerar imagens
+  canGenerateAudio?: boolean; // Novo campo para indicar se o modelo pode gerar áudio
 }
 
 // Definir todos os modelos disponíveis com seus respectivos provedores
@@ -45,7 +46,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   // Modelos de áudio
   { id: 'whisper-large-v3', name: 'Whisper Large v3', displayName: 'ChatGPT Audio', provider: 'openai', modes: ['audio'] },
   { id: 'deepgram-nova-2', name: 'Deepgram Nova 2', displayName: 'Deepgram', provider: 'openai', modes: ['audio'] },
-  { id: 'eleven-labs', name: 'ElevenLabs', displayName: 'ElevenLabs', provider: 'elevenlabs', modes: ['audio'] }
+  { id: 'eleven-labs', name: 'ElevenLabs', displayName: 'ElevenLabs', provider: 'elevenlabs', modes: ['audio'], canGenerateAudio: true }
 ];
 
 // Função para obter modelos disponíveis por modo
@@ -57,6 +58,12 @@ export function getModelsByMode(mode: ChatMode): ModelOption[] {
 export function canModelGenerateImages(modelId: string): boolean {
   const model = AVAILABLE_MODELS.find(m => m.id === modelId);
   return !!model?.canGenerateImages;
+}
+
+// Função para verificar se um modelo pode gerar áudio
+export function canModelGenerateAudio(modelId: string): boolean {
+  const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+  return !!model?.canGenerateAudio;
 }
 
 interface ModelSelectorProps {
@@ -95,6 +102,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
             {model.displayName}
             {model.canGenerateImages && mode === 'image' && (
               <span className="ml-1 text-xs text-green-500"> (gerador)</span>
+            )}
+            {model.canGenerateAudio && mode === 'audio' && (
+              <span className="ml-1 text-xs text-indigo-400"> (text-to-speech)</span>
             )}
           </SelectItem>
         ))}

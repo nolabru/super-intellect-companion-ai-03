@@ -8,6 +8,7 @@ import * as lumaService from "./services/models/luma.ts";
 import * as mockService from "./services/models/mock.ts";
 import * as openaiService from "./services/models/openai.ts";
 import * as anthropicService from "./services/models/anthropic.ts";
+import * as elevenlabsService from "./services/models/elevenlabs.ts";
 
 // Define response type
 interface ResponseData {
@@ -77,6 +78,25 @@ async function handleAIChat(req: Request): Promise<Response> {
             JSON.stringify({
               content: error.message,
               error: "ANTHROPIC_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
+      }
+      
+      // Verificação para ElevenLabs
+      if (modelId.includes("eleven")) {
+        try {
+          // Verificar a chave API do ElevenLabs antes de prosseguir
+          elevenlabsService.verifyApiKey();
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "ELEVENLABS_API_KEY não configurada",
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -168,6 +188,23 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
+      // ElevenLabs models
+      else if (modelId === "eleven-labs" && mode === "audio") {
+        console.log("Iniciando geração de áudio com ElevenLabs");
+        // Extraindo parâmetros
+        const voiceParams = {
+          voiceId: params?.voiceId || "EXAVITQu4vr4xnSDxMaL", // Sarah por padrão
+          model: params?.model || "eleven_multilingual_v2",
+          stability: params?.stability || 0.5,
+          similarityBoost: params?.similarityBoost || 0.75,
+          style: params?.style || 0,
+          speakerBoost: params?.speakerBoost || true
+        };
+        
+        response = await elevenlabsService.generateSpeech(content, voiceParams);
+        console.log("Geração de áudio concluída com sucesso");
+      }
+      
       // Simulation for other models
       else if (modelId.includes("ideogram") && mode === "image") {
         response = mockService.generateImage(content, "Ideogram");
@@ -198,6 +235,12 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = `O processamento do ${mode === 'video' ? 'vídeo' : 'imagem'} excedeu o tempo limite. A geração pode estar em andamento no servidor do Luma AI, verifique seu painel de controle.`;
         } else {
           friendlyError = `Erro na geração do ${mode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
+        }
+      } else if (modelId.includes("eleven")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("xi-api-key") || errorMessage.includes("authenticate")) {
+          friendlyError = "Erro de configuração: A chave API do ElevenLabs não está configurada corretamente. Por favor, verifique suas configurações.";
+        } else {
+          friendlyError = `Erro na geração de áudio com ElevenLabs: ${errorMessage}`;
         }
       }
       
