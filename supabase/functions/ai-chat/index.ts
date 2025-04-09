@@ -40,43 +40,27 @@ async function handleAIChat(req: Request): Promise<Response> {
       Deno.env.set("LUMA_API_KEY", apiKeyToUse);
     }
     
-    // Verify OpenAI API key if using OpenAI models
-    if (modelId.includes("gpt")) {
-      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
-      if (!openaiApiKey) {
-        return new Response(
-          JSON.stringify({
-            content: "Erro: OPENAI_API_KEY não está configurada. Por favor, adicione sua chave API do OpenAI nas configurações.",
-            error: "OPENAI_API_KEY não configurada",
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
-    }
-    
-    // Validate API key for Luma models
-    if (modelId.includes("luma")) {
-      const isValidKey = await lumaService.testApiKey(apiKeyToUse);
-      
-      if (!isValidKey) {
-        return new Response(
-          JSON.stringify({
-            content: "Erro: A chave de API do Luma é inválida ou expirou. Por favor, verifique sua chave API.",
-            error: "LUMA_API_KEY inválida",
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
-    }
-    
     // Process based on model and mode
     try {
+      // Verificação específica para modelos OpenAI
+      if (modelId.includes("gpt")) {
+        try {
+          // Verifica a chave OpenAI antes de prosseguir
+          openaiService.verifyApiKey();
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "OPENAI_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 500,
+            }
+          );
+        }
+      }
+      
       // Luma AI models
       if (modelId === "luma-video" && mode === "video") {
         console.log("Iniciando processamento de vídeo com Luma AI");

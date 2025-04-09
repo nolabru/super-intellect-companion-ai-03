@@ -9,6 +9,15 @@ export interface ResponseData {
   files?: string[];
 }
 
+// Função para verificar se a chave API do OpenAI está configurada
+export function verifyApiKey(): string {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY não está configurada. Por favor, adicione sua chave API do OpenAI nas configurações.");
+  }
+  return apiKey;
+}
+
 // Função para gerar resposta de texto com OpenAI
 export async function generateText(
   prompt: string,
@@ -16,8 +25,7 @@ export async function generateText(
 ): Promise<ResponseData> {
   try {
     // Validar API key da OpenAI
-    const apiKey = Deno.env.get("OPENAI_API_KEY");
-    validateApiKey("OPENAI_API_KEY", apiKey);
+    const apiKey = verifyApiKey();
     
     console.log(`Iniciando solicitação de texto ao modelo ${modelId} da OpenAI`);
     
@@ -60,8 +68,7 @@ export async function processImage(
 ): Promise<ResponseData> {
   try {
     // Validar API key da OpenAI
-    const apiKey = Deno.env.get("OPENAI_API_KEY");
-    validateApiKey("OPENAI_API_KEY", apiKey);
+    const apiKey = verifyApiKey();
     
     console.log(`Iniciando análise de imagem com ${modelId}, URL da imagem: ${imageUrl}`);
     
