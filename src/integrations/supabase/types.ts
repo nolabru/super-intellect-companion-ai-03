@@ -70,7 +70,9 @@ export type Database = {
         Row: {
           content: string
           conversation_id: string
+          files: string[] | null
           id: string
+          media_url: string | null
           mode: string
           model: string | null
           sender: string
@@ -79,7 +81,9 @@ export type Database = {
         Insert: {
           content: string
           conversation_id: string
+          files?: string[] | null
           id?: string
+          media_url?: string | null
           mode: string
           model?: string | null
           sender: string
@@ -88,7 +92,9 @@ export type Database = {
         Update: {
           content?: string
           conversation_id?: string
+          files?: string[] | null
           id?: string
+          media_url?: string | null
           mode?: string
           model?: string | null
           sender?: string
