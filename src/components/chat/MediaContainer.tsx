@@ -143,6 +143,8 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           className="max-w-full rounded-lg max-h-80"
           onLoadedData={onMediaLoaded}
           onError={onMediaError}
+          autoPlay={false}
+          preload="metadata"
         />
         {!isMediaLoading && (
           <div className="mt-1 flex justify-end gap-2">
@@ -189,6 +191,8 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           className="w-full"
           onLoadedData={onMediaLoaded}
           onError={onMediaError}
+          autoPlay={false}
+          preload="metadata"
         />
         {!isMediaLoading && (
           <div className="mt-1 flex justify-end">

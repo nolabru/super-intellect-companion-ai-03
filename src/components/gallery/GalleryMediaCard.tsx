@@ -125,6 +125,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
               onLoadedData={handleMediaLoad}
               onError={handleMediaError}
               autoPlay={false}
+              preload="metadata"
             />
           </div>
         );
@@ -147,6 +148,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
                 onLoadedData={handleMediaLoad}
                 onError={handleMediaError}
                 autoPlay={false}
+                preload="metadata"
               />
             )}
           </div>

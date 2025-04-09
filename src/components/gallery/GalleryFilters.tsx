@@ -29,6 +29,10 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
     let newTypes: string[];
     
     if (filters.mediaType.includes(type)) {
+      // Não permitir desmarcar o último filtro selecionado
+      if (filters.mediaType.length === 1) {
+        return;
+      }
       newTypes = filters.mediaType.filter(t => t !== type);
     } else {
       newTypes = [...filters.mediaType, type];

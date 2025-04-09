@@ -71,7 +71,12 @@ const MediaGallery: React.FC = () => {
 
       // Agora definimos explicitamente o tipo
       setMedia(data as MediaItem[] || []);
-      setFilteredMedia(data as MediaItem[] || []);
+      
+      // Garantir que o filtro padrão seja aplicado
+      setFilters({
+        mediaType: ['image'],
+        dateRange: { from: undefined, to: undefined },
+      });
     } catch (error) {
       console.error('Erro ao buscar mídias:', error);
       toast({
@@ -86,6 +91,15 @@ const MediaGallery: React.FC = () => {
 
   const applyFilters = () => {
     let filtered = [...media];
+
+    // Garantir que sempre temos pelo menos um tipo de mídia selecionado
+    if (filters.mediaType.length === 0) {
+      setFilters({
+        ...filters,
+        mediaType: ['image'],
+      });
+      return;
+    }
 
     // Filtrar por tipo de mídia
     if (filters.mediaType.length > 0) {
