@@ -49,8 +49,8 @@ export async function generateText(
     });
     
     // Extract response content
-    const content = response.content.length > 0 
-      ? response.content[0].text 
+    const content = response.content.length > 0 && response.content[0].type === "text"
+      ? response.content[0].text
       : "Não foi possível gerar uma resposta.";
     
     console.log(`Resposta Anthropic recebida (${content.length} caracteres)`);
@@ -120,8 +120,8 @@ export async function processImage(
     });
     
     // Extract response content
-    const content = response.content.length > 0 
-      ? response.content[0].text 
+    const content = response.content.length > 0 && response.content[0].type === "text"
+      ? response.content[0].text
       : "Não foi possível analisar a imagem.";
     
     console.log(`Análise de imagem concluída (${content.length} caracteres)`);
