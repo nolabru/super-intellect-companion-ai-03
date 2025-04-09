@@ -140,14 +140,16 @@ async function handleAIChat(req: Request): Promise<Response> {
         response = await openaiService.generateText(content, modelId);
         console.log("Processamento de texto concluído com sucesso");
       }
-      else if (modelId.includes("gpt") && mode === "image") {
-        console.log("Iniciando processamento de imagem com OpenAI");
-        const imageUrl = files && files.length > 0 ? files[0] : undefined;
-        if (imageUrl) {
-          response = await openaiService.processImage(content, imageUrl, modelId);
-        } else {
-          response = { content: "Erro: Necessário fornecer uma imagem para análise." };
-        }
+      else if (modelId.includes("gpt") && mode === "image" && files && files.length > 0) {
+        console.log("Iniciando processamento de análise de imagem com OpenAI");
+        const imageUrl = files[0];
+        response = await openaiService.processImage(content, imageUrl, modelId);
+        console.log("Análise de imagem concluída com sucesso");
+      }
+      else if (modelId.includes("gpt") && mode === "image" && (!files || files.length === 0)) {
+        console.log("Iniciando geração de imagem com DALL-E via OpenAI");
+        response = await openaiService.generateImage(content, "dall-e-3");
+        console.log("Geração de imagem concluída com sucesso");
       }
       
       // Anthropic models

@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, X, AudioLines } from 'lucide-react';
+import { Send, Paperclip, X, AudioLines, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
 import LumaParamsButton, { LumaParams, defaultLumaParams } from './LumaParamsButton';
+import { canModelGenerateImages } from './ModelSelector';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: string[], params?: any) => void;
@@ -20,6 +21,8 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
   const [lumaParams, setLumaParams] = useState<LumaParams>(defaultLumaParams);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isImageGenerationModel = mode === 'image' && model && canModelGenerateImages(model);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -163,6 +166,21 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
         </div>
       )}
       
+      {/* Dica para geração de imagem */}
+      {isImageGenerationModel && files.length === 0 && (
+        <div className="mb-2 p-2 bg-blue-900/20 border border-blue-500/30 rounded-lg flex items-start">
+          <Lightbulb className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-gray-300">
+              Este modelo pode gerar imagens a partir de sua descrição. Basta descrever a imagem desejada sem adicionar um arquivo.
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Exemplo: "Crie uma imagem de um pato usando óculos de sol na praia" ou "Gere uma ilustração de montanhas ao pôr do sol"
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Previews dos arquivos */}
       {filePreviewUrls.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
@@ -205,7 +223,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
               handleSendMessage();
             }
           }}
-          placeholder={model ? `Pergunte ao ${model}...` : "Digite sua mensagem..."}
+          placeholder={
+            isImageGenerationModel
+              ? "Descreva a imagem que você deseja gerar..."
+              : model 
+                ? `Pergunte ao ${model}...` 
+                : "Digite sua mensagem..."
+          }
           className="w-full pl-4 pr-20 py-2 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none"
           rows={1}
           disabled={isSending}

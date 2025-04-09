@@ -16,6 +16,7 @@ export interface ModelOption {
   displayName: string; // Nome simplificado para exibição
   provider: 'openai' | 'anthropic' | 'google' | 'kligin' | 'ideogram' | 'minimax' | 'elevenlabs' | 'luma';
   modes: ChatMode[];
+  canGenerateImages?: boolean; // Novo campo para indicar se o modelo pode gerar imagens
 }
 
 // Definir todos os modelos disponíveis com seus respectivos provedores
@@ -26,6 +27,7 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   { id: 'llama-3', name: 'Llama 3', displayName: 'Google AI', provider: 'google', modes: ['text'] },
   
   // Modelos de imagem
+  { id: 'gpt-4o', name: 'GPT-4o (DALL-E)', displayName: 'ChatGPT DALL-E', provider: 'openai', modes: ['image'], canGenerateImages: true },
   { id: 'gpt-4o-vision', name: 'GPT-4o Vision', displayName: 'ChatGPT Vision', provider: 'openai', modes: ['image'] },
   { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', displayName: 'Claude', provider: 'anthropic', modes: ['image'] },
   { id: 'gemini-pro-vision', name: 'Gemini Pro Vision', displayName: 'Google AI', provider: 'google', modes: ['image'] },
@@ -49,6 +51,12 @@ export const AVAILABLE_MODELS: ModelOption[] = [
 // Função para obter modelos disponíveis por modo
 export function getModelsByMode(mode: ChatMode): ModelOption[] {
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
+}
+
+// Função para verificar se um modelo pode gerar imagens
+export function canModelGenerateImages(modelId: string): boolean {
+  const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+  return !!model?.canGenerateImages;
 }
 
 interface ModelSelectorProps {
@@ -85,6 +93,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         {availableModels.map(model => (
           <SelectItem key={model.id} value={model.id}>
             {model.displayName}
+            {model.canGenerateImages && mode === 'image' && (
+              <span className="ml-1 text-xs text-green-500"> (gerador)</span>
+            )}
           </SelectItem>
         ))}
       </SelectContent>

@@ -107,3 +107,50 @@ export async function processImage(
     throw new Error(`Erro ao analisar imagem com OpenAI: ${errorMessage}`);
   }
 }
+
+// Function to generate image with DALL-E
+export async function generateImage(
+  prompt: string,
+  modelId: string = "dall-e-3",
+  size: string = "1024x1024"
+): Promise<ResponseData> {
+  try {
+    // Validate OpenAI API key
+    const apiKey = verifyApiKey();
+    validateApiKey("OPENAI_API_KEY", apiKey);
+    
+    console.log(`Iniciando geração de imagem com DALL-E. Prompt: "${prompt.substring(0, 50)}..."`);
+    
+    // Instantiate OpenAI client with API key
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
+    
+    // Call image generation API
+    const response = await openai.images.generate({
+      model: modelId === "gpt-4o" ? "dall-e-3" : modelId,
+      prompt: prompt,
+      n: 1,
+      size: size as "1024x1024" | "1792x1024" | "1024x1792",
+      quality: "standard",
+      response_format: "url",
+    });
+    
+    // Extract image URL
+    const imageUrl = response.data[0]?.url;
+    if (!imageUrl) {
+      throw new Error("Não foi possível obter a URL da imagem gerada.");
+    }
+    
+    console.log(`Imagem gerada com sucesso. URL: ${imageUrl}`);
+    
+    return {
+      content: `Imagem gerada com sucesso.\n\n[Imagem gerada]: ${imageUrl}`,
+      files: [imageUrl]
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError("OPENAI_IMAGE_GENERATION_ERROR", { error: errorMessage, model: modelId });
+    throw new Error(`Erro ao gerar imagem com DALL-E: ${errorMessage}`);
+  }
+}
