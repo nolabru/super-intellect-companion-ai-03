@@ -15,7 +15,7 @@ export function useConversation() {
   const conversationState = useConversationState();
   const messagesState = useConversationMessages();
   
-  // Referência para evitar loops infinitos
+  // Reference to track if messages are already being loaded
   const loadingRef = useRef(false);
   
   const { 
