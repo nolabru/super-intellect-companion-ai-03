@@ -277,8 +277,11 @@ export function useConversation() {
       
       // Update conversation title if this is the first message
       if (messages.length === 0) {
-        const { success, newTitle } = await updateConversationTitle(conversationId, content, conversations);
-        if (success && newTitle) {
+        const result = await updateConversationTitle(conversationId, content, conversations);
+        
+        // Fix: Properly access the newTitle property from the data object
+        if (result.success && result.data && result.data.newTitle) {
+          const newTitle = result.data.newTitle;
           console.log(`Updated conversation title to "${newTitle}"`);
           setConversations(prev => 
             prev.map(conv => conv.id === conversationId ? { ...conv, title: newTitle } : conv)
