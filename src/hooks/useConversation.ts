@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -152,7 +151,6 @@ export function useConversation() {
     try {
       setConversationState(prev => ({ ...prev, loading: true }));
       
-      // Clear messages before creating a new conversation
       console.log('[useConversation] Creating new conversation, clearing messages first');
       clearMessages();
       
@@ -172,6 +170,8 @@ export function useConversation() {
           currentConversationId: data.id,
           conversations: [data, ...prev.conversations]
         }));
+        
+        clearMessages();
       }
     } catch (err) {
       console.error('[useConversation] Error creating conversation:', err);
