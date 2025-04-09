@@ -1,7 +1,7 @@
 
 import { fetchWithRetry } from "../../utils/logging.ts";
 import { logError } from "../../utils/logging.ts";
-import { validateApiKey } from "../../utils/validation.ts";
+import { validateApiKey, ensureValue } from "../../utils/validation.ts";
 
 // Define response type
 export interface ResponseData {
@@ -18,9 +18,10 @@ export async function generateImage(
   
   const apiKey = Deno.env.get("LUMA_API_KEY");
   validateApiKey("LUMA_API_KEY", apiKey);
-  console.log(`Usando LUMA_API_KEY: ${apiKey ? apiKey.substring(0, 7) + "..." : "Não encontrada"}`);
   
   try {
+    ensureValue(prompt, "O prompt para geração de imagem não pode estar vazio");
+    
     // Configurar o payload da requisição com base na documentação oficial da Luma
     const payload = {
       prompt: prompt,
@@ -48,7 +49,13 @@ export async function generateImage(
     );
     
     if (!generationResponse.ok) {
-      const errorText = await generationResponse.text();
+      let errorText;
+      try {
+        errorText = await generationResponse.text();
+      } catch (e) {
+        errorText = "Não foi possível ler o corpo da resposta de erro";
+      }
+      
       console.error(`Erro na resposta da API Luma (${generationResponse.status}):`, errorText);
       throw new Error(`Erro na API Luma: ${generationResponse.status} - ${errorText}`);
     }
@@ -89,7 +96,13 @@ export async function generateImage(
       );
       
       if (!statusResponse.ok) {
-        const errorText = await statusResponse.text();
+        let errorText;
+        try {
+          errorText = await statusResponse.text();
+        } catch (e) {
+          errorText = "Não foi possível ler o corpo da resposta de erro";
+        }
+        
         console.error(`Erro ao verificar status da imagem (${statusResponse.status}):`, errorText);
         await new Promise(resolve => setTimeout(resolve, 5000));
         continue;
@@ -145,9 +158,10 @@ export async function generateVideo(
   
   const apiKey = Deno.env.get("LUMA_API_KEY");
   validateApiKey("LUMA_API_KEY", apiKey);
-  console.log(`Usando LUMA_API_KEY: ${apiKey ? apiKey.substring(0, 7) + "..." : "Não encontrada"}`);
   
   try {
+    ensureValue(prompt, "O prompt para geração de vídeo não pode estar vazio");
+    
     // Configurar o payload da requisição com base na documentação oficial da Luma
     const payload: any = {
       prompt: prompt,
@@ -178,7 +192,13 @@ export async function generateVideo(
     );
     
     if (!generationResponse.ok) {
-      const errorText = await generationResponse.text();
+      let errorText;
+      try {
+        errorText = await generationResponse.text();
+      } catch (e) {
+        errorText = "Não foi possível ler o corpo da resposta de erro";
+      }
+      
       console.error(`Erro na resposta da API Luma (${generationResponse.status}):`, errorText);
       throw new Error(`Erro na API Luma: ${generationResponse.status} - ${errorText}`);
     }
@@ -219,7 +239,13 @@ export async function generateVideo(
       );
       
       if (!statusResponse.ok) {
-        const errorText = await statusResponse.text();
+        let errorText;
+        try {
+          errorText = await statusResponse.text();
+        } catch (e) {
+          errorText = "Não foi possível ler o corpo da resposta de erro";
+        }
+        
         console.error(`Erro ao verificar status do vídeo (${statusResponse.status}):`, errorText);
         await new Promise(resolve => setTimeout(resolve, 5000));
         continue;
@@ -270,6 +296,11 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
   try {
     console.log("Validando a API key da Luma...");
     
+    if (!apiKey || apiKey.trim() === '') {
+      console.error("API key vazia");
+      return false;
+    }
+    
     // Endpoint para testar a API key
     const testResponse = await fetch("https://api.lumalabs.ai/profile", {
       method: "GET",
@@ -279,7 +310,20 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
     });
     
     if (!testResponse.ok) {
-      console.error(`Erro ao validar API key: ${testResponse.status}`);
+      const errorBody = await testResponse.text();
+      console.error(`Erro ao validar API key (${testResponse.status}): ${errorBody}`);
+      return false;
+    }
+    
+    // Tentar ler o corpo da resposta para garantir que é válida
+    try {
+      const responseBody = await testResponse.json();
+      if (!responseBody) {
+        console.error("Resposta vazia ao validar API key");
+        return false;
+      }
+    } catch (parseError) {
+      console.error("Erro ao processar resposta da validação da API key:", parseError);
       return false;
     }
     

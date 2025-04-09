@@ -3,7 +3,7 @@ import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import { AVAILABLE_MODELS } from './ModelSelector';
 
 interface ChatInterfaceProps {
@@ -73,6 +73,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const videoLoadingMessage = filteredMessages.find(msg => 
     msg.id?.startsWith('loading-') && 
     msg.mode === 'video' && 
+    msg.model === model
+  );
+
+  const hasErrorMessage = filteredMessages.some(msg => 
+    msg.error && 
+    msg.model === model
+  );
+
+  const errorMessage = filteredMessages.find(msg => 
+    msg.error && 
     msg.model === model
   );
 
@@ -168,6 +178,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     }
                   `}
                 </style>
+              </div>
+            )}
+            
+            {hasErrorMessage && errorMessage && (
+              <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg my-4">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-red-400 font-medium">
+                      Erro ao processar a solicitação
+                    </p>
+                    <p className="text-sm text-gray-300 mt-1">
+                      {errorMessage.content}
+                    </p>
+                    {(model === 'luma-video' || model === 'luma-image') && (
+                      <p className="text-xs text-gray-400 mt-2">
+                        Verifique se a chave API da Luma está configurada corretamente nas variáveis de ambiente da Edge Function.
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </>
