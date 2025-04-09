@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, X, AudioLines, Lightbulb } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
 import LumaParamsButton, { LumaParams, defaultLumaParams } from './LumaParamsButton';
 import { canModelGenerateImages } from './ModelSelector';
+import FilePreview from './chat/FilePreview';
+import ImageGenerationTip from './chat/ImageGenerationTip';
+import MessageInput from './chat/MessageInput';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: string[], params?: any) => void;
@@ -13,25 +14,21 @@ interface ChatInputProps {
   mode?: ChatMode;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode = 'text' }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ 
+  onSendMessage, 
+  model = '', 
+  mode = 'text' 
+}) => {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [lumaParams, setLumaParams] = useState<LumaParams>(defaultLumaParams);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isImageGenerationModel = mode === 'image' && model && canModelGenerateImages(model);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [message]);
-
-  // Limpar arquivos quando o modo muda
+  
+  // Clear files when mode changes
   useEffect(() => {
     setFiles([]);
     setFilePreviewUrls([]);
@@ -55,9 +52,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
         setMessage('');
         setFiles([]);
         setFilePreviewUrls([]);
-        if (textareaRef.current) {
-          textareaRef.current.style.height = 'auto';
-        }
       } catch (error) {
         console.error('Erro ao enviar mensagem:', error);
         toast({
@@ -87,7 +81,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
     
     if (!selectedFiles || selectedFiles.length === 0) return;
     
-    // Verificar se o modo corresponde ao tipo de arquivo
+    // Check if the mode corresponds to the file type
     const file = selectedFiles[0];
     let isValidFile = false;
     
@@ -98,7 +92,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
     } else if (mode === 'audio' && file.type.startsWith('audio/')) {
       isValidFile = true;
     } else if (mode === 'text') {
-      // No modo texto, não permitimos envio de arquivos
+      // No file uploads in text mode
       toast({
         title: "Alerta",
         description: "Envio de arquivos não disponível no modo texto.",
@@ -115,14 +109,14 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
       return;
     }
     
-    // Limitar a um único arquivo
+    // Limit to a single file
     setFiles([file]);
     
-    // Gerar preview do arquivo
+    // Generate file preview
     const fileUrl = URL.createObjectURL(file);
     setFilePreviewUrls([fileUrl]);
     
-    // Limpar o input de arquivo
+    // Clear the file input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -131,7 +125,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
     
-    // Liberar URL de preview
+    // Release URL
     if (filePreviewUrls[index]) {
       URL.revokeObjectURL(filePreviewUrls[index]);
     }
@@ -139,11 +133,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
     setFilePreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Função para fazer upload dos arquivos (simulação)
+  // Function to upload files (simulation)
   const uploadFiles = async (): Promise<string[]> => {
-    // Em uma implementação real, você enviaria os arquivos para um servidor ou serviço de armazenamento
-    // e retornaria as URLs dos arquivos enviados.
-    // Por enquanto, vamos apenas simular isso retornando as URLs locais dos arquivos
+    // In a real implementation, you would send the files to a server or storage service
+    // and return the URLs of the uploaded files.
+    // For now, we'll just simulate this by returning the local file URLs
     
     return filePreviewUrls;
   };
@@ -166,116 +160,29 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, model = '', mode =
         </div>
       )}
       
-      {/* Dica para geração de imagem */}
-      {isImageGenerationModel && files.length === 0 && (
-        <div className="mb-2 p-2 bg-blue-900/20 border border-blue-500/30 rounded-lg flex items-start">
-          <Lightbulb className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm text-gray-300">
-              Este modelo pode gerar imagens a partir de sua descrição. Basta descrever a imagem desejada sem adicionar um arquivo.
-            </p>
-            <p className="text-xs text-gray-400 mt-1">
-              Exemplo: "Crie uma imagem de um pato usando óculos de sol na praia" ou "Gere uma ilustração de montanhas ao pôr do sol"
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Image generation tip */}
+      <ImageGenerationTip show={isImageGenerationModel && files.length === 0} />
       
-      {/* Previews dos arquivos */}
-      {filePreviewUrls.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {filePreviewUrls.map((url, index) => (
-            <div 
-              key={index} 
-              className="relative rounded-md overflow-hidden h-20 w-20 border border-inventu-gray/30"
-            >
-              {mode === 'image' && (
-                <img src={url} alt="Preview" className="h-full w-full object-cover" />
-              )}
-              {mode === 'video' && (
-                <video src={url} className="h-full w-full object-cover" />
-              )}
-              {mode === 'audio' && (
-                <div className="flex items-center justify-center h-full w-full bg-inventu-darker">
-                  <AudioLines className="h-10 w-10 text-inventu-gray" />
-                </div>
-              )}
-              <button 
-                onClick={() => removeFile(index)}
-                className="absolute top-0 right-0 bg-black/50 p-1 rounded-bl-md"
-              >
-                <X className="h-4 w-4 text-white" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* File previews */}
+      <FilePreview 
+        fileUrls={filePreviewUrls} 
+        mode={mode} 
+        onRemoveFile={removeFile} 
+      />
       
-      {/* Input de mensagem */}
-      <div className="relative rounded-lg border border-inventu-gray/30 bg-inventu-card">
-        <textarea
-          ref={textareaRef}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
-            }
-          }}
-          placeholder={
-            isImageGenerationModel
-              ? "Descreva a imagem que você deseja gerar..."
-              : model 
-                ? `Pergunte ao ${model}...` 
-                : "Digite sua mensagem..."
-          }
-          className="w-full pl-4 pr-20 py-2 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none"
-          rows={1}
-          disabled={isSending}
-        />
-        <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
-          {/* Input oculto para arquivos */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileChange}
-            className="hidden"
-            accept={
-              mode === 'image' ? 'image/*' : 
-              mode === 'video' ? 'video/*' : 
-              mode === 'audio' ? 'audio/*' : 
-              ''
-            }
-          />
-          
-          {/* Mostrar o botão de anexo apenas nos modos que permitem */}
-          {mode !== 'text' && (
-            <Button 
-              onClick={handleAttachment}
-              variant="ghost" 
-              size="icon"
-              className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-              title={`Anexar ${mode}`}
-              disabled={isSending}
-            >
-              <Paperclip className="h-5 w-5" />
-            </Button>
-          )}
-          
-          <Button 
-            onClick={handleSendMessage}
-            variant="ghost" 
-            size="icon"
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-            disabled={isSending}
-          >
-            <Send className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
+      {/* Message input */}
+      <MessageInput
+        message={message}
+        setMessage={setMessage}
+        onSendMessage={handleSendMessage}
+        onAttachment={handleAttachment}
+        isImageGenerationModel={isImageGenerationModel}
+        isSending={isSending}
+        mode={mode}
+        model={model}
+      />
       
-      {/* Indicador de envio */}
+      {/* Sending indicator */}
       {isSending && (
         <div className="text-xs text-center mt-1 text-inventu-gray animate-pulse">
           Enviando mensagem...
