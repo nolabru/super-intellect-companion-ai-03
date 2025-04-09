@@ -88,15 +88,21 @@ export const createMessageService = (
       // Save message in database
       await saveMessageToDatabase(newMessage, conversationId);
       
-      // Save media to gallery if exists
+      // Save media to gallery if exists - isso garante que o vídeo seja persistente
       if (mode !== 'text' && response.files && response.files.length > 0) {
-        await mediaGallery.saveMediaToGallery(
-          response.files[0],
-          content,
-          mode,
-          modelId,
-          params
-        );
+        try {
+          await mediaGallery.saveMediaToGallery(
+            response.files[0],
+            content,
+            mode,
+            modelId,
+            params
+          );
+          console.log('[messageService] Mídia salva na galeria com sucesso');
+        } catch (err) {
+          console.error('[messageService] Erro ao salvar mídia na galeria:', err);
+          // Continuar mesmo que falhe ao salvar na galeria
+        }
       }
       
       return { success: true, error: null };
@@ -215,28 +221,40 @@ export const createMessageService = (
       // Save messages to database
       await Promise.all(newMessages.map(msg => saveMessageToDatabase(msg, conversationId)));
       
-      // Save media to gallery if exists
+      // Save media to gallery if exists - isso garante que os vídeos sejam persistentes
       if (mode !== 'text') {
         // For left model
         if (responseLeft.files && responseLeft.files.length > 0) {
-          await mediaGallery.saveMediaToGallery(
-            responseLeft.files[0],
-            content,
-            mode,
-            leftModelId,
-            params
-          );
+          try {
+            await mediaGallery.saveMediaToGallery(
+              responseLeft.files[0],
+              content,
+              mode,
+              leftModelId,
+              params
+            );
+            console.log('[messageService] Mídia do modelo esquerdo salva na galeria com sucesso');
+          } catch (err) {
+            console.error('[messageService] Erro ao salvar mídia do modelo esquerdo na galeria:', err);
+            // Continuar mesmo que falhe ao salvar na galeria
+          }
         }
         
         // For right model
         if (responseRight.files && responseRight.files.length > 0) {
-          await mediaGallery.saveMediaToGallery(
-            responseRight.files[0],
-            content,
-            mode,
-            rightModelId,
-            params
-          );
+          try {
+            await mediaGallery.saveMediaToGallery(
+              responseRight.files[0],
+              content,
+              mode,
+              rightModelId,
+              params
+            );
+            console.log('[messageService] Mídia do modelo direito salva na galeria com sucesso');
+          } catch (err) {
+            console.error('[messageService] Erro ao salvar mídia do modelo direito na galeria:', err);
+            // Continuar mesmo que falhe ao salvar na galeria
+          }
         }
       }
       

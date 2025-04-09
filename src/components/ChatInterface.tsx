@@ -66,18 +66,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
   
+  // Identificar se há uma mensagem de carregamento de vídeo
   const hasVideoLoadingMessage = filteredMessages.some(msg => 
     msg.id?.startsWith('loading-') && 
     msg.mode === 'video' && 
     msg.model === model
   );
   
-  const videoLoadingMessage = filteredMessages.find(msg => 
-    msg.id?.startsWith('loading-') && 
-    msg.mode === 'video' && 
-    msg.model === model
-  );
-
+  // Obter a mensagem de erro, se houver
   const hasErrorMessage = filteredMessages.some(msg => 
     msg.error && 
     msg.model === model
@@ -88,9 +84,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     msg.model === model
   );
 
-  const isKliginVideo = model === 'kligin-video';
   const isLumaVideo = model === 'luma-video';
-  const isLumaImage = model === 'luma-image';
   
   // Verificar se alguma mensagem contém ID de geração da Luma
   const lumaGenIdMessage = filteredMessages.find(msg => 
@@ -168,62 +162,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <ChatMessage key={message.id} message={message} />
             ))}
             
-            {hasVideoLoadingMessage && (
-              <div className="text-center p-3 bg-inventu-darker/20 rounded-lg my-4 text-gray-300">
-                <p className="text-sm font-medium">
-                  {isKliginVideo ? 
-                    "A geração de vídeo pode levar até 3 minutos para ser concluída." :
-                    isLumaVideo ?
-                    "A Luma AI está processando sua solicitação de vídeo. Isso pode levar alguns minutos." :
-                    "Processando sua solicitação de vídeo..."
-                  }
-                </p>
-                <p className="text-xs mt-1 text-gray-400">
-                  {isKliginVideo ?
-                    "O sistema está conectando ao serviço do Kligin AI. Por favor, aguarde." :
-                    isLumaVideo ?
-                    "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando a SDK oficial da Luma." :
-                    "Estamos trabalhando na sua solicitação. Isso pode levar alguns instantes."
-                  }
-                </p>
-                
-                {videoLoadingMessage?.content && (
-                  <div className="mt-3 flex justify-center">
-                    <div className="bg-inventu-blue/20 px-3 py-1 rounded-full text-xs flex items-center">
-                      <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                      <span>
-                        {videoLoadingMessage.content.includes("processamento") ? 
-                          "Processando vídeo..." : 
-                          "Conectando ao serviço de vídeo..."
-                        }
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="mt-3 h-1 w-full bg-gray-700 rounded overflow-hidden">
-                  <div 
-                    className="h-full bg-inventu-blue opacity-80"
-                    style={{
-                      width: '30%',
-                      animation: 'progressAnimation 2s ease-in-out infinite'
-                    }}
-                  ></div>
-                </div>
-                <style>
-                  {`
-                    @keyframes progressAnimation {
-                      0% {
-                        margin-left: -30%;
-                      }
-                      100% {
-                        margin-left: 100%;
-                      }
-                    }
-                  `}
-                </style>
-              </div>
-            )}
+            {/* Removendo mensagem de processamento duplicada no ChatInterface,
+                pois agora é tratada pelo componente VideoLoading */}
             
             {lumaGenId && (
               <div className="p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-lg my-4">

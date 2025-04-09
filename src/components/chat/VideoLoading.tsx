@@ -35,19 +35,21 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
     const isLumaVideo = model === 'luma-video';
     
     return (
-      <div className="flex flex-col items-center justify-center p-4 my-2 bg-inventu-darker/20 rounded-lg">
-        <Loader2 className="h-10 w-10 mb-2 animate-spin text-inventu-gray" />
-        <p className="text-sm text-inventu-gray">
+      <div className="flex flex-col items-center justify-center p-6 my-4 bg-inventu-darker/20 rounded-lg border border-inventu-gray/20">
+        <Loader2 className="h-12 w-12 mb-4 animate-spin text-inventu-blue" />
+        <p className="text-base font-medium text-white">
           {isKliginVideo 
             ? "O serviço Kligin AI está processando seu vídeo..." 
             : isLumaVideo
-            ? "O serviço Luma AI está processando seu vídeo..."
+            ? "A Luma AI está processando sua solicitação de vídeo..."
             : "Gerando seu vídeo..."}
         </p>
-        <p className="text-xs text-inventu-gray/70 mt-1">
-          Isso pode levar alguns instantes. Por favor, aguarde.
+        <p className="text-sm text-inventu-gray mt-2 text-center">
+          {isLumaVideo 
+            ? "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando a SDK oficial da Luma."
+            : "Isso pode levar alguns instantes. Por favor, aguarde."}
         </p>
-        <div className="mt-3 h-1 w-full bg-gray-700 rounded overflow-hidden">
+        <div className="mt-4 h-2 w-full bg-inventu-darker rounded-full overflow-hidden">
           <div 
             className="h-full bg-inventu-blue opacity-80"
             style={{
