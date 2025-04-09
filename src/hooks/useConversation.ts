@@ -39,7 +39,7 @@ export function useConversation() {
     apiService,
     { saveMediaToGallery, saving },
     setMessages,
-    (error) => setConversationState(prev => ({ ...prev, error }))
+    (error) => setConversationState(prev => ({ ...prev, error: error }))
   );
 
   // Clear messages - explicit function to ensure messages are cleared
@@ -329,7 +329,7 @@ export function useConversation() {
         const result = await updateConversationTitle(conversationId, content, conversationState.conversations);
         
         // Properly access the newTitle property from the data object
-        if (result.success && result.data && result.data.newTitle) {
+        if (result.success && result.data && 'newTitle' in result.data) {
           const newTitle = result.data.newTitle;
           console.log(`[useConversation] Updated conversation title to "${newTitle}"`);
           
