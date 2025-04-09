@@ -174,10 +174,10 @@ export const loadMessages = async (
 
 // Update conversation title based on message content
 export const handleTitleUpdate = async (
-  conversationId: string,
-  content: string,
   conversations: ConversationType[],
-  updateConversationTitle: (id: string, newTitle: string) => void
+  updateConversationTitle: (id: string, newTitle: string) => void,
+  conversationId: string,
+  content: string
 ) => {
   const result = await updateConversationTitleUtil(conversationId, content, conversations);
   

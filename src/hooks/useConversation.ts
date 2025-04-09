@@ -1,6 +1,7 @@
 
 import { useConversationState } from './useConversationState';
 import { useConversationMessages } from './useConversationMessages';
+import { useMessageHandler } from './useMessageHandler';
 import {
   createNewConversation,
   deleteConversation,
@@ -38,6 +39,17 @@ export function useConversation() {
     saveUserMessage,
     removeLoadingMessages
   } = messagesState;
+
+  // Message handler hook
+  const { sendMessage, isSending } = useMessageHandler(
+    messages,
+    setMessages,
+    conversations,
+    currentConversationId,
+    setError,
+    saveUserMessage,
+    handleTitleUpdate.bind(null, conversations, updateConversationTitle)
+  );
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -102,10 +114,10 @@ export function useConversation() {
   // Update conversation title based on message content
   const handleUpdateTitle = async (conversationId: string, content: string) => {
     return await handleTitleUpdate(
-      conversationId,
-      content,
       conversations,
-      updateConversationTitle
+      updateConversationTitle,
+      conversationId,
+      content
     );
   };
 
@@ -124,6 +136,7 @@ export function useConversation() {
     setError,
     
     // Message actions
+    sendMessage,
     clearMessages,
     addUserMessage,
     addAssistantMessage,
