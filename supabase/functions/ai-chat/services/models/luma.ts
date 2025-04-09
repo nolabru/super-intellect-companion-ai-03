@@ -18,22 +18,23 @@ export async function generateImage(
   
   const apiKey = Deno.env.get("LUMA_API_KEY");
   validateApiKey("LUMA_API_KEY", apiKey);
-  console.log(`Chave API Luma: ${apiKey ? apiKey.substring(0, 5) + "..." : "Não encontrada"}`);
+  console.log(`Usando LUMA_API_KEY: ${apiKey ? apiKey.substring(0, 7) + "..." : "Não encontrada"}`);
   
   try {
     // Configurar o payload da requisição conforme documentação oficial da Luma
     const payload = {
       prompt: prompt,
-      model: params?.model || "luma-1.1",
-      aspect_ratio: params?.aspectRatio || "1:1",
-      style: params?.style || "photographic",
+      modelId: params?.model || "luma-1.1",
+      width: 1024,
+      height: 1024,
+      numImages: 1
     };
     
     console.log("Enviando requisição para API Luma (imagem):", JSON.stringify(payload, null, 2));
     
-    // Endpoint para criação de imagem
+    // Endpoint atualizado para geração de imagem
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/v1/images/generation",
+      "https://api.luminalabs.ai/api/images/create",
       {
         method: "POST",
         headers: {
@@ -56,7 +57,7 @@ export async function generateImage(
     console.log("Resposta da API Luma (imagem):", JSON.stringify(generationData, null, 2));
     
     // Extrair o ID da geração da resposta
-    const generationId = generationData.id;
+    const generationId = generationData.generationId;
     if (!generationId) {
       throw new Error("ID de geração não encontrado na resposta da API");
     }
@@ -74,9 +75,9 @@ export async function generateImage(
       
       console.log(`Verificando status da imagem (tentativa ${attempts}/${maxAttempts})...`);
       
-      // Endpoint para verificar status da imagem
+      // Endpoint atualizado para verificar status da imagem
       const statusResponse = await fetchWithRetry(
-        `https://api.lumalabs.ai/v1/images/generation/${generationId}`,
+        `https://api.luminalabs.ai/api/images/${generationId}`,
         {
           method: "GET",
           headers: {
@@ -97,22 +98,19 @@ export async function generateImage(
       const statusData = await statusResponse.json();
       console.log(`Status da imagem (${attempts}/${maxAttempts}):`, statusData.status);
       
-      if (statusData.status === "complete") {
+      if (statusData.status === "completed") {
         completed = true;
         
         // Obter a URL da imagem do objeto de resposta
-        if (statusData.image_url) {
-          imageUrl = statusData.image_url;
-        } else if (statusData.url) {
-          imageUrl = statusData.url;
+        if (statusData.images && statusData.images.length > 0) {
+          imageUrl = statusData.images[0].url;
+          console.log("URL da imagem:", imageUrl);
         } else {
           console.log("Resposta completa:", JSON.stringify(statusData, null, 2));
-          throw new Error("URL da imagem não encontrada na resposta");
+          throw new Error("URLs das imagens não encontradas na resposta");
         }
-        
-        console.log("URL da imagem:", imageUrl);
       } else if (statusData.status === "failed") {
-        throw new Error(`Geração de imagem falhou: ${statusData.error || "Erro desconhecido"}`);
+        throw new Error(`Geração de imagem falhou: ${statusData.errorMessage || "Erro desconhecido"}`);
       } else {
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
@@ -147,36 +145,28 @@ export async function generateVideo(
   
   const apiKey = Deno.env.get("LUMA_API_KEY");
   validateApiKey("LUMA_API_KEY", apiKey);
-  console.log(`Chave API Luma: ${apiKey ? apiKey.substring(0, 5) + "..." : "Não encontrada"}`);
+  console.log(`Usando LUMA_API_KEY: ${apiKey ? apiKey.substring(0, 7) + "..." : "Não encontrada"}`);
   
   try {
-    // Configurar o payload da requisição conforme documentação oficial da Luma
+    // Configurar o payload da requisição conforme documentação atualizada da Luma
     const payload: any = {
       prompt: prompt,
-      model: params?.model || "luma-1.1",
-      duration: params?.duration || "4s",
-      aspect_ratio: params?.aspectRatio || "16:9",
+      modelId: params?.model || "ray-2",
+      numSeconds: params?.duration?.replace('s', '') || 4,
+      width: 768,
+      height: 432
     };
     
     // Adicionar imagem para image-to-video se fornecida
     if (imageUrl && params?.videoType === "image-to-video") {
-      payload.image_url = imageUrl;
-    }
-    
-    // Adicionar outras configurações conforme disponíveis
-    if (params?.resolution) {
-      payload.resolution = params.resolution;
-    }
-    
-    if (params?.style) {
-      payload.style = params.style;
+      payload.imageUrl = imageUrl;
     }
     
     console.log("Enviando requisição para API Luma (vídeo):", JSON.stringify(payload, null, 2));
     
-    // Endpoint para criação de vídeo
+    // Endpoint atualizado para criação de vídeo
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/v1/videos/generation",
+      "https://api.luminalabs.ai/api/videos/create",
       {
         method: "POST",
         headers: {
@@ -199,7 +189,7 @@ export async function generateVideo(
     console.log("Resposta da API Luma (vídeo):", JSON.stringify(generationData, null, 2));
     
     // Extrair o ID da geração da resposta
-    const generationId = generationData.id;
+    const generationId = generationData.generationId;
     if (!generationId) {
       throw new Error("ID de geração não encontrado na resposta da API");
     }
@@ -217,9 +207,9 @@ export async function generateVideo(
       
       console.log(`Verificando status do vídeo (tentativa ${attempts}/${maxAttempts})...`);
       
-      // Endpoint para verificar status do vídeo
+      // Endpoint atualizado para verificar status do vídeo
       const statusResponse = await fetchWithRetry(
-        `https://api.lumalabs.ai/v1/videos/generation/${generationId}`,
+        `https://api.luminalabs.ai/api/videos/${generationId}`,
         {
           method: "GET",
           headers: {
@@ -240,22 +230,19 @@ export async function generateVideo(
       const statusData = await statusResponse.json();
       console.log(`Status do vídeo (${attempts}/${maxAttempts}):`, statusData.status);
       
-      if (statusData.status === "complete") {
+      if (statusData.status === "completed") {
         completed = true;
         
         // Obter a URL do vídeo do objeto de resposta
-        if (statusData.video_url) {
-          videoUrl = statusData.video_url;
-        } else if (statusData.url) {
-          videoUrl = statusData.url;
+        if (statusData.videos && statusData.videos.length > 0) {
+          videoUrl = statusData.videos[0].url;
+          console.log("URL do vídeo:", videoUrl);
         } else {
           console.log("Resposta completa:", JSON.stringify(statusData, null, 2));
-          throw new Error("URL do vídeo não encontrada na resposta");
+          throw new Error("URLs dos vídeos não encontradas na resposta");
         }
-        
-        console.log("URL do vídeo:", videoUrl);
       } else if (statusData.status === "failed") {
-        throw new Error(`Geração de vídeo falhou: ${statusData.error || "Erro desconhecido"}`);
+        throw new Error(`Geração de vídeo falhou: ${statusData.errorMessage || "Erro desconhecido"}`);
       } else {
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
@@ -285,8 +272,8 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
   try {
     console.log("Validando a API key da Luma...");
     
-    // Endpoint para testar a API key
-    const testResponse = await fetch("https://api.lumalabs.ai/v1/users/me", {
+    // Endpoint atualizado para testar a API key
+    const testResponse = await fetch("https://api.luminalabs.ai/api/user", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${apiKey}`,

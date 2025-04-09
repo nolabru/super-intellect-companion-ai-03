@@ -109,7 +109,7 @@ async function handleAIChat(req: Request): Promise<Response> {
         // Se não houver parâmetros definidos, use valores padrão para o modelo Luma
         const videoParams = {
           ...params,
-          model: params?.model || "luma-1.1"
+          model: params?.model || "ray-2"
         };
         
         response = await lumaService.generateVideo(content, videoParams, imageUrl);
