@@ -15,6 +15,9 @@ interface ResponseData {
   files?: string[];
 }
 
+// Token mocado para testes com a Luma API
+const MOCKED_LUMA_TOKEN = "luma-909c02af-aaa5-49a1-9f85-313573557330-65a1de78-ca4b-4f7c-b33b-f493bb0dda75";
+
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {
   try {
@@ -33,8 +36,16 @@ async function handleAIChat(req: Request): Promise<Response> {
     try {
       // Verificação específica para modelos Luma
       if (modelId.includes("luma")) {
-        // Usando token mocado diretamente no arquivo luma.ts
-        console.log("Modelo Luma selecionado, usando token mocado configurado no arquivo");
+        // Usando token mocado para Luma
+        console.log("Modelo Luma selecionado, usando token mocado configurado diretamente no código");
+        // Pré-configuramos a variável LUMA_TOKEN_MOCK no service
+        lumaService.setMockedToken(MOCKED_LUMA_TOKEN);
+        
+        // Validação opcional para ver se o token funciona
+        const isValid = await lumaService.testApiKey(MOCKED_LUMA_TOKEN);
+        if (!isValid) {
+          console.warn("O token mocado da Luma pode não estar funcionando corretamente");
+        }
       }
       
       // Special check for OpenAI models
