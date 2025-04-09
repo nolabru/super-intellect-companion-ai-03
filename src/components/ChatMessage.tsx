@@ -26,6 +26,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.sender === 'user';
   const isLoading = message.loading || message.id?.startsWith('loading-');
   const isVideo = message.mode === 'video';
+  const isError = message.error;
   
   const renderModeIcon = () => {
     switch (message.mode) {
@@ -65,7 +66,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   };
 
   // Determinar URL da mídia (da propriedade ou embutida no conteúdo)
-  const mediaUrl = message.mediaUrl || (hasEmbeddedMedia ? extractMediaUrl(message.content) : null);
+  const mediaUrl = message.mediaUrl || 
+                  (message.files && message.files.length > 0 ? message.files[0] : null) || 
+                  (hasEmbeddedMedia ? extractMediaUrl(message.content) : null);
   
   // Conteúdo limpo para exibição
   const displayContent = hasEmbeddedMedia ? cleanContent(message.content) : message.content;
@@ -111,12 +114,21 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         isUser ? "user-bubble" : "ai-bubble",
         "break-words p-3 rounded-xl max-w-[80%]",
         isUser ? "bg-inventu-blue/20 text-white" : "bg-inventu-card text-white",
-        isLoading && !isVideo && "animate-pulse"
+        isLoading && !isVideo && "animate-pulse",
+        isError && "bg-red-900/20 border border-red-500/30"
       )}>
         {isLoading && !isVideo ? (
           <div className="flex items-center">
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             {displayContent}
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col">
+            <div className="text-red-400 font-medium mb-1">Erro</div>
+            <div>{displayContent}</div>
+            <div className="mt-2 text-sm text-red-400/80">
+              Por favor, tente novamente ou escolha um parâmetro diferente.
+            </div>
           </div>
         ) : (
           displayContent
@@ -126,32 +138,44 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         {renderVideoLoading()}
         
         {/* Renderizar mídia se estiver presente */}
-        {mediaUrl && message.mode === 'image' && (
+        {mediaUrl && message.mode === 'image' && !isLoading && (
           <div className="mt-2">
             <img 
               src={mediaUrl} 
               alt="Imagem gerada" 
               className="max-w-full rounded-lg max-h-80 object-contain" 
+              onError={(e) => {
+                console.error("Erro ao carregar imagem:", mediaUrl);
+                e.currentTarget.style.display = 'none';
+              }}
             />
           </div>
         )}
         
-        {mediaUrl && message.mode === 'video' && (
+        {mediaUrl && message.mode === 'video' && !isLoading && (
           <div className="mt-2">
             <video 
               src={mediaUrl} 
               controls 
-              className="max-w-full rounded-lg max-h-80" 
+              className="max-w-full rounded-lg max-h-80"
+              onError={(e) => {
+                console.error("Erro ao carregar vídeo:", mediaUrl);
+                e.currentTarget.style.display = 'none';
+              }}
             />
           </div>
         )}
         
-        {message.audioData && message.mode === 'audio' && (
+        {message.audioData && message.mode === 'audio' && !isLoading && (
           <div className="mt-2">
             <audio 
               src={message.audioData} 
               controls 
-              className="w-full" 
+              className="w-full"
+              onError={(e) => {
+                console.error("Erro ao carregar áudio:", message.audioData);
+                e.currentTarget.style.display = 'none';
+              }} 
             />
           </div>
         )}
