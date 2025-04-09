@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
@@ -30,18 +29,18 @@ export const createMessageService = (
     // Add loading message
     const loadingId = `loading-${modelId}-${uuidv4()}`;
     
-    let loadingMessage = 'Gerando resposta...';
+    let loadingMessage = 'Generating response...';
     
     // Specific loading messages for each mode
     if (mode === 'video') {
       if (modelId === 'luma-video') {
-        loadingMessage = 'Conectando ao serviço Luma AI para processamento de vídeo...';
+        loadingMessage = 'Connecting to Luma AI for video processing...';
       } else if (modelId === 'kligin-video') {
-        loadingMessage = 'Aguardando processamento do serviço Kligin AI...';
+        loadingMessage = 'Waiting for Kligin AI service processing...';
       }
     } else if (mode === 'image') {
       if (modelId === 'luma-image') {
-        loadingMessage = 'Conectando ao serviço Luma AI para geração de imagem...';
+        loadingMessage = 'Connecting to Luma AI for image generation...';
       }
     }
     
@@ -60,7 +59,7 @@ export const createMessageService = (
     try {
       // Send request to API with 3 minute timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Tempo limite excedido na solicitação")), 180000);
+        setTimeout(() => reject(new Error("Request timeout exceeded")), 180000);
       });
       
       const responsePromise = apiService.sendRequest(content, mode, modelId, files, params);
@@ -88,7 +87,7 @@ export const createMessageService = (
       // Save message in database
       await saveMessageToDatabase(newMessage, conversationId);
       
-      // Save media to gallery if exists - isso garante que o vídeo seja persistente
+      // Always save media to gallery if exists - this ensures video persistency across refreshes
       if (mode !== 'text' && response.files && response.files.length > 0) {
         try {
           await mediaGallery.saveMediaToGallery(
@@ -98,16 +97,16 @@ export const createMessageService = (
             modelId,
             params
           );
-          console.log('[messageService] Mídia salva na galeria com sucesso');
+          console.log('[messageService] Media saved to gallery successfully');
         } catch (err) {
-          console.error('[messageService] Erro ao salvar mídia na galeria:', err);
-          // Continuar mesmo que falhe ao salvar na galeria
+          console.error('[messageService] Error saving media to gallery:', err);
+          // Continue even if gallery save fails
         }
       }
       
       return { success: true, error: null };
     } catch (err) {
-      console.error("Erro durante solicitação:", err);
+      console.error("Error during request:", err);
       
       // Remove loading message
       setMessages((prevMessages) => 
@@ -115,13 +114,13 @@ export const createMessageService = (
       );
       
       // Add specific error message based on mode and error
-      const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
-      let friendlyError = `Ocorreu um erro ao processar sua solicitação. ${errorMsg}`;
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      let friendlyError = `An error occurred processing your request. ${errorMsg}`;
       
       if (mode === 'video' && modelId.includes('luma')) {
-        friendlyError = `Erro na geração de vídeo: ${errorMsg}. Verifique se a chave API da Luma está configurada corretamente.`;
+        friendlyError = `Video generation error: ${errorMsg}. Please check if the Luma API key is configured correctly.`;
       } else if (mode === 'image' && modelId.includes('luma')) {
-        friendlyError = `Erro na geração de imagem: ${errorMsg}. Verifique se a chave API da Luma está configurada corretamente.`;
+        friendlyError = `Image generation error: ${errorMsg}. Please check if the Luma API key is configured correctly.`;
       }
       
       const errorMessage: MessageType = {
@@ -143,7 +142,7 @@ export const createMessageService = (
     }
   };
   
-  // Handle comparing models
+  // Handle comparing models - similar improvements for model comparison
   const handleCompareModels = async (
     content: string,
     mode: ChatMode,
@@ -160,7 +159,7 @@ export const createMessageService = (
     const loadingMessages: MessageType[] = [
       {
         id: loadingIdLeft,
-        content: 'Gerando resposta...',
+        content: 'Generating response...',
         sender: 'assistant',
         timestamp: new Date().toISOString(),
         model: leftModelId,
@@ -169,7 +168,7 @@ export const createMessageService = (
       },
       {
         id: loadingIdRight,
-        content: 'Gerando resposta...',
+        content: 'Generating response...',
         sender: 'assistant',
         timestamp: new Date().toISOString(),
         model: rightModelId,
@@ -221,7 +220,7 @@ export const createMessageService = (
       // Save messages to database
       await Promise.all(newMessages.map(msg => saveMessageToDatabase(msg, conversationId)));
       
-      // Save media to gallery if exists - isso garante que os vídeos sejam persistentes
+      // Always save both media files to gallery to ensure persistence
       if (mode !== 'text') {
         // For left model
         if (responseLeft.files && responseLeft.files.length > 0) {
@@ -233,10 +232,10 @@ export const createMessageService = (
               leftModelId,
               params
             );
-            console.log('[messageService] Mídia do modelo esquerdo salva na galeria com sucesso');
+            console.log('[messageService] Left model media saved to gallery successfully');
           } catch (err) {
-            console.error('[messageService] Erro ao salvar mídia do modelo esquerdo na galeria:', err);
-            // Continuar mesmo que falhe ao salvar na galeria
+            console.error('[messageService] Error saving left model media to gallery:', err);
+            // Continue even if gallery save fails
           }
         }
         
@@ -250,17 +249,17 @@ export const createMessageService = (
               rightModelId,
               params
             );
-            console.log('[messageService] Mídia do modelo direito salva na galeria com sucesso');
+            console.log('[messageService] Right model media saved to gallery successfully');
           } catch (err) {
-            console.error('[messageService] Erro ao salvar mídia do modelo direito na galeria:', err);
-            // Continuar mesmo que falhe ao salvar na galeria
+            console.error('[messageService] Error saving right model media to gallery:', err);
+            // Continue even if gallery save fails
           }
         }
       }
       
       return { success: true, error: null };
     } catch (err) {
-      console.error("Erro durante comparação de modelos:", err);
+      console.error("Error during comparison of models:", err);
       
       // Remove loading messages
       setMessages((prevMessages) => 
@@ -268,10 +267,10 @@ export const createMessageService = (
       );
       
       // Add error message for both models
-      const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
       const errorMessage: MessageType = {
         id: uuidv4(),
-        content: `Erro na comparação de modelos: ${errorMsg}`,
+        content: `Error during model comparison: ${errorMsg}`,
         sender: 'assistant',
         timestamp: new Date().toISOString(),
         model: leftModelId,

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -31,8 +30,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 }) => {
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
-    msg.model === model || 
-    (msg.id && msg.id.startsWith('loading-') && msg.model === model)
+    (!msg.id?.startsWith('loading-') || msg.model === model)
   );
   
   const getModelDisplayName = (modelId: string) => {
@@ -66,14 +64,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
   
-  // Identificar se há uma mensagem de carregamento de vídeo
   const hasVideoLoadingMessage = filteredMessages.some(msg => 
     msg.id?.startsWith('loading-') && 
     msg.mode === 'video' && 
     msg.model === model
   );
   
-  // Obter a mensagem de erro, se houver
   const hasErrorMessage = filteredMessages.some(msg => 
     msg.error && 
     msg.model === model
@@ -86,14 +82,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const isLumaVideo = model === 'luma-video';
   
-  // Verificar se alguma mensagem contém ID de geração da Luma
   const lumaGenIdMessage = filteredMessages.find(msg => 
     msg.model?.includes('luma') && 
     msg.content.includes('ID:') && 
     !msg.error
   );
   
-  // Extrair ID da mensagem se existir
   const extractLumaId = (content: string): string | null => {
     const match = content.match(/ID: ([a-f0-9-]+)/i);
     return match ? match[1] : null;
@@ -101,23 +95,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   
   const lumaGenId = lumaGenIdMessage ? extractLumaId(lumaGenIdMessage.content) : null;
   
-  // Função para abrir o painel da Luma em uma nova aba
   const openLumaDashboard = () => {
     window.open('https://lumalabs.ai/dashboard', '_blank');
-    toast.success('Abrindo painel da Luma AI');
+    toast.success('Opening Luma AI Dashboard');
   };
   
-  // Função para mostrar instruções de como configurar a chave da Luma
   const showLumaKeyInstructions = () => {
     toast.info(
       <div className="space-y-2">
-        <p className="font-medium">Como configurar a API key da Luma AI</p>
+        <p className="font-medium">How to configure the Luma AI API key</p>
         <ol className="list-decimal pl-4 text-sm space-y-1">
-          <li>Acesse o Edge Function Manager na interface do Supabase</li>
-          <li>Selecione a função "ai-chat"</li>
-          <li>Vá em "Settings" e depois "Environment Variables"</li>
-          <li>Adicione a variável LUMA_API_KEY com sua chave</li>
-          <li>A chave deve começar com "luma_" e pode ser obtida no site da Luma AI</li>
+          <li>Access the Edge Function Manager in the Supabase interface</li>
+          <li>Select the "ai-chat" function</li>
+          <li>Go to "Settings" and then "Environment Variables"</li>
+          <li>Add the LUMA_API_KEY variable with your key</li>
+          <li>The key should start with "luma_" and can be obtained from the Luma AI website</li>
         </ol>
       </div>,
       {
@@ -154,7 +146,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         {loading && filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-400">
             <Loader2 className="h-8 w-8 mr-2 animate-spin" />
-            <span>Carregando mensagens...</span>
+            <span>Loading messages...</span>
           </div>
         ) : filteredMessages.length > 0 ? (
           <>
@@ -162,20 +154,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <ChatMessage key={message.id} message={message} />
             ))}
             
-            {/* Removendo mensagem de processamento duplicada no ChatInterface,
-                pois agora é tratada pelo componente VideoLoading */}
-            
             {lumaGenId && (
               <div className="p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-lg my-4">
                 <div className="flex items-start">
                   <AlertTriangle className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm text-indigo-400 font-medium">
-                      Vídeo em processamento na Luma AI
+                      Video processing in Luma AI
                     </p>
                     <p className="text-sm text-gray-300 mt-1">
-                      O sistema Luma AI está processando seu vídeo, mas pode demorar mais tempo que o nosso limite de espera. 
-                      Você pode verificar o resultado no painel da Luma AI com o ID: {lumaGenId}
+                      Luma AI is processing your video, but it may take longer than our wait limit. 
+                      You can check the result in the Luma AI dashboard with the ID: {lumaGenId}
                     </p>
                     <div className="mt-3">
                       <Button 
@@ -185,7 +174,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         onClick={openLumaDashboard}
                       >
                         <ExternalLink className="h-3 w-3" />
-                        <span>Abrir painel da Luma AI</span>
+                        <span>Open Luma AI Dashboard</span>
                       </Button>
                     </div>
                   </div>
@@ -199,7 +188,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   <AlertTriangle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm text-red-400 font-medium">
-                      Erro ao processar a solicitação
+                      Error processing request
                     </p>
                     <p className="text-sm text-gray-300 mt-1">
                       {errorMessage.content}
@@ -207,7 +196,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     {(model === 'luma-video' || model === 'luma-image') && (
                       <div className="mt-3">
                         <p className="text-xs text-gray-400 mb-2">
-                          Verifique se a chave API da Luma está configurada corretamente nas variáveis de ambiente da Edge Function.
+                          Verify that the Luma API key is correctly configured in the Edge Function environment variables.
                         </p>
                         <Button 
                           variant="outline" 
@@ -216,7 +205,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           onClick={showLumaKeyInstructions}
                         >
                           <RefreshCw className="h-3 w-3" />
-                          <span>Ver instruções de configuração</span>
+                          <span>View setup instructions</span>
                         </Button>
                       </div>
                     )}
@@ -227,7 +216,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-400">
-            Nenhuma mensagem ainda. Comece uma conversa!
+            No messages yet. Start a conversation!
           </div>
         )}
       </div>

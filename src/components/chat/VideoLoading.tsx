@@ -15,16 +15,16 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
   model,
   onTimeout 
 }) => {
-  // Adicionar um efeito para limitar o tempo de espera do carregamento de vídeo
+  // Add timeout effect for video loading
   useEffect(() => {
     if (isLoading && isVideo) {
-      // Definir um timeout para notificar quando o tempo limite de carregamento for excedido
+      // Set a timeout to notify when loading exceeds the time limit
       const timeoutId = setTimeout(() => {
-        console.log('Tempo limite de carregamento de vídeo excedido');
+        console.log('Video loading timeout exceeded');
         if (onTimeout) {
           onTimeout();
         }
-      }, 180000); // 3 minutos de timeout
+      }, 180000); // 3 minute timeout
 
       return () => clearTimeout(timeoutId);
     }
@@ -39,15 +39,15 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
         <Loader2 className="h-12 w-12 mb-4 animate-spin text-inventu-blue" />
         <p className="text-base font-medium text-white">
           {isKliginVideo 
-            ? "O serviço Kligin AI está processando seu vídeo..." 
+            ? "Kligin AI is processing your video..." 
             : isLumaVideo
-            ? "A Luma AI está processando sua solicitação de vídeo..."
-            : "Gerando seu vídeo..."}
+            ? "Luma AI is processing your video request..."
+            : "Generating your video..."}
         </p>
         <p className="text-sm text-inventu-gray mt-2 text-center">
           {isLumaVideo 
-            ? "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando a SDK oficial da Luma."
-            : "Isso pode levar alguns instantes. Por favor, aguarde."}
+            ? "The process may take between 30 seconds and 2 minutes depending on complexity. We're using the official Luma SDK."
+            : "This may take a moment. Please wait."}
         </p>
         <div className="mt-4 h-2 w-full bg-inventu-darker rounded-full overflow-hidden">
           <div 

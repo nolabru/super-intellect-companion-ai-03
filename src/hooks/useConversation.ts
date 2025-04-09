@@ -58,7 +58,7 @@ export function useConversation() {
     handleTitleUpdate.bind(null, conversations, updateConversationTitle)
   );
 
-  // Load messages when conversation changes - improved protection against loops
+  // Improved loading messages when conversation changes
   useEffect(() => {
     // Only proceed if we have a valid conversation ID that's different from the last loaded one
     if (currentConversationId && 
@@ -75,6 +75,7 @@ export function useConversation() {
       // Important: Clear messages BEFORE loading new ones
       clearMessages();
       
+      // Load messages for the selected conversation
       loadMessages(
         currentConversationId,
         setLoading,
@@ -87,7 +88,7 @@ export function useConversation() {
       })
       .catch((err) => {
         console.error("[useConversation] Error loading messages:", err);
-        setError(err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens');
+        setError(err instanceof Error ? err.message : 'Unknown error loading messages');
       })
       .finally(() => {
         // Always reset loading flag when operation finishes
@@ -101,7 +102,7 @@ export function useConversation() {
     }
   }, [currentConversationId, clearMessages, setMessages, setLoading, setError]);
 
-  // Create a new conversation
+  // Create a new conversation with improved message clearing
   const handleCreateNewConversation = async () => {
     console.log('[useConversation] Creating new conversation');
     
