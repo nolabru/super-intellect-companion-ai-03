@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -40,7 +41,10 @@ async function handleAIChat(req: Request): Promise<Response> {
         // Log para debug
         console.log("LUMA_API_KEY está definida?", apiKey ? "Sim" : "Não");
         if (apiKey) {
-          console.log("Formato da chave:", apiKey.startsWith("luma_") ? "Correto (começa com luma_)" : "Incorreto (não começa com luma_)");
+          console.log("Formato da chave:", 
+                     apiKey.startsWith("luma_") ? "Correto (começa com luma_)" : 
+                     apiKey.startsWith("luma-") ? "Alternativo (começa com luma-)" : 
+                     "Incorreto (formato não reconhecido)");
           console.log("Comprimento da chave:", apiKey.length);
         }
         

@@ -20,6 +20,8 @@ function createLumaClient() {
     
     // Cria cliente com a API key do ambiente
     console.log("Inicializando cliente LumaAI SDK...");
+    console.log("Usando LumaAI SDK com chave no formato:", apiKey?.startsWith("luma_") ? "luma_" : "luma-");
+    
     const client = new LumaAI({
       authToken: apiKey,
       maxRetries: 2,
@@ -44,6 +46,8 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
     
     // Criar um cliente de teste com a API key fornecida
     console.log("Criando cliente de teste Luma com a chave fornecida...");
+    console.log("Formato da chave de teste:", apiKey.startsWith("luma_") ? "luma_" : apiKey.startsWith("luma-") ? "luma-" : "desconhecido");
+    
     const testClient = new LumaAI({
       authToken: apiKey,
     });

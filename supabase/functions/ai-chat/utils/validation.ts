@@ -15,9 +15,9 @@ export function validateApiKey(apiKeyName: string, apiKey: string | undefined): 
     throw new Error(error);
   }
   
-  // Verificação básica de formato para chaves da Luma (começam com luma_)
-  if (apiKeyName === 'LUMA_API_KEY' && !apiKey.startsWith('luma_')) {
-    console.warn(`Aviso: ${apiKeyName} parece não estar no formato esperado (esperado: 'luma_...')`);
+  // Verificação de formato atualizada para aceitar tanto luma_ quanto luma-
+  if (apiKeyName === 'LUMA_API_KEY' && !apiKey.startsWith('luma_') && !apiKey.startsWith('luma-')) {
+    console.warn(`Aviso: ${apiKeyName} parece não estar no formato esperado (esperado: 'luma_...' ou 'luma-...')`);
   }
   
   // Log seguro para confirmar que a chave foi encontrada (sem expor a chave completa)
