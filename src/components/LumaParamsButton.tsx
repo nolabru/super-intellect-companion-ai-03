@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Settings2, ChevronUp, ImageIcon, Text, Type } from 'lucide-react';
 import { 
