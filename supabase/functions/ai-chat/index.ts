@@ -29,15 +29,24 @@ async function handleAIChat(req: Request): Promise<Response> {
       content: "Não foi possível processar sua solicitação."
     };
     
-    // Update manually the API KEY with the one provided (if necessary for testing)
+    // Mostrar o valor da API KEY da Luma (primeiro 5 caracteres)
     const apiKey = Deno.env.get("LUMA_API_KEY");
-    const apiKeyToUse = apiKey || "luma-daf72961-1c29-40ed-9bfb-9b603aefd583-7b4a016e-0207-4ccc-baea-b9c9f6c8fe39";
-    
-    if (!apiKey) {
-      console.log("LUMA_API_KEY não encontrada nas variáveis de ambiente, usando chave fornecida manualmente");
-      // Set the environment variable temporarily
-      // @ts-ignore - Deno allows this even if TypeScript complains
-      Deno.env.set("LUMA_API_KEY", apiKeyToUse);
+    if (apiKey) {
+      console.log(`LUMA_API_KEY encontrada, começa com: ${apiKey.substring(0, 5)}...`);
+    } else {
+      console.log("LUMA_API_KEY não encontrada nas variáveis de ambiente");
+      if (modelId.includes("luma")) {
+        return new Response(
+          JSON.stringify({
+            content: "Chave API da Luma não configurada no servidor. Por favor, configure a chave LUMA_API_KEY nas variáveis de ambiente.",
+            error: "LUMA_API_KEY não configurada",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
+      }
     }
     
     // Process based on model and mode
@@ -55,7 +64,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400, // Using 400 instead of 500 for configuration errors
+              status: 400,
             }
           );
         }
@@ -74,7 +83,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400, // Using 400 instead of 500 for configuration errors
+              status: 400,
             }
           );
         }
@@ -159,6 +168,12 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Limite de requisições excedido na API da Anthropic. Por favor, tente novamente mais tarde.";
         } else if (errorMessage.includes("not_found_error") || errorMessage.includes("model:")) {
           friendlyError = "O modelo Claude especificado não está disponível. Estamos utilizando o Claude 3 Haiku como alternativa.";
+        }
+      } else if (modelId.includes("luma")) {
+        if (errorMessage.includes("API key")) {
+          friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada ou é inválida. Por favor, verifique suas configurações.";
+        } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
+          friendlyError = "O endpoint da API Luma não foi encontrado. A API pode ter sido atualizada. Verifique a documentação mais recente.";
         }
       }
       
