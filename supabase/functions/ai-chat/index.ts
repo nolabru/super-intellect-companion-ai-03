@@ -15,8 +15,8 @@ interface ResponseData {
   files?: string[];
 }
 
-// Token mocado para testes com a Luma API
-const MOCKED_LUMA_TOKEN = "luma-909c02af-aaa5-49a1-9f85-313573557330-65a1de78-ca4b-4f7c-b33b-f493bb0dda75";
+// Token mocado para testes com a Luma API - atualizando para o novo token
+const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1c6-4e73-b6d4-42078e8c7775";
 
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {

@@ -10,7 +10,7 @@ export interface ResponseData {
 }
 
 // Token mocado para usar como fallback
-let MOCKED_LUMA_TOKEN = "luma-909c02af-aaa5-49a1-9f85-313573557330-65a1de78-ca4b-4f7c-b33b-f493bb0dda75";
+let MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1c6-4e73-b6d4-42078e8c7775";
 
 // Método para definir o token mockado (chamado pelo index.ts)
 export function setMockedToken(token: string) {
@@ -40,8 +40,9 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
     console.log("Formato da chave de teste:", tokenToUse.startsWith("luma_") ? "luma_" : tokenToUse.startsWith("luma-") ? "luma-" : "desconhecido");
     
     try {
-      // Tentando uma chamada mais simples apenas para validar o token
-      const response = await fetch("https://api.lumalabs.ai/v1/health", {
+      // Tentando uma chamada básica para validar o token
+      // Usando o novo endpoint dream-machine
+      const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/models", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${tokenToUse}`,
@@ -51,34 +52,7 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
       
       console.log("Resposta de validação:", response.status, response.statusText);
       
-      // Um fallback caso o endpoint de health não exista
-      if (response.status === 404) {
-        console.log("Endpoint de saúde não encontrado, tentando listar modelos...");
-        const modelResponse = await fetch("https://api.lumalabs.ai/v1/models", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${tokenToUse}`,
-            "Content-Type": "application/json"
-          }
-        });
-        
-        console.log("Resposta da listagem de modelos:", modelResponse.status, modelResponse.statusText);
-        
-        if (modelResponse.ok || modelResponse.status === 404) {
-          // Mesmo que retorne 404, significa que a autenticação está funcionando,
-          // apenas o endpoint não existe
-          return true;
-        } else if (modelResponse.status === 401 || modelResponse.status === 403) {
-          console.error("Token inválido ou sem permissão");
-          return false;
-        } else {
-          console.warn(`Resposta inesperada: ${modelResponse.status}`);
-          // Permitir continuar mesmo com resposta inesperada
-          return true;
-        }
-      }
-      
-      // Para o endpoint de health, considera autorizado mesmo com códigos diferentes de 200
+      // Para o endpoint de verificação, considera autorizado mesmo com códigos diferentes de 200
       // desde que não seja 401 ou 403
       if (response.status !== 401 && response.status !== 403) {
         console.log("API key considerada válida");
@@ -122,12 +96,13 @@ export async function generateImage(
     
     console.log("Enviando requisição para API Luma (imagem):", JSON.stringify(requestBody, null, 2));
     
-    // Criar a geração com a API direta
-    const response = await fetch("https://api.lumalabs.ai/v1/images/generations", {
+    // Criar a geração com a API direta - usando novo endpoint
+    const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/generations", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       body: JSON.stringify(requestBody)
     });
@@ -176,11 +151,12 @@ export async function generateImage(
       console.log(`Verificando status da imagem (tentativa ${attempts}/${maxAttempts})...`);
       
       // Verificar o status da geração
-      const statusResponse = await fetch(`https://api.lumalabs.ai/v1/images/generations/${generation.id}`, {
+      const statusResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${generation.id}`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         }
       });
       
@@ -251,8 +227,8 @@ export async function generateVideo(
     const requestBody: any = {
       prompt: prompt,
       model: params?.model || "ray-2",
-      // Converter duração de string "5s" para número 5
-      duration: Number(params?.duration?.replace('s', '') || 5)
+      resolution: params?.resolution || "720p",
+      duration: params?.duration?.replace('s', '') || "5s"
     };
     
     // Adicionar imagem para image-to-video se fornecida
@@ -263,12 +239,13 @@ export async function generateVideo(
     console.log("Enviando requisição para API Luma (vídeo):", JSON.stringify(requestBody, null, 2));
     console.log("Usando token de autorização:", `Bearer ${apiKey.substring(0, 10)}...`);
     
-    // Criar a geração usando API REST diretamente
-    const response = await fetch("https://api.lumalabs.ai/v1/videos", {
+    // Criar a geração usando o novo endpoint
+    const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/generations", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Accept": "application/json"
       },
       body: JSON.stringify(requestBody)
     });
@@ -317,11 +294,12 @@ export async function generateVideo(
       console.log(`Verificando status do vídeo (tentativa ${attempts}/${maxAttempts})...`);
       
       // Verificar o status do vídeo
-      const statusResponse = await fetch(`https://api.lumalabs.ai/v1/videos/${generation.id}`, {
+      const statusResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${generation.id}`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         }
       });
       
