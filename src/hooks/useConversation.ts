@@ -1,20 +1,91 @@
 
-import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { LumaParams } from '@/components/LumaParamsButton';
 import { ChatMode } from '@/components/ModeSelector';
+import { supabase } from '@/integrations/supabase/client';
 
-// Inicializar o cliente Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export interface ConversationType {
+  id: string;
+  title: string;
+  updated_at: string;
+  user_id: string;
+}
 
 export function useConversation() {
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<ConversationType[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+
+  // Função para criar uma nova conversa
+  const createNewConversation = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert([
+          { title: 'Nova Conversa', user_id: supabase.auth.getUser() }
+        ])
+        .select();
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setCurrentConversationId(data[0].id);
+        setConversations(prev => [...prev, data[0]]);
+      }
+    } catch (err) {
+      console.error('Erro ao criar conversa:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função para excluir uma conversa
+  const deleteConversation = async (id: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('conversations')
+        .delete()
+        .match({ id });
+
+      if (error) throw error;
+      setConversations(prev => prev.filter(conv => conv.id !== id));
+      if (currentConversationId === id) {
+        setCurrentConversationId(null);
+      }
+    } catch (err) {
+      console.error('Erro ao excluir conversa:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função para renomear uma conversa
+  const renameConversation = async (id: string, newTitle: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('conversations')
+        .update({ title: newTitle })
+        .match({ id });
+
+      if (error) throw error;
+      setConversations(prev => 
+        prev.map(conv => conv.id === id ? { ...conv, title: newTitle } : conv)
+      );
+    } catch (err) {
+      console.error('Erro ao renomear conversa:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Função para enviar uma mensagem
   const sendMessage = async (
@@ -188,9 +259,6 @@ export function useConversation() {
     params?: LumaParams
   ): Promise<{ content: string, files?: string[] }> => {
     try {
-      // Mapear para modelos no backend
-      // Este é um exemplo simplificado, pode precisar de mais lógica dependendo da sua API
-      
       // Chamar a Edge Function
       const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: {
@@ -218,6 +286,12 @@ export function useConversation() {
     messages,
     sendMessage,
     loading,
-    error
+    error,
+    conversations,
+    currentConversationId,
+    setCurrentConversationId,
+    createNewConversation,
+    deleteConversation,
+    renameConversation
   };
 }

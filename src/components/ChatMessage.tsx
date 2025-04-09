@@ -1,28 +1,25 @@
-
 import React from 'react';
-import { cn } from '@/lib/utils';
 import { ChatMode } from './ModeSelector';
-import { Image, Video, AudioLines, Text, Loader2 } from 'lucide-react';
 
-export type MessageType = {
+export interface MessageType {
   id: string;
   content: string;
-  sender: 'user' | 'ai';
-  model: string;
+  sender: 'user' | 'assistant';
   timestamp: string;
+  model?: string;
   mode?: ChatMode;
-  mediaUrl?: string;
-  audioData?: string;
-};
+  loading?: boolean;
+  error?: boolean;
+  files?: string[];
+}
 
 interface ChatMessageProps {
   message: MessageType;
-  className?: string;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.sender === 'user';
-  const isLoading = message.id?.startsWith('loading-');
+  const isLoading = message.loading || message.id?.startsWith('loading-');
   const isVideo = message.mode === 'video';
   
   const renderModeIcon = () => {
@@ -87,8 +84,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, className }) => {
   return (
     <div className={cn(
       "flex flex-col mb-4 animate-fade-in",
-      isUser ? "items-end" : "items-start",
-      className
+      isUser ? "items-end" : "items-start"
     )}>
       <div className="flex items-center mb-1 text-sm text-gray-400">
         {!isUser && (
