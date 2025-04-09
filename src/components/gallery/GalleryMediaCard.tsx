@@ -4,7 +4,7 @@ import { MediaItem } from '@/pages/MediaGallery';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { AudioLines, Calendar, Image, MessageSquare, Video, ExternalLink, Loader2 } from 'lucide-react';
+import { AudioLines, Calendar, Image, MessageSquare, Video, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,15 +13,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 type GalleryMediaCardProps = {
   item: MediaItem;
+  onDelete: (id: string) => void;
 };
 
-const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item }) => {
+const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleMediaLoad = () => {
     setIsMediaLoading(false);
@@ -30,6 +45,34 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item }) => {
   const handleMediaError = () => {
     setIsMediaLoading(false);
     setMediaError(true);
+  };
+
+  const handleDeleteMedia = async () => {
+    try {
+      setIsDeleting(true);
+      const { error } = await supabase
+        .from('media_gallery')
+        .delete()
+        .eq('id', item.id);
+
+      if (error) throw error;
+      
+      onDelete(item.id);
+      toast({
+        title: "Mídia excluída",
+        description: "A mídia foi excluída com sucesso",
+      });
+    } catch (error) {
+      console.error('Erro ao excluir mídia:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a mídia",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   const getTypeIcon = () => {
@@ -148,7 +191,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item }) => {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               {getTypeIcon()}
-              <span className="ml-1 text-sm text-inventu-gray">
+              <span className="ml-1 text-sm text-white">
                 {item.media_type === 'image' ? 'Imagem' : 
                  item.media_type === 'video' ? 'Vídeo' : 'Áudio'}
               </span>
@@ -164,11 +207,21 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item }) => {
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex justify-end">
+        <CardFooter className="p-4 pt-0 flex justify-between">
           <Button 
             variant="ghost" 
             size="sm"
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Excluir
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            className="text-white hover:text-white hover:bg-inventu-blue/20"
             onClick={() => setIsOpen(true)}
           >
             Visualizar
@@ -202,11 +255,24 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item }) => {
             <p className="text-white text-sm break-words">{item.prompt}</p>
           </div>
           
-          <div className="flex justify-end">
+          <div className="flex justify-between">
             <Button
               variant="outline"
               size="sm"
-              className="text-inventu-gray border-inventu-gray/30 hover:bg-inventu-gray/20 hover:text-white"
+              className="text-red-400 border-red-900/30 hover:bg-red-900/20 hover:text-red-300"
+              onClick={() => {
+                setIsOpen(false);
+                setIsDeleteDialogOpen(true);
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir mídia
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-white border-inventu-gray/30 hover:bg-inventu-blue/20 hover:text-white"
               onClick={() => window.open(item.media_url, '_blank')}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
@@ -215,6 +281,42 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item }) => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-inventu-card border-inventu-gray/30">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Excluir mídia</AlertDialogTitle>
+            <AlertDialogDescription className="text-inventu-gray">
+              Tem certeza que deseja excluir esta mídia? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-inventu-darker text-white border-inventu-gray/30 hover:bg-inventu-gray/20 hover:text-white">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteMedia();
+              }}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

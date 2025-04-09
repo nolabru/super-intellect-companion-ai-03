@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CalendarIcon, Check } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -80,7 +80,7 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
             variant="ghost" 
             size="sm" 
             onClick={clearFilters}
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            className="text-white hover:text-white hover:bg-inventu-blue/20"
           >
             Limpar filtros
           </Button>
@@ -89,7 +89,7 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
       
       <div className="flex flex-wrap gap-4">
         <div>
-          <p className="text-sm text-inventu-gray mb-2">Tipo de mídia</p>
+          <p className="text-sm text-white mb-2">Tipo de mídia</p>
           <div className="flex flex-wrap gap-2">
             {mediaTypes.map(type => (
               <Button
@@ -98,8 +98,8 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
                 size="sm"
                 onClick={() => handleMediaTypeToggle(type.value)}
                 className={filters.mediaType.includes(type.value) 
-                  ? "bg-inventu-blue hover:bg-inventu-blue/80" 
-                  : "border-inventu-gray/30 text-inventu-gray hover:text-white"}
+                  ? "bg-inventu-blue hover:bg-inventu-blue/80 text-white" 
+                  : "border-inventu-gray/30 text-white hover:text-white hover:bg-inventu-gray/30"}
               >
                 {type.label}
               </Button>
@@ -109,14 +109,14 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
         
         <div className="flex flex-wrap gap-2">
           <div>
-            <p className="text-sm text-inventu-gray mb-2">Data inicial</p>
+            <p className="text-sm text-white mb-2">Data inicial</p>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "border-inventu-gray/30 text-inventu-gray hover:text-white justify-start text-left font-normal",
+                    "border-inventu-gray/30 text-white hover:text-white hover:bg-inventu-gray/30 justify-start text-left font-normal",
                     !filters.dateRange.from && "text-muted-foreground"
                   )}
                 >
@@ -141,14 +141,14 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
           </div>
           
           <div>
-            <p className="text-sm text-inventu-gray mb-2">Data final</p>
+            <p className="text-sm text-white mb-2">Data final</p>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "border-inventu-gray/30 text-inventu-gray hover:text-white justify-start text-left font-normal",
+                    "border-inventu-gray/30 text-white hover:text-white hover:bg-inventu-gray/30 justify-start text-left font-normal",
                     !filters.dateRange.to && "text-muted-foreground"
                   )}
                 >

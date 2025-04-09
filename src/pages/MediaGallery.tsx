@@ -53,6 +53,7 @@ const MediaGallery: React.FC = () => {
   const fetchUserMedia = async () => {
     try {
       setLoading(true);
+      // Especificar o tipo de retorno para type safety
       const { data, error } = await supabase
         .from('media_gallery')
         .select('*')
@@ -62,8 +63,9 @@ const MediaGallery: React.FC = () => {
         throw error;
       }
 
-      setMedia(data || []);
-      setFilteredMedia(data || []);
+      // Agora definimos explicitamente o tipo
+      setMedia(data as MediaItem[] || []);
+      setFilteredMedia(data as MediaItem[] || []);
     } catch (error) {
       console.error('Erro ao buscar mídias:', error);
       toast({
@@ -102,6 +104,11 @@ const MediaGallery: React.FC = () => {
     setFilteredMedia(filtered);
   };
 
+  const handleDeleteItem = (id: string) => {
+    setMedia(prevMedia => prevMedia.filter(item => item.id !== id));
+    setFilteredMedia(prevFiltered => prevFiltered.filter(item => item.id !== id));
+  };
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -123,7 +130,7 @@ const MediaGallery: React.FC = () => {
           <div className="flex-1 flex flex-col overflow-hidden relative rounded-xl mx-4 my-2 bg-inventu-dark p-4">
             <div className="mb-6">
               <h1 className="text-2xl font-semibold text-white">Galeria de Mídias</h1>
-              <p className="text-inventu-gray">Visualize e gerencie suas criações de IA</p>
+              <p className="text-white">Visualize e gerencie suas criações de IA</p>
             </div>
             
             <GalleryFilters 
@@ -139,14 +146,14 @@ const MediaGallery: React.FC = () => {
               <div className="flex-1 flex items-center justify-center text-center">
                 <div>
                   <h2 className="text-xl font-medium text-white mb-2">Faça login para visualizar sua galeria</h2>
-                  <p className="text-inventu-gray">Você precisa estar logado para acessar suas mídias</p>
+                  <p className="text-white">Você precisa estar logado para acessar suas mídias</p>
                 </div>
               </div>
             ) : filteredMedia.length === 0 ? (
               <div className="flex-1 flex items-center justify-center text-center">
                 <div>
                   <h2 className="text-xl font-medium text-white mb-2">Nenhuma mídia encontrada</h2>
-                  <p className="text-inventu-gray">
+                  <p className="text-white">
                     {media.length === 0 
                       ? "Você ainda não tem mídias geradas. Use o chat para criar novas mídias." 
                       : "Nenhuma mídia corresponde aos filtros selecionados."}
@@ -155,7 +162,10 @@ const MediaGallery: React.FC = () => {
               </div>
             ) : (
               <div className="flex-1 overflow-auto">
-                <GalleryList media={filteredMedia} />
+                <GalleryList 
+                  media={filteredMedia} 
+                  onDeleteItem={handleDeleteItem}
+                />
               </div>
             )}
           </div>
