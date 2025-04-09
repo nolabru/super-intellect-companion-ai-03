@@ -41,8 +41,8 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
     
     try {
       // Tentando uma chamada básica para validar o token
-      // Usando o novo endpoint dream-machine
-      const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/models", {
+      // Usando o endpoint de listar gerações
+      const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/generations?limit=1", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${tokenToUse}`,
@@ -240,7 +240,7 @@ export async function generateVideo(
     console.log("Enviando requisição para API Luma (vídeo):", JSON.stringify(requestBody, null, 2));
     console.log("Usando token de autorização:", `Bearer ${apiKey.substring(0, 10)}...`);
     
-    // Criar a geração usando o novo endpoint com Authorization: Bearer [token] sem espaço entre Bearer e o token
+    // Criar a geração usando o novo endpoint com Authorization: Bearer [token]
     const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/generations", {
       method: "POST",
       headers: {
@@ -286,19 +286,9 @@ export async function generateVideo(
     
     console.log("ID da geração de vídeo criada:", generation.id);
     
-    // Verificar status da geração até completar ou falhar
-    let videoUrl: string | null = null;
-    let completed = false;
-    let attempts = 0;
-    const maxAttempts = 60; // Vídeos podem levar mais tempo
-    
-    while (!completed && attempts < maxAttempts) {
-      attempts++;
-      
-      console.log(`Verificando status do vídeo (tentativa ${attempts}/${maxAttempts})...`);
-      
-      // Verificar o status do vídeo
-      const statusResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${generation.id}`, {
+    try {
+      // Consultar imediatamente o endpoint de listar gerações para ver o status inicial
+      const listResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations?limit=1`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -307,41 +297,169 @@ export async function generateVideo(
         }
       });
       
-      if (!statusResponse.ok) {
-        console.error(`Erro ao verificar status do vídeo (tentativa ${attempts}):`, statusResponse.status, statusResponse.statusText);
-        
-        // Se ocorrer erro, aguarde e tente novamente
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        continue;
+      if (listResponse.ok) {
+        const listData = await listResponse.json();
+        console.log("Listagem de gerações recentes:", JSON.stringify(listData, null, 2));
       }
+    } catch (e) {
+      console.warn("Erro ao consultar listagem de gerações:", e);
+      // Não falhar o processo principal por causa deste erro
+    }
+    
+    // Verificar status da geração até completar ou falhar - com timeout aumentado
+    let videoUrl: string | null = null;
+    let completed = false;
+    let attempts = 0;
+    const maxAttempts = 90; // Aumentado para 90 tentativas (7.5 minutos com 5 segundos de intervalo)
+    let statusData: any = null;
+    
+    while (!completed && attempts < maxAttempts) {
+      attempts++;
       
-      const statusData = await statusResponse.json();
-      console.log(`Status do vídeo (${attempts}/${maxAttempts}):`, statusData?.status);
+      console.log(`Verificando status do vídeo (tentativa ${attempts}/${maxAttempts})...`);
       
-      if (statusData?.status === "done") {
-        completed = true;
+      try {
+        // Verificar o status da geração - com timeout de 10 segundos
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         
-        // Obter a URL do vídeo da resposta
-        if (statusData.video && statusData.video.url) {
-          videoUrl = statusData.video.url;
-          console.log("URL do vídeo:", videoUrl);
-        } else {
-          console.log("Resposta completa:", JSON.stringify(statusData, null, 2));
-          throw new Error("URL do vídeo não encontrada na resposta");
+        const statusResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${generation.id}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
+        
+        if (!statusResponse.ok) {
+          console.error(`Erro ao verificar status do vídeo (tentativa ${attempts}):`, statusResponse.status, statusResponse.statusText);
+          
+          // Se ocorrer erro, aguarde e tente novamente
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          continue;
         }
-      } else if (statusData?.status === "failed") {
-        throw new Error(`Geração de vídeo falhou: ${statusData.error?.message || "Erro desconhecido"}`);
-      } else {
+        
+        statusData = await statusResponse.json();
+        console.log(`Status do vídeo (${attempts}/${maxAttempts}):`, statusData?.status);
+        console.log("Dados da resposta:", JSON.stringify(statusData, null, 2));
+        
+        // Verificar estrutura da resposta completa para debug
+        if (attempts % 5 === 0) {
+          console.log("Estrutura completa da resposta:", JSON.stringify(statusData, null, 2));
+        }
+        
+        // Verificar diferentes formatos de resposta possíveis
+        if (statusData?.status === "done" || statusData?.state === "completed") {
+          completed = true;
+          
+          // Tentar obter a URL do vídeo de diferentes locais na resposta
+          if (statusData.video && statusData.video.url) {
+            videoUrl = statusData.video.url;
+          } else if (statusData.assets && statusData.assets.video) {
+            videoUrl = statusData.assets.video;
+          } else if (statusData.results && statusData.results.length > 0 && statusData.results[0].url) {
+            videoUrl = statusData.results[0].url;
+          }
+          
+          console.log("URL do vídeo encontrada:", videoUrl);
+          
+          if (!videoUrl) {
+            // Tentar encontrar URL em qualquer propriedade que possa ser uma string
+            console.log("Buscando URL em todas as propriedades da resposta...");
+            const findUrlInObject = (obj: any): string | null => {
+              if (!obj || typeof obj !== 'object') return null;
+              
+              for (const key in obj) {
+                if (typeof obj[key] === 'string' && obj[key].startsWith('http') && 
+                    (obj[key].endsWith('.mp4') || obj[key].includes('video'))) {
+                  return obj[key];
+                } else if (typeof obj[key] === 'object') {
+                  const nestedUrl = findUrlInObject(obj[key]);
+                  if (nestedUrl) return nestedUrl;
+                }
+              }
+              return null;
+            };
+            
+            videoUrl = findUrlInObject(statusData);
+            if (videoUrl) {
+              console.log("URL do vídeo encontrada em propriedade alternativa:", videoUrl);
+            }
+          }
+        } else if (statusData?.status === "failed" || statusData?.state === "failed") {
+          const errorMessage = statusData.error?.message || statusData.failure_reason || "Erro desconhecido";
+          throw new Error(`Geração de vídeo falhou: ${errorMessage}`);
+        } else {
+          // Aguardar antes da próxima verificação
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      } catch (error) {
+        // Se houve timeout ou outro erro, registrar e continuar tentando
+        console.error(`Erro durante verificação de status (tentativa ${attempts}):`, error);
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
     
-    if (!completed) {
-      throw new Error("Tempo limite excedido para geração de vídeo");
+    // Se o vídeo não foi encontrado mas temos status "completed", tentar consultar lista de gerações
+    if (completed && !videoUrl) {
+      console.log("Vídeo marcado como completo, mas URL não encontrada. Tentando consultar lista de gerações...");
+      
+      try {
+        const listResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations?limit=5`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }
+        });
+        
+        if (listResponse.ok) {
+          const listData = await listResponse.json();
+          console.log("Listagem de gerações recentes:", JSON.stringify(listData, null, 2));
+          
+          // Procurar pelo ID específico
+          const matchingGeneration = Array.isArray(listData) && 
+                                    listData.find((gen: any) => gen.id === generation.id);
+          
+          if (matchingGeneration) {
+            console.log("Geração encontrada na listagem:", matchingGeneration);
+            
+            // Tentar obter URL
+            if (matchingGeneration.video && matchingGeneration.video.url) {
+              videoUrl = matchingGeneration.video.url;
+            } else if (matchingGeneration.assets && matchingGeneration.assets.video) {
+              videoUrl = matchingGeneration.assets.video;
+            }
+            
+            if (videoUrl) {
+              console.log("URL do vídeo encontrada na listagem:", videoUrl);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao consultar listagem de gerações:", e);
+      }
     }
     
+    // Se o tempo limite foi excedido, retornar mensagem informativa com ID
+    if (!completed) {
+      console.log("Tempo limite excedido para geração de vídeo. ID:", generation.id);
+      return {
+        content: `A geração do vídeo está em andamento, mas o tempo limite foi excedido. Você pode verificar o status no painel do Luma AI usando o ID: ${generation.id}`,
+        files: []
+      };
+    }
+    
+    // Se não encontramos a URL do vídeo, enviar mensagem com ID para o usuário verificar no painel
     if (!videoUrl) {
-      throw new Error("URL do vídeo não disponível após conclusão");
+      console.log("URL do vídeo não encontrada na resposta. Dados completos:", JSON.stringify(statusData, null, 2));
+      return {
+        content: `Vídeo processado pelo Luma AI, mas a URL não pôde ser recuperada. Você pode verificar o vídeo no painel do Luma AI usando o ID: ${generation.id}`,
+        files: []
+      };
     }
     
     return {

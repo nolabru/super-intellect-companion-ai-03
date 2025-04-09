@@ -3,7 +3,7 @@ import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
 import { AVAILABLE_MODELS } from './ModelSelector';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
@@ -91,6 +91,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const isKliginVideo = model === 'kligin-video';
   const isLumaVideo = model === 'luma-video';
   const isLumaImage = model === 'luma-image';
+  
+  // Verificar se alguma mensagem contém ID de geração da Luma
+  const lumaGenIdMessage = filteredMessages.find(msg => 
+    msg.model?.includes('luma') && 
+    msg.content.includes('ID:') && 
+    !msg.error
+  );
+  
+  // Extrair ID da mensagem se existir
+  const extractLumaId = (content: string): string | null => {
+    const match = content.match(/ID: ([a-f0-9-]+)/i);
+    return match ? match[1] : null;
+  };
+  
+  const lumaGenId = lumaGenIdMessage ? extractLumaId(lumaGenIdMessage.content) : null;
+  
+  // Função para abrir o painel da Luma em uma nova aba
+  const openLumaDashboard = () => {
+    window.open('https://lumalabs.ai/dashboard', '_blank');
+    toast.success('Abrindo painel da Luma AI');
+  };
   
   // Função para mostrar instruções de como configurar a chave da Luma
   const showLumaKeyInstructions = () => {
@@ -201,6 +222,34 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     }
                   `}
                 </style>
+              </div>
+            )}
+            
+            {lumaGenId && (
+              <div className="p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-lg my-4">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-indigo-400 font-medium">
+                      Vídeo em processamento na Luma AI
+                    </p>
+                    <p className="text-sm text-gray-300 mt-1">
+                      O sistema Luma AI está processando seu vídeo, mas pode demorar mais tempo que o nosso limite de espera. 
+                      Você pode verificar o resultado no painel da Luma AI com o ID: {lumaGenId}
+                    </p>
+                    <div className="mt-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-1 text-xs text-gray-300"
+                        onClick={openLumaDashboard}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>Abrir painel da Luma AI</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
             

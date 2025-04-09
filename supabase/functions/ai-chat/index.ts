@@ -97,8 +97,29 @@ async function handleAIChat(req: Request): Promise<Response> {
           model: params?.model || "ray-2"
         };
         
-        response = await lumaService.generateVideo(content, videoParams, imageUrl);
-        console.log("Processamento de vídeo concluído com sucesso");
+        // Usar AbortController para limitar o tempo total da operação
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log("Atingido tempo máximo global para processamento de vídeo (5 minutos)");
+          controller.abort();
+        }, 300000); // 5 minutos
+        
+        try {
+          response = await Promise.race([
+            lumaService.generateVideo(content, videoParams, imageUrl),
+            new Promise<ResponseData>((_, reject) => {
+              // Se o AbortController for acionado, este Promise rejeitará
+              controller.signal.addEventListener('abort', () => {
+                reject(new Error("Tempo limite global excedido para processamento de vídeo (5 minutos)"));
+              });
+            })
+          ]);
+          clearTimeout(timeoutId);
+          console.log("Processamento de vídeo concluído com sucesso");
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
       } 
       else if (modelId === "luma-image" && mode === "image") {
         console.log("Iniciando processamento de imagem com Luma AI");
@@ -171,6 +192,8 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
           friendlyError = "Erro na API Luma: Endpoint não encontrado. A API pode ter sido atualizada.";
+        } else if (errorMessage.includes("Tempo limite")) {
+          friendlyError = `O processamento do ${mode === 'video' ? 'vídeo' : 'imagem'} excedeu o tempo limite. A geração pode estar em andamento no servidor do Luma AI, verifique seu painel de controle.`;
         } else {
           friendlyError = `Erro na geração do ${mode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
         }
