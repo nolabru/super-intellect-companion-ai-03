@@ -130,24 +130,6 @@ const LumaParamsButton: React.FC<LumaParamsButtonProps> = ({
               </div>
               
               <div className="space-y-2">
-                <Label>Resolução</Label>
-                <Select 
-                  value={params.resolution} 
-                  onValueChange={(value) => handleParamChange('resolution', value as '540p' | '720p' | '1080p' | '4k')}
-                >
-                  <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
-                    <SelectValue placeholder="Selecione uma resolução" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-                    <SelectItem value="540p">540p</SelectItem>
-                    <SelectItem value="720p">720p</SelectItem>
-                    <SelectItem value="1080p">1080p</SelectItem>
-                    <SelectItem value="4k">4k</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
                 <Label>Duração</Label>
                 <Select 
                   value={params.duration} 

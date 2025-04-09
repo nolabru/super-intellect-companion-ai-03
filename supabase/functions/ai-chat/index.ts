@@ -49,11 +49,27 @@ async function handleAIChat(req: Request): Promise<Response> {
             );
           }
           console.log(`LUMA_API_KEY encontrada: ${apiKey.substring(0, 5)}...`);
+          
+          // Testar a validade da chave API
+          const isValid = await lumaService.testApiKey(apiKey);
+          if (!isValid) {
+            return new Response(
+              JSON.stringify({
+                content: "A chave API da Luma é inválida ou expirou. Por favor, verifique a chave LUMA_API_KEY nas variáveis de ambiente.",
+                error: "LUMA_API_KEY inválida",
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          }
+          
         } catch (error) {
           return new Response(
             JSON.stringify({
               content: error.message,
-              error: "LUMA_API_KEY não configurada",
+              error: "LUMA_API_KEY não configurada ou inválida",
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },

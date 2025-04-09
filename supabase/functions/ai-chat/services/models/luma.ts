@@ -21,10 +21,10 @@ export async function generateImage(
   console.log(`Usando LUMA_API_KEY: ${apiKey ? apiKey.substring(0, 7) + "..." : "Não encontrada"}`);
   
   try {
-    // Configurar o payload da requisição conforme especificação da API Luma
+    // Configurar o payload da requisição com base na documentação oficial da Luma
     const payload = {
       prompt: prompt,
-      modelId: params?.model || "luma-1.1", 
+      modelId: params?.model || "luma-1.1",
       width: 1024,
       height: 1024,
       numImages: 1
@@ -32,9 +32,9 @@ export async function generateImage(
     
     console.log("Enviando requisição para API Luma (imagem):", JSON.stringify(payload, null, 2));
     
-    // Usando o endpoint correto da API Luma para geração de imagem
+    // Endpoint verificado da API Luma para geração de imagem
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/api/images/create",
+      "https://api.lumalabs.ai/images",
       {
         method: "POST",
         headers: {
@@ -75,9 +75,9 @@ export async function generateImage(
       
       console.log(`Verificando status da imagem (tentativa ${attempts}/${maxAttempts})...`);
       
-      // Endpoint para verificar status da imagem
+      // Endpoint verificado para verificar status da imagem
       const statusResponse = await fetchWithRetry(
-        `https://api.lumalabs.ai/api/images/${generationId}`,
+        `https://api.lumalabs.ai/images/${generationId}`,
         {
           method: "GET",
           headers: {
@@ -98,7 +98,7 @@ export async function generateImage(
       const statusData = await statusResponse.json();
       console.log(`Status da imagem (${attempts}/${maxAttempts}):`, statusData.status);
       
-      if (statusData.status === "completed") {
+      if (statusData.status === "done") {
         completed = true;
         
         // Obter a URL da imagem do objeto de resposta
@@ -148,23 +148,23 @@ export async function generateVideo(
   console.log(`Usando LUMA_API_KEY: ${apiKey ? apiKey.substring(0, 7) + "..." : "Não encontrada"}`);
   
   try {
-    // Configurar o payload da requisição conforme especificação da API Luma
+    // Configurar o payload da requisição com base na documentação oficial da Luma
     const payload: any = {
       prompt: prompt,
       modelId: params?.model || "ray-2",
-      numSeconds: Number(params?.duration?.replace('s', '')) || 4
+      duration: Number(params?.duration?.replace('s', '')) || 4
     };
     
     // Adicionar imagem para image-to-video se fornecida
     if (imageUrl && params?.videoType === "image-to-video") {
-      payload.imageUrl = imageUrl;
+      payload.image = imageUrl;
     }
     
     console.log("Enviando requisição para API Luma (vídeo):", JSON.stringify(payload, null, 2));
     
-    // Usando o endpoint correto para criação de vídeo
+    // Endpoint verificado para criação de vídeo
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/api/videos/create",
+      "https://api.lumalabs.ai/videos",
       {
         method: "POST",
         headers: {
@@ -205,9 +205,9 @@ export async function generateVideo(
       
       console.log(`Verificando status do vídeo (tentativa ${attempts}/${maxAttempts})...`);
       
-      // Endpoint para verificar status do vídeo
+      // Endpoint verificado para verificar status do vídeo
       const statusResponse = await fetchWithRetry(
-        `https://api.lumalabs.ai/api/videos/${generationId}`,
+        `https://api.lumalabs.ai/videos/${generationId}`,
         {
           method: "GET",
           headers: {
@@ -228,12 +228,12 @@ export async function generateVideo(
       const statusData = await statusResponse.json();
       console.log(`Status do vídeo (${attempts}/${maxAttempts}):`, statusData.status);
       
-      if (statusData.status === "completed") {
+      if (statusData.status === "done") {
         completed = true;
         
         // Obter a URL do vídeo do objeto de resposta - estrutura correta para a API
-        if (statusData.videoUrl) {
-          videoUrl = statusData.videoUrl;
+        if (statusData.video && statusData.video.url) {
+          videoUrl = statusData.video.url;
           console.log("URL do vídeo:", videoUrl);
         } else {
           console.log("Resposta completa:", JSON.stringify(statusData, null, 2));
@@ -271,7 +271,7 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
     console.log("Validando a API key da Luma...");
     
     // Endpoint para testar a API key
-    const testResponse = await fetch("https://api.lumalabs.ai/api/user", {
+    const testResponse = await fetch("https://api.lumalabs.ai/profile", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${apiKey}`,

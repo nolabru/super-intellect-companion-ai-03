@@ -128,7 +128,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   {isKliginVideo ?
                     "O sistema está conectando ao serviço do Kligin AI. Por favor, aguarde." :
                     isLumaVideo ?
-                    "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade." :
+                    "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando a API oficial da Luma." :
                     "Estamos trabalhando na sua solicitação. Isso pode levar alguns instantes."
                   }
                 </p>
