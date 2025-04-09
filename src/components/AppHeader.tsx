@@ -1,86 +1,39 @@
 
-import { useState } from 'react';
-import { Image, Video, AudioLines, ListMusic } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import React from 'react';
 import UserMenu from './UserMenu';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft } from 'lucide-react';
 
-const AppHeader = () => {
-  const location = useLocation();
-  const [isExpanded, setIsExpanded] = useState(false);
+interface AppHeaderProps {
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+}
 
+const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
   return (
-    <header className="bg-inventu-darker p-4 shadow-md relative z-10">
-      <div className="container mx-auto flex flex-wrap justify-between items-center">
-        <div className="flex items-center">
-          <Link to="/" className="text-white text-xl font-bold flex items-center">
-            <span className="bg-inventu-blue mr-2 p-1 rounded">AI</span>
-            <span>Inventu</span>
-          </Link>
-          
-          <button
-            className="ml-4 lg:hidden text-gray-400 hover:text-white"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d={isExpanded ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-              />
-            </svg>
-          </button>
-        </div>
+    <div className="flex items-center justify-between py-3 px-6 border-b border-inventu-gray/30 bg-inventu-darker">
+      <div className="flex items-center">
+        <img 
+          src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
+          alt="InventuAi Logo" 
+          className="h-14" 
+        />
         
-        <nav
-          className={cn(
-            "flex-grow lg:flex lg:items-center lg:w-auto w-full",
-            isExpanded ? "block" : "hidden lg:block"
-          )}
-        >
-          <ul className="lg:flex lg:flex-grow items-center mt-4 lg:mt-0">
-            <li className="block lg:mr-4">
-              <Link
-                to="/"
-                className={cn(
-                  "block py-2 px-4 rounded-md transition-colors",
-                  location.pathname === "/"
-                    ? "bg-inventu-blue text-white"
-                    : "text-gray-400 hover:text-white hover:bg-inventu-gray/30"
-                )}
-              >
-                Chat
-              </Link>
-            </li>
-            <li className="block lg:mr-4">
-              <Link
-                to="/media-gallery"
-                className={cn(
-                  "block py-2 px-4 rounded-md transition-colors flex items-center",
-                  location.pathname === "/media-gallery"
-                    ? "bg-inventu-blue text-white"
-                    : "text-gray-400 hover:text-white hover:bg-inventu-gray/30"
-                )}
-              >
-                <ListMusic size={18} className="mr-2" />
-                Galeria de Mídia
-              </Link>
-            </li>
-          </ul>
-          
-          <div className="mt-4 lg:mt-0">
-            <UserMenu />
-          </div>
-        </nav>
+        {!sidebarOpen && onToggleSidebar && (
+          <Button
+            onClick={onToggleSidebar}
+            size="icon"
+            variant="ghost"
+            className="ml-3 text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            title="Abrir menu"
+          >
+            <ChevronLeft className="h-5 w-5 rotate-180" />
+          </Button>
+        )}
       </div>
-    </header>
+      
+      <UserMenu />
+    </div>
   );
 };
 
