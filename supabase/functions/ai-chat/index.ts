@@ -61,6 +61,25 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
+      // Special check for Anthropic models
+      if (modelId.includes("claude")) {
+        try {
+          // Verify Anthropic API key before proceeding
+          anthropicService.verifyApiKey();
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "ANTHROPIC_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400, // Using 400 instead of 500 for configuration errors
+            }
+          );
+        }
+      }
+      
       // Luma AI models
       if (modelId === "luma-video" && mode === "video") {
         console.log("Iniciando processamento de vídeo com Luma AI");
@@ -92,9 +111,12 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // Anthropic models
       else if (modelId.includes("claude") && mode === "text") {
+        console.log("Iniciando processamento de texto com Anthropic");
         response = await anthropicService.generateText(content, modelId);
+        console.log("Processamento de texto concluído com sucesso");
       }
       else if (modelId.includes("claude") && mode === "image") {
+        console.log("Iniciando processamento de imagem com Anthropic");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
         if (imageUrl) {
           response = await anthropicService.processImage(content, imageUrl, modelId);
@@ -129,6 +151,12 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada ou é inválida. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("429")) {
           friendlyError = "Limite de requisições excedido na API do OpenAI. Por favor, tente novamente mais tarde.";
+        }
+      } else if (modelId.includes("claude")) {
+        if (errorMessage.includes("API key")) {
+          friendlyError = "Erro de configuração: A chave API da Anthropic não está configurada ou é inválida. Por favor, verifique suas configurações.";
+        } else if (errorMessage.includes("429")) {
+          friendlyError = "Limite de requisições excedido na API da Anthropic. Por favor, tente novamente mais tarde.";
         }
       }
       
