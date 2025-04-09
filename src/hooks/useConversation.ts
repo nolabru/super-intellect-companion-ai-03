@@ -5,6 +5,7 @@ import { MessageType } from '@/components/ChatMessage';
 import { LumaParams } from '@/components/LumaParamsButton';
 import { ChatMode } from '@/components/ModeSelector';
 import { createClient } from '@supabase/supabase-js';
+import { useApiService } from './useApiService';
 
 // Corrigindo o cliente Supabase com URL e chave anônima
 const supabaseUrl = 'https://vygluorjwehcdigzxbaa.supabase.co';
@@ -24,6 +25,7 @@ export function useConversation() {
   const [error, setError] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationType[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const apiService = useApiService();
 
   // Função para criar uma nova conversa
   const createNewConversation = async () => {
@@ -125,7 +127,7 @@ export function useConversation() {
       
       setMessages((prevMessages) => [...prevMessages, userMessage]);
       
-      // Se estiver no modo de comparação, precisamos adicionar uma mensagem de carregamento para cada modelo
+      // Se estiver no modo de comparação, precisamos adicionar uma mensagem para cada modelo
       if (isComparing && leftModelId && rightModelId) {
         // Adicionar mensagens de carregamento
         const loadingIdLeft = `loading-${leftModelId}-${uuidv4()}`;
@@ -156,8 +158,8 @@ export function useConversation() {
         
         // Enviar para a API para ambos os modelos em paralelo
         const [responseLeft, responseRight] = await Promise.all([
-          sendToAI(content, mode, leftModelId, files, params),
-          sendToAI(content, mode, rightModelId, files, params)
+          apiService.sendRequest(content, mode, leftModelId, files, params),
+          apiService.sendRequest(content, mode, rightModelId, files, params)
         ]);
         
         // Remover mensagens de carregamento
@@ -191,12 +193,12 @@ export function useConversation() {
         
         setMessages((prevMessages) => [...prevMessages, ...newMessages]);
       } else {
-        // Adicionar mensagem de carregamento
+        // Mensagem única - adicionar mensagem de carregamento
         const loadingId = `loading-${modelId}-${uuidv4()}`;
         
         let loadingMessage = 'Gerando resposta...';
         
-        // Mensagens de carregamento específicas para vídeo
+        // Mensagens de carregamento específicas para cada modo
         if (mode === 'video') {
           if (modelId === 'luma-video') {
             loadingMessage = 'Conectando ao serviço Luma AI para processamento de vídeo...';
@@ -227,7 +229,7 @@ export function useConversation() {
             setTimeout(() => reject(new Error("Tempo limite excedido na solicitação")), 180000);
           });
           
-          const responsePromise = sendToAI(content, mode, modelId, files, params);
+          const responsePromise = apiService.sendRequest(content, mode, modelId, files, params);
           const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
           
           // Remover mensagem de carregamento
@@ -307,58 +309,6 @@ export function useConversation() {
     } finally {
       setLoading(false);
     }
-  };
-  
-  // Função melhorada para enviar solicitações à API com retry e melhor tratamento de erros
-  const sendToAI = async (
-    content: string, 
-    mode: ChatMode, 
-    modelId: string, 
-    files?: string[],
-    params?: LumaParams
-  ): Promise<{ content: string, files?: string[] }> => {
-    const maxRetries = 2;
-    let lastError;
-    
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        // Registrar tentativas de retry
-        if (attempt > 0) {
-          console.log(`Tentativa ${attempt}/${maxRetries} de chamar a Edge Function...`);
-        }
-        
-        // Chamar a Edge Function
-        const { data, error } = await supabase.functions.invoke('ai-chat', {
-          body: {
-            content,
-            mode,
-            modelId,
-            files,
-            params
-          },
-        });
-        
-        if (error) {
-          console.error('Erro ao chamar a Edge Function:', error);
-          throw new Error(`Erro ao chamar a API: ${error.message}`);
-        }
-        
-        return data;
-      } catch (err) {
-        console.error(`Erro ao enviar para a API (tentativa ${attempt + 1}/${maxRetries + 1}):`, err);
-        lastError = err;
-        
-        // Se não é a última tentativa, aguardar antes de tentar novamente
-        if (attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000; // Backoff exponencial
-          console.log(`Aguardando ${delay}ms antes da próxima tentativa...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-      }
-    }
-    
-    // Se chegamos aqui, todas as tentativas falharam
-    throw lastError || new Error("Falha após tentativas máximas");
   };
   
   return {

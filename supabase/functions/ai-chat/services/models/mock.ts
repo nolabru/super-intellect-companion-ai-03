@@ -5,8 +5,8 @@ export interface ResponseData {
   files?: string[];
 }
 
-// Function to handle mock image generation
-export function generateMockImage(
+// Função para gerar imagem simulada
+export function generateImage(
   content: string,
   modelId: string
 ): ResponseData {
@@ -16,8 +16,8 @@ export function generateMockImage(
   };
 }
 
-// Function to handle mock video generation
-export function generateMockVideo(
+// Função para gerar vídeo simulado
+export function generateVideo(
   content: string,
   modelId: string
 ): ResponseData {
@@ -28,8 +28,8 @@ export function generateMockVideo(
   };
 }
 
-// Function to handle mock text generation
-export function generateMockText(
+// Função para gerar texto simulado
+export function generateText(
   content: string,
   modelId: string,
   mode: string
