@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image, Minimize2 } from 'lucide-react';
+import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -261,7 +261,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
                 title="Minimizar menu"
               >
-                <Minimize2 className="h-5 w-5" />
+                <ChevronLeft className="h-5 w-5" />
               </Button>
             )}
           </div>
