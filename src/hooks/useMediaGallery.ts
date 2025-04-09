@@ -37,34 +37,35 @@ export function useMediaGallery() {
         return;
       }
       
-      // Build query
-      let query = supabase
-        .from('user_media')
+      // Build query - using type assertion to bypass type checking
+      // This is necessary until we can update the database schema types
+      const supabaseQuery = supabase
+        .from('user_media' as any)
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
       // Apply filters
       if (filters.mediaType && filters.mediaType !== 'all') {
-        query = query.eq('media_type', filters.mediaType);
+        supabaseQuery.eq('media_type', filters.mediaType);
       }
       
       if (filters.startDate) {
-        query = query.gte('created_at', filters.startDate.toISOString());
+        supabaseQuery.gte('created_at', filters.startDate.toISOString());
       }
       
       if (filters.endDate) {
         // Add one day to include the entire end date
         const endDate = new Date(filters.endDate);
         endDate.setDate(endDate.getDate() + 1);
-        query = query.lt('created_at', endDate.toISOString());
+        supabaseQuery.lt('created_at', endDate.toISOString());
       }
       
       if (filters.searchQuery) {
-        query = query.ilike('prompt', `%${filters.searchQuery}%`);
+        supabaseQuery.ilike('prompt', `%${filters.searchQuery}%`);
       }
       
-      const { data, error: fetchError } = await query;
+      const { data, error: fetchError } = await supabaseQuery;
       
       if (fetchError) {
         console.error('Error fetching media:', fetchError);
@@ -77,6 +78,7 @@ export function useMediaGallery() {
           throw fetchError;
         }
       } else {
+        // Use type assertion to cast the data to MediaItem[]
         setMediaItems(data as MediaItem[]);
       }
     } catch (err) {
@@ -100,7 +102,7 @@ export function useMediaGallery() {
       
       // Check if the table exists by trying to select from it
       const { error: checkError } = await supabase
-        .from('user_media')
+        .from('user_media' as any)
         .select('id')
         .limit(1);
       
@@ -110,15 +112,16 @@ export function useMediaGallery() {
         console.log('Table user_media does not exist, trying to insert anyway');
       }
       
+      // Using type assertion to bypass type checking
       const { data, error } = await supabase
-        .from('user_media')
+        .from('user_media' as any)
         .insert([{
           user_id: user.id,
           media_url: mediaUrl,
           media_type: mediaType,
           prompt,
           thumbnail_url: thumbnailUrl
-        }])
+        }] as any)
         .select();
       
       if (error) {
@@ -143,7 +146,7 @@ export function useMediaGallery() {
   const deleteMediaItem = async (id: string) => {
     try {
       const { error } = await supabase
-        .from('user_media')
+        .from('user_media' as any)
         .delete()
         .eq('id', id);
       
