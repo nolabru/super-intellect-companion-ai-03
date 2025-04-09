@@ -4,6 +4,7 @@ import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessageContentProps {
   content: string;
@@ -72,10 +73,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
           )
         }}
         // Enable breaking lines on line breaks
-        remarkPlugins={[
-          // This enables line breaks on newlines
-          [require('remark-gfm')]
-        ]}
+        remarkPlugins={[remarkGfm]}
       >
         {processedContent}
       </ReactMarkdown>
