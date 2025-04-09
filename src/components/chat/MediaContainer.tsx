@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,7 +36,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
       <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
         <p className="text-sm text-red-400 flex items-start">
           <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-          <span>Não foi possível carregar a mídia. Isto pode ocorrer devido a erros na API do Luma ou problemas temporários de conexão.</span>
+          <span>Não foi possível carregar a mídia. Isto pode ocorrer devido a erros na API do {isAudio ? 'ElevenLabs' : 'Luma'} ou problemas temporários de conexão.</span>
         </p>
         <div className="mt-2 flex space-x-2">
           <button 
@@ -125,7 +124,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     );
   }
   
-  if (isAudio && audioData) {
+  if (isAudio && (audioData || mediaUrl)) {
     return (
       <div className="mt-2 relative">
         {isMediaLoading && (
@@ -134,7 +133,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           </div>
         )}
         <audio 
-          src={audioData} 
+          src={audioData || mediaUrl || ''} 
           controls 
           className="w-full"
           onLoadedData={onMediaLoaded}
