@@ -33,68 +33,8 @@ async function handleAIChat(req: Request): Promise<Response> {
     try {
       // Verificação específica para modelos Luma
       if (modelId.includes("luma")) {
-        // Obter a API KEY da Luma
-        const apiKey = Deno.env.get("LUMA_API_KEY");
-        console.log("Verificando variáveis de ambiente disponíveis:");
-        console.log("Variáveis disponíveis:", Object.keys(Deno.env.toObject()).join(", "));
-        
-        // Log para debug
-        console.log("LUMA_API_KEY está definida?", apiKey ? "Sim" : "Não");
-        if (apiKey) {
-          console.log("Formato da chave:", 
-                     apiKey.startsWith("luma_") ? "Correto (começa com luma_)" : 
-                     apiKey.startsWith("luma-") ? "Alternativo (começa com luma-)" : 
-                     "Incorreto (formato não reconhecido)");
-          console.log("Comprimento da chave:", apiKey.length);
-        }
-        
-        // Verificar se a chave existe
-        if (!apiKey || apiKey.trim() === '') {
-          console.error("LUMA_API_KEY não configurada ou vazia");
-          return new Response(
-            JSON.stringify({
-              content: "Chave API da Luma não configurada no servidor. Por favor, configure a chave LUMA_API_KEY nas variáveis de ambiente.",
-              error: "LUMA_API_KEY não configurada",
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
-        }
-        
-        // Testar a validade da chave API sem falhar a função principal
-        // para conseguir mais informações para diagnóstico
-        console.log("Testando validade da chave API Luma...");
-        try {
-          const isValid = await lumaService.testApiKey(apiKey);
-          if (!isValid) {
-            console.error("Chave API Luma inválida");
-            return new Response(
-              JSON.stringify({
-                content: "A chave API da Luma é inválida ou expirou. Por favor, verifique a chave LUMA_API_KEY nas variáveis de ambiente.",
-                error: "LUMA_API_KEY inválida",
-              }),
-              {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-                status: 400,
-              }
-            );
-          }
-          console.log("Chave API Luma válida, prosseguindo com a solicitação");
-        } catch (keyError) {
-          console.error("Erro ao validar chave API Luma:", keyError);
-          return new Response(
-            JSON.stringify({
-              content: `Erro ao validar a chave API da Luma: ${keyError.message}`,
-              error: "Erro na validação da chave API",
-            }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
-        }
+        // Usando token mocado diretamente no arquivo luma.ts
+        console.log("Modelo Luma selecionado, usando token mocado configurado no arquivo");
       }
       
       // Special check for OpenAI models
