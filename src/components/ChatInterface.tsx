@@ -3,8 +3,10 @@ import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { AVAILABLE_MODELS } from './ModelSelector';
+import { Button } from './ui/button';
+import { toast } from 'sonner';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -88,6 +90,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const isKliginVideo = model === 'kligin-video';
   const isLumaVideo = model === 'luma-video';
+  const isLumaImage = model === 'luma-image';
+  
+  // Função para mostrar instruções de como configurar a chave da Luma
+  const showLumaKeyInstructions = () => {
+    toast.info(
+      <div className="space-y-2">
+        <p className="font-medium">Como configurar a API key da Luma AI</p>
+        <ol className="list-decimal pl-4 text-sm space-y-1">
+          <li>Acesse o Edge Function Manager na interface do Supabase</li>
+          <li>Selecione a função "ai-chat"</li>
+          <li>Vá em "Settings" e depois "Environment Variables"</li>
+          <li>Adicione a variável LUMA_API_KEY com sua chave</li>
+          <li>A chave deve começar com "luma_" e pode ser obtida no site da Luma AI</li>
+        </ol>
+      </div>,
+      {
+        duration: 8000,
+        icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
+      }
+    );
+  };
   
   return (
     <div className={cn("flex flex-col h-full", className)}>
@@ -138,7 +161,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   {isKliginVideo ?
                     "O sistema está conectando ao serviço do Kligin AI. Por favor, aguarde." :
                     isLumaVideo ?
-                    "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando a API oficial da Luma." :
+                    "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando a SDK oficial da Luma." :
                     "Estamos trabalhando na sua solicitação. Isso pode levar alguns instantes."
                   }
                 </p>
@@ -185,7 +208,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg my-4">
                 <div className="flex items-start">
                   <AlertTriangle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm text-red-400 font-medium">
                       Erro ao processar a solicitação
                     </p>
@@ -193,9 +216,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       {errorMessage.content}
                     </p>
                     {(model === 'luma-video' || model === 'luma-image') && (
-                      <p className="text-xs text-gray-400 mt-2">
-                        Verifique se a chave API da Luma está configurada corretamente nas variáveis de ambiente da Edge Function.
-                      </p>
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-400 mb-2">
+                          Verifique se a chave API da Luma está configurada corretamente nas variáveis de ambiente da Edge Function.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center gap-1 text-xs text-gray-300"
+                          onClick={showLumaKeyInstructions}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          <span>Ver instruções de configuração</span>
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -203,7 +202,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // Mensagens de erro específicas
       if (modelId.includes("luma")) {
-        if (errorMessage.includes("API key") || errorMessage.includes("Authorization")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("Authorization") || errorMessage.includes("authenticate")) {
           friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
           friendlyError = "Erro na API Luma: Endpoint não encontrado. A API pode ter sido atualizada.";
