@@ -7,7 +7,7 @@ import { ChatMode } from '@/components/ModeSelector';
 import { useApiService } from './useApiService';
 import { useMediaGallery } from './useMediaGallery';
 import { toast } from 'sonner';
-import { ConversationType } from '@/types/conversation';
+import { ConversationType, ConversationState, DbOperationResult } from '@/types/conversation';
 import { 
   loadUserConversations, 
   loadConversationMessages, 
@@ -24,10 +24,13 @@ export type { ConversationType };
 
 export function useConversation() {
   const [messages, setMessages] = useState<MessageType[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [conversations, setConversations] = useState<ConversationType[]>([]);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [conversationState, setConversationState] = useState<ConversationState>({
+    conversations: [],
+    currentConversationId: null,
+    loading: false,
+    error: null
+  });
+  
   const apiService = useApiService();
   const { saveMediaToGallery, saving } = useMediaGallery();
   
@@ -36,12 +39,12 @@ export function useConversation() {
     apiService,
     { saveMediaToGallery, saving },
     setMessages,
-    setError
+    (error) => setConversationState(prev => ({ ...prev, error }))
   );
 
   // Clear messages - explicit function to ensure messages are cleared
   const clearMessages = useCallback(() => {
-    console.log('Clearing all messages');
+    console.log('[useConversation] Clearing all messages');
     setMessages([]);
   }, []);
 
@@ -49,27 +52,36 @@ export function useConversation() {
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        setLoading(true);
+        setConversationState(prev => ({ ...prev, loading: true }));
         const { data, error: fetchError } = await loadUserConversations();
         
         if (fetchError) {
-          setError(fetchError);
+          console.error('[useConversation] Error loading conversations:', fetchError);
+          setConversationState(prev => ({ ...prev, error: fetchError }));
           return;
         }
         
         if (data) {
-          setConversations(data);
+          console.log(`[useConversation] Loaded ${data.length} conversations`);
+          
           // Select most recent conversation if none is selected and there are conversations available
-          if (!currentConversationId && data.length > 0) {
-            console.log(`Auto-selecting the most recent conversation: ${data[0].id}`);
-            setCurrentConversationId(data[0].id);
+          const updatedState: Partial<ConversationState> = { conversations: data };
+          
+          if (!conversationState.currentConversationId && data.length > 0) {
+            console.log(`[useConversation] Auto-selecting the most recent conversation: ${data[0].id}`);
+            updatedState.currentConversationId = data[0].id;
           }
+          
+          setConversationState(prev => ({ ...prev, ...updatedState }));
         }
       } catch (err) {
-        console.error('Erro ao buscar conversas:', err);
-        setError(err instanceof Error ? err.message : 'Erro desconhecido ao buscar conversas');
+        console.error('[useConversation] Error loading conversations:', err);
+        setConversationState(prev => ({ 
+          ...prev, 
+          error: err instanceof Error ? err.message : 'Erro desconhecido ao buscar conversas'
+        }));
       } finally {
-        setLoading(false);
+        setConversationState(prev => ({ ...prev, loading: false }));
       }
     };
     
@@ -79,19 +91,23 @@ export function useConversation() {
   // Load conversation messages when a conversation is selected
   useEffect(() => {
     const fetchMessages = async () => {
+      const { currentConversationId } = conversationState;
+      
       if (!currentConversationId) {
-        console.log('No conversation selected, clearing messages');
+        console.log('[useConversation] No conversation selected, clearing messages');
         clearMessages();
         return;
       }
       
       try {
-        setLoading(true);
-        console.log(`Loading messages for conversation: ${currentConversationId}`);
+        setConversationState(prev => ({ ...prev, loading: true }));
+        console.log(`[useConversation] Loading messages for conversation: ${currentConversationId}`);
+        
         const { data, error: fetchError } = await loadConversationMessages(currentConversationId);
         
         if (fetchError) {
-          setError(fetchError);
+          console.error('[useConversation] Error loading messages:', fetchError);
+          setConversationState(prev => ({ ...prev, error: fetchError }));
           toast.error('Erro ao carregar mensagens da conversa');
           return;
         }
@@ -109,129 +125,161 @@ export function useConversation() {
             mediaUrl: msg.media_url || undefined
           }));
           
-          console.log(`Setting ${formattedMessages.length} messages from conversation ${currentConversationId}`);
+          console.log(`[useConversation] Setting ${formattedMessages.length} messages from conversation ${currentConversationId}`);
           setMessages(formattedMessages);
         } else {
-          console.log('No messages found, clearing message state');
+          console.log('[useConversation] No messages found, clearing message state');
           clearMessages();
         }
       } catch (err) {
-        console.error('Erro ao buscar mensagens:', err);
-        setError(err instanceof Error ? err.message : 'Erro desconhecido ao buscar mensagens');
+        console.error('[useConversation] Error fetching messages:', err);
+        setConversationState(prev => ({ 
+          ...prev, 
+          error: err instanceof Error ? err.message : 'Erro desconhecido ao buscar mensagens'
+        }));
         toast.error('Erro ao carregar mensagens da conversa');
       } finally {
-        setLoading(false);
+        setConversationState(prev => ({ ...prev, loading: false }));
       }
     };
     
     fetchMessages();
-  }, [currentConversationId, clearMessages]);
+  }, [conversationState.currentConversationId, clearMessages]);
 
   // Create a new conversation
   const createNewConversation = async () => {
     try {
-      setLoading(true);
+      setConversationState(prev => ({ ...prev, loading: true }));
       
       // Clear messages before creating a new conversation
-      console.log('Creating new conversation, clearing messages first');
+      console.log('[useConversation] Creating new conversation, clearing messages first');
       clearMessages();
       
       const { data, error: createError, success } = await createConversation();
       
       if (createError) {
-        setError(createError);
+        console.error('[useConversation] Error creating conversation:', createError);
+        setConversationState(prev => ({ ...prev, error: createError }));
         return;
       }
       
       if (data && success) {
-        console.log(`New conversation created with ID: ${data.id}`);
-        setCurrentConversationId(data.id);
-        setConversations(prev => [data, ...prev]);
+        console.log(`[useConversation] New conversation created with ID: ${data.id}`);
+        
+        setConversationState(prev => ({
+          ...prev,
+          currentConversationId: data.id,
+          conversations: [data, ...prev.conversations]
+        }));
       }
     } catch (err) {
-      console.error('Erro ao criar nova conversa:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar nova conversa');
+      console.error('[useConversation] Error creating conversation:', err);
+      setConversationState(prev => ({ 
+        ...prev, 
+        error: err instanceof Error ? err.message : 'Erro desconhecido ao criar nova conversa'
+      }));
     } finally {
-      setLoading(false);
+      setConversationState(prev => ({ ...prev, loading: false }));
     }
   };
 
   // Delete a conversation
   const deleteConversation = async (id: string) => {
     try {
-      setLoading(true);
+      setConversationState(prev => ({ ...prev, loading: true }));
       
       const { success, error: deleteError } = await deleteConversationUtil(id);
       
       if (deleteError) {
-        setError(deleteError);
+        console.error('[useConversation] Error deleting conversation:', deleteError);
+        setConversationState(prev => ({ ...prev, error: deleteError }));
         return;
       }
       
       if (success) {
-        console.log(`Conversation ${id} deleted successfully`);
-        setConversations(prev => prev.filter(conv => conv.id !== id));
+        console.log(`[useConversation] Conversation ${id} deleted successfully`);
         
-        if (currentConversationId === id) {
-          console.log('Current conversation was deleted, selecting next available one');
-          // If current conversation was deleted, select the next available one or clear
-          const remainingConversations = conversations.filter(conv => conv.id !== id);
-          if (remainingConversations.length > 0) {
-            const nextConversation = remainingConversations[0].id;
-            console.log(`Selecting next conversation: ${nextConversation}`);
-            setCurrentConversationId(nextConversation);
-          } else {
-            console.log('No conversations left, clearing current conversation ID and messages');
-            setCurrentConversationId(null);
-            clearMessages();
+        setConversationState(prev => {
+          const updatedState: Partial<ConversationState> = {
+            conversations: prev.conversations.filter(conv => conv.id !== id)
+          };
+          
+          if (prev.currentConversationId === id) {
+            console.log('[useConversation] Current conversation was deleted, selecting next available one');
+            // If current conversation was deleted, select the next available one or clear
+            const remainingConversations = prev.conversations.filter(conv => conv.id !== id);
+            
+            if (remainingConversations.length > 0) {
+              const nextConversation = remainingConversations[0].id;
+              console.log(`[useConversation] Selecting next conversation: ${nextConversation}`);
+              updatedState.currentConversationId = nextConversation;
+            } else {
+              console.log('[useConversation] No conversations left, clearing current conversation ID');
+              updatedState.currentConversationId = null;
+              clearMessages();
+            }
           }
-        }
+          
+          return { ...prev, ...updatedState };
+        });
       }
     } catch (err) {
-      console.error('Erro ao excluir conversa:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
+      console.error('[useConversation] Error deleting conversation:', err);
+      setConversationState(prev => ({ 
+        ...prev, 
+        error: err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa'
+      }));
     } finally {
-      setLoading(false);
+      setConversationState(prev => ({ ...prev, loading: false }));
     }
   };
 
   // Rename a conversation
   const renameConversation = async (id: string, newTitle: string) => {
     try {
-      setLoading(true);
+      setConversationState(prev => ({ ...prev, loading: true }));
       
       const { success, error: renameError } = await renameConversationUtil(id, newTitle);
       
       if (renameError) {
-        setError(renameError);
+        console.error('[useConversation] Error renaming conversation:', renameError);
+        setConversationState(prev => ({ ...prev, error: renameError }));
         return;
       }
       
       if (success) {
-        console.log(`Conversation ${id} renamed to "${newTitle}"`);
-        setConversations(prev => 
-          prev.map(conv => conv.id === id ? { ...conv, title: newTitle } : conv)
-        );
+        console.log(`[useConversation] Conversation ${id} renamed to "${newTitle}"`);
+        setConversationState(prev => ({
+          ...prev,
+          conversations: prev.conversations.map(conv => 
+            conv.id === id ? { ...conv, title: newTitle } : conv
+          )
+        }));
       }
     } catch (err) {
-      console.error('Erro ao renomear conversa:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa');
+      console.error('[useConversation] Error renaming conversation:', err);
+      setConversationState(prev => ({ 
+        ...prev, 
+        error: err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa'
+      }));
     } finally {
-      setLoading(false);
+      setConversationState(prev => ({ ...prev, loading: false }));
     }
   };
 
   // Handle selecting a conversation
   const handleSelectConversation = useCallback((conversationId: string) => {
-    console.log(`Selecting conversation: ${conversationId}`);
+    console.log(`[useConversation] Selecting conversation: ${conversationId}`);
     
-    if (currentConversationId !== conversationId) {
-      // Always clear messages first to prevent showing old conversation content
-      console.log(`Conversation changed from ${currentConversationId} to ${conversationId}, clearing messages first`);
-      clearMessages();
-      setCurrentConversationId(conversationId);
-    }
-  }, [currentConversationId, clearMessages]);
+    // Always clear messages first to prevent showing old conversation content
+    clearMessages();
+    
+    // Then set the current conversation ID
+    setConversationState(prev => ({
+      ...prev, 
+      currentConversationId: conversationId
+    }));
+  }, [clearMessages]);
 
   // Send a message
   const sendMessage = async (
@@ -245,19 +293,20 @@ export function useConversation() {
     params?: LumaParams
   ) => {
     try {
-      setLoading(true);
+      setConversationState(prev => ({ ...prev, loading: true }));
       
       // Create new conversation if none is selected
-      if (!currentConversationId) {
-        console.log('No conversation selected, creating a new one before sending message');
+      if (!conversationState.currentConversationId) {
+        console.log('[useConversation] No conversation selected, creating a new one before sending message');
         await createNewConversation();
+        
         // If still no conversation ID, something went wrong
-        if (!currentConversationId) {
+        if (!conversationState.currentConversationId) {
           throw new Error("Não foi possível criar uma nova conversa");
         }
       }
       
-      const conversationId = currentConversationId!;
+      const conversationId = conversationState.currentConversationId!;
       
       // Add user message first
       const userMessageId = uuidv4();
@@ -277,15 +326,19 @@ export function useConversation() {
       
       // Update conversation title if this is the first message
       if (messages.length === 0) {
-        const result = await updateConversationTitle(conversationId, content, conversations);
+        const result = await updateConversationTitle(conversationId, content, conversationState.conversations);
         
-        // Fix: Properly access the newTitle property from the data object
+        // Properly access the newTitle property from the data object
         if (result.success && result.data && result.data.newTitle) {
           const newTitle = result.data.newTitle;
-          console.log(`Updated conversation title to "${newTitle}"`);
-          setConversations(prev => 
-            prev.map(conv => conv.id === conversationId ? { ...conv, title: newTitle } : conv)
-          );
+          console.log(`[useConversation] Updated conversation title to "${newTitle}"`);
+          
+          setConversationState(prev => ({
+            ...prev,
+            conversations: prev.conversations.map(conv => 
+              conv.id === conversationId ? { ...conv, title: newTitle } : conv
+            )
+          }));
         }
       }
       
@@ -307,14 +360,17 @@ export function useConversation() {
           modelId, 
           conversationId, 
           messages,
-          conversations,
+          conversationState.conversations,
           files, 
           params
         );
       }
     } catch (err) {
-      console.error('Erro ao enviar mensagem:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao enviar mensagem');
+      console.error('[useConversation] Error sending message:', err);
+      setConversationState(prev => ({ 
+        ...prev, 
+        error: err instanceof Error ? err.message : 'Erro desconhecido ao enviar mensagem'
+      }));
       
       // Add a general error message if we haven't already added one
       if (!messages.some(msg => msg.error && msg.timestamp > new Date(Date.now() - 5000).toISOString())) {
@@ -337,22 +393,22 @@ export function useConversation() {
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
         
         // Save error message if there's a conversation ID
-        if (currentConversationId) {
-          await saveMessageToDatabase(errorMessage, currentConversationId);
+        if (conversationState.currentConversationId) {
+          await saveMessageToDatabase(errorMessage, conversationState.currentConversationId);
         }
       }
     } finally {
-      setLoading(false);
+      setConversationState(prev => ({ ...prev, loading: false }));
     }
   };
   
   return {
     messages,
     sendMessage,
-    loading,
-    error,
-    conversations,
-    currentConversationId,
+    loading: conversationState.loading,
+    error: conversationState.error,
+    conversations: conversationState.conversations,
+    currentConversationId: conversationState.currentConversationId,
     setCurrentConversationId: handleSelectConversation,
     createNewConversation,
     deleteConversation,

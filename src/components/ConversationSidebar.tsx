@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
@@ -50,6 +50,11 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState(conversation.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  // Update the new title when the conversation title changes
+  useEffect(() => {
+    setNewTitle(conversation.title);
+  }, [conversation.title]);
 
   const handleRename = () => {
     if (newTitle.trim() === '') {
@@ -118,6 +123,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
             ? 'bg-inventu-gray/20 text-white'
             : 'hover:bg-inventu-gray/10 text-inventu-gray'
         }`}
+        data-conversation-id={conversation.id}
       >
         <div className="flex-1 min-w-0" onClick={onSelect}>
           <div className="flex items-center">
@@ -194,22 +200,28 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     createNewConversation,
     deleteConversation,
     renameConversation,
-    clearMessages
   } = useConversation();
   const { user } = useAuth();
   const location = useLocation();
 
   const handleNewConversation = async () => {
-    console.log('Creating new conversation from sidebar button');
-    // Clear messages will be called inside createNewConversation
+    console.log('[ConversationSidebar] Creating new conversation from sidebar button');
     await createNewConversation();
   };
 
   const handleSelectConversation = (conversationId: string) => {
-    console.log(`Selecting conversation from sidebar: ${conversationId}`);
+    console.log(`[ConversationSidebar] Selecting conversation from sidebar: ${conversationId}`);
+    if (currentConversationId === conversationId) {
+      console.log(`[ConversationSidebar] Conversation ${conversationId} is already selected`);
+      return;
+    }
     setCurrentConversationId(conversationId);
-    // setCurrentConversationId now handles clearing messages internally
   };
+
+  useEffect(() => {
+    console.log(`[ConversationSidebar] Current conversation ID: ${currentConversationId}`);
+    console.log(`[ConversationSidebar] Available conversations: ${conversations.map(c => c.id).join(', ')}`);
+  }, [currentConversationId, conversations]);
 
   if (!isOpen && onToggleSidebar) {
     return (
@@ -288,7 +300,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       <div className="flex-1 overflow-y-auto">
         {user ? (
           conversations.length > 0 ? (
-            <div className="space-y-1 p-2">
+            <div className="space-y-1 p-2" id="conversation-list">
               {conversations.map((conv) => (
                 <ConversationItem
                   key={conv.id}

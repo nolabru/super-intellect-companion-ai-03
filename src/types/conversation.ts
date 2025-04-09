@@ -29,3 +29,11 @@ export interface ConversationSelectionEvent {
   conversationId: string;
   clearMessages: boolean;
 }
+
+// Interface for conversation state
+export interface ConversationState {
+  conversations: ConversationType[];
+  currentConversationId: string | null;
+  loading: boolean;
+  error: string | null;
+}
