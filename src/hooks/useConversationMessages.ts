@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { saveMessageToDatabase } from '@/utils/conversationUtils';
+import { ChatMode } from '@/components/ModeSelector';
 
 export function useConversationMessages() {
   const [messages, setMessages] = useState<MessageType[]>([]);
@@ -16,7 +17,7 @@ export function useConversationMessages() {
   // Add a user message 
   const addUserMessage = (
     content: string, 
-    mode: string,
+    mode: ChatMode,
     files?: string[]
   ): string => {
     const userMessageId = uuidv4();
@@ -39,7 +40,7 @@ export function useConversationMessages() {
   };
 
   // Add error message
-  const addErrorMessage = (modelId: string, mode: string) => {
+  const addErrorMessage = (modelId: string, mode: ChatMode) => {
     const errorMessage: MessageType = {
       id: uuidv4(),
       content: 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
