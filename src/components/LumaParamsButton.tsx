@@ -179,8 +179,8 @@ const LumaParamsButton: React.FC<LumaParamsButtonProps> = ({
                     <SelectValue placeholder="Selecione um modelo" />
                   </SelectTrigger>
                   <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-                    <SelectItem value="ray-2">Ray 2</SelectItem>
-                    <SelectItem value="ray-1">Ray 1</SelectItem>
+                    <SelectItem value="luma-1.1">Luma 1.1</SelectItem>
+                    <SelectItem value="luma-1">Luma 1</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
