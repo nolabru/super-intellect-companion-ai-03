@@ -62,14 +62,20 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
 
   const clearFilters = () => {
     onFiltersChange({
-      mediaType: [],
+      mediaType: ['image'], // Default to images when clearing filters
       dateRange: { from: undefined, to: undefined },
     });
   };
 
-  const hasActiveFilters = filters.mediaType.length > 0 || 
-                           filters.dateRange.from !== undefined || 
-                           filters.dateRange.to !== undefined;
+  const hasActiveFilters = 
+    (filters.mediaType.length > 0 && !isDefaultFilter(filters.mediaType)) || 
+    filters.dateRange.from !== undefined || 
+    filters.dateRange.to !== undefined;
+    
+  // Check if the current filter is just the default (images only)
+  function isDefaultFilter(mediaTypes: string[]): boolean {
+    return mediaTypes.length === 1 && mediaTypes[0] === 'image';
+  }
 
   return (
     <div className="bg-inventu-card p-4 rounded-lg mb-4">

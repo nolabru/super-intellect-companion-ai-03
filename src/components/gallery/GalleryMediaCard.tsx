@@ -23,7 +23,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 type GalleryMediaCardProps = {
@@ -47,32 +46,11 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
     setMediaError(true);
   };
 
-  const handleDeleteMedia = async () => {
-    try {
-      setIsDeleting(true);
-      const { error } = await supabase
-        .from('media_gallery')
-        .delete()
-        .eq('id', item.id);
-
-      if (error) throw error;
-      
-      onDelete(item.id);
-      toast({
-        title: "Mídia excluída",
-        description: "A mídia foi excluída com sucesso",
-      });
-    } catch (error) {
-      console.error('Erro ao excluir mídia:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a mídia",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setIsDeleteDialogOpen(false);
-    }
+  const handleDeleteMedia = () => {
+    setIsDeleting(true);
+    onDelete(item.id);
+    setIsDeleteDialogOpen(false);
+    setIsDeleting(false);
   };
 
   const getTypeIcon = () => {
@@ -142,10 +120,11 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
             <video 
               src={item.media_url} 
               controls={!small}
-              muted={small}
+              muted={true}
               className={commonClasses}
               onLoadedData={handleMediaLoad}
               onError={handleMediaError}
+              autoPlay={false}
             />
           </div>
         );
@@ -167,6 +146,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
                 className="w-full"
                 onLoadedData={handleMediaLoad}
                 onError={handleMediaError}
+                autoPlay={false}
               />
             )}
           </div>
@@ -212,7 +192,10 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
             variant="ghost" 
             size="sm"
             className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-            onClick={() => setIsDeleteDialogOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDeleteDialogOpen(true);
+            }}
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Excluir
@@ -260,7 +243,8 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
               variant="outline"
               size="sm"
               className="text-red-400 border-red-900/30 hover:bg-red-900/20 hover:text-red-300"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsOpen(false);
                 setIsDeleteDialogOpen(true);
               }}

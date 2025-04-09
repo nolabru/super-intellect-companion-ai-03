@@ -16,6 +16,8 @@ export const useMediaGallery = () => {
     metadata: any = {}
   ) => {
     try {
+      if (saving) return; // Prevent multiple simultaneous saves
+      
       setSaving(true);
 
       // Verificar se o usuário está autenticado
@@ -44,6 +46,10 @@ export const useMediaGallery = () => {
       if (error) throw error;
 
       console.log('Mídia salva na galeria com sucesso');
+      toast({
+        title: "Sucesso",
+        description: "Mídia salva na galeria com sucesso",
+      });
     } catch (error) {
       console.error('Erro ao salvar mídia na galeria:', error);
       toast({

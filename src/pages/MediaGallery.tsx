@@ -32,16 +32,22 @@ const MediaGallery: React.FC = () => {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [filteredMedia, setFilteredMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  // Default to filter by images
   const [filters, setFilters] = useState<GalleryFilters>({
-    mediaType: [],
+    mediaType: ['image'],
     dateRange: { from: undefined, to: undefined },
   });
   const { user, loading: authLoading } = useAuth();
+  
+  // Use a ref to prevent multiple data fetches
+  const dataFetchedRef = React.useRef(false);
 
   useEffect(() => {
-    if (user) {
+    // Only fetch data if the user is authenticated and we haven't fetched yet
+    if (user && !dataFetchedRef.current) {
+      dataFetchedRef.current = true;
       fetchUserMedia();
-    } else if (!authLoading) {
+    } else if (!authLoading && !user) {
       setLoading(false);
     }
   }, [user, authLoading]);
@@ -104,9 +110,30 @@ const MediaGallery: React.FC = () => {
     setFilteredMedia(filtered);
   };
 
-  const handleDeleteItem = (id: string) => {
-    setMedia(prevMedia => prevMedia.filter(item => item.id !== id));
-    setFilteredMedia(prevFiltered => prevFiltered.filter(item => item.id !== id));
+  const handleDeleteItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('media_gallery')
+        .delete()
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      setMedia(prevMedia => prevMedia.filter(item => item.id !== id));
+      setFilteredMedia(prevFiltered => prevFiltered.filter(item => item.id !== id));
+      
+      toast({
+        title: "Sucesso",
+        description: "Mídia excluída com sucesso",
+      });
+    } catch (error) {
+      console.error('Erro ao excluir mídia:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a mídia",
+        variant: "destructive",
+      });
+    }
   };
 
   const toggleSidebar = () => {
