@@ -1,9 +1,10 @@
 
 import React from 'react';
 import { ChatMode } from './ModeSelector';
-import { Text, Image, Video, AudioLines, Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Text, Image, Video, AudioLines, Loader2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 export interface MessageType {
   id: string;
@@ -73,9 +74,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   };
 
   // Determinar URL da mídia (da propriedade ou embutida no conteúdo)
-  const mediaUrl = message.mediaUrl || 
-                  (message.files && message.files.length > 0 ? message.files[0] : null) || 
-                  (hasEmbeddedMedia ? extractMediaUrl(message.content) : null);
+  const mediaUrl = React.useMemo(() => {
+    if (message.mediaUrl) return message.mediaUrl;
+    if (message.files && message.files.length > 0) return message.files[0];
+    if (hasEmbeddedMedia) return extractMediaUrl(message.content);
+    return null;
+  }, [message.mediaUrl, message.files, message.content, hasEmbeddedMedia]);
   
   // Conteúdo limpo para exibição
   const displayContent = hasEmbeddedMedia ? cleanContent(message.content) : message.content;
@@ -116,6 +120,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     setMediaError(false);
     setIsMediaLoading(true);
     toast.info(`Tentando carregar ${message.mode === 'image' ? 'imagem' : message.mode === 'video' ? 'vídeo' : 'mídia'} novamente...`);
+  };
+  
+  // Abrir mídia em nova aba
+  const openMediaInNewTab = () => {
+    if (mediaUrl) {
+      window.open(mediaUrl, '_blank');
+      toast.success('Abrindo mídia em nova aba');
+    }
   };
   
   return (
@@ -183,6 +195,19 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
               onLoad={handleMediaLoaded}
               onError={handleMediaError}
             />
+            {!isMediaLoading && (
+              <div className="mt-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs flex items-center text-inventu-gray hover:text-white"
+                  onClick={openMediaInNewTab}
+                >
+                  <ExternalLink size={12} className="mr-1" />
+                  Abrir em nova aba
+                </Button>
+              </div>
+            )}
           </div>
         )}
         
@@ -200,6 +225,19 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
               onLoadedData={handleMediaLoaded}
               onError={handleMediaError}
             />
+            {!isMediaLoading && (
+              <div className="mt-1 flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs flex items-center text-inventu-gray hover:text-white"
+                  onClick={openMediaInNewTab}
+                >
+                  <ExternalLink size={12} className="mr-1" />
+                  Abrir em nova aba
+                </Button>
+              </div>
+            )}
           </div>
         )}
         
@@ -227,13 +265,24 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
               <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
               <span>Não foi possível carregar a mídia. Isto pode ocorrer devido a erros na API do Luma ou problemas temporários de conexão.</span>
             </p>
-            <button 
-              onClick={retryMediaLoad}
-              className="mt-2 text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded flex items-center"
-            >
-              <RefreshCw size={12} className="mr-1" />
-              Tentar novamente
-            </button>
+            <div className="mt-2 flex space-x-2">
+              <button 
+                onClick={retryMediaLoad}
+                className="text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded flex items-center"
+              >
+                <RefreshCw size={12} className="mr-1" />
+                Tentar novamente
+              </button>
+              {mediaUrl && (
+                <button 
+                  onClick={openMediaInNewTab}
+                  className="text-xs bg-inventu-darker/50 hover:bg-inventu-darker/80 text-white py-1 px-2 rounded flex items-center"
+                >
+                  <ExternalLink size={12} className="mr-1" />
+                  Abrir link diretamente
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

@@ -36,7 +36,25 @@ async function fetchWithRetry(
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      console.log(`Tentativa ${attempt + 1} para URL: ${url}`);
       const response = await fetch(url, options);
+      
+      // Log response status para debugging
+      console.log(`Resposta recebida com status: ${response.status}`);
+      
+      // Se receber qualquer resposta, verifique o corpo para debug
+      const responseClone = response.clone();
+      try {
+        const bodyText = await responseClone.text();
+        console.log(`Corpo da resposta (${bodyText.length > 1000 ? bodyText.length + " chars" : "completo"}):`);
+        if (bodyText.length <= 1000) {
+          console.log(bodyText);
+        } else {
+          console.log(bodyText.substring(0, 1000) + "...");
+        }
+      } catch (e) {
+        console.log("Não foi possível ler o corpo da resposta:", e);
+      }
       
       // If we get a 429 (Too Many Requests) or 5xx (Server Error), wait and retry
       if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
@@ -74,6 +92,8 @@ async function generateLumaVideo(
     throw new Error(error);
   }
   
+  console.log("Usando LUMA_API_KEY: " + apiKey.substring(0, 10) + "...");
+  
   const isImageToVideo = params?.videoType === "image-to-video" && imageUrl;
   
   // Configure base request payload
@@ -104,7 +124,8 @@ async function generateLumaVideo(
   console.log(`Enviando requisição para Luma AI (${isImageToVideo ? 'Image-to-Video' : 'Text-to-Video'}):`, JSON.stringify(payload, null, 2));
   
   try {
-    // Create generation - FIXED URL to use the v2 endpoint
+    // Create generation - usando a API v2
+    console.log("Chamando endpoint de geração de vídeo...");
     const generationResponse = await fetchWithRetry(
       "https://api.lumalabs.ai/v2/video-generations",
       {
@@ -141,6 +162,8 @@ async function generateLumaVideo(
     }
     
     const generationData = await generationResponse.json();
+    console.log("Resposta da API de geração:", JSON.stringify(generationData, null, 2));
+    
     const generationId = generationData.id;
     
     if (!generationId) {
@@ -163,7 +186,7 @@ async function generateLumaVideo(
       try {
         console.log(`Verificando status da geração (tentativa ${attempts}/${maxAttempts})...`);
         
-        // FIXED URL to use the v2 endpoint
+        // Usar API v2
         const statusResponse = await fetchWithRetry(
           `https://api.lumalabs.ai/v2/video-generations/${generationId}`,
           {
@@ -189,8 +212,34 @@ async function generateLumaVideo(
         
         if (statusData.state === "completed") {
           completed = true;
-          // FIXED: Access video URL using the correct path in response
-          videoUrl = statusData.video?.url || statusData.assets?.video || null;
+          
+          // Verificação melhorada para encontrar a URL do vídeo
+          if (statusData.video && statusData.video.url) {
+            videoUrl = statusData.video.url;
+          } else if (statusData.assets && statusData.assets.video) {
+            videoUrl = statusData.assets.video;
+          } else if (statusData.url) {
+            videoUrl = statusData.url;
+          } else {
+            console.log("Estrutura de resposta completa:", JSON.stringify(statusData, null, 2));
+            // Tentar encontrar qualquer URL no objeto
+            const findUrlInObject = (obj: any): string | null => {
+              if (!obj || typeof obj !== 'object') return null;
+              
+              for (const key in obj) {
+                if (typeof obj[key] === 'string' && obj[key].startsWith('http') && (obj[key].endsWith('.mp4') || obj[key].includes('video'))) {
+                  return obj[key];
+                } else if (typeof obj[key] === 'object') {
+                  const found = findUrlInObject(obj[key]);
+                  if (found) return found;
+                }
+              }
+              return null;
+            };
+            
+            videoUrl = findUrlInObject(statusData);
+          }
+          
           console.log("Geração concluída com sucesso, URL do vídeo:", videoUrl);
         } else if (statusData.state === "failed") {
           const failureReason = statusData.failure_reason || "Motivo desconhecido";
@@ -258,6 +307,8 @@ async function generateLumaImage(
     throw new Error(error);
   }
   
+  console.log("Usando LUMA_API_KEY: " + apiKey.substring(0, 10) + "...");
+  
   // Configure request payload
   const payload: any = {
     prompt: prompt,
@@ -275,7 +326,8 @@ async function generateLumaImage(
   console.log("Enviando requisição para geração de imagem Luma AI:", JSON.stringify(payload, null, 2));
   
   try {
-    // Create generation - FIXED URL to use the v2 endpoint
+    // Create generation - usando a API v2
+    console.log("Chamando endpoint de geração de imagem...");
     const generationResponse = await fetchWithRetry(
       "https://api.lumalabs.ai/v2/image-generations",
       {
@@ -312,6 +364,8 @@ async function generateLumaImage(
     }
     
     const generationData = await generationResponse.json();
+    console.log("Resposta da API de geração de imagem:", JSON.stringify(generationData, null, 2));
+    
     const generationId = generationData.id;
     
     if (!generationId) {
@@ -334,7 +388,7 @@ async function generateLumaImage(
       try {
         console.log(`Verificando status da geração de imagem (tentativa ${attempts}/${maxAttempts})...`);
         
-        // FIXED URL to use the v2 endpoint
+        // Usar API v2
         const statusResponse = await fetchWithRetry(
           `https://api.lumalabs.ai/v2/image-generations/${generationId}`,
           {
@@ -360,8 +414,34 @@ async function generateLumaImage(
         
         if (statusData.state === "completed") {
           completed = true;
-          // FIXED: Access image URL using the correct path in response
-          imageUrl = statusData.image?.url || statusData.assets?.image || null;
+          
+          // Verificação melhorada para encontrar a URL da imagem
+          if (statusData.image && statusData.image.url) {
+            imageUrl = statusData.image.url;
+          } else if (statusData.assets && statusData.assets.image) {
+            imageUrl = statusData.assets.image;
+          } else if (statusData.url) {
+            imageUrl = statusData.url;
+          } else {
+            console.log("Estrutura de resposta completa:", JSON.stringify(statusData, null, 2));
+            // Tentar encontrar qualquer URL no objeto
+            const findUrlInObject = (obj: any): string | null => {
+              if (!obj || typeof obj !== 'object') return null;
+              
+              for (const key in obj) {
+                if (typeof obj[key] === 'string' && obj[key].startsWith('http') && (obj[key].endsWith('.jpg') || obj[key].endsWith('.png') || obj[key].includes('image'))) {
+                  return obj[key];
+                } else if (typeof obj[key] === 'object') {
+                  const found = findUrlInObject(obj[key]);
+                  if (found) return found;
+                }
+              }
+              return null;
+            };
+            
+            imageUrl = findUrlInObject(statusData);
+          }
+          
           console.log("Geração de imagem concluída com sucesso, URL:", imageUrl);
         } else if (statusData.state === "failed") {
           const failureReason = statusData.failure_reason || "Motivo desconhecido";
@@ -424,35 +504,35 @@ async function handleAIChat(req: Request): Promise<Response> {
       content: "Não foi possível processar sua solicitação."
     };
     
+    // Atualizar manualmente a API KEY com a fornecida (se necessário para teste)
+    const apiKey = Deno.env.get("LUMA_API_KEY");
+    const apiKeyToUse = apiKey || "luma-daf72961-1c29-40ed-9bfb-9b603aefd583-7b4a016e-0207-4ccc-baea-b9c9f6c8fe39";
+    
+    if (!apiKey) {
+      console.log("LUMA_API_KEY não encontrada nas variáveis de ambiente, usando chave fornecida manualmente");
+      // Define a variável de ambiente temporariamente
+      // @ts-ignore - Deno permite isso mesmo que TypeScript reclame
+      Deno.env.set("LUMA_API_KEY", apiKeyToUse);
+    }
+    
     // Validate API key for Luma models
     if (modelId.includes("luma")) {
-      const apiKey = Deno.env.get("LUMA_API_KEY");
-      if (!apiKey) {
-        logError("MISSING_API_KEY", { model: modelId, mode });
-        return new Response(
-          JSON.stringify({
-            content: "Erro: A chave de API do Luma não está configurada. Por favor, configure esta chave nas configurações do projeto.",
-            error: "LUMA_API_KEY não configurada",
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 500,
-          }
-        );
-      }
+      console.log("Validando a API key da Luma...");
       
       // Test API key validity
       try {
         const testResponse = await fetch("https://api.lumalabs.ai/v2/me", {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${apiKey}`,
+            "Authorization": `Bearer ${apiKeyToUse}`,
           },
         });
         
+        const responseText = await testResponse.text();
+        console.log(`Resposta do teste de API key: ${testResponse.status} - ${responseText}`);
+        
         if (!testResponse.ok) {
-          const errorText = await testResponse.text();
-          logError("INVALID_API_KEY", { status: testResponse.status, response: errorText });
+          logError("INVALID_API_KEY", { status: testResponse.status, response: responseText });
           return new Response(
             JSON.stringify({
               content: "Erro: A chave de API do Luma é inválida ou expirou. Por favor, verifique sua chave API.",
@@ -463,9 +543,12 @@ async function handleAIChat(req: Request): Promise<Response> {
               status: 500,
             }
           );
+        } else {
+          console.log("API key validada com sucesso!");
         }
       } catch (error) {
         logError("API_KEY_TEST_ERROR", { error: error instanceof Error ? error.message : String(error) });
+        console.log("Aviso: Erro ao testar API key, mas continuando mesmo assim");
         // Continue even if test fails, the actual request might still work
       }
     }
