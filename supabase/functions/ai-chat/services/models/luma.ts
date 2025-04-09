@@ -36,10 +36,10 @@ export async function generateImage(
   console.log("Enviando requisição para geração de imagem Luma AI:", JSON.stringify(payload, null, 2));
   
   try {
-    // Create generation - usando a API v2
+    // Create generation - usando a API v1
     console.log("Chamando endpoint de geração de imagem...");
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/v2/image-generations",
+      "https://api.lumalabs.ai/api/v1/image-generations",
       {
         method: "POST",
         headers: {
@@ -98,9 +98,9 @@ export async function generateImage(
       try {
         console.log(`Verificando status da geração de imagem (tentativa ${attempts}/${maxAttempts})...`);
         
-        // Usar API v2
+        // Usar API v1
         const statusResponse = await fetchWithRetry(
-          `https://api.lumalabs.ai/v2/image-generations/${generationId}`,
+          `https://api.lumalabs.ai/api/v1/image-generations/${generationId}`,
           {
             method: "GET",
             headers: {
@@ -241,10 +241,10 @@ export async function generateVideo(
   console.log(`Enviando requisição para Luma AI (${isImageToVideo ? 'Image-to-Video' : 'Text-to-Video'}):`, JSON.stringify(payload, null, 2));
   
   try {
-    // Create generation - usando a API v2
+    // Create generation - usando a API v1
     console.log("Chamando endpoint de geração de vídeo...");
     const generationResponse = await fetchWithRetry(
-      "https://api.lumalabs.ai/v2/video-generations",
+      "https://api.lumalabs.ai/api/v1/video-generations",
       {
         method: "POST",
         headers: {
@@ -303,9 +303,9 @@ export async function generateVideo(
       try {
         console.log(`Verificando status da geração (tentativa ${attempts}/${maxAttempts})...`);
         
-        // Usar API v2
+        // Usar API v1
         const statusResponse = await fetchWithRetry(
-          `https://api.lumalabs.ai/v2/video-generations/${generationId}`,
+          `https://api.lumalabs.ai/api/v1/video-generations/${generationId}`,
           {
             method: "GET",
             headers: {
@@ -415,7 +415,7 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
   try {
     console.log("Validando a API key da Luma...");
     
-    const testResponse = await fetch("https://api.lumalabs.ai/v2/me", {
+    const testResponse = await fetch("https://api.lumalabs.ai/api/v1/me", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
