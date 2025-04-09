@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MediaItem } from '@/pages/MediaGallery';
 import { formatDistanceToNow } from 'date-fns';
@@ -27,15 +26,16 @@ import { toast } from '@/components/ui/use-toast';
 
 type GalleryMediaCardProps = {
   item: MediaItem;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
+  isDeleting?: boolean;
 };
 
-const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) => {
+const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isDeleting = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [localDeleting, setLocalDeleting] = useState(false);
 
   const handleMediaLoad = () => {
     setIsMediaLoading(false);
@@ -46,11 +46,23 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete }) =
     setMediaError(true);
   };
 
-  const handleDeleteMedia = () => {
-    setIsDeleting(true);
-    onDelete(item.id);
-    setIsDeleteDialogOpen(false);
-    setIsDeleting(false);
+  const handleDeleteMedia = async () => {
+    if (localDeleting || isDeleting) return;
+    
+    try {
+      setLocalDeleting(true);
+      await onDelete(item.id);
+      setIsDeleteDialogOpen(false);
+    } catch (error) {
+      console.error("Error in delete handler:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a mídia",
+        variant: "destructive",
+      });
+    } finally {
+      setLocalDeleting(false);
+    }
   };
 
   const getTypeIcon = () => {

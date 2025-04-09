@@ -8,6 +8,7 @@ import GalleryList from '@/components/gallery/GalleryList';
 import GalleryFilters from '@/components/gallery/GalleryFilters';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 export type MediaItem = {
   id: string;
@@ -38,6 +39,7 @@ const MediaGallery: React.FC = () => {
     dateRange: { from: undefined, to: undefined },
   });
   const { user, loading: authLoading } = useAuth();
+  const { deleteMediaFromGallery, deleting } = useMediaGallery();
   
   // Use a ref to prevent multiple data fetches
   const dataFetchedRef = React.useRef(false);
@@ -126,20 +128,22 @@ const MediaGallery: React.FC = () => {
 
   const handleDeleteItem = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('media_gallery')
-        .delete()
-        .eq('id', id);
+      if (deleting) return;
+      
+      const success = await deleteMediaFromGallery(id);
         
-      if (error) throw error;
-      
-      setMedia(prevMedia => prevMedia.filter(item => item.id !== id));
-      setFilteredMedia(prevFiltered => prevFiltered.filter(item => item.id !== id));
-      
-      toast({
-        title: "Sucesso",
-        description: "Mídia excluída com sucesso",
-      });
+      if (success) {
+        // Update local state to remove the deleted item
+        setMedia(prevMedia => prevMedia.filter(item => item.id !== id));
+        setFilteredMedia(prevFiltered => prevFiltered.filter(item => item.id !== id));
+        
+        toast({
+          title: "Sucesso",
+          description: "Mídia excluída com sucesso",
+        });
+      } else {
+        throw new Error("Falha ao excluir mídia");
+      }
     } catch (error) {
       console.error('Erro ao excluir mídia:', error);
       toast({

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,6 +6,7 @@ import { ChatMode } from '@/components/ModeSelector';
 
 export const useMediaGallery = () => {
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   /**
    * Faz download da mídia e salva no Supabase Storage
@@ -171,8 +171,78 @@ export const useMediaGallery = () => {
     }
   };
 
+  /**
+   * Deletes media from gallery and storage
+   */
+  const deleteMediaFromGallery = async (mediaId: string): Promise<boolean> => {
+    try {
+      if (deleting) return false; // Prevent multiple deletion attempts
+      
+      setDeleting(true);
+
+      // Get the media item to find out storage path
+      const { data: mediaItem, error: fetchError } = await supabase
+        .from('media_gallery')
+        .select('*')
+        .eq('id', mediaId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching media item:', fetchError);
+        throw fetchError;
+      }
+
+      // Check if this media is stored in our storage
+      if (mediaItem.media_url && mediaItem.media_url.includes('media_gallery')) {
+        try {
+          // Extract the path from the URL
+          const storageUrl = new URL(mediaItem.media_url);
+          const pathParts = storageUrl.pathname.split('/');
+          // The path should be something like /storage/v1/object/public/media_gallery/user_id/filename
+          // We need to extract the part after media_gallery/
+          const bucketPath = pathParts.slice(pathParts.indexOf('media_gallery') + 1).join('/');
+          
+          if (bucketPath) {
+            console.log('Removing file from storage:', bucketPath);
+            // Delete the file from storage
+            const { error: storageError } = await supabase.storage
+              .from('media_gallery')
+              .remove([bucketPath]);
+              
+            if (storageError) {
+              console.warn('Failed to delete file from storage:', storageError);
+              // Continue with database deletion even if storage deletion fails
+            }
+          }
+        } catch (storageError) {
+          console.warn('Error parsing storage URL:', storageError);
+          // Continue with database deletion even if storage deletion fails
+        }
+      }
+
+      // Delete the record from the database
+      const { error: deleteError } = await supabase
+        .from('media_gallery')
+        .delete()
+        .eq('id', mediaId);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting media from gallery:', error);
+      return false;
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return {
     saveMediaToGallery,
-    saving
+    deleteMediaFromGallery,
+    saving,
+    deleting
   };
 };
