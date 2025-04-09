@@ -157,6 +157,8 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API da Anthropic não está configurada ou é inválida. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("429")) {
           friendlyError = "Limite de requisições excedido na API da Anthropic. Por favor, tente novamente mais tarde.";
+        } else if (errorMessage.includes("not_found_error") || errorMessage.includes("model:")) {
+          friendlyError = "O modelo Claude especificado não está disponível. Estamos utilizando o Claude 3 Haiku como alternativa.";
         }
       }
       

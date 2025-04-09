@@ -21,14 +21,25 @@ export function verifyApiKey(): string {
 // Function to generate text response with Anthropic
 export async function generateText(
   prompt: string,
-  modelId: string = "claude-3-opus"
+  modelId: string = "claude-3-haiku-20240307"
 ): Promise<ResponseData> {
   try {
     // Validate Anthropic API key
     const apiKey = verifyApiKey();
     validateApiKey("ANTHROPIC_API_KEY", apiKey);
     
-    console.log(`Iniciando solicitação de texto ao modelo ${modelId} da Anthropic`);
+    // Map model ID to available Anthropic models
+    const anthropicModelMap: Record<string, string> = {
+      "claude-3-opus": "claude-3-haiku-20240307",
+      "claude-3-sonnet": "claude-3-haiku-20240307",
+      "claude-3-haiku": "claude-3-haiku-20240307"
+    };
+    
+    // Use mapped model or default to claude-3-haiku
+    const actualModelId = anthropicModelMap[modelId] || "claude-3-haiku-20240307";
+    
+    console.log(`Usando ANTHROPIC_API_KEY: ${apiKey.substring(0, 10)}...`);
+    console.log(`Iniciando solicitação de texto ao modelo ${actualModelId} da Anthropic`);
     
     // Instantiate Anthropic client with API key
     const anthropic = new Anthropic({
@@ -37,7 +48,7 @@ export async function generateText(
     
     // Create message for Claude model
     const response = await anthropic.messages.create({
-      model: modelId,
+      model: actualModelId,
       max_tokens: 1000,
       messages: [
         {
@@ -69,14 +80,24 @@ export async function generateText(
 export async function processImage(
   prompt: string,
   imageUrl: string,
-  modelId: string = "claude-3-opus"
+  modelId: string = "claude-3-haiku-20240307"
 ): Promise<ResponseData> {
   try {
     // Validate Anthropic API key
     const apiKey = verifyApiKey();
     validateApiKey("ANTHROPIC_API_KEY", apiKey);
     
-    console.log(`Iniciando análise de imagem com ${modelId}, URL da imagem: ${imageUrl}`);
+    // Map model ID to available Anthropic models
+    const anthropicModelMap: Record<string, string> = {
+      "claude-3-opus": "claude-3-haiku-20240307",
+      "claude-3-sonnet": "claude-3-haiku-20240307",
+      "claude-3-haiku": "claude-3-haiku-20240307"
+    };
+    
+    // Use mapped model or default to claude-3-haiku
+    const actualModelId = anthropicModelMap[modelId] || "claude-3-haiku-20240307";
+    
+    console.log(`Iniciando análise de imagem com ${actualModelId}, URL da imagem: ${imageUrl}`);
     
     // Instantiate Anthropic client with API key
     const anthropic = new Anthropic({
@@ -95,7 +116,7 @@ export async function processImage(
     
     // Create message with image content for Claude Vision
     const response = await anthropic.messages.create({
-      model: modelId,
+      model: actualModelId,
       max_tokens: 1000,
       messages: [
         {
