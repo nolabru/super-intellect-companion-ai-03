@@ -3,54 +3,10 @@ import { fetchWithRetry } from "../../utils/logging.ts";
 import { logError } from "../../utils/logging.ts";
 import { validateApiKey, ensureValue } from "../../utils/validation.ts";
 
-// Explicitly import individual components from the npm package
-import { LumaAI } from "npm:lumaai";
-
 // Define response type
 export interface ResponseData {
   content: string;
   files?: string[];
-}
-
-// Função para criar e gerenciar o cliente Luma
-function createLumaClient() {
-  try {
-    const apiKey = Deno.env.get("LUMA_API_KEY");
-    console.log("Attempting to get LUMA_API_KEY from environment...");
-    
-    validateApiKey("LUMA_API_KEY", apiKey);
-    
-    // Cria cliente com a API key do ambiente
-    console.log("Inicializando cliente LumaAI SDK...");
-    console.log("Usando LumaAI SDK com chave no formato:", apiKey?.startsWith("luma_") ? "luma_" : "luma-");
-    
-    // Debug do objeto LumaAI para entender sua estrutura
-    console.log("LumaAI object type:", typeof LumaAI);
-    console.log("LumaAI constructor properties available:", Object.getOwnPropertyNames(LumaAI.prototype));
-    
-    // Criar cliente com tratamento adequado para diferentes formatos de instanciação
-    let client;
-    try {
-      client = new LumaAI({
-        authToken: apiKey,
-        maxRetries: 2,
-      });
-      
-      console.log("Cliente LumaAI criado com sucesso:", client ? "Sim" : "Não");
-      console.log("Tipo do cliente criado:", typeof client);
-      if (client) {
-        console.log("Propriedades do cliente:", Object.keys(client));
-      }
-    } catch (initError) {
-      console.error("Erro ao instanciar LumaAI:", initError);
-      throw new Error(`Erro na inicialização do SDK Luma: ${initError.message}`);
-    }
-    
-    return client;
-  } catch (error) {
-    console.error("Erro ao criar cliente Luma:", error);
-    throw error;
-  }
 }
 
 // Função para testar a chave API da Luma
@@ -63,40 +19,36 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
       return false;
     }
     
-    // Criar um cliente de teste com a API key fornecida
-    console.log("Criando cliente de teste Luma com a chave fornecida...");
+    // Verificação de formato para aceitar chaves com luma_ ou luma-
+    if (!apiKey.startsWith('luma_') && !apiKey.startsWith('luma-')) {
+      console.warn(`A API key não parece estar no formato esperado (esperado: 'luma_...' ou 'luma-...')`);
+    }
+    
     console.log("Formato da chave de teste:", apiKey.startsWith("luma_") ? "luma_" : apiKey.startsWith("luma-") ? "luma-" : "desconhecido");
     
-    // Trate possíveis erros na inicialização do cliente
-    let testClient;
-    try {
-      testClient = new LumaAI({
-        authToken: apiKey,
-      });
-      
-      console.log("Cliente de teste criado com sucesso:", testClient ? "Sim" : "Não");
-    } catch (initError) {
-      console.error("Erro ao instanciar cliente de teste:", initError);
+    // Verificação simplificada com chamada direta à API Luma
+    const response = await fetch("https://api.lumalabs.ai/v1/ping", {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (response.ok) {
+      console.log("API key validada com sucesso!");
+      return true;
+    } else {
+      console.error(`Falha na validação da API key: ${response.status} ${response.statusText}`);
       return false;
     }
-    
-    // Se conseguimos criar o cliente, considere a chave válida
-    // Isso é uma verificação simplificada, já que o teste de operações
-    // específicas pode falhar devido a outros problemas na API
-    if (!testClient) {
-      console.error("Cliente de teste não foi criado corretamente");
-      return false;
-    }
-    
-    console.log("API key validada com sucesso!");
-    return true;
   } catch (error) {
     console.error("Erro ao configurar teste de API key:", error);
     return false;
   }
 }
 
-// Função para gerar imagem com Luma AI 
+// Função para gerar imagem com Luma AI usando chamadas HTTP diretas
 export async function generateImage(
   prompt: string,
   params: any = {}
@@ -106,41 +58,47 @@ export async function generateImage(
   try {
     ensureValue(prompt, "O prompt para geração de imagem não pode estar vazio");
     
-    const client = createLumaClient();
-    if (!client) {
-      throw new Error("Não foi possível inicializar o cliente Luma AI");
+    const apiKey = Deno.env.get("LUMA_API_KEY");
+    if (!apiKey) {
+      throw new Error("LUMA_API_KEY não configurada");
     }
     
-    // Verificar se o cliente tem o método necessário
-    if (!client.generations || typeof client.generations.create !== 'function') {
-      console.error("Propriedades do cliente:", Object.keys(client));
-      throw new Error("O SDK da Luma não possui o método generations.create. Versão incompatível.");
-    }
-    
-    // Parâmetros para a geração de imagem
-    const requestParams: any = {
+    // Parâmetros para a requisição
+    const requestBody = {
       prompt: prompt,
       model: params?.model || "luma-1.1",
       aspect_ratio: params?.aspectRatio || "16:9",
       style: params?.style || "photographic"
     };
     
-    console.log("Enviando requisição para SDK Luma (imagem):", JSON.stringify(requestParams, null, 2));
+    console.log("Enviando requisição para API Luma (imagem):", JSON.stringify(requestBody, null, 2));
     
-    // Iniciar a geração da imagem com tratamento de erro específico
-    let generation;
-    try {
-      generation = await client.generations.create(requestParams);
-    } catch (apiError) {
-      console.error("Erro específico na API Luma (generations.create):", apiError);
-      if (apiError instanceof Error) {
-        throw new Error(`Erro na API Luma (generations): ${apiError.message}`);
-      } else {
-        throw new Error(`Erro desconhecido na API Luma: ${String(apiError)}`);
-      }
+    // Criar a geração com a API direta
+    const response = await fetch("https://api.lumalabs.ai/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Erro na API Luma (status):", response.status, response.statusText);
+      console.error("Detalhes do erro:", errorText);
+      throw new Error(`Erro na API Luma: ${response.status} ${response.statusText}`);
     }
     
-    console.log("ID da geração de imagem criada:", generation?.id);
+    const generation = await response.json();
+    console.log("Resposta da geração de imagem:", JSON.stringify(generation, null, 2));
+    
+    // Verificar se ID foi retornado
+    if (!generation.id) {
+      throw new Error("ID da geração não retornado pela API");
+    }
+    
+    console.log("ID da geração de imagem criada:", generation.id);
     
     // Verificar status da geração até completar ou falhar
     let imageUrl: string | null = null;
@@ -153,20 +111,24 @@ export async function generateImage(
       
       console.log(`Verificando status da imagem (tentativa ${attempts}/${maxAttempts})...`);
       
-      // Verificar se client.generations.get existe
-      if (!client.generations || typeof client.generations.get !== 'function') {
-        throw new Error("O SDK da Luma não possui o método generations.get. Versão incompatível.");
-      }
-      
       // Verificar o status da geração
-      let statusData;
-      try {
-        statusData = await client.generations.get(generation.id);
-      } catch (statusError) {
-        console.error(`Erro ao verificar status (tentativa ${attempts}):`, statusError);
-        throw new Error(`Erro ao verificar status: ${statusError instanceof Error ? statusError.message : String(statusError)}`);
+      const statusResponse = await fetch(`https://api.lumalabs.ai/v1/images/generations/${generation.id}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!statusResponse.ok) {
+        console.error(`Erro ao verificar status (tentativa ${attempts}):`, statusResponse.status, statusResponse.statusText);
+        
+        // Se ocorrer erro, aguarde e tente novamente
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        continue;
       }
       
+      const statusData = await statusResponse.json();
       console.log(`Status da imagem (${attempts}/${maxAttempts}):`, statusData?.status);
       
       if (statusData?.status === "done") {
@@ -206,7 +168,7 @@ export async function generateImage(
   }
 }
 
-// Função para gerar vídeo com Luma AI
+// Função para gerar vídeo com Luma AI usando chamadas HTTP diretas
 export async function generateVideo(
   prompt: string,
   params: any = {},
@@ -217,19 +179,13 @@ export async function generateVideo(
   try {
     ensureValue(prompt, "O prompt para geração de vídeo não pode estar vazio");
     
-    const client = createLumaClient();
-    if (!client) {
-      throw new Error("Não foi possível inicializar o cliente Luma AI");
-    }
-    
-    // Verificar se o cliente tem o método necessário
-    if (!client.videos || typeof client.videos.create !== 'function') {
-      console.error("Propriedades do cliente:", Object.keys(client));
-      throw new Error("O SDK da Luma não possui o método videos.create. Versão incompatível.");
+    const apiKey = Deno.env.get("LUMA_API_KEY");
+    if (!apiKey) {
+      throw new Error("LUMA_API_KEY não configurada");
     }
     
     // Configurar parâmetros para a solicitação de vídeo
-    const requestParams: any = {
+    const requestBody: any = {
       prompt: prompt,
       model: params?.model || "ray-2",
       // Converter duração de string "5s" para número 5
@@ -238,27 +194,37 @@ export async function generateVideo(
     
     // Adicionar imagem para image-to-video se fornecida
     if (imageUrl && params?.videoType === "image-to-video") {
-      requestParams.image = imageUrl;
+      requestBody.image = imageUrl;
     }
     
-    console.log("Enviando requisição para SDK Luma (vídeo):", JSON.stringify(requestParams, null, 2));
+    console.log("Enviando requisição para API Luma (vídeo):", JSON.stringify(requestBody, null, 2));
     
-    // Criar a geração de vídeo com tratamento de erro específico
-    let generation;
-    try {
-      generation = await client.videos.create(requestParams);
-    } catch (apiError) {
-      console.error("Erro específico na API Luma (videos.create):", apiError);
-      
-      // Tratamento especial para erros da API Luma
-      if (apiError instanceof Error) {
-        throw new Error(`Erro na API Luma (videos): ${apiError.message}`);
-      } else {
-        throw new Error(`Erro desconhecido na API Luma: ${String(apiError)}`);
-      }
+    // Criar a geração usando API REST diretamente
+    const response = await fetch("https://api.lumalabs.ai/v1/videos", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Erro na API Luma (status):", response.status, response.statusText);
+      console.error("Detalhes do erro:", errorText);
+      throw new Error(`Erro na API Luma: ${response.status} ${response.statusText}`);
     }
     
-    console.log("ID da geração de vídeo criada:", generation?.id);
+    const generation = await response.json();
+    console.log("Resposta da geração de vídeo:", JSON.stringify(generation, null, 2));
+    
+    // Verificar se ID foi retornado
+    if (!generation.id) {
+      throw new Error("ID da geração não retornado pela API");
+    }
+    
+    console.log("ID da geração de vídeo criada:", generation.id);
     
     // Verificar status da geração até completar ou falhar
     let videoUrl: string | null = null;
@@ -271,21 +237,24 @@ export async function generateVideo(
       
       console.log(`Verificando status do vídeo (tentativa ${attempts}/${maxAttempts})...`);
       
-      // Verificar se client.videos.get existe
-      if (!client.videos || typeof client.videos.get !== 'function') {
-        throw new Error("O SDK da Luma não possui o método videos.get. Versão incompatível.");
-      }
-      
       // Verificar o status do vídeo
-      let statusData;
-      try {
-        statusData = await client.videos.get(generation.id);
-      } catch (statusError) {
-        console.error(`Erro ao verificar status do vídeo (tentativa ${attempts}):`, statusError);
-        // Continuar tentando mesmo com erro
-        statusData = { status: "processing" };
+      const statusResponse = await fetch(`https://api.lumalabs.ai/v1/videos/${generation.id}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        }
+      });
+      
+      if (!statusResponse.ok) {
+        console.error(`Erro ao verificar status do vídeo (tentativa ${attempts}):`, statusResponse.status, statusResponse.statusText);
+        
+        // Se ocorrer erro, aguarde e tente novamente
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        continue;
       }
       
+      const statusData = await statusResponse.json();
       console.log(`Status do vídeo (${attempts}/${maxAttempts}):`, statusData?.status);
       
       if (statusData?.status === "done") {

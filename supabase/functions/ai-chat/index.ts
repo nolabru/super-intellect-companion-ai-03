@@ -219,8 +219,6 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
           friendlyError = "Erro na API Luma: Endpoint não encontrado. A API pode ter sido atualizada.";
-        } else if (errorMessage.includes("SDK") || errorMessage.includes("incompatível")) {
-          friendlyError = `Erro na SDK Luma: ${errorMessage}. Pode ser necessário atualizar a versão do SDK.`;
         } else {
           friendlyError = `Erro na geração do ${mode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
         }
