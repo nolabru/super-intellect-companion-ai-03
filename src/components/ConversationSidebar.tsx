@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -192,8 +191,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     setCurrentConversationId, 
     createNewConversation,
     deleteConversation,
-    renameConversation,
-    clearMessages
+    renameConversation
   } = useConversation();
   const { user } = useAuth();
   const location = useLocation();
@@ -203,13 +201,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   };
 
   const handleSelectConversation = (conversationId: string) => {
+    console.log(`Selecionando conversa: ${conversationId}`);
     if (currentConversationId !== conversationId) {
-      clearMessages(); // Limpar mensagens antes de mudar de conversa
       setCurrentConversationId(conversationId);
     }
   };
 
-  // Se o sidebar estiver minimizado, mostrar apenas o botão para reabri-lo
   if (!isOpen && onToggleSidebar) {
     return (
       <div className="absolute left-0 top-24 z-10">

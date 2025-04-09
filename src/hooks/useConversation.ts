@@ -4,16 +4,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { LumaParams } from '@/components/LumaParamsButton';
 import { ChatMode } from '@/components/ModeSelector';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import { useApiService } from './useApiService';
 import { useMediaGallery } from './useMediaGallery';
 import { toast } from 'sonner';
 
-// Corrigindo o cliente Supabase com URL e chave anônima
-const supabaseUrl = 'https://vygluorjwehcdigzxbaa.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Z2x1b3Jqd2VoY2RpZ3p4YmFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDI2NjcsImV4cCI6MjA1OTYxODY2N30.uuV_JYIUKuv1rV3-MicDiTT28azOWdhJoVjpHMfzVGg';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
+// Interface definition for conversation type
 export interface ConversationType {
   id: string;
   title: string;
@@ -77,6 +73,8 @@ export function useConversation() {
       
       try {
         setLoading(true);
+        console.log(`Carregando mensagens para a conversa ${currentConversationId}`);
+        
         const { data, error } = await supabase
           .from('messages')
           .select('*')
@@ -86,6 +84,8 @@ export function useConversation() {
         if (error) throw error;
         
         if (data) {
+          console.log(`Encontradas ${data.length} mensagens para a conversa ${currentConversationId}`, data);
+          
           // Converte os dados do banco para o formato MessageType
           const formattedMessages: MessageType[] = data.map(msg => ({
             id: msg.id,
@@ -99,6 +99,9 @@ export function useConversation() {
           }));
           
           setMessages(formattedMessages);
+        } else {
+          console.log('Nenhuma mensagem encontrada para esta conversa');
+          setMessages([]);
         }
       } catch (err) {
         console.error('Erro ao carregar mensagens:', err);
