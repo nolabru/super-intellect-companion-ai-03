@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,7 +32,6 @@ const MediaGallery: React.FC = () => {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [filteredMedia, setFilteredMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  // Default to filter by images
   const [filters, setFilters] = useState<GalleryFilters>({
     mediaType: ['image'],
     dateRange: { from: undefined, to: undefined },
@@ -41,11 +39,9 @@ const MediaGallery: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const { deleteMediaFromGallery, deleting } = useMediaGallery();
   
-  // Use a ref to prevent multiple data fetches
   const dataFetchedRef = React.useRef(false);
 
   useEffect(() => {
-    // Only fetch data if the user is authenticated and we haven't fetched yet
     if (user && !dataFetchedRef.current) {
       dataFetchedRef.current = true;
       fetchUserMedia();
@@ -61,7 +57,6 @@ const MediaGallery: React.FC = () => {
   const fetchUserMedia = async () => {
     try {
       setLoading(true);
-      // Especificar o tipo de retorno para type safety
       const { data, error } = await supabase
         .from('media_gallery')
         .select('*')
@@ -71,10 +66,7 @@ const MediaGallery: React.FC = () => {
         throw error;
       }
 
-      // Agora definimos explicitamente o tipo
       setMedia(data as MediaItem[] || []);
-      
-      // Garantir que o filtro padrão seja aplicado
       setFilters({
         mediaType: ['image'],
         dateRange: { from: undefined, to: undefined },
@@ -94,7 +86,6 @@ const MediaGallery: React.FC = () => {
   const applyFilters = () => {
     let filtered = [...media];
 
-    // Garantir que sempre temos pelo menos um tipo de mídia selecionado
     if (filters.mediaType.length === 0) {
       setFilters({
         ...filters,
@@ -103,14 +94,12 @@ const MediaGallery: React.FC = () => {
       return;
     }
 
-    // Filtrar por tipo de mídia
     if (filters.mediaType.length > 0) {
       filtered = filtered.filter(item => 
         filters.mediaType.includes(item.media_type)
       );
     }
 
-    // Filtrar por data
     if (filters.dateRange.from) {
       filtered = filtered.filter(item => 
         new Date(item.created_at) >= new Date(filters.dateRange.from!)
@@ -126,14 +115,13 @@ const MediaGallery: React.FC = () => {
     setFilteredMedia(filtered);
   };
 
-  const handleDeleteItem = async (id: string) => {
+  const handleDeleteItem = async (id: string): Promise<void> => {
     try {
       if (deleting) return;
       
       const success = await deleteMediaFromGallery(id);
         
       if (success) {
-        // Update local state to remove the deleted item
         setMedia(prevMedia => prevMedia.filter(item => item.id !== id));
         setFilteredMedia(prevFiltered => prevFiltered.filter(item => item.id !== id));
         

@@ -6,7 +6,7 @@ import { AlertCircle } from 'lucide-react';
 
 type GalleryListProps = {
   media: MediaItem[];
-  onDeleteItem: (id: string) => void;
+  onDeleteItem: (id: string) => Promise<void>;
   loading?: boolean;
 };
 
