@@ -2,11 +2,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { MessageType } from '@/components/ChatMessage';
 import { toast } from 'sonner';
-import { ConversationType } from '@/types/conversation';
+import { ConversationType, DbOperationResult } from '@/types/conversation';
 
 // Save message to database
-export const saveMessageToDatabase = async (message: MessageType, conversationId: string) => {
+export const saveMessageToDatabase = async (message: MessageType, conversationId: string): Promise<DbOperationResult> => {
   try {
+    console.log(`Saving message to database for conversation ${conversationId}`, message.id);
+    
     const { error } = await supabase
       .from('messages')
       .insert([{
@@ -22,19 +24,26 @@ export const saveMessageToDatabase = async (message: MessageType, conversationId
       }]);
       
     if (error) throw error;
+    return { data: message, error: null, success: true };
   } catch (err) {
     console.error('Erro ao salvar mensagem:', err);
     // Don't interrupt the flow if it fails to save
+    return { 
+      data: null, 
+      error: err instanceof Error ? err.message : 'Erro desconhecido ao salvar mensagem',
+      success: false
+    };
   }
 };
 
 // Load user conversations
-export const loadUserConversations = async () => {
+export const loadUserConversations = async (): Promise<DbOperationResult<ConversationType[]>> => {
   try {
+    console.log('Loading user conversations');
     const { data: user } = await supabase.auth.getUser();
     
     if (!user || !user.user) {
-      return { data: null, error: "Usuário não autenticado" }; 
+      return { data: [], error: "Usuário não autenticado" }; 
     }
     
     const { data, error } = await supabase
@@ -45,6 +54,7 @@ export const loadUserConversations = async () => {
       
     if (error) throw error;
     
+    console.log(`Loaded ${data?.length || 0} conversations`);
     return { data, error: null };
   } catch (err) {
     console.error('Erro ao carregar conversas:', err);
@@ -56,13 +66,14 @@ export const loadUserConversations = async () => {
 };
 
 // Load conversation messages
-export const loadConversationMessages = async (conversationId: string) => {
+export const loadConversationMessages = async (conversationId: string): Promise<DbOperationResult> => {
   try {
     if (!conversationId) {
+      console.log('No conversation ID provided, returning empty messages array');
       return { data: [], error: null };
     }
     
-    console.log(`Carregando mensagens para a conversa ${conversationId}`);
+    console.log(`Loading messages for conversation ${conversationId}`);
     
     const { data, error } = await supabase
       .from('messages')
@@ -72,7 +83,7 @@ export const loadConversationMessages = async (conversationId: string) => {
       
     if (error) throw error;
     
-    console.log(`Encontradas ${data?.length || 0} mensagens para a conversa ${conversationId}`);
+    console.log(`Found ${data?.length || 0} messages for conversation ${conversationId}`);
     return { data, error: null };
   } catch (err) {
     console.error('Erro ao carregar mensagens:', err);
@@ -84,8 +95,9 @@ export const loadConversationMessages = async (conversationId: string) => {
 };
 
 // Create a new conversation
-export const createConversation = async () => {
+export const createConversation = async (): Promise<DbOperationResult<ConversationType>> => {
   try {
+    console.log('Creating new conversation');
     const user = await supabase.auth.getUser();
     
     if (!user.data.user) {
@@ -103,23 +115,26 @@ export const createConversation = async () => {
     
     if (data && data.length > 0) {
       toast.success('Nova conversa criada');
-      return { data: data[0], error: null };
+      console.log('New conversation created:', data[0].id);
+      return { data: data[0], error: null, success: true };
     }
     
-    return { data: null, error: "Não foi possível criar a conversa" };
+    return { data: null, error: "Não foi possível criar a conversa", success: false };
   } catch (err) {
     console.error('Erro ao criar conversa:', err);
     toast.error('Erro ao criar nova conversa');
     return { 
       data: null, 
-      error: err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa' 
+      error: err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa',
+      success: false
     };
   }
 };
 
 // Delete conversation
-export const deleteConversation = async (id: string) => {
+export const deleteConversation = async (id: string): Promise<DbOperationResult> => {
   try {
+    console.log(`Deleting conversation ${id}`);
     // First delete all associated messages
     const { error: messagesError } = await supabase
       .from('messages')
@@ -137,20 +152,22 @@ export const deleteConversation = async (id: string) => {
     if (error) throw error;
     
     toast.success('Conversa excluída com sucesso');
-    return { success: true, error: null };
+    return { data: null, error: null, success: true };
   } catch (err) {
     console.error('Erro ao excluir conversa:', err);
     toast.error('Erro ao excluir conversa');
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa' 
+      error: err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa',
+      data: null
     };
   }
 };
 
 // Rename conversation
-export const renameConversation = async (id: string, newTitle: string) => {
+export const renameConversation = async (id: string, newTitle: string): Promise<DbOperationResult> => {
   try {
+    console.log(`Renaming conversation ${id} to "${newTitle}"`);
     const { error } = await supabase
       .from('conversations')
       .update({ title: newTitle })
@@ -159,30 +176,38 @@ export const renameConversation = async (id: string, newTitle: string) => {
     if (error) throw error;
     
     toast.success('Conversa renomeada com sucesso');
-    return { success: true, error: null };
+    return { success: true, error: null, data: null };
   } catch (err) {
     console.error('Erro ao renomear conversa:', err);
     toast.error('Erro ao renomear conversa');
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa' 
+      error: err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa',
+      data: null
     };
   }
 };
 
 // Update conversation title based on the first user message
-export const updateConversationTitle = async (conversationId: string, content: string, conversations: ConversationType[]) => {
+export const updateConversationTitle = async (
+  conversationId: string, 
+  content: string, 
+  conversations: ConversationType[]
+): Promise<DbOperationResult<{newTitle: string}>> => {
   try {
     // Check if the current title is "Nova Conversa"
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (!conversation || conversation.title !== 'Nova Conversa') {
-      return { success: false, error: null }; // Don't update if it's not the default title
+      console.log('Not updating title because it\'s not the default title');
+      return { success: false, error: null, data: null }; // Don't update if it's not the default title
     }
     
     // Use the first 30 characters as title or the whole content if smaller
     const newTitle = content.length > 30 
       ? content.substring(0, 30) + '...' 
       : content;
+    
+    console.log(`Updating conversation ${conversationId} title to "${newTitle}"`);
     
     const { error } = await supabase
       .from('conversations')
@@ -191,11 +216,12 @@ export const updateConversationTitle = async (conversationId: string, content: s
 
     if (error) throw error;
     
-    return { success: true, newTitle, error: null };
+    return { success: true, data: { newTitle }, error: null };
   } catch (err) {
     console.error('Erro ao atualizar título da conversa:', err);
     return { 
       success: false, 
+      data: null,
       error: err instanceof Error ? err.message : 'Erro desconhecido ao atualizar título'
     };
   }

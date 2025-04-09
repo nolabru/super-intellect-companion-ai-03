@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -199,16 +200,15 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const location = useLocation();
 
   const handleNewConversation = async () => {
-    clearMessages();
+    console.log('Creating new conversation from sidebar button');
+    // Clear messages will be called inside createNewConversation
     await createNewConversation();
   };
 
   const handleSelectConversation = (conversationId: string) => {
-    console.log(`Selecionando conversa: ${conversationId}`);
-    if (currentConversationId !== conversationId) {
-      clearMessages();
-      setCurrentConversationId(conversationId);
-    }
+    console.log(`Selecting conversation from sidebar: ${conversationId}`);
+    setCurrentConversationId(conversationId);
+    // setCurrentConversationId now handles clearing messages internally
   };
 
   if (!isOpen && onToggleSidebar) {

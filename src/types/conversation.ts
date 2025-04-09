@@ -16,3 +16,16 @@ export interface MessageResponse {
   files?: string[];
   error?: string;
 }
+
+// Interface for database operations results
+export interface DbOperationResult<T = any> {
+  data: T | null;
+  error: string | null;
+  success?: boolean;
+}
+
+// Interface for conversation selection event
+export interface ConversationSelectionEvent {
+  conversationId: string;
+  clearMessages: boolean;
+}

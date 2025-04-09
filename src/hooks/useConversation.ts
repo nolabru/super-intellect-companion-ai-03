@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { LumaParams } from '@/components/LumaParamsButton';
@@ -38,6 +39,12 @@ export function useConversation() {
     setError
   );
 
+  // Clear messages - explicit function to ensure messages are cleared
+  const clearMessages = useCallback(() => {
+    console.log('Clearing all messages');
+    setMessages([]);
+  }, []);
+
   // Load user conversations on init
   useEffect(() => {
     const fetchConversations = async () => {
@@ -54,6 +61,7 @@ export function useConversation() {
           setConversations(data);
           // Select most recent conversation if none is selected and there are conversations available
           if (!currentConversationId && data.length > 0) {
+            console.log(`Auto-selecting the most recent conversation: ${data[0].id}`);
             setCurrentConversationId(data[0].id);
           }
         }
@@ -72,12 +80,14 @@ export function useConversation() {
   useEffect(() => {
     const fetchMessages = async () => {
       if (!currentConversationId) {
-        setMessages([]);
+        console.log('No conversation selected, clearing messages');
+        clearMessages();
         return;
       }
       
       try {
         setLoading(true);
+        console.log(`Loading messages for conversation: ${currentConversationId}`);
         const { data, error: fetchError } = await loadConversationMessages(currentConversationId);
         
         if (fetchError) {
@@ -99,9 +109,11 @@ export function useConversation() {
             mediaUrl: msg.media_url || undefined
           }));
           
+          console.log(`Setting ${formattedMessages.length} messages from conversation ${currentConversationId}`);
           setMessages(formattedMessages);
         } else {
-          setMessages([]);
+          console.log('No messages found, clearing message state');
+          clearMessages();
         }
       } catch (err) {
         console.error('Erro ao buscar mensagens:', err);
@@ -113,7 +125,7 @@ export function useConversation() {
     };
     
     fetchMessages();
-  }, [currentConversationId]);
+  }, [currentConversationId, clearMessages]);
 
   // Create a new conversation
   const createNewConversation = async () => {
@@ -121,16 +133,18 @@ export function useConversation() {
       setLoading(true);
       
       // Clear messages before creating a new conversation
-      setMessages([]);
+      console.log('Creating new conversation, clearing messages first');
+      clearMessages();
       
-      const { data, error: createError } = await createConversation();
+      const { data, error: createError, success } = await createConversation();
       
       if (createError) {
         setError(createError);
         return;
       }
       
-      if (data) {
+      if (data && success) {
+        console.log(`New conversation created with ID: ${data.id}`);
         setCurrentConversationId(data.id);
         setConversations(prev => [data, ...prev]);
       }
@@ -155,16 +169,21 @@ export function useConversation() {
       }
       
       if (success) {
+        console.log(`Conversation ${id} deleted successfully`);
         setConversations(prev => prev.filter(conv => conv.id !== id));
         
         if (currentConversationId === id) {
+          console.log('Current conversation was deleted, selecting next available one');
           // If current conversation was deleted, select the next available one or clear
           const remainingConversations = conversations.filter(conv => conv.id !== id);
           if (remainingConversations.length > 0) {
-            setCurrentConversationId(remainingConversations[0].id);
+            const nextConversation = remainingConversations[0].id;
+            console.log(`Selecting next conversation: ${nextConversation}`);
+            setCurrentConversationId(nextConversation);
           } else {
+            console.log('No conversations left, clearing current conversation ID and messages');
             setCurrentConversationId(null);
-            setMessages([]);
+            clearMessages();
           }
         }
       }
@@ -189,6 +208,7 @@ export function useConversation() {
       }
       
       if (success) {
+        console.log(`Conversation ${id} renamed to "${newTitle}"`);
         setConversations(prev => 
           prev.map(conv => conv.id === id ? { ...conv, title: newTitle } : conv)
         );
@@ -200,6 +220,18 @@ export function useConversation() {
       setLoading(false);
     }
   };
+
+  // Handle selecting a conversation
+  const handleSelectConversation = useCallback((conversationId: string) => {
+    console.log(`Selecting conversation: ${conversationId}`);
+    
+    if (currentConversationId !== conversationId) {
+      // Always clear messages first to prevent showing old conversation content
+      console.log(`Conversation changed from ${currentConversationId} to ${conversationId}, clearing messages first`);
+      clearMessages();
+      setCurrentConversationId(conversationId);
+    }
+  }, [currentConversationId, clearMessages]);
 
   // Send a message
   const sendMessage = async (
@@ -217,6 +249,7 @@ export function useConversation() {
       
       // Create new conversation if none is selected
       if (!currentConversationId) {
+        console.log('No conversation selected, creating a new one before sending message');
         await createNewConversation();
         // If still no conversation ID, something went wrong
         if (!currentConversationId) {
@@ -246,6 +279,7 @@ export function useConversation() {
       if (messages.length === 0) {
         const { success, newTitle } = await updateConversationTitle(conversationId, content, conversations);
         if (success && newTitle) {
+          console.log(`Updated conversation title to "${newTitle}"`);
           setConversations(prev => 
             prev.map(conv => conv.id === conversationId ? { ...conv, title: newTitle } : conv)
           );
@@ -308,11 +342,6 @@ export function useConversation() {
       setLoading(false);
     }
   };
-
-  // Clear messages when switching conversations
-  const clearMessages = () => {
-    setMessages([]);
-  };
   
   return {
     messages,
@@ -321,7 +350,7 @@ export function useConversation() {
     error,
     conversations,
     currentConversationId,
-    setCurrentConversationId,
+    setCurrentConversationId: handleSelectConversation,
     createNewConversation,
     deleteConversation,
     renameConversation,
