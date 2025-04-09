@@ -108,6 +108,25 @@ export async function processImage(
   }
 }
 
+// Function to download an image and return as base64
+async function downloadImage(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Falha ao baixar imagem: ${response.status} ${response.statusText}`);
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const contentType = response.headers.get("content-type") || "image/png";
+    
+    return `data:${contentType};base64,${base64}`;
+  } catch (error) {
+    console.error("Erro ao baixar imagem:", error);
+    throw error;
+  }
+}
+
 // Function to generate image with DALL-E
 export async function generateImage(
   prompt: string,
@@ -144,10 +163,23 @@ export async function generateImage(
     
     console.log(`Imagem gerada com sucesso. URL: ${imageUrl}`);
     
-    return {
-      content: `Imagem gerada com sucesso.\n\n[Imagem gerada]: ${imageUrl}`,
-      files: [imageUrl]
-    };
+    // Download imagem em base64 para evitar problemas com expiração do link
+    try {
+      const base64Image = await downloadImage(imageUrl);
+      console.log("Imagem convertida para base64 com sucesso");
+      
+      return {
+        content: `Imagem gerada com sucesso.\n\n[Imagem gerada]: ${imageUrl}`,
+        files: [base64Image]
+      };
+    } catch (dlError) {
+      console.error("Erro ao baixar imagem como base64:", dlError);
+      // Fallback para o URL original se falhar o download
+      return {
+        content: `Imagem gerada com sucesso.\n\n[Imagem gerada]: ${imageUrl}`,
+        files: [imageUrl]
+      };
+    }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError("OPENAI_IMAGE_GENERATION_ERROR", { error: errorMessage, model: modelId });
