@@ -9,11 +9,14 @@ import {
   loadMessages,
   handleTitleUpdate
 } from './conversationActions';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useConversation() {
   const conversationState = useConversationState();
   const messagesState = useConversationMessages();
+  
+  // Referência para evitar loops infinitos
+  const loadingRef = useRef(false);
   
   const { 
     conversations,
@@ -51,18 +54,25 @@ export function useConversation() {
     handleTitleUpdate.bind(null, conversations, updateConversationTitle)
   );
 
-  // Load messages when conversation changes
+  // Load messages when conversation changes - com proteção contra loops
   useEffect(() => {
-    if (currentConversationId) {
+    if (currentConversationId && !loadingRef.current) {
       console.log(`[useConversation] Current conversation changed to ${currentConversationId}, loading messages`);
+      
+      // Definir flag para evitar múltiplas chamadas
+      loadingRef.current = true;
+      
       loadMessages(
         currentConversationId,
         setLoading,
         setMessages,
         clearMessages,
         setError
-      );
-    } else {
+      ).finally(() => {
+        // Resetar flag quando a operação terminar
+        loadingRef.current = false;
+      });
+    } else if (!currentConversationId) {
       console.log('[useConversation] No conversation selected, clearing messages');
       clearMessages();
     }
