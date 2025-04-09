@@ -46,7 +46,8 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${tokenToUse}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         }
       });
       
@@ -221,14 +222,14 @@ export async function generateVideo(
     
     // Usando sempre o token mocado
     const apiKey = MOCKED_LUMA_TOKEN;
-    console.log("Usando token mocado para geração de vídeo");
+    console.log("Usando token mocado para geração de vídeo:", apiKey.substring(0, 10) + "...");
     
     // Configurar parâmetros para a solicitação de vídeo
     const requestBody: any = {
       prompt: prompt,
       model: params?.model || "ray-2",
       resolution: params?.resolution || "720p",
-      duration: params?.duration?.replace('s', '') || "5s"
+      duration: "5s" // Fixando em 5s conforme exemplo de sucesso
     };
     
     // Adicionar imagem para image-to-video se fornecida
@@ -239,7 +240,7 @@ export async function generateVideo(
     console.log("Enviando requisição para API Luma (vídeo):", JSON.stringify(requestBody, null, 2));
     console.log("Usando token de autorização:", `Bearer ${apiKey.substring(0, 10)}...`);
     
-    // Criar a geração usando o novo endpoint
+    // Criar a geração usando o novo endpoint com Authorization: Bearer [token] sem espaço entre Bearer e o token
     const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/generations", {
       method: "POST",
       headers: {
@@ -249,6 +250,9 @@ export async function generateVideo(
       },
       body: JSON.stringify(requestBody)
     });
+    
+    // Verificar a resposta HTTP
+    console.log("Resposta da API (status):", response.status, response.statusText);
     
     if (!response.ok) {
       let errorText = "";

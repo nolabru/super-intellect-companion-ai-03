@@ -15,7 +15,7 @@ interface ResponseData {
   files?: string[];
 }
 
-// Token mocado para testes com a Luma API - atualizando para o novo token
+// Token mocado para testes com a Luma API - usando o token fornecido pelo usuário
 const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1c6-4e73-b6d4-42078e8c7775";
 
 // Main handler for all AI chat requests

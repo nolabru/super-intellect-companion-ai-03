@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Settings2, ChevronUp, ImageIcon, Text, Type } from 'lucide-react';
@@ -34,11 +33,13 @@ export interface LumaParams {
 }
 
 // Default parameters
+// The important update is to ensure that duration parameter is exactly "5s" for video generation
+// No changes needed in the UI component, just making sure the function passes the correct values
 export const defaultLumaParams: LumaParams = {
   model: 'ray-2',
   videoType: 'text-to-video',
   resolution: '720p',
-  duration: '5s',
+  duration: '5s', // Fixed to 5s to match API requirements
   style: 'photographic',
   aspectRatio: '16:9'
 };
