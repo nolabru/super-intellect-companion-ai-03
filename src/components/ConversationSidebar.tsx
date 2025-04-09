@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -191,18 +192,23 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     setCurrentConversationId, 
     createNewConversation,
     deleteConversation,
-    renameConversation
+    renameConversation,
+    clearMessages
   } = useConversation();
   const { user } = useAuth();
   const location = useLocation();
 
   const handleNewConversation = async () => {
+    // Limpar mensagens atuais e criar nova conversa
+    clearMessages();
     await createNewConversation();
   };
 
   const handleSelectConversation = (conversationId: string) => {
     console.log(`Selecionando conversa: ${conversationId}`);
     if (currentConversationId !== conversationId) {
+      // Limpar mensagens antes de selecionar nova conversa
+      clearMessages();
       setCurrentConversationId(conversationId);
     }
   };

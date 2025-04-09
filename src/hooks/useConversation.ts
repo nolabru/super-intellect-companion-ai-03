@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -125,6 +124,9 @@ export function useConversation() {
         throw new Error("User is not authenticated");
       }
       
+      // Limpar mensagens antes de criar nova conversa
+      setMessages([]);
+      
       const { data, error } = await supabase
         .from('conversations')
         .insert([
@@ -136,7 +138,6 @@ export function useConversation() {
       if (data && data.length > 0) {
         setCurrentConversationId(data[0].id);
         setConversations(prev => [data[0], ...prev]);
-        setMessages([]); // Limpar mensagens ao criar nova conversa
         toast.success('Nova conversa criada');
       }
     } catch (err) {
