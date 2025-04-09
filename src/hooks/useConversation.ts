@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -227,8 +228,8 @@ export function useConversation() {
           conversation_id: conversationId,
           model: message.model,
           mode: message.mode,
-          files: message.files,
-          media_url: message.mediaUrl
+          files: message.files || null,
+          media_url: message.mediaUrl || null
         }]);
         
       if (error) throw error;
