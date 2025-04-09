@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ConversationType } from '@/types/conversation';
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
@@ -32,7 +32,7 @@ interface ConversationSidebarProps {
 }
 
 interface ConversationItemProps {
-  conversation: any;
+  conversation: ConversationType;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
@@ -199,7 +199,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const location = useLocation();
 
   const handleNewConversation = async () => {
-    // Limpar mensagens atuais e criar nova conversa
     clearMessages();
     await createNewConversation();
   };
@@ -207,7 +206,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const handleSelectConversation = (conversationId: string) => {
     console.log(`Selecionando conversa: ${conversationId}`);
     if (currentConversationId !== conversationId) {
-      // Limpar mensagens antes de selecionar nova conversa
       clearMessages();
       setCurrentConversationId(conversationId);
     }

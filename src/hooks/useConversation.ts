@@ -1,20 +1,25 @@
+
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { LumaParams } from '@/components/LumaParamsButton';
 import { ChatMode } from '@/components/ModeSelector';
-import { supabase } from '@/integrations/supabase/client';
 import { useApiService } from './useApiService';
 import { useMediaGallery } from './useMediaGallery';
 import { toast } from 'sonner';
+import { ConversationType } from '@/types/conversation';
+import { 
+  loadUserConversations, 
+  loadConversationMessages, 
+  createConversation, 
+  deleteConversation as deleteConversationUtil, 
+  renameConversation as renameConversationUtil,
+  saveMessageToDatabase,
+  updateConversationTitle
+} from '@/utils/conversationUtils';
+import { createMessageService } from '@/services/messageService';
 
-// Interface definition for conversation type
-export interface ConversationType {
-  id: string;
-  title: string;
-  updated_at: string;
-  user_id: string;
-}
+export { ConversationType };
 
 export function useConversation() {
   const [messages, setMessages] = useState<MessageType[]>([]);
@@ -24,47 +29,48 @@ export function useConversation() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const apiService = useApiService();
   const { saveMediaToGallery } = useMediaGallery();
+  
+  // Create message service
+  const messageService = createMessageService(
+    apiService,
+    { saveMediaToGallery },
+    setMessages,
+    setError
+  );
 
-  // Carregar conversas do usuário ao inicializar
+  // Load user conversations on init
   useEffect(() => {
-    const loadUserConversations = async () => {
+    const fetchConversations = async () => {
       try {
-        const { data: user } = await supabase.auth.getUser();
-        
-        if (!user || !user.user) {
-          return; // Usuário não autenticado
-        }
-        
         setLoading(true);
-        const { data, error } = await supabase
-          .from('conversations')
-          .select('*')
-          .eq('user_id', user.user.id)
-          .order('updated_at', { ascending: false });
-          
-        if (error) throw error;
+        const { data, error: fetchError } = await loadUserConversations();
+        
+        if (fetchError) {
+          setError(fetchError);
+          return;
+        }
         
         if (data) {
           setConversations(data);
-          // Se não houver conversa atual e houver conversas disponíveis, selecione a mais recente
+          // Select most recent conversation if none is selected and there are conversations available
           if (!currentConversationId && data.length > 0) {
             setCurrentConversationId(data[0].id);
           }
         }
       } catch (err) {
-        console.error('Erro ao carregar conversas:', err);
-        setError(err instanceof Error ? err.message : 'Erro desconhecido ao carregar conversas');
+        console.error('Erro ao buscar conversas:', err);
+        setError(err instanceof Error ? err.message : 'Erro desconhecido ao buscar conversas');
       } finally {
         setLoading(false);
       }
     };
     
-    loadUserConversations();
+    fetchConversations();
   }, []);
   
-  // Carregar mensagens quando uma conversa é selecionada
+  // Load conversation messages when a conversation is selected
   useEffect(() => {
-    const loadConversationMessages = async () => {
+    const fetchMessages = async () => {
       if (!currentConversationId) {
         setMessages([]);
         return;
@@ -72,20 +78,16 @@ export function useConversation() {
       
       try {
         setLoading(true);
-        console.log(`Carregando mensagens para a conversa ${currentConversationId}`);
+        const { data, error: fetchError } = await loadConversationMessages(currentConversationId);
         
-        const { data, error } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('conversation_id', currentConversationId)
-          .order('timestamp', { ascending: true });
-          
-        if (error) throw error;
+        if (fetchError) {
+          setError(fetchError);
+          toast.error('Erro ao carregar mensagens da conversa');
+          return;
+        }
         
         if (data) {
-          console.log(`Encontradas ${data.length} mensagens para a conversa ${currentConversationId}`, data);
-          
-          // Converte os dados do banco para o formato MessageType
+          // Convert database data to MessageType format
           const formattedMessages: MessageType[] = data.map(msg => ({
             id: msg.id,
             content: msg.content,
@@ -99,179 +101,107 @@ export function useConversation() {
           
           setMessages(formattedMessages);
         } else {
-          console.log('Nenhuma mensagem encontrada para esta conversa');
           setMessages([]);
         }
       } catch (err) {
-        console.error('Erro ao carregar mensagens:', err);
-        setError(err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens');
+        console.error('Erro ao buscar mensagens:', err);
+        setError(err instanceof Error ? err.message : 'Erro desconhecido ao buscar mensagens');
         toast.error('Erro ao carregar mensagens da conversa');
       } finally {
         setLoading(false);
       }
     };
     
-    loadConversationMessages();
+    fetchMessages();
   }, [currentConversationId]);
 
-  // Função para criar uma nova conversa
+  // Create a new conversation
   const createNewConversation = async () => {
     try {
       setLoading(true);
-      const user = await supabase.auth.getUser();
       
-      if (!user.data.user) {
-        throw new Error("User is not authenticated");
-      }
-      
-      // Limpar mensagens antes de criar nova conversa
+      // Clear messages before creating a new conversation
       setMessages([]);
       
-      const { data, error } = await supabase
-        .from('conversations')
-        .insert([
-          { title: 'Nova Conversa', user_id: user.data.user.id }
-        ])
-        .select();
-
-      if (error) throw error;
-      if (data && data.length > 0) {
-        setCurrentConversationId(data[0].id);
-        setConversations(prev => [data[0], ...prev]);
-        toast.success('Nova conversa criada');
+      const { data, error: createError } = await createConversation();
+      
+      if (createError) {
+        setError(createError);
+        return;
+      }
+      
+      if (data) {
+        setCurrentConversationId(data.id);
+        setConversations(prev => [data, ...prev]);
       }
     } catch (err) {
-      console.error('Erro ao criar conversa:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa');
-      toast.error('Erro ao criar nova conversa');
+      console.error('Erro ao criar nova conversa:', err);
+      setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar nova conversa');
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para excluir uma conversa
+  // Delete a conversation
   const deleteConversation = async (id: string) => {
     try {
       setLoading(true);
-      // Primeiro excluir todas as mensagens associadas
-      const { error: messagesError } = await supabase
-        .from('messages')
-        .delete()
-        .match({ conversation_id: id });
-        
-      if (messagesError) throw messagesError;
       
-      // Depois excluir a conversa
-      const { error } = await supabase
-        .from('conversations')
-        .delete()
-        .match({ id });
-
-      if (error) throw error;
+      const { success, error: deleteError } = await deleteConversationUtil(id);
       
-      setConversations(prev => prev.filter(conv => conv.id !== id));
-      
-      if (currentConversationId === id) {
-        // Se a conversa atual foi excluída, selecione a próxima disponível ou limpe
-        const remainingConversations = conversations.filter(conv => conv.id !== id);
-        if (remainingConversations.length > 0) {
-          setCurrentConversationId(remainingConversations[0].id);
-        } else {
-          setCurrentConversationId(null);
-          setMessages([]);
-        }
+      if (deleteError) {
+        setError(deleteError);
+        return;
       }
       
-      toast.success('Conversa excluída com sucesso');
+      if (success) {
+        setConversations(prev => prev.filter(conv => conv.id !== id));
+        
+        if (currentConversationId === id) {
+          // If current conversation was deleted, select the next available one or clear
+          const remainingConversations = conversations.filter(conv => conv.id !== id);
+          if (remainingConversations.length > 0) {
+            setCurrentConversationId(remainingConversations[0].id);
+          } else {
+            setCurrentConversationId(null);
+            setMessages([]);
+          }
+        }
+      }
     } catch (err) {
       console.error('Erro ao excluir conversa:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
-      toast.error('Erro ao excluir conversa');
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para renomear uma conversa
+  // Rename a conversation
   const renameConversation = async (id: string, newTitle: string) => {
     try {
       setLoading(true);
-      const { error } = await supabase
-        .from('conversations')
-        .update({ title: newTitle })
-        .match({ id });
-
-      if (error) throw error;
-      setConversations(prev => 
-        prev.map(conv => conv.id === id ? { ...conv, title: newTitle } : conv)
-      );
       
-      toast.success('Conversa renomeada com sucesso');
+      const { success, error: renameError } = await renameConversationUtil(id, newTitle);
+      
+      if (renameError) {
+        setError(renameError);
+        return;
+      }
+      
+      if (success) {
+        setConversations(prev => 
+          prev.map(conv => conv.id === id ? { ...conv, title: newTitle } : conv)
+        );
+      }
     } catch (err) {
       console.error('Erro ao renomear conversa:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa');
-      toast.error('Erro ao renomear conversa');
     } finally {
       setLoading(false);
     }
   };
 
-  // Função para salvar mensagem no banco de dados
-  const saveMessageToDatabase = async (message: MessageType, conversationId: string) => {
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .insert([{
-          id: message.id,
-          content: message.content,
-          sender: message.sender,
-          timestamp: message.timestamp,
-          conversation_id: conversationId,
-          model: message.model,
-          mode: message.mode,
-          files: message.files || null,
-          media_url: message.mediaUrl || null
-        }]);
-        
-      if (error) throw error;
-    } catch (err) {
-      console.error('Erro ao salvar mensagem:', err);
-      // Não interromper o fluxo se falhar ao salvar
-    }
-  };
-
-  // Atualizar o título da conversa com base na primeira mensagem do usuário
-  const updateConversationTitle = async (conversationId: string, content: string) => {
-    try {
-      // Verificar se o título atual é "Nova Conversa"
-      const conversation = conversations.find(conv => conv.id === conversationId);
-      if (!conversation || conversation.title !== 'Nova Conversa') {
-        return; // Não atualizar se não for o título padrão
-      }
-      
-      // Usar os primeiros 30 caracteres como título ou todo o conteúdo se for menor
-      const newTitle = content.length > 30 
-        ? content.substring(0, 30) + '...' 
-        : content;
-      
-      const { error } = await supabase
-        .from('conversations')
-        .update({ title: newTitle })
-        .match({ id: conversationId });
-
-      if (error) throw error;
-      
-      // Atualizar estado local
-      setConversations(prev => 
-        prev.map(conv => conv.id === conversationId ? { ...conv, title: newTitle } : conv)
-      );
-    } catch (err) {
-      console.error('Erro ao atualizar título da conversa:', err);
-      // Não interromper o fluxo se falhar
-    }
-  };
-
-  // Função para enviar uma mensagem
+  // Send a message
   const sendMessage = async (
     content: string,
     mode: ChatMode = 'text',
@@ -285,10 +215,10 @@ export function useConversation() {
     try {
       setLoading(true);
       
-      // Se não houver conversa atual, criar uma nova
+      // Create new conversation if none is selected
       if (!currentConversationId) {
         await createNewConversation();
-        // Se ainda não há ID após tentar criar, algo deu errado
+        // If still no conversation ID, something went wrong
         if (!currentConversationId) {
           throw new Error("Não foi possível criar uma nova conversa");
         }
@@ -296,7 +226,7 @@ export function useConversation() {
       
       const conversationId = currentConversationId!;
       
-      // Adicionar mensagem do usuário primeiro
+      // Add user message first
       const userMessageId = uuidv4();
       const userMessage: MessageType = {
         id: userMessageId,
@@ -309,227 +239,54 @@ export function useConversation() {
       
       setMessages((prevMessages) => [...prevMessages, userMessage]);
       
-      // Salvar mensagem do usuário no banco
+      // Save user message to database
       await saveMessageToDatabase(userMessage, conversationId);
       
-      // Atualizar título da conversa se for a primeira mensagem
+      // Update conversation title if this is the first message
       if (messages.length === 0) {
-        await updateConversationTitle(conversationId, content);
+        const { success, newTitle } = await updateConversationTitle(conversationId, content, conversations);
+        if (success && newTitle) {
+          setConversations(prev => 
+            prev.map(conv => conv.id === conversationId ? { ...conv, title: newTitle } : conv)
+          );
+        }
       }
       
-      // Se estiver no modo de comparação, precisamos adicionar uma mensagem para cada modelo
+      // Handle based on whether comparing models or not
       if (isComparing && leftModelId && rightModelId) {
-        // Adicionar mensagens de carregamento
-        const loadingIdLeft = `loading-${leftModelId}-${uuidv4()}`;
-        const loadingIdRight = `loading-${rightModelId}-${uuidv4()}`;
-        
-        const loadingMessages: MessageType[] = [
-          {
-            id: loadingIdLeft,
-            content: 'Gerando resposta...',
-            sender: 'assistant',
-            timestamp: new Date().toISOString(),
-            model: leftModelId,
-            mode,
-            loading: true
-          },
-          {
-            id: loadingIdRight,
-            content: 'Gerando resposta...',
-            sender: 'assistant',
-            timestamp: new Date().toISOString(),
-            model: rightModelId,
-            mode,
-            loading: true
-          }
-        ];
-        
-        setMessages((prevMessages) => [...prevMessages, ...loadingMessages]);
-        
-        // Enviar para a API para ambos os modelos em paralelo
-        const [responseLeft, responseRight] = await Promise.all([
-          apiService.sendRequest(content, mode, leftModelId, files, params),
-          apiService.sendRequest(content, mode, rightModelId, files, params)
-        ]);
-        
-        // Remover mensagens de carregamento
-        setMessages((prevMessages) => 
-          prevMessages.filter(msg => msg.id !== loadingIdLeft && msg.id !== loadingIdRight)
+        await messageService.handleCompareModels(
+          content, 
+          mode, 
+          leftModelId, 
+          rightModelId, 
+          conversationId, 
+          files, 
+          params
         );
-        
-        // Adicionar respostas reais
-        const newMessages: MessageType[] = [
-          {
-            id: uuidv4(),
-            content: responseLeft.content,
-            sender: 'assistant',
-            timestamp: new Date().toISOString(),
-            model: leftModelId,
-            mode,
-            files: responseLeft.files,
-            mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
-          },
-          {
-            id: uuidv4(),
-            content: responseRight.content,
-            sender: 'assistant',
-            timestamp: new Date().toISOString(),
-            model: rightModelId,
-            mode,
-            files: responseRight.files,
-            mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
-          }
-        ];
-        
-        setMessages((prevMessages) => [...prevMessages, ...newMessages]);
-        
-        // Salvar mensagens no banco
-        await Promise.all(newMessages.map(msg => saveMessageToDatabase(msg, conversationId)));
-        
-        // Salvar mídias na galeria se existirem
-        if (mode !== 'text') {
-          // Para o modelo da esquerda
-          if (responseLeft.files && responseLeft.files.length > 0) {
-            await saveMediaToGallery(
-              responseLeft.files[0],
-              content,
-              mode,
-              leftModelId,
-              params
-            );
-          }
-          
-          // Para o modelo da direita
-          if (responseRight.files && responseRight.files.length > 0) {
-            await saveMediaToGallery(
-              responseRight.files[0],
-              content,
-              mode,
-              rightModelId,
-              params
-            );
-          }
-        }
       } else {
-        // Mensagem única - adicionar mensagem de carregamento
-        const loadingId = `loading-${modelId}-${uuidv4()}`;
-        
-        let loadingMessage = 'Gerando resposta...';
-        
-        // Mensagens de carregamento específicas para cada modo
-        if (mode === 'video') {
-          if (modelId === 'luma-video') {
-            loadingMessage = 'Conectando ao serviço Luma AI para processamento de vídeo...';
-          } else if (modelId === 'kligin-video') {
-            loadingMessage = 'Aguardando processamento do serviço Kligin AI...';
-          }
-        } else if (mode === 'image') {
-          if (modelId === 'luma-image') {
-            loadingMessage = 'Conectando ao serviço Luma AI para geração de imagem...';
-          }
-        }
-        
-        const loadingMsg: MessageType = {
-          id: loadingId,
-          content: loadingMessage,
-          sender: 'assistant',
-          timestamp: new Date().toISOString(),
-          model: modelId,
-          mode,
-          loading: true
-        };
-        
-        setMessages((prevMessages) => [...prevMessages, loadingMsg]);
-        
-        try {
-          // Enviar para a API com timeout de 3 minutos
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error("Tempo limite excedido na solicitação")), 180000);
-          });
-          
-          const responsePromise = apiService.sendRequest(content, mode, modelId, files, params);
-          const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
-          
-          // Remover mensagem de carregamento
-          setMessages((prevMessages) => 
-            prevMessages.filter(msg => msg.id !== loadingId)
-          );
-          
-          // Adicionar resposta real
-          const newMessage: MessageType = {
-            id: uuidv4(),
-            content: response.content,
-            sender: 'assistant',
-            timestamp: new Date().toISOString(),
-            model: modelId,
-            mode,
-            files: response.files,
-            mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
-          };
-          
-          setMessages((prevMessages) => [...prevMessages, newMessage]);
-          
-          // Salvar mensagem no banco
-          await saveMessageToDatabase(newMessage, conversationId);
-          
-          // Salvar mídia na galeria se existir
-          if (mode !== 'text' && response.files && response.files.length > 0) {
-            await saveMediaToGallery(
-              response.files[0],
-              content,
-              mode,
-              modelId,
-              params
-            );
-          }
-        } catch (err) {
-          console.error("Erro durante solicitação:", err);
-          
-          // Remover mensagem de carregamento
-          setMessages((prevMessages) => 
-            prevMessages.filter(msg => msg.id !== loadingId)
-          );
-          
-          // Adicionar mensagem de erro específica baseada no modo e erro
-          const errorMsg = err instanceof Error ? err.message : "Erro desconhecido";
-          let friendlyError = `Ocorreu um erro ao processar sua solicitação. ${errorMsg}`;
-          
-          if (mode === 'video' && modelId.includes('luma')) {
-            friendlyError = `Erro na geração de vídeo: ${errorMsg}. Verifique se a chave API da Luma está configurada corretamente.`;
-          } else if (mode === 'image' && modelId.includes('luma')) {
-            friendlyError = `Erro na geração de imagem: ${errorMsg}. Verifique se a chave API da Luma está configurada corretamente.`;
-          }
-          
-          const errorMessage: MessageType = {
-            id: uuidv4(),
-            content: friendlyError,
-            sender: 'assistant',
-            timestamp: new Date().toISOString(),
-            model: modelId,
-            mode,
-            error: true
-          };
-          
-          setMessages((prevMessages) => [...prevMessages, errorMessage]);
-          
-          // Salvar mensagem de erro no banco
-          await saveMessageToDatabase(errorMessage, conversationId);
-          
-          throw err; // Re-throw para ser capturado pelo catch externo
-        }
+        await messageService.handleSingleModelMessage(
+          content, 
+          mode, 
+          modelId, 
+          conversationId, 
+          messages,
+          conversations,
+          files, 
+          params
+        );
       }
     } catch (err) {
       console.error('Erro ao enviar mensagem:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao enviar mensagem');
       
-      // Se ainda não adicionamos uma mensagem de erro (no bloco try interno), adicionamos aqui
+      // Add a general error message if we haven't already added one
       if (!messages.some(msg => msg.error && msg.timestamp > new Date(Date.now() - 5000).toISOString())) {
-        // Remover mensagens de carregamento
+        // Remove any loading messages
         setMessages((prevMessages) => 
           prevMessages.filter(msg => !msg.id?.startsWith('loading-'))
         );
         
-        // Adicionar mensagem de erro
+        // Add error message
         const errorMessage: MessageType = {
           id: uuidv4(),
           content: 'Ocorreu um erro ao processar sua solicitação. Por favor, tente novamente.',
@@ -542,7 +299,7 @@ export function useConversation() {
         
         setMessages((prevMessages) => [...prevMessages, errorMessage]);
         
-        // Salvar mensagem de erro no banco se houver ID de conversa
+        // Save error message if there's a conversation ID
         if (currentConversationId) {
           await saveMessageToDatabase(errorMessage, currentConversationId);
         }
@@ -552,7 +309,7 @@ export function useConversation() {
     }
   };
 
-  // Limpar mensagens ao trocar de conversa
+  // Clear messages when switching conversations
   const clearMessages = () => {
     setMessages([]);
   };
