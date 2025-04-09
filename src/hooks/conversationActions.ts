@@ -1,4 +1,3 @@
-
 import { createConversation, deleteConversation as deleteConversationFromDB, renameConversation as renameConversationFromDB, loadConversationMessages, updateConversationTitle as updateConversationTitleInDB } from '../utils/conversationUtils';
 import { ConversationType } from '@/types/conversation';
 import { MessageType } from '@/components/ChatMessage';
@@ -16,8 +15,8 @@ export const loadMessages = async (
     
     setLoading(true);
     
-    // Clear messages before loading new ones - this is crucial to prevent duplicates
-    clearMessages();
+    // We'll assume clearMessages has already been called by the parent function
+    // to avoid multiple clearing operations
     
     const { data, error } = await loadConversationMessages(conversationId);
     
@@ -29,11 +28,10 @@ export const loadMessages = async (
     
     if (data) {
       console.log(`[conversationActions] Setting ${data.length} messages from conversation ${conversationId}`);
-      // Double check that messages array is clean before setting new messages
       setMessages(data as MessageType[]);
     } else {
       console.log(`[conversationActions] No messages found for conversation ${conversationId}`);
-      // Ensure messages are cleared if no data is found
+      // Set empty array, no need to clear again
       setMessages([]);
     }
     

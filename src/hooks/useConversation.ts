@@ -19,6 +19,8 @@ export function useConversation() {
   const loadingRef = useRef(false);
   // Track if initial load has been performed
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  // Track the last loaded conversation ID to prevent redundant loads
+  const lastLoadedConversationRef = useRef<string | null>(null);
   
   const { 
     conversations,
@@ -58,8 +60,14 @@ export function useConversation() {
 
   // Load messages when conversation changes - improved protection against loops
   useEffect(() => {
-    if (currentConversationId && !loadingRef.current) {
+    // Only proceed if we have a valid conversation ID that's different from the last loaded one
+    if (currentConversationId && 
+        !loadingRef.current && 
+        currentConversationId !== lastLoadedConversationRef.current) {
       console.log(`[useConversation] Current conversation changed to ${currentConversationId}, loading messages`);
+      
+      // Update the last loaded conversation reference
+      lastLoadedConversationRef.current = currentConversationId;
       
       // Set flag to prevent multiple calls
       loadingRef.current = true;
@@ -88,6 +96,7 @@ export function useConversation() {
     } else if (!currentConversationId) {
       console.log('[useConversation] No conversation selected, clearing messages');
       clearMessages();
+      lastLoadedConversationRef.current = null;
       setInitialLoadDone(false);
     }
   }, [currentConversationId, clearMessages, setMessages, setLoading, setError]);
