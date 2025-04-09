@@ -40,6 +40,23 @@ async function handleAIChat(req: Request): Promise<Response> {
       Deno.env.set("LUMA_API_KEY", apiKeyToUse);
     }
     
+    // Verify OpenAI API key if using OpenAI models
+    if (modelId.includes("gpt")) {
+      const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!openaiApiKey) {
+        return new Response(
+          JSON.stringify({
+            content: "Erro: OPENAI_API_KEY não está configurada. Por favor, adicione sua chave API do OpenAI nas configurações.",
+            error: "OPENAI_API_KEY não configurada",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+          }
+        );
+      }
+    }
+    
     // Validate API key for Luma models
     if (modelId.includes("luma")) {
       const isValidKey = await lumaService.testApiKey(apiKeyToUse);
@@ -75,9 +92,12 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // OpenAI models
       else if (modelId.includes("gpt") && mode === "text") {
+        console.log("Iniciando processamento de texto com OpenAI");
         response = await openaiService.generateText(content, modelId);
+        console.log("Processamento de texto concluído com sucesso");
       }
       else if (modelId.includes("gpt") && mode === "image") {
+        console.log("Iniciando processamento de imagem com OpenAI");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
         if (imageUrl) {
           response = await openaiService.processImage(content, imageUrl, modelId);

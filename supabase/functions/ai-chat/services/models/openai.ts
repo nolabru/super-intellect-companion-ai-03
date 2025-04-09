@@ -1,6 +1,7 @@
 
 import { logError } from "../../utils/logging.ts";
 import { validateApiKey } from "../../utils/validation.ts";
+import { OpenAI } from "https://esm.sh/openai@4.29.0";
 
 // Define response type
 export interface ResponseData {
@@ -14,13 +15,35 @@ export async function generateText(
   modelId: string = "gpt-4o"
 ): Promise<ResponseData> {
   try {
-    console.log(`Simulando resposta de texto OpenAI para o modelo ${modelId}`);
+    // Validar API key da OpenAI
+    const apiKey = Deno.env.get("OPENAI_API_KEY");
+    validateApiKey("OPENAI_API_KEY", apiKey);
     
-    // Esta é uma implementação simulada
-    // Em uma implementação real, você adicionaria a chamada à API da OpenAI aqui
+    console.log(`Iniciando solicitação de texto ao modelo ${modelId} da OpenAI`);
+    
+    // Instanciar cliente OpenAI com a API key
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
+    
+    // Criar a solicitação de chat
+    const response = await openai.chat.completions.create({
+      model: modelId,
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+    });
+    
+    // Extrair o conteúdo da resposta
+    const content = response.choices[0]?.message?.content || "Não foi possível gerar uma resposta.";
+    console.log(`Resposta OpenAI recebida (${content.length} caracteres)`);
     
     return {
-      content: `Esta é uma resposta simulada do modelo ${modelId} da OpenAI.\n\n${prompt}\n\nEm uma implementação completa, esta resposta viria da API da OpenAI.`
+      content: content
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -36,17 +59,42 @@ export async function processImage(
   modelId: string = "gpt-4o"
 ): Promise<ResponseData> {
   try {
-    console.log(`Simulando análise de imagem com ${modelId}`);
+    // Validar API key da OpenAI
+    const apiKey = Deno.env.get("OPENAI_API_KEY");
+    validateApiKey("OPENAI_API_KEY", apiKey);
     
-    // Esta é uma implementação simulada
-    // Em uma implementação real, você adicionaria a chamada à API da OpenAI aqui com a imagem
+    console.log(`Iniciando análise de imagem com ${modelId}, URL da imagem: ${imageUrl}`);
+    
+    // Instanciar cliente OpenAI com a API key
+    const openai = new OpenAI({
+      apiKey: apiKey,
+    });
+    
+    // Criar a solicitação de chat com a imagem como conteúdo
+    const response = await openai.chat.completions.create({
+      model: modelId,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageUrl } }
+          ],
+        },
+      ],
+      max_tokens: 1000,
+    });
+    
+    // Extrair o conteúdo da resposta
+    const content = response.choices[0]?.message?.content || "Não foi possível analisar a imagem.";
+    console.log(`Análise de imagem concluída (${content.length} caracteres)`);
     
     return {
-      content: `Esta é uma análise simulada da imagem usando ${modelId}.\n\nPrompt: ${prompt}\n\nImagem: ${imageUrl}\n\nEm uma implementação completa, esta análise viria da API da OpenAI.`
+      content: content
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logError("OPENAI_VISION_ERROR", { error: errorMessage, model: modelId });
+    logError("OPENAI_VISION_ERROR", { error: errorMessage, model: modelId, imageUrl });
     throw new Error(`Erro ao analisar imagem com OpenAI: ${errorMessage}`);
   }
 }
