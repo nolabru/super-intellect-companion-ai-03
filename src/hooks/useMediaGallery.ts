@@ -18,7 +18,7 @@ export function useMediaGallery() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
-    mediaType: '' as '' | 'image' | 'video' | 'audio',
+    mediaType: '' as '' | 'image' | 'video' | 'audio' | 'all',
     startDate: null as Date | null,
     endDate: null as Date | null,
     searchQuery: '',
@@ -45,7 +45,7 @@ export function useMediaGallery() {
         .order('created_at', { ascending: false });
       
       // Apply filters
-      if (filters.mediaType) {
+      if (filters.mediaType && filters.mediaType !== 'all') {
         query = query.eq('media_type', filters.mediaType);
       }
       
@@ -64,11 +64,21 @@ export function useMediaGallery() {
         query = query.ilike('prompt', `%${filters.searchQuery}%`);
       }
       
-      const { data, error } = await query;
+      const { data, error: fetchError } = await query;
       
-      if (error) throw error;
-      
-      setMediaItems(data as MediaItem[]);
+      if (fetchError) {
+        console.error('Error fetching media:', fetchError);
+        
+        // Check if the error is because the table doesn't exist
+        if (fetchError.code === '42P01') { // relation does not exist
+          setMediaItems([]);
+          setError('A tabela de mídia ainda não foi criada. Por favor, salve um item de mídia primeiro.');
+        } else {
+          throw fetchError;
+        }
+      } else {
+        setMediaItems(data as MediaItem[]);
+      }
     } catch (err) {
       console.error('Erro ao buscar itens de mídia:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao buscar mídia');
@@ -88,6 +98,18 @@ export function useMediaGallery() {
         return null;
       }
       
+      // Check if the table exists by trying to select from it
+      const { error: checkError } = await supabase
+        .from('user_media')
+        .select('id')
+        .limit(1);
+      
+      // If the table doesn't exist, create it
+      if (checkError && checkError.code === '42P01') {
+        // We'll just try to insert anyway, since we can't create tables from the client
+        console.log('Table user_media does not exist, trying to insert anyway');
+      }
+      
       const { data, error } = await supabase
         .from('user_media')
         .insert([{
@@ -99,7 +121,10 @@ export function useMediaGallery() {
         }])
         .select();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error saving media item:', error);
+        throw error;
+      }
       
       if (data && data.length > 0) {
         toast.success(`${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} salvo na galeria`);

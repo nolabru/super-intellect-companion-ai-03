@@ -138,7 +138,7 @@ const MediaGallery: React.FC = () => {
                 <SelectValue placeholder="Todos os tipos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os tipos</SelectItem>
+                <SelectItem value="all">Todos os tipos</SelectItem>
                 <SelectItem value="image">Imagens</SelectItem>
                 <SelectItem value="video">Vídeos</SelectItem>
                 <SelectItem value="audio">Áudios</SelectItem>
