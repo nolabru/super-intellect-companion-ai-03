@@ -192,13 +192,21 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     setCurrentConversationId, 
     createNewConversation,
     deleteConversation,
-    renameConversation 
+    renameConversation,
+    clearMessages
   } = useConversation();
   const { user } = useAuth();
   const location = useLocation();
 
   const handleNewConversation = async () => {
     await createNewConversation();
+  };
+
+  const handleSelectConversation = (conversationId: string) => {
+    if (currentConversationId !== conversationId) {
+      clearMessages(); // Limpar mensagens antes de mudar de conversa
+      setCurrentConversationId(conversationId);
+    }
   };
 
   // Se o sidebar estiver minimizado, mostrar apenas o botão para reabri-lo
@@ -236,8 +244,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               <Button 
                 variant={location.pathname === '/' ? "default" : "outline"}
                 className={`w-full ${location.pathname === '/' 
-                  ? 'bg-inventu-gray text-white' 
-                  : 'border-inventu-gray/30 text-inventu-gray hover:text-white'}`}
+                  ? 'bg-inventu-blue text-white' 
+                  : 'border-inventu-gray/30 text-white hover:bg-inventu-gray/20'}`}
               >
                 <MessageCircle className="mr-2 h-4 w-4" />
                 Chat
@@ -248,8 +256,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               <Button 
                 variant={location.pathname === '/gallery' ? "default" : "outline"}
                 className={`w-full ${location.pathname === '/gallery' 
-                  ? 'bg-inventu-gray text-white' 
-                  : 'border-inventu-gray/30 text-inventu-gray hover:text-white'}`}
+                  ? 'bg-inventu-blue text-white' 
+                  : 'border-inventu-gray/30 text-white hover:bg-inventu-gray/20'}`}
               >
                 <Image className="mr-2 h-4 w-4" />
                 Galeria
@@ -285,7 +293,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                   key={conv.id}
                   conversation={conv}
                   isActive={currentConversationId === conv.id}
-                  onSelect={() => setCurrentConversationId(conv.id)}
+                  onSelect={() => handleSelectConversation(conv.id)}
                   onDelete={() => deleteConversation(conv.id)}
                   onRename={(newTitle) => renameConversation(conv.id, newTitle)}
                 />
