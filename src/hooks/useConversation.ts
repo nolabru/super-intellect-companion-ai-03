@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -94,8 +93,8 @@ export function useConversation() {
             timestamp: msg.timestamp,
             model: msg.model,
             mode: msg.mode as ChatMode,
-            files: msg.files,
-            mediaUrl: msg.media_url
+            files: msg.files || [],
+            mediaUrl: msg.media_url || undefined
           }));
           
           setMessages(formattedMessages);
