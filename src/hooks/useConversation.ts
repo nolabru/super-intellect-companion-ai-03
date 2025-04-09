@@ -39,7 +39,8 @@ export function useConversation() {
     apiService,
     { saveMediaToGallery, saving },
     setMessages,
-    (error) => setConversationState(prev => ({ ...prev, error: error }))
+    // Fix: Ensure we're always setting a string or null for the error property
+    (errorMessage: string) => setConversationState(prev => ({ ...prev, error: errorMessage }))
   );
 
   // Clear messages - explicit function to ensure messages are cleared
