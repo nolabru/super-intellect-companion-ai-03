@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from "@/components/ui/button"
-import { ModeSelector } from '@/components/ModeSelector';
+import ModeSelector from '@/components/ModeSelector';
 import ChatMessage from '@/components/ChatMessage';
 import ChatInput from '@/components/ChatInput';
 import { useConversation } from '@/hooks/useConversation';
@@ -12,7 +13,7 @@ import { Cog } from 'lucide-react';
 import SettingsSidebar from '@/components/SettingsSidebar';
 
 const Index: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const {
     messages,
@@ -35,7 +36,7 @@ const Index: React.FC = () => {
   }, [user, navigate]);
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     navigate('/auth');
   };
 
@@ -79,8 +80,10 @@ const Index: React.FC = () => {
             {error && <p className="text-red-500">Error: {error}</p>}
           </div>
 
-          {/* Chat Input */}
-          <ChatInput sendMessage={sendMessage} loading={loading} />
+          {/* Chat Input - Adapt to match the props expected by ChatInput */}
+          <div className="p-4 border-t border-gray-800">
+            <ChatInput onSendMessage={sendMessage} isLoading={loading} />
+          </div>
         </div>
 
         {/* Settings Sidebar */}

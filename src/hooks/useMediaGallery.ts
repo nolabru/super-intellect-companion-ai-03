@@ -37,33 +37,34 @@ export function useMediaGallery() {
         return;
       }
       
-      // Build query - using type assertion to bypass type checking
-      // This is necessary until we can update the database schema types
-      const supabaseQuery = supabase
+      // Using type assertion to bypass TypeScript checking
+      let supabaseQuery = supabase
         .from('user_media' as any)
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .select('*') as any;
+      
+      supabaseQuery = supabaseQuery.eq('user_id', user.id);
       
       // Apply filters
       if (filters.mediaType && filters.mediaType !== 'all') {
-        supabaseQuery.eq('media_type', filters.mediaType);
+        supabaseQuery = supabaseQuery.eq('media_type', filters.mediaType);
       }
       
       if (filters.startDate) {
-        supabaseQuery.gte('created_at', filters.startDate.toISOString());
+        supabaseQuery = supabaseQuery.gte('created_at', filters.startDate.toISOString());
       }
       
       if (filters.endDate) {
         // Add one day to include the entire end date
         const endDate = new Date(filters.endDate);
         endDate.setDate(endDate.getDate() + 1);
-        supabaseQuery.lt('created_at', endDate.toISOString());
+        supabaseQuery = supabaseQuery.lt('created_at', endDate.toISOString());
       }
       
       if (filters.searchQuery) {
-        supabaseQuery.ilike('prompt', `%${filters.searchQuery}%`);
+        supabaseQuery = supabaseQuery.ilike('prompt', `%${filters.searchQuery}%`);
       }
+      
+      supabaseQuery = supabaseQuery.order('created_at', { ascending: false });
       
       const { data, error: fetchError } = await supabaseQuery;
       
@@ -78,7 +79,7 @@ export function useMediaGallery() {
           throw fetchError;
         }
       } else {
-        // Use type assertion to cast the data to MediaItem[]
+        // Cast the data to MediaItem[] to satisfy TypeScript
         setMediaItems(data as MediaItem[]);
       }
     } catch (err) {
@@ -104,15 +105,14 @@ export function useMediaGallery() {
       const { error: checkError } = await supabase
         .from('user_media' as any)
         .select('id')
-        .limit(1);
+        .limit(1) as any;
       
-      // If the table doesn't exist, create it
+      // If the table doesn't exist, we'll just try to insert anyway
       if (checkError && checkError.code === '42P01') {
-        // We'll just try to insert anyway, since we can't create tables from the client
         console.log('Table user_media does not exist, trying to insert anyway');
       }
       
-      // Using type assertion to bypass type checking
+      // Using type assertion to bypass TypeScript checking
       const { data, error } = await supabase
         .from('user_media' as any)
         .insert([{
@@ -121,8 +121,8 @@ export function useMediaGallery() {
           media_type: mediaType,
           prompt,
           thumbnail_url: thumbnailUrl
-        }] as any)
-        .select();
+        }])
+        .select() as any;
       
       if (error) {
         console.error('Error saving media item:', error);
@@ -148,7 +148,7 @@ export function useMediaGallery() {
       const { error } = await supabase
         .from('user_media' as any)
         .delete()
-        .eq('id', id);
+        .eq('id', id) as any;
       
       if (error) throw error;
       
