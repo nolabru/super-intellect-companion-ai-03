@@ -1,5 +1,5 @@
 
-project_id = "vygluorjwehcdigzxbaa"
+project_id = ""
 
 [api]
 enabled = true
@@ -13,57 +13,83 @@ port = 54322
 shadow_port = 54320
 major_version = 15
 
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 15
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_address = "0.0.0.0"
+port = 54323
+
 [studio]
 enabled = true
-port = 54323
+port = 54324
 api_url = "http://localhost"
 
 [inbucket]
 enabled = true
-port = 54324
-smtp_port = 54325
-pop3_port = 54326
-
-[storage]
-enabled = true
-file_size_limit = "50MiB"
+port = 54325
 
 [auth]
 enabled = true
+port = 54326
 site_url = "http://localhost:3000"
-additional_redirect_urls = ["https://localhost:3000"]
+additional_redirect_urls = ["http://127.0.0.1:3000", "http://localhost:5173", "https://lovable-ai.vercel.app"]
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
+enable_signup = true
 
 [auth.email]
 enable_signup = true
-double_confirm_changes = true
 enable_confirmations = false
 
 [auth.sms]
 enable_signup = true
-enable_confirmations = false
+enable_confirmations = true
 
 [auth.external.apple]
 enabled = false
 client_id = ""
 secret = ""
-redirect_uri = ""
+additional_redirect_urls = [""]
+
+[auth.external.google]
+enabled = false
+client_id = ""
+secret = ""
+admin_email = ""
+additional_redirect_urls = [""]
+
+[auth.external.facebook]
+enabled = false
+client_id = ""
+secret = ""
+additional_redirect_urls = [""]
 
 [auth.external.github]
 enabled = false
 client_id = ""
 secret = ""
-redirect_uri = ""
+additional_redirect_urls = [""]
+
+[auth.external.azure]
+enabled = false
+client_id = ""
+secret = ""
+url = ""
+additional_redirect_urls = [""]
 
 [analytics]
 enabled = false
-port = 54327
-vector_port = 54328
 backend = "postgres"
+detailed_errors = false
 
-[function.ai-chat]
+[experimental.functions.ai-chat]
+port = 54327
 verify_jwt = true
-# Aumentar o timeout para 300 segundos (5 minutos) para permitir a geração de vídeo
-timeout_seconds = 300
+timeout_seconds = 240

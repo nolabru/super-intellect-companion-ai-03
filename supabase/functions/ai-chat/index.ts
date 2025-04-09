@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -17,6 +16,7 @@ const API_KEYS = {
   ideogram: "yBYG6LzvTePXFhOVttXVaGlMyIQ0jntxkVeU92rWnMPoMoreJ38-HN_M6OE3wEX5NQdqa-5wg3VtFq7u7QymDA",
   minimax: "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJHcm91cE5hbWUiOiJJemFpYXMgUGVydHJlbGx5IiwiVXNlck5hbWUiOiJJemFpYXMgUGVydHJlbGx5IiwiQWNjb3VudCI6IiIsIlN1YmplY3RJRCI6IjE4Nzk1MjUwMzE3MDExMjM2MjUiLCJQaG9uZSI6IiIsIkdyb3VwSUQiOiIxODc5NTI1MDMxNjk2OTI5MzIxIiwiUGFnZU5hbWUiOiIiLCJNYWlsIjoicGVydHJlbGx5QHNhdWRlYmx1ZS5jb20iLCJDcmVhdGVUaW1lIjoiMjAyNS0wNC0wNSAwODozMzoxNCIsIlRva2VuVHlwZSI6MSwiaXNzIjoibWluaW1heCJ9.x1nBetn2kwR1FJ1BQSuqJA-qa1FjeNbtwLIe3L8T8JptrhsBkj6G2gtwke2iGT58VLQ5hbwAoookds53G_MX6w1UQL9ESwrORbryWUrhznIdSjgNQE6SlxZgyGYn42c1WHsh75Xys23nkwL1EKcM2ja2XbhQTU-2wAvuwB0iDvcNrgdFKeBv-tW21MtCUvgSh6Gx6bQ972MrENu_YxZVHmqwVrNWIxm4zPeBClLXHnIPAzEwnJSvbAKcen9e9R9K1AlxjIioN_a-nbBHOWbIPnI3pTPE4rzEw5pz_MVuRWtB9GxxdInErCVRofP-YGzLR16zkOkL2JYEKLITBNZsjw",
   elevenlabs: "sk_2d89d7152d9db6a072828eaca081c4722dc403c5dc2511e6",
+  luma: "luma-41fbafc0-37a8-4fc6-b09e-2e797e3dc615-652913c7-8609-4115-91d6-1d4d52dcb9d7",
 };
 
 // Chamada para o OpenAI (GPT-4o, GPT-4o Vision, Whisper)
@@ -913,6 +913,478 @@ async function callElevenLabs(prompt: string, model: string) {
   }
 }
 
+// Chamada para o Luma AI (imagem e vídeo)
+async function callLuma(prompt: string, model: string, mode: string) {
+  console.log(`[Luma] Iniciando chamada para ${model}, modo ${mode}, prompt: "${prompt}"`);
+  
+  if (mode === 'image') {
+    try {
+      console.log(`[Luma] Iniciando processo de geração de imagem para o prompt: "${prompt}"`);
+      
+      const createTaskPayload = {
+        prompt: prompt,
+        style: "3d",  // Opções: photographic, animation, anime, cinematic, 3d
+        negative_prompt: "",
+        width: 1024,
+        height: 1024,
+      };
+      
+      console.log(`[Luma] Enviando payload para criação de imagem:`, JSON.stringify(createTaskPayload));
+      
+      const LUMA_API_URL = "https://api.lumalabs.ai/image";
+      
+      let createTaskResponse;
+      let retryCount = 0;
+      const maxRetries = 5;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`[Luma] Tentativa ${retryCount + 1} de ${maxRetries} para criar tarefa usando URL: ${LUMA_API_URL}`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de timeout
+          
+          createTaskResponse = await fetch(LUMA_API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${API_KEYS.luma}`
+            },
+            body: JSON.stringify(createTaskPayload),
+            signal: controller.signal
+          }).finally(() => clearTimeout(timeoutId));
+          
+          break;
+        } catch (error: any) {
+          retryCount++;
+          
+          if (error.name === 'AbortError') {
+            console.error(`[Luma] Timeout excedido na tentativa ${retryCount}`);
+          } else {
+            console.error(`[Luma] Erro de rede na tentativa ${retryCount}:`, error);
+          }
+          
+          if (retryCount >= maxRetries) {
+            console.error("[Luma] Número máximo de tentativas excedido");
+            throw new Error("[Luma] Não foi possível se conectar à API Luma para geração de imagem.");
+          }
+          
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(`[Luma] Aguardando ${delay}ms antes de tentar novamente...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      
+      if (!createTaskResponse) {
+        throw new Error("Não foi possível estabelecer conexão com a API Luma.");
+      }
+      
+      const createTaskResponseStatus = createTaskResponse.status;
+      console.log(`[Luma] Status da resposta de criação de imagem: ${createTaskResponseStatus}`);
+      
+      let responseText = "";
+      try {
+        responseText = await createTaskResponse.text();
+        console.log(`[Luma] Resposta bruta: ${responseText}`);
+      } catch (error) {
+        console.error("[Luma] Não foi possível ler o corpo da resposta:", error);
+      }
+      
+      if (!createTaskResponse.ok) {
+        console.error(`[Luma] Erro ao criar tarefa de imagem: ${createTaskResponseStatus} - ${responseText}`);
+        throw new Error(`Luma API error (criação de imagem): ${createTaskResponseStatus} - ${responseText}`);
+      }
+      
+      let imageData;
+      try {
+        imageData = JSON.parse(responseText);
+        console.log("[Luma] Resposta da criação de imagem:", JSON.stringify(imageData));
+      } catch (parseError) {
+        console.error("[Luma] Erro ao fazer parse da resposta JSON:", parseError);
+        throw new Error(`Erro ao processar resposta da API Luma: ${parseError.message}`);
+      }
+      
+      if (!imageData.id) {
+        console.error("[Luma] ID não encontrado na resposta:", imageData);
+        throw new Error("Luma não retornou um ID válido para a imagem");
+      }
+      
+      const imageId = imageData.id;
+      console.log(`[Luma] Image ID obtido: ${imageId}`);
+      
+      // Endpoint para verificação de status
+      const STATUS_API_URL = `https://api.lumalabs.ai/image/${imageId}`;
+      
+      let imageUrl = null;
+      let attempts = 0;
+      const maxAttempts = 40;
+      const pollingInterval = 4000;
+      
+      while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`[Luma] Tentativa ${attempts} de ${maxAttempts} para verificar status da imagem ${imageId}`);
+        
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+        
+        console.log(`[Luma] Verificando status da imagem ${imageId} usando URL: ${STATUS_API_URL}`);
+        
+        let statusResponse;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+          
+          statusResponse = await fetch(STATUS_API_URL, {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${API_KEYS.luma}`
+            },
+            signal: controller.signal
+          }).finally(() => clearTimeout(timeoutId));
+        } catch (networkError: any) {
+          console.error(`[Luma] Erro de rede ao verificar status:`, networkError);
+          
+          if (networkError.name === 'AbortError') {
+            console.log("[Luma] Timeout excedido ao verificar status");
+          }
+          
+          if (attempts >= maxAttempts) {
+            throw new Error(`Erro ao verificar status da tarefa após ${maxAttempts} tentativas.`);
+          }
+          
+          continue;
+        }
+        
+        const statusResponseStatus = statusResponse.status;
+        console.log(`[Luma] Status da resposta de verificação: ${statusResponseStatus}`);
+        
+        let statusResponseText = "";
+        try {
+          statusResponseText = await statusResponse.text();
+          console.log(`[Luma] Resposta bruta do status: ${statusResponseText}`);
+        } catch (error) {
+          console.error("[Luma] Não foi possível ler o corpo da resposta de status:", error);
+        }
+        
+        if (!statusResponse.ok) {
+          console.error(`[Luma] Erro ao verificar status da imagem: ${statusResponseStatus} - ${statusResponseText}`);
+          
+          if (attempts >= maxAttempts) {
+            throw new Error(`Erro ao verificar status da imagem após ${maxAttempts} tentativas.`);
+          }
+          
+          continue;
+        }
+        
+        let statusData;
+        try {
+          statusData = JSON.parse(statusResponseText);
+          console.log(`[Luma] Status da imagem ${imageId}:`, JSON.stringify(statusData));
+        } catch (parseError) {
+          console.error("[Luma] Erro ao fazer parse da resposta JSON do status:", parseError);
+          
+          if (attempts >= maxAttempts) {
+            throw new Error(`Erro ao processar resposta de status após ${maxAttempts} tentativas: ${parseError.message}`);
+          }
+          
+          continue;
+        }
+        
+        if (!statusData.status) {
+          console.error("[Luma] Campo 'status' não encontrado na resposta:", statusData);
+          continue;
+        }
+        
+        console.log(`[Luma] Status atual: ${statusData.status}`);
+        
+        if (statusData.status === "done" && statusData.output) {
+          imageUrl = statusData.output;
+          console.log(`[Luma] Imagem gerada com sucesso: ${imageUrl}`);
+          break;
+        }
+        
+        if (statusData.status === "failed") {
+          console.error(`[Luma] Falha na geração da imagem:`, statusData.error || "motivo desconhecido");
+          throw new Error(`Falha na geração da imagem: ${statusData.error || "motivo desconhecido"}`);
+        }
+        
+        if (statusData.status === "processing" || statusData.status === "pending" || statusData.status === "queued") {
+          console.log(`[Luma] Imagem ainda em processamento (${statusData.status}), aguardando...`);
+          continue;
+        }
+        
+        console.log(`[Luma] Status desconhecido: ${statusData.status}, continuando a verificar...`);
+      }
+      
+      if (!imageUrl) {
+        console.error("[Luma] Não foi possível obter a URL da imagem após múltiplas tentativas");
+        throw new Error("Tempo esgotado aguardando a geração da imagem. Por favor, tente novamente.");
+      }
+      
+      console.log("[Luma] Retornando resultado da imagem gerada");
+      return {
+        content: `Imagem gerada com base no prompt: "${prompt}"`,
+        mediaUrl: imageUrl,
+        model: model,
+        provider: "luma"
+      };
+    } catch (error) {
+      console.error("[Luma] Erro na chamada à API para geração de imagem:", error);
+      throw error;
+    }
+  } else if (mode === 'video') {
+    try {
+      console.log(`[Luma] Iniciando processo de geração de vídeo para o prompt: "${prompt}"`);
+      
+      const createTaskPayload = {
+        prompt: prompt,
+        seed: Math.floor(Math.random() * 10000), // seed aleatório
+        guidance_scale: 5,
+        negative_prompt: "",
+        num_frames: 72,  // Para um vídeo de ~3 segundos a 24fps
+        motion_bucket_id: 60, // Quantidade de movimento (0-127)
+        aspect_ratio: "16:9",
+      };
+      
+      console.log(`[Luma] Enviando payload para criação de vídeo:`, JSON.stringify(createTaskPayload));
+      
+      const LUMA_API_URL = "https://api.lumalabs.ai/videos/init";
+      
+      let createTaskResponse;
+      let retryCount = 0;
+      const maxRetries = 5;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`[Luma] Tentativa ${retryCount + 1} de ${maxRetries} para criar tarefa usando URL: ${LUMA_API_URL}`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de timeout
+          
+          createTaskResponse = await fetch(LUMA_API_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${API_KEYS.luma}`
+            },
+            body: JSON.stringify(createTaskPayload),
+            signal: controller.signal
+          }).finally(() => clearTimeout(timeoutId));
+          
+          break;
+        } catch (error: any) {
+          retryCount++;
+          
+          if (error.name === 'AbortError') {
+            console.error(`[Luma] Timeout excedido na tentativa ${retryCount}`);
+          } else {
+            console.error(`[Luma] Erro de rede na tentativa ${retryCount}:`, error);
+          }
+          
+          if (retryCount >= maxRetries) {
+            console.error("[Luma] Número máximo de tentativas excedido");
+            console.log("[Luma] Ativando fallback para outro provedor de vídeo...");
+            return await callKligin(prompt, "kligin-video", mode);
+          }
+          
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(`[Luma] Aguardando ${delay}ms antes de tentar novamente...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      
+      if (!createTaskResponse) {
+        console.error("[Luma] Não foi possível estabelecer conexão com a API Luma");
+        console.log("[Luma] Ativando fallback para outro provedor de vídeo...");
+        return await callKligin(prompt, "kligin-video", mode);
+      }
+      
+      const createTaskResponseStatus = createTaskResponse.status;
+      console.log(`[Luma] Status da resposta de criação de tarefa: ${createTaskResponseStatus}`);
+      
+      let responseText = "";
+      try {
+        responseText = await createTaskResponse.text();
+        console.log(`[Luma] Resposta bruta: ${responseText}`);
+      } catch (error) {
+        console.error("[Luma] Não foi possível ler o corpo da resposta:", error);
+      }
+      
+      if (!createTaskResponse.ok) {
+        console.error(`[Luma] Erro ao criar tarefa de vídeo: ${createTaskResponseStatus} - ${responseText}`);
+        
+        if (createTaskResponseStatus === 401) {
+          throw new Error("Erro de autenticação com a API Luma. Verifique se o token de API é válido.");
+        }
+        
+        if (createTaskResponseStatus === 429) {
+          throw new Error("Limite de requisições excedido na API Luma. Tente novamente mais tarde.");
+        }
+        
+        console.log("[Luma] Erro na API Luma. Ativando fallback para outro provedor...");
+        return await callKligin(prompt, "kligin-video", mode);
+      }
+      
+      let taskData;
+      try {
+        taskData = JSON.parse(responseText);
+        console.log("[Luma] Resposta da criação de tarefa:", JSON.stringify(taskData));
+      } catch (parseError) {
+        console.error("[Luma] Erro ao fazer parse da resposta JSON:", parseError);
+        console.log("[Luma] Ativando fallback para outro provedor...");
+        return await callKligin(prompt, "kligin-video", mode);
+      }
+      
+      if (!taskData.id) {
+        console.error("[Luma] ID não encontrado na resposta:", taskData);
+        console.log("[Luma] Ativando fallback para outro provedor...");
+        return await callKligin(prompt, "kligin-video", mode);
+      }
+      
+      const taskId = taskData.id;
+      console.log(`[Luma] Video task ID obtido: ${taskId}`);
+      
+      console.log(`[Luma] Etapa 2: Verificando status da tarefa ${taskId}`);
+      
+      // Endpoint para verificação de status
+      const STATUS_API_URL = `https://api.lumalabs.ai/videos/status/${taskId}`;
+      
+      let videoUrl = null;
+      let attempts = 0;
+      const maxAttempts = 60;  // Aumentei o número de tentativas para vídeos que podem levar mais tempo
+      const pollingInterval = 5000;  // Intervalo de 5 segundos
+      
+      while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`[Luma] Tentativa ${attempts} de ${maxAttempts} para verificar status da tarefa ${taskId}`);
+        
+        await new Promise(resolve => setTimeout(resolve, pollingInterval));
+        
+        console.log(`[Luma] Verificando status da tarefa ${taskId} usando URL: ${STATUS_API_URL}`);
+        
+        let statusResponse;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+          
+          statusResponse = await fetch(STATUS_API_URL, {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${API_KEYS.luma}`
+            },
+            signal: controller.signal
+          }).finally(() => clearTimeout(timeoutId));
+        } catch (networkError: any) {
+          console.error(`[Luma] Erro de rede ao verificar status:`, networkError);
+          
+          if (networkError.name === 'AbortError') {
+            console.log("[Luma] Timeout excedido ao verificar status");
+          }
+          
+          if (attempts >= maxAttempts) {
+            console.error("[Luma] Número máximo de tentativas excedido para verificação de status");
+            console.log("[Luma] Ativando fallback para outro provedor...");
+            return await callKligin(prompt, "kligin-video", mode);
+          }
+          
+          continue;
+        }
+        
+        const statusResponseStatus = statusResponse.status;
+        console.log(`[Luma] Status da resposta de verificação: ${statusResponseStatus}`);
+        
+        let statusResponseText = "";
+        try {
+          statusResponseText = await statusResponse.text();
+          console.log(`[Luma] Resposta bruta do status: ${statusResponseText}`);
+        } catch (error) {
+          console.error("[Luma] Não foi possível ler o corpo da resposta de status:", error);
+        }
+        
+        if (!statusResponse.ok) {
+          console.error(`[Luma] Erro ao verificar status da tarefa: ${statusResponseStatus} - ${statusResponseText}`);
+          
+          if (attempts >= maxAttempts) {
+            console.error(`[Luma] Erro ao verificar status da tarefa após ${maxAttempts} tentativas.`);
+            console.log("[Luma] Ativando fallback para outro provedor...");
+            return await callKligin(prompt, "kligin-video", mode);
+          }
+          
+          continue;
+        }
+        
+        let statusData;
+        try {
+          statusData = JSON.parse(statusResponseText);
+          console.log(`[Luma] Status da tarefa ${taskId}:`, JSON.stringify(statusData));
+        } catch (parseError) {
+          console.error("[Luma] Erro ao fazer parse da resposta JSON do status:", parseError);
+          
+          if (attempts >= maxAttempts) {
+            console.error(`[Luma] Erro ao processar resposta de status após ${maxAttempts} tentativas.`);
+            console.log("[Luma] Ativando fallback para outro provedor...");
+            return await callKligin(prompt, "kligin-video", mode);
+          }
+          
+          continue;
+        }
+        
+        if (!statusData.status) {
+          console.error("[Luma] Campo 'status' não encontrado na resposta:", statusData);
+          continue;
+        }
+        
+        console.log(`[Luma] Status atual: ${statusData.status}`);
+        
+        if (statusData.status === "done" && statusData.video_url) {
+          videoUrl = statusData.video_url;
+          console.log(`[Luma] Vídeo gerado com sucesso: ${videoUrl}`);
+          break;
+        }
+        
+        if (statusData.status === "failed") {
+          console.error(`[Luma] Falha na geração do vídeo:`, statusData.error || "motivo desconhecido");
+          console.log("[Luma] Ativando fallback para outro provedor...");
+          return await callKligin(prompt, "kligin-video", mode);
+        }
+        
+        if (statusData.status === "processing" || statusData.status === "pending" || statusData.status === "queued") {
+          console.log(`[Luma] Vídeo ainda em processamento (${statusData.status}), aguardando...`);
+          continue;
+        }
+        
+        console.log(`[Luma] Status desconhecido: ${statusData.status}, continuando a verificar...`);
+      }
+      
+      if (!videoUrl) {
+        console.error("[Luma] Não foi possível obter a URL do vídeo após múltiplas tentativas");
+        console.log("[Luma] Ativando fallback para outro provedor...");
+        return await callKligin(prompt, "kligin-video", mode);
+      }
+      
+      console.log("[Luma] Etapa 3: Retornando resultado do vídeo gerado");
+      return {
+        content: `Vídeo gerado com base no prompt: "${prompt}"`,
+        mediaUrl: videoUrl,
+        model: model,
+        provider: "luma"
+      };
+      
+    } catch (error) {
+      console.error("[Luma] Erro na chamada à API para geração de vídeo:", error);
+      
+      console.log("[Luma] Tentando fallback para outro provedor...");
+      try {
+        return await callKligin(prompt, "kligin-video", mode);
+      } catch (fallbackError) {
+        console.error("[Luma] Fallback para outro provedor falhou:", fallbackError);
+        throw error;
+      }
+    }
+  }
+  
+  throw new Error(`Modo não suportado pelo Luma: ${mode}`);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     console.log("Recebida requisição CORS preflight");
@@ -955,6 +1427,8 @@ serve(async (req) => {
         response = await callMinimax(prompt, model);
       } else if (model === 'eleven-labs') {
         response = await callElevenLabs(prompt, model);
+      } else if (model.includes('luma')) {
+        response = await callLuma(prompt, model, mode);
       } else {
         throw new Error(`Modelo não suportado: ${model}`);
       }

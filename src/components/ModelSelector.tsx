@@ -14,7 +14,7 @@ export interface ModelOption {
   id: string;
   name: string;
   displayName: string; // Nome simplificado para exibição
-  provider: 'openai' | 'anthropic' | 'google' | 'kligin' | 'ideogram' | 'minimax' | 'elevenlabs';
+  provider: 'openai' | 'anthropic' | 'google' | 'kligin' | 'ideogram' | 'minimax' | 'elevenlabs' | 'luma';
   modes: ChatMode[];
 }
 
@@ -32,12 +32,14 @@ export const AVAILABLE_MODELS: ModelOption[] = [
   { id: 'gemini-pro-vision', name: 'Gemini Pro Vision', displayName: 'Google AI', provider: 'google', modes: ['image'] },
   { id: 'kligin-image', name: 'Kligin AI', displayName: 'Kligin AI', provider: 'kligin', modes: ['image'] },
   { id: 'ideogram', name: 'Ideogram', displayName: 'Ideogram', provider: 'ideogram', modes: ['image'] },
+  { id: 'luma-image', name: 'Luma AI', displayName: 'Luma AI', provider: 'luma', modes: ['image'] },
   
   // Modelos de vídeo
   { id: 'gpt-4o-vision', name: 'GPT-4o Vision', displayName: 'ChatGPT Vision', provider: 'openai', modes: ['video'] },
   { id: 'claude-3-opus', name: 'Claude 3 Opus', displayName: 'Claude', provider: 'anthropic', modes: ['video'] },
   { id: 'kligin-video', name: 'Kligin AI', displayName: 'Kligin AI', provider: 'kligin', modes: ['video'] },
   { id: 'minimax-video', name: 'Minimax', displayName: 'Minimax', provider: 'minimax', modes: ['video'] },
+  { id: 'luma-video', name: 'Luma AI', displayName: 'Luma AI', provider: 'luma', modes: ['video'] },
   
   // Modelos de áudio
   { id: 'whisper-large-v3', name: 'Whisper Large v3', displayName: 'ChatGPT Audio', provider: 'openai', modes: ['audio'] },

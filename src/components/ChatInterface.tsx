@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -33,13 +32,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     (msg.id && msg.id.startsWith('loading-') && msg.model === model)
   );
   
-  // Encontrar o displayName do modelo atual para exibição
   const getModelDisplayName = (modelId: string) => {
     const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
     return modelInfo?.displayName || modelId;
   };
 
-  // Determinando a cor do modelo com base no provedor
   const getModelColor = (modelId: string) => {
     const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
     if (!modelInfo) return "text-inventu-blue";
@@ -59,26 +56,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         return "text-pink-500";
       case 'elevenlabs':
         return "text-cyan-500";
+      case 'luma':
+        return "text-indigo-500";
       default:
         return "text-inventu-blue";
     }
   };
   
-  // Verificar se há mensagens de carregamento de vídeo
   const hasVideoLoadingMessage = filteredMessages.some(msg => 
     msg.id?.startsWith('loading-') && 
     msg.mode === 'video' && 
     msg.model === model
   );
   
-  // Obter a mensagem de carregamento de vídeo (se existir)
   const videoLoadingMessage = filteredMessages.find(msg => 
     msg.id?.startsWith('loading-') && 
     msg.mode === 'video' && 
     msg.model === model
   );
 
-  // Verificar se está usando o modelo kligin-video
   const isKliginVideo = model === 'kligin-video';
   
   return (
@@ -87,7 +83,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         "p-2 text-center flex justify-center items-center",
         getModelColor(model)
       )}>
-        {/* Model selector in the header */}
         <Select value={model} onValueChange={onModelChange || (() => {})}>
           <SelectTrigger className="w-48 bg-inventu-card text-white border-inventu-gray/30 font-bold">
             <SelectValue placeholder={getModelDisplayName(model)} />
@@ -117,7 +112,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <ChatMessage key={message.id} message={message} />
             ))}
             
-            {/* Informação adicional para geração de vídeo */}
             {hasVideoLoadingMessage && (
               <div className="text-center p-3 bg-inventu-darker/20 rounded-lg my-4 text-gray-300">
                 <p className="text-sm font-medium">
@@ -147,7 +141,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   </div>
                 )}
                 
-                {/* Barra de progresso indeterminada */}
                 <div className="mt-3 h-1 w-full bg-gray-700 rounded overflow-hidden">
                   <div 
                     className="h-full bg-inventu-blue opacity-80"
@@ -157,7 +150,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     }}
                   ></div>
                 </div>
-                {/* Fixed the style element by removing the jsx property */}
                 <style>
                   {`
                     @keyframes progressAnimation {
