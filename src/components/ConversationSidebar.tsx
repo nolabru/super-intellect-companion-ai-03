@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -198,14 +199,27 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     createNewConversation,
     deleteConversation,
     renameConversation,
+    clearMessages
   } = useConversation();
   const { user } = useAuth();
   const location = useLocation();
 
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Creating new conversation from sidebar button');
+    // Clear the messages immediately to give instant feedback
+    clearMessages();
+    
+    // Create the new conversation
     const success = await createNewConversation();
+    
     console.log(`[ConversationSidebar] New conversation created: ${success ? 'success' : 'failed'}`);
+    if (!success) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar uma nova conversa.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSelectConversation = (conversationId: string) => {
@@ -215,6 +229,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       return;
     }
     
+    // Clear messages before changing conversation to provide immediate feedback
+    clearMessages();
     setCurrentConversationId(conversationId);
   };
 

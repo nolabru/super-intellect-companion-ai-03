@@ -1,3 +1,4 @@
+
 import { createConversation, deleteConversation as deleteConversationFromDB, renameConversation as renameConversationFromDB, loadConversationMessages, updateConversationTitle as updateConversationTitleInDB } from '../utils/conversationUtils';
 import { ConversationType } from '@/types/conversation';
 import { MessageType } from '@/components/ChatMessage';
@@ -56,6 +57,9 @@ export const createNewConversation = async (
     console.log('[conversationActions] Creating new conversation');
     setLoading(true);
     
+    // Clear messages immediately at the beginning of the process
+    clearMessages();
+    
     // Create the conversation in the database
     const { data, error, success } = await createConversation();
     
@@ -69,6 +73,10 @@ export const createNewConversation = async (
       console.log('[conversationActions] New conversation created:', data.id);
       // Add the new conversation to the state
       addConversation(data);
+      
+      // Ensure messages are cleared after conversation is created
+      clearMessages();
+      
       return { success: true, data };
     }
     

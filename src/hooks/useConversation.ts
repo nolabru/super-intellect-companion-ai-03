@@ -121,8 +121,8 @@ export function useConversation() {
       if (success && data) {
         console.log(`[useConversation] New conversation created successfully with ID: ${data.id}`);
         
-        // Ensure we clear messages after new conversation is created
-        clearMessages();
+        // Force clear messages again after new conversation is created
+        setMessages([]);
         
         // Reset tracking variables to force a refresh
         lastLoadedConversationRef.current = data.id;
@@ -157,6 +157,7 @@ export function useConversation() {
       if (id === currentConversationId) {
         lastLoadedConversationRef.current = null;
         setInitialLoadDone(false);
+        clearMessages();
       }
       
       return result;

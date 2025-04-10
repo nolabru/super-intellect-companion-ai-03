@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
+  // Show all user messages and all assistant messages for the current model
+  // Filter only loading messages for the current model
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
     (msg.sender === 'assistant' && !msg.id?.startsWith('loading-')) || 
