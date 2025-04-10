@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -29,7 +28,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
-  // Logs de depuração
   useEffect(() => {
     console.log(`[ChatInterface] Recebeu ${messages.length} mensagens para o modelo ${model}`);
     if (messages.length === 0) {
@@ -37,18 +35,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages, model]);
 
-  // Ref para o container de mensagens para rolagem automática
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Efeito para rolar para o final quando novas mensagens são adicionadas
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  // Mostrar todas as mensagens do usuário e todas as mensagens do assistente para o modelo atual
-  // Filtrar apenas mensagens de carregamento para o modelo atual
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
     (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && (!msg.model || msg.model === model || isCompareMode)) || 
@@ -144,10 +138,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <div className={cn(
-        "p-2 text-center flex justify-center items-center gap-2",
-        getModelColor(model)
-      )}>
+      <div className="p-2 text-center flex justify-center items-center gap-2">
         {onModelChange && availableModels.length > 0 ? (
           <div className="w-full max-w-sm">
             <ModelSelector 
@@ -158,7 +149,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             />
           </div>
         ) : (
-          <div className="font-bold">
+          <div className={cn("font-bold", getModelColor(model))}>
             {getModelDisplayName(model)}
             {providerName && <span className="ml-1 text-xs opacity-75">({providerName})</span>}
           </div>
@@ -237,7 +228,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </div>
             )}
             
-            {/* Referência para rolar para o final */}
             <div ref={messagesEndRef} />
           </>
         ) : (
