@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -137,9 +138,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const providerName = modelInfo ? getProviderDisplayName(modelInfo.provider) : "";
   
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div className={cn("flex flex-col h-full bg-inventu-darker shadow-md rounded-xl overflow-hidden", className)}>
       <div className={cn(
-        "p-2 text-center flex justify-center items-center gap-2",
+        "p-3 backdrop-blur-sm bg-black/20 border-b border-white/5 flex justify-center items-center gap-2",
         getModelColor(model)
       )}>
         {onModelChange && availableModels.length > 0 ? (
@@ -152,34 +153,38 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             />
           </div>
         ) : (
-          <div className="font-bold text-white">
+          <div className="font-medium text-white">
             {getModelDisplayName(model)}
             {providerName && <span className="ml-1 text-xs opacity-75">({providerName})</span>}
           </div>
         )}
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 relative">
         {loading ? (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <Loader2 className="h-8 w-8 mr-2 animate-spin" />
-            <span>Carregando mensagens...</span>
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3 animate-fade-in">
+            <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+            <span className="text-white/70 font-medium">Carregando mensagens...</span>
           </div>
         ) : filteredMessages.length > 0 ? (
           <>
-            {filteredMessages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
+            <div className="space-y-5">
+              {filteredMessages.map((message) => (
+                <div key={message.id} className="animate-fade-in">
+                  <ChatMessage message={message} />
+                </div>
+              ))}
+            </div>
             
             {lumaGenId && (
-              <div className="p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-lg my-4">
+              <div className="p-4 bg-indigo-900/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl my-4 animate-fade-in shadow-lg">
                 <div className="flex items-start">
-                  <AlertTriangle className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-indigo-400 mr-3 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm text-indigo-400 font-medium">
+                    <p className="text-sm text-indigo-300 font-medium">
                       Processamento de vídeo na Luma AI
                     </p>
-                    <p className="text-sm text-gray-300 mt-1">
+                    <p className="text-sm text-gray-300 mt-2">
                       A Luma AI está processando seu vídeo, mas pode demorar mais do que nosso limite de espera. 
                       Você pode verificar o resultado no dashboard da Luma AI com o ID: {lumaGenId}
                     </p>
@@ -187,7 +192,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-1 text-xs text-gray-300"
+                        className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-indigo-500/30"
                         onClick={openLumaDashboard}
                       >
                         <ExternalLink className="h-3 w-3" />
@@ -200,14 +205,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             )}
             
             {hasErrorMessage && errorMessage && (
-              <div className="p-3 bg-red-900/20 border border-red-500/30 rounded-lg my-4">
+              <div className="p-4 bg-red-900/10 backdrop-blur-sm border border-red-500/20 rounded-xl my-4 animate-fade-in shadow-lg">
                 <div className="flex items-start">
-                  <AlertTriangle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-red-400 mr-3 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm text-red-400 font-medium">
+                    <p className="text-sm text-red-300 font-medium">
                       Erro ao processar solicitação
                     </p>
-                    <p className="text-sm text-gray-300 mt-1">
+                    <p className="text-sm text-gray-300 mt-2">
                       {errorMessage.content}
                     </p>
                     {(model === 'luma-video' || model === 'luma-image') && (
@@ -218,7 +223,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="flex items-center gap-1 text-xs text-gray-300"
+                          className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-red-500/30"
                           onClick={showLumaKeyInstructions}
                         >
                           <RefreshCw className="h-3 w-3" />
@@ -234,8 +239,25 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div ref={messagesEndRef} />
           </>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            Nenhuma mensagem ainda. Inicie uma conversa!
+          <div className="flex flex-col items-center justify-center h-full space-y-4 animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-xl">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-8 w-8 text-white opacity-80" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={1.5} 
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" 
+                />
+              </svg>
+            </div>
+            <p className="text-gray-400 font-medium">Nenhuma mensagem ainda</p>
+            <p className="text-gray-500 text-sm px-8 text-center">Inicie uma conversa enviando uma mensagem abaixo</p>
           </div>
         )}
       </div>
