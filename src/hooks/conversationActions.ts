@@ -45,39 +45,38 @@ export const loadMessages = async (
   }
 };
 
-// Create new conversation
+// Create a new conversation
 export const createNewConversation = async (
   setLoading: (loading: boolean) => void,
-  addConversation: (conversation: ConversationType) => void,
+  addConversation: (conversation: any) => void,
   clearMessages: () => void,
   setError: (error: string | null) => void
 ) => {
   try {
     console.log('[conversationActions] Creating new conversation');
-    
     setLoading(true);
     
+    // Create the conversation in the database
     const { data, error, success } = await createConversation();
     
-    if (error || !success) {
+    if (error) {
       console.error('[conversationActions] Error creating conversation:', error);
-      setError(error || 'Erro desconhecido ao criar conversa');
-      return false;
+      setError(error);
+      return { success: false };
     }
     
     if (data) {
       console.log('[conversationActions] New conversation created:', data.id);
-      // Important: Clear messages before adding new conversation
-      clearMessages();
+      // Add the new conversation to the state
       addConversation(data);
-      return true;
+      return { success: true, data };
     }
     
-    return false;
+    return { success: false };
   } catch (err) {
     console.error('[conversationActions] Error creating conversation:', err);
-    setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa');
-    return false;
+    setError(err instanceof Error ? err.message : 'Unknown error creating conversation');
+    return { success: false };
   } finally {
     setLoading(false);
   }

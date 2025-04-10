@@ -106,35 +106,65 @@ export function useConversation() {
   const handleCreateNewConversation = async () => {
     console.log('[useConversation] Creating new conversation');
     
-    // Clear messages before creating new conversation
-    clearMessages();
-    
-    const success = await createNewConversation(
-      setLoading, 
-      addConversation, 
-      clearMessages,
-      setError
-    );
-    
-    // Ensure messages are cleared after state is updated
-    if (success) {
+    try {
+      // First ensure messages are cleared
       clearMessages();
-      // Reset the last loaded conversation to force a refresh
-      lastLoadedConversationRef.current = null;
-      setInitialLoadDone(false);
+      
+      // Create the new conversation
+      const { success, data } = await createNewConversation(
+        setLoading, 
+        addConversation, 
+        clearMessages,
+        setError
+      );
+      
+      if (success && data) {
+        console.log(`[useConversation] New conversation created successfully with ID: ${data.id}`);
+        
+        // Ensure we clear messages after new conversation is created
+        clearMessages();
+        
+        // Reset tracking variables to force a refresh
+        lastLoadedConversationRef.current = data.id;
+        setInitialLoadDone(true);
+        
+        // Explicitly set the current conversation ID
+        setCurrentConversationId(data.id);
+        
+        return true;
+      } else {
+        console.error('[useConversation] Failed to create new conversation');
+        return false;
+      }
+    } catch (err) {
+      console.error('[useConversation] Error creating new conversation:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error creating conversation');
+      return false;
     }
-    
-    return success;
   };
 
   // Delete conversation
   const handleDeleteConversation = async (id: string) => {
-    return await deleteConversation(
-      id, 
-      setLoading, 
-      removeConversation,
-      setError
-    );
+    try {
+      const result = await deleteConversation(
+        id, 
+        setLoading, 
+        removeConversation,
+        setError
+      );
+      
+      // If this was the current conversation, force a refresh when a new one is selected
+      if (id === currentConversationId) {
+        lastLoadedConversationRef.current = null;
+        setInitialLoadDone(false);
+      }
+      
+      return result;
+    } catch (err) {
+      console.error('[useConversation] Error deleting conversation:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error deleting conversation');
+      return false;
+    }
   };
 
   // Rename conversation

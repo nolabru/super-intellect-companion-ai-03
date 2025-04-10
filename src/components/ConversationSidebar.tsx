@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { PlusCircle, MessageCircle, History, ChevronLeft, Trash2, Edit2, Check, X, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -51,7 +50,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   const [newTitle, setNewTitle] = useState(conversation.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  // Update the new title when the conversation title changes
   useEffect(() => {
     setNewTitle(conversation.title);
   }, [conversation.title]);
@@ -206,7 +204,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Creating new conversation from sidebar button');
-    await createNewConversation();
+    const success = await createNewConversation();
+    console.log(`[ConversationSidebar] New conversation created: ${success ? 'success' : 'failed'}`);
   };
 
   const handleSelectConversation = (conversationId: string) => {
@@ -215,6 +214,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       console.log(`[ConversationSidebar] Conversation ${conversationId} is already selected`);
       return;
     }
+    
     setCurrentConversationId(conversationId);
   };
 
