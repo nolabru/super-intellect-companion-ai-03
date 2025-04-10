@@ -2,6 +2,7 @@
 import { useConversationState } from './useConversationState';
 import { useConversationMessages } from './useConversationMessages';
 import { useMessageHandler } from './useMessageHandler';
+import { useConversationNavigation } from './useConversationNavigation';
 import {
   createNewConversation,
   deleteConversation,
@@ -11,10 +12,12 @@ import {
 } from './conversationActions';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export function useConversation() {
   const conversationState = useConversationState();
   const messagesState = useConversationMessages();
+  const navigate = useNavigate();
   
   // Flag para prevenir múltiplas operações de carregamento simultâneas
   const loadingRef = useRef(false);
@@ -47,6 +50,13 @@ export function useConversation() {
     saveUserMessage,
     removeLoadingMessages
   } = messagesState;
+
+  // Integração com o sistema de navegação baseado em URL
+  const { navigateToConversation, navigateToNewConversation } = useConversationNavigation(
+    currentConversationId,
+    setCurrentConversationId,
+    conversations
+  );
 
   // Hook de manipulação de mensagens
   const { sendMessage, isSending } = useMessageHandler(
@@ -112,7 +122,7 @@ export function useConversation() {
     }
   }, [clearMessages, setError, setLoading, setMessages]);
 
-  // Função para forçar o recarregamento de mensagens - Improved for reliability
+  // Função para forçar o recarregamento de mensagens
   const forceReloadMessages = useCallback(() => {
     if (currentConversationId) {
       console.log(`[useConversation] Forçando recarregamento da conversa: ${currentConversationId}`);
@@ -130,7 +140,7 @@ export function useConversation() {
     }
   }, [currentConversationId, loadConversationMessages, clearMessages]);
 
-  // Efeito para carregar mensagens quando a conversa muda - Improved for reliability
+  // Efeito para carregar mensagens quando a conversa muda
   useEffect(() => {
     console.log(`[useConversation] Efeito de carregamento de conversa acionado. ID atual: ${currentConversationId}`);
     
@@ -157,7 +167,7 @@ export function useConversation() {
     }
   }, [currentConversationId, clearMessages, loadConversationMessages, initialLoadDone]);
 
-  // Criar uma nova conversa com limpeza de mensagens aprimorada
+  // Criar uma nova conversa com navegação atualizada
   const handleCreateNewConversation = async () => {
     console.log('[useConversation] Criando nova conversa');
     
@@ -186,8 +196,9 @@ export function useConversation() {
         lastLoadedConversationRef.current = data.id;
         setInitialLoadDone(true);
         
-        // Definir o ID da conversa atual explicitamente
+        // Definir o ID da conversa atual e atualizar a URL
         setCurrentConversationId(data.id);
+        navigateToNewConversation(data.id);
         
         toast.success('Nova conversa criada');
         return true;
@@ -206,14 +217,15 @@ export function useConversation() {
     }
   };
 
-  // Excluir conversa
+  // Excluir conversa com atualização de navegação
   const handleDeleteConversation = async (id: string) => {
     try {
       if (id === currentConversationId) {
         // Limpar mensagens antes de excluir a conversa atual
         clearMessages();
-        // Resetar o ID da conversa atual temporariamente
+        // Resetar o ID da conversa atual e navegar para a página inicial
         setCurrentConversationId(null);
+        navigate('/', { replace: true });
       }
       
       const result = await deleteConversation(
@@ -289,6 +301,9 @@ export function useConversation() {
     createNewConversation: handleCreateNewConversation,
     deleteConversation: handleDeleteConversation,
     renameConversation: handleRenameConversation,
-    updateTitle: handleUpdateTitle
+    updateTitle: handleUpdateTitle,
+    
+    // Navegação
+    navigateToConversation
   };
 }

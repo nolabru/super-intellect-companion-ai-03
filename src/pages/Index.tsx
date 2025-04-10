@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import ChatInterface from '@/components/ChatInterface';
 import ChatInput from '@/components/ChatInput';
@@ -24,34 +24,40 @@ const Index: React.FC = () => {
     messages, 
     sendMessage, 
     loading: messagesLoading,
-    initialLoadDone 
+    initialLoadDone,
+    currentConversationId,
+    setCurrentConversationId
   } = useConversation();
+  
+  const { conversationId } = useParams<{ conversationId: string }>();
+  
+  useEffect(() => {
+    if (conversationId && conversationId !== currentConversationId) {
+      console.log(`[Index] ID da conversa na URL: ${conversationId}, atualizando estado`);
+      setCurrentConversationId(conversationId);
+    }
+  }, [conversationId, currentConversationId, setCurrentConversationId]);
 
-  // Quando o modo muda, atualize os modelos para modelos compatíveis com o novo modo
   useEffect(() => {
     const availableModels = getModelsByMode(activeMode).map(model => model.id);
     
-    // Se não houver modelos disponíveis para este modo, não faça nada
     if (availableModels.length === 0) {
       console.error(`Nenhum modelo disponível para o modo ${activeMode}`);
       return;
     }
     
-    // Verificar se os modelos atuais estão disponíveis no novo modo
     if (!availableModels.includes(leftModel)) {
       setLeftModel(availableModels[0]);
       console.log(`Modelo esquerdo atualizado para ${availableModels[0]} devido à mudança para o modo ${activeMode}`);
     }
     
     if (!availableModels.includes(rightModel)) {
-      // Escolha um modelo diferente do leftModel para evitar comparações do mesmo modelo
       const differentModel = availableModels.find(m => m !== leftModel) || availableModels[0];
       setRightModel(differentModel);
       console.log(`Modelo direito atualizado para ${differentModel} devido à mudança para o modo ${activeMode}`);
     }
   }, [activeMode]);
 
-  // Garantir que os modelos selecionados sejam diferentes quando em modo de comparação
   useEffect(() => {
     if (comparing && leftModel === rightModel) {
       const availableModels = getModelsByMode(activeMode).map(model => model.id);
@@ -67,8 +73,6 @@ const Index: React.FC = () => {
   const handleSendMessage = (content: string, files?: string[], params?: any, targetModel?: string) => {
     console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`, params);
     
-    // Se os chats estiverem vinculados ou não estiver no modo de comparação,
-    // envia a mensagem normalmente
     if (!comparing || isLinked) {
       sendMessage(
         content, 
@@ -81,7 +85,6 @@ const Index: React.FC = () => {
         params
       );
     } else {
-      // Se os chats estiverem desvinculados, envia apenas para o modelo especificado
       const actualLeftModel = targetModel === leftModel ? leftModel : null;
       const actualRightModel = targetModel === rightModel ? rightModel : null;
       
@@ -89,7 +92,7 @@ const Index: React.FC = () => {
         content,
         activeMode,
         targetModel || leftModel,
-        false, // Sem comparação quando desvinculado
+        false,
         actualLeftModel,
         actualRightModel,
         files,
@@ -101,7 +104,6 @@ const Index: React.FC = () => {
   const toggleComparing = () => {
     setComparing(!comparing);
     if (!comparing) {
-      // When switching to comparison mode, link the chats by default
       setIsLinked(true);
     }
   };
@@ -114,21 +116,17 @@ const Index: React.FC = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // Obter modelos disponíveis para o modo atual
   const availableModels = getModelsByMode(activeMode).map(model => model.id);
 
   const handleModeChange = (newMode: ChatMode) => {
     console.log(`Modo alterado de ${activeMode} para ${newMode}`);
     setActiveMode(newMode);
-    // Os modelos serão atualizados pelo useEffect
   };
 
   const handleLeftModelChange = (model: string) => {
     console.log(`Modelo esquerdo alterado para ${model}`);
     setLeftModel(model);
     
-    // Se estiver em modo de comparação e o novo modelo esquerdo for igual ao modelo direito,
-    // atualize o modelo direito para um diferente
     if (comparing && model === rightModel) {
       const differentModel = availableModels.find(m => m !== model);
       if (differentModel) {
@@ -142,8 +140,6 @@ const Index: React.FC = () => {
     console.log(`Modelo direito alterado para ${model}`);
     setRightModel(model);
     
-    // Se o novo modelo direito for igual ao modelo esquerdo,
-    // atualize o modelo esquerdo para um diferente
     if (model === leftModel) {
       const differentModel = availableModels.find(m => m !== model);
       if (differentModel) {
@@ -227,7 +223,6 @@ const Index: React.FC = () => {
             )}
           </div>
           
-          {/* Barra de controle inferior */}
           <div className="p-4 border-t border-inventu-gray/30 bg-inventu-dark">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
@@ -239,7 +234,6 @@ const Index: React.FC = () => {
               </div>
             </div>
             
-            {/* Mostrar o input único quando não estiver comparando ou quando os chats estiverem vinculados */}
             {(!comparing || isLinked) && (
               <ChatInput 
                 onSendMessage={handleSendMessage} 

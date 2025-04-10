@@ -6,6 +6,7 @@ import { useConversation } from '@/hooks/useConversation';
 import { useAuth } from '@/contexts/AuthContext';
 import SidebarHeader from './conversation/SidebarHeader';
 import ConversationList from './conversation/ConversationList';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 interface ConversationSidebarProps {
@@ -30,8 +31,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   } = useConversation();
   
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  // Função para criar uma nova conversa - Improved for reliability
+  // Função para criar uma nova conversa com navegação atualizada
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Criando nova conversa');
     
@@ -40,6 +42,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     
     // Desselecionar conversa atual para feedback visual
     setCurrentConversationId(null);
+    
+    // Redirecionar para a página inicial ao iniciar nova conversa
+    navigate('/', { replace: true });
     
     // Criar nova conversa com tratamento de erro
     try {
@@ -53,7 +58,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   };
 
-  // Função para selecionar uma conversa existente - Improved for reliability
+  // Função para selecionar uma conversa existente com navegação
   const handleSelectConversation = (conversationId: string) => {
     if (!conversationId) {
       console.error('[ConversationSidebar] ID de conversa inválido');
@@ -62,20 +67,19 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     
     console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
     
-    if (currentConversationId === conversationId) {
-      console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
-      // Limpar mensagens para feedback visual antes do recarregamento
-      clearMessages();
-      // Força recarregar as mensagens da conversa atual
-      forceReloadMessages();
-      return;
-    }
-    
     // Limpar mensagens imediatamente para feedback visual
     clearMessages();
     
-    // Atualizar conversa selecionada
-    setCurrentConversationId(conversationId);
+    // Se clicar na mesma conversa, forçar recarregamento
+    if (currentConversationId === conversationId) {
+      console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
+      // Força recarregar as mensagens da conversa atual
+      forceReloadMessages();
+    } else {
+      // Atualizar conversa selecionada e navegar para a URL
+      setCurrentConversationId(conversationId);
+      navigate(`/c/${conversationId}`, { replace: true });
+    }
   };
 
   // Vista de barra lateral recolhida
