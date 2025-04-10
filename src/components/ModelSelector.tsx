@@ -350,7 +350,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled}>
         <button 
-          className={`flex items-center justify-between w-full px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background 
+          className={`flex items-center justify-between w-full px-3 py-2 rounded-md border border-input bg-background text-sm text-white ring-offset-background 
                     focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
         >
           <span className="flex items-center gap-2">

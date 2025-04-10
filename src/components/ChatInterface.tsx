@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -29,7 +28,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
-  // Logs de depuração
   useEffect(() => {
     console.log(`[ChatInterface] Recebeu ${messages.length} mensagens para o modelo ${model}`);
     if (messages.length === 0) {
@@ -37,18 +35,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages, model]);
 
-  // Ref para o container de mensagens para rolagem automática
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Efeito para rolar para o final quando novas mensagens são adicionadas
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
-  // Mostrar todas as mensagens do usuário e todas as mensagens do assistente para o modelo atual
-  // Filtrar apenas mensagens de carregamento para o modelo atual
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
     (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && (!msg.model || msg.model === model || isCompareMode)) || 
@@ -158,7 +152,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             />
           </div>
         ) : (
-          <div className="font-bold">
+          <div className="font-bold text-white">
             {getModelDisplayName(model)}
             {providerName && <span className="ml-1 text-xs opacity-75">({providerName})</span>}
           </div>
@@ -237,7 +231,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               </div>
             )}
             
-            {/* Referência para rolar para o final */}
             <div ref={messagesEndRef} />
           </>
         ) : (
