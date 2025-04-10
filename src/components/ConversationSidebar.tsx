@@ -24,7 +24,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     createNewConversation,
     deleteConversation,
     renameConversation,
-    clearMessages
+    clearMessages,
+    forceReloadMessages
   } = useConversation();
   
   const { user } = useAuth();
@@ -33,10 +34,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const handleNewConversation = () => {
     console.log('[ConversationSidebar] Criando nova conversa');
     
-    // Primeiro limpar mensagens para feedback visual imediato
+    // Limpar mensagens imediatamente para feedback visual
     clearMessages();
     
-    // Criar nova conversa
     createNewConversation()
       .then(success => {
         if (!success) {
@@ -55,6 +55,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     
     if (currentConversationId === conversationId) {
       console.log(`[ConversationSidebar] Conversa ${conversationId} já está selecionada`);
+      forceReloadMessages(); // Forçar recarregamento mesmo se for a mesma conversa
       return;
     }
     

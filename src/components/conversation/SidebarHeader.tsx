@@ -3,7 +3,6 @@ import React from 'react';
 import { PlusCircle, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarNavigation from './SidebarNavigation';
-import { useConversation } from '@/hooks/useConversation';
 import { toast } from 'sonner';
 
 interface SidebarHeaderProps {
@@ -20,7 +19,7 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   const handleNewConversation = () => {
     console.log('[SidebarHeader] Iniciando nova conversa');
     
-    // Chamar o handler de nova conversa
+    // Chamar o handler de nova conversa e limpar mensagens imediatamente
     onNewConversation();
   };
   

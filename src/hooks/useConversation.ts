@@ -110,6 +110,7 @@ export function useConversation() {
   // Função para forçar o recarregamento de mensagens
   const forceReloadMessages = useCallback(() => {
     if (currentConversationId) {
+      console.log(`[useConversation] Forçando recarregamento da conversa: ${currentConversationId}`);
       lastLoadedConversationRef.current = null;
       setInitialLoadDone(false);
       loadConversationMessages(currentConversationId);
