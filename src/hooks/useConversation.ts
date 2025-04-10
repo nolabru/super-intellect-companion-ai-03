@@ -107,8 +107,10 @@ export function useConversation() {
     console.log('[useConversation] Creating new conversation');
     
     try {
-      // First ensure messages are cleared
+      // Important: Forcefully clear messages TWICE - once before and once after
+      // This ensures the UI is immediately updated
       clearMessages();
+      setMessages([]); // Direct state update for immediate visual feedback
       
       // Create the new conversation
       const { success, data } = await createNewConversation(
@@ -122,7 +124,8 @@ export function useConversation() {
         console.log(`[useConversation] New conversation created successfully with ID: ${data.id}`);
         
         // Force clear messages again after new conversation is created
-        setMessages([]);
+        clearMessages();
+        setMessages([]); // Direct state update for immediate visual feedback
         
         // Reset tracking variables to force a refresh
         lastLoadedConversationRef.current = data.id;
@@ -158,6 +161,7 @@ export function useConversation() {
         lastLoadedConversationRef.current = null;
         setInitialLoadDone(false);
         clearMessages();
+        setMessages([]); // Direct state update for immediate visual feedback
       }
       
       return result;

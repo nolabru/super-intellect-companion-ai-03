@@ -29,10 +29,12 @@ export const loadMessages = async (
     
     if (data) {
       console.log(`[conversationActions] Setting ${data.length} messages from conversation ${conversationId}`);
+      // Set messages from DB directly
       setMessages(data as MessageType[]);
     } else {
       console.log(`[conversationActions] No messages found for conversation ${conversationId}`);
-      // Set empty array, no need to clear again
+      // Ensure messages are cleared if none found
+      clearMessages();
       setMessages([]);
     }
     
@@ -57,7 +59,7 @@ export const createNewConversation = async (
     console.log('[conversationActions] Creating new conversation');
     setLoading(true);
     
-    // Clear messages immediately at the beginning of the process
+    // Clear messages at multiple points to ensure UI is updated
     clearMessages();
     
     // Create the conversation in the database
@@ -74,7 +76,7 @@ export const createNewConversation = async (
       // Add the new conversation to the state
       addConversation(data);
       
-      // Ensure messages are cleared after conversation is created
+      // Clear messages again after conversation is created for good measure
       clearMessages();
       
       return { success: true, data };
