@@ -309,8 +309,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
-        align="start" 
-        className="w-[240px] bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1"
+        align="end" 
+        className="w-[180px] bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1"
       >
         <DropdownMenuLabel className="text-xs uppercase tracking-wider text-white/60 px-3 py-2">
           Selecione um modelo
@@ -324,15 +324,18 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
           
           return (
             <DropdownMenuSub key={provider}>
-              <DropdownMenuSubTrigger className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg mx-1 my-0.5">
-                <span className="text-sm">{getProviderIcon(provider)}</span>
-                <span>{getProviderDisplayName(provider)}</span>
+              <DropdownMenuSubTrigger className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg mx-1 my-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{getProviderIcon(provider)}</span>
+                  <span>{getProviderDisplayName(provider)}</span>
+                </div>
+                <ChevronRight className="h-3.5 w-3.5 opacity-70" />
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent 
-                  className="bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1 min-w-[220px]"
+                  className="bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1 min-w-[160px]"
                   sideOffset={5}
-                  alignOffset={0}
+                  alignOffset={-5}
                 >
                   {modelsForProvider.map(model => (
                     <DropdownMenuItem 
