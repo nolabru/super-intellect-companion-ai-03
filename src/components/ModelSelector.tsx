@@ -1,7 +1,6 @@
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 export interface ModelInfo {
@@ -12,7 +11,6 @@ export interface ModelInfo {
   description: string;
   modes: ModelMode[];
 }
-
 export const AVAILABLE_MODELS: ModelInfo[] = [
 // OpenAI Models
 {
@@ -158,16 +156,13 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   description: 'Modelo de código aberto para geração de imagens de alta qualidade.',
   modes: ['image']
 }];
-
 export const getModelsByMode = (mode: ModelMode): ModelInfo[] => {
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
 };
-
 export const canModelGenerateImages = (modelId: string): boolean => {
   const model = AVAILABLE_MODELS.find(m => m.id === modelId);
   return !!(model && model.modes.includes('image'));
 };
-
 interface ModelSelectorProps {
   selectedModel: string;
   onChange: (model: string) => void;
@@ -175,7 +170,6 @@ interface ModelSelectorProps {
   disabled?: boolean;
   className?: string;
 }
-
 const getProviderDisplayName = (provider: ModelProvider): string => {
   switch (provider) {
     case 'openai':
@@ -200,9 +194,7 @@ const getProviderDisplayName = (provider: ModelProvider): string => {
       return provider;
   }
 };
-
 export { getProviderDisplayName };
-
 const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModel,
   onChange,
@@ -211,11 +203,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   className = ''
 }) => {
   const selectedModelInfo = AVAILABLE_MODELS.find(m => m.id === selectedModel);
-  
   const getModelsForProvider = (provider: ModelProvider): ModelInfo[] => {
     return AVAILABLE_MODELS.filter(model => model.provider === provider && (mode ? model.modes.includes(mode) : true));
   };
-
   const getAvailableProviders = (): ModelProvider[] => {
     const providers = new Set<ModelProvider>();
     AVAILABLE_MODELS.forEach(model => {
@@ -225,7 +215,6 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     });
     return Array.from(providers);
   };
-
   const getProviderIcon = (provider: ModelProvider) => {
     switch (provider) {
       case 'openai':
@@ -250,7 +239,6 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         return '•';
     }
   };
-
   return <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled}>
         <button className={`flex items-center justify-between w-full px-3 py-2 rounded-md border border-white/10 bg-black/40 text-sm text-white ring-offset-background 
@@ -280,7 +268,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                   <span className="text-sm">{getProviderIcon(provider)}</span>
                   <span>{getProviderDisplayName(provider)}</span>
                 </div>
-                <ChevronRight className="h-4 w-4 opacity-70" />
+                
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent className="bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1 min-w-[220px]" sideOffset={15} alignOffset={0}>
@@ -308,5 +296,4 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       </DropdownMenuContent>
     </DropdownMenu>;
 };
-
 export default ModelSelector;
