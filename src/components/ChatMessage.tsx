@@ -41,12 +41,14 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const [videoLoadingTimedOut, setVideoLoadingTimedOut] = useState(false);
 
   // Verificar se a mensagem contém uma URL de mídia embutida
-  const hasEmbeddedMedia = message.content.includes('[Imagem gerada]:') || 
-                           message.content.includes('[Vídeo gerado]:') ||
-                           message.content.includes('[Áudio gerado]');
+  const hasEmbeddedMedia = message.content?.includes('[Imagem gerada]:') || 
+                           message.content?.includes('[Vídeo gerado]:') ||
+                           message.content?.includes('[Áudio gerado]');
   
   // Extrair URL da mídia se estiver embutida no conteúdo
   const extractMediaUrl = (content: string): string | null => {
+    if (!content) return null;
+    
     if (content.includes('[Imagem gerada]:') || content.includes('[Vídeo gerado]:')) {
       const match = content.match(/\]\: (https?:\/\/[^\s]+)/);
       return match ? match[1] : null;
@@ -56,6 +58,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
   // Limpar o conteúdo da mensagem de marcações de mídia
   const cleanContent = (content: string): string => {
+    if (!content) return '';
+    
     return content
       .replace(/\[Imagem gerada\]\: https?:\/\/[^\s]+/, '')
       .replace(/\[Vídeo gerado\]\: https?:\/\/[^\s]+/, '')
@@ -77,6 +81,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   // Efeito para redefinir o erro de carregamento de mídia quando a URL mudar
   useEffect(() => {
     if (mediaUrl) {
+      console.log(`Nova URL de mídia detectada: ${mediaUrl.substring(0, 30)}...`);
       setMediaError(false);
       setIsMediaLoading(true);
     }
@@ -110,6 +115,21 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     setMediaError(false);
     setIsMediaLoading(true);
     toast.info(`Tentando carregar ${isImage ? 'imagem' : isVideo ? 'vídeo' : 'áudio'} novamente...`);
+    
+    // Forçar uma atualização do elemento com uma nova URL (adicionando um timestamp)
+    if (mediaUrl) {
+      const urlWithTimestamp = mediaUrl.includes('?') 
+        ? mediaUrl + '&t=' + Date.now() 
+        : mediaUrl + '?t=' + Date.now();
+      
+      const mediaElement = document.querySelector(`[src^="${mediaUrl}"]`) as HTMLImageElement | HTMLVideoElement | HTMLAudioElement;
+      if (mediaElement) {
+        mediaElement.src = urlWithTimestamp;
+        console.log("Elemento de mídia encontrado, atualizando src com timestamp");
+      } else {
+        console.log("Elemento de mídia não encontrado para atualização");
+      }
+    }
   };
   
   // Abrir mídia em nova aba
@@ -173,20 +193,29 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           onTimeout={handleVideoLoadingTimeout}
         />
         
-        {/* Renderizar mídia se estiver presente */}
-        <MediaContainer 
-          mediaUrl={mediaUrl}
-          mode={message.mode || 'text'}
-          onMediaLoaded={handleMediaLoaded}
-          onMediaError={handleMediaError}
-          mediaError={mediaError}
-          isMediaLoading={isMediaLoading}
-          retryMediaLoad={retryMediaLoad}
-          openMediaInNewTab={openMediaInNewTab}
-          audioData={message.audioData}
-          prompt={message.content}
-          modelId={message.model}
-        />
+        {/* Renderizar mídia se estiver presente e visível */}
+        {mediaUrl && !isLoading && (message.mode === 'image' || message.mode === 'video' || message.mode === 'audio') && (
+          <MediaContainer 
+            mediaUrl={mediaUrl}
+            mode={message.mode}
+            onMediaLoaded={handleMediaLoaded}
+            onMediaError={handleMediaError}
+            mediaError={mediaError}
+            isMediaLoading={isMediaLoading}
+            retryMediaLoad={retryMediaLoad}
+            openMediaInNewTab={openMediaInNewTab}
+            audioData={message.audioData}
+            prompt={message.content}
+            modelId={message.model}
+          />
+        )}
+        
+        {/* Mensagem de debug para quando a mídia não é mostrada */}
+        {process.env.NODE_ENV === 'development' && !isUser && (message.mode === 'image' || message.mode === 'video' || message.mode === 'audio') && !mediaUrl && !isLoading && (
+          <div className="mt-2 p-2 bg-orange-900/20 border border-orange-500/30 rounded-lg text-xs">
+            <p className="text-orange-400">Debug: Modo de mídia ({message.mode}) detectado mas nenhuma URL de mídia encontrada.</p>
+          </div>
+        )}
       </div>
     </div>
   );

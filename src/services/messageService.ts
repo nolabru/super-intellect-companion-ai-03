@@ -71,6 +71,13 @@ export const createMessageService = (
         prevMessages.filter(msg => msg.id !== loadingId)
       );
       
+      console.log("API response received:", {
+        mode,
+        modelId,
+        hasFiles: response.files && response.files.length > 0,
+        firstFile: response.files && response.files.length > 0 ? response.files[0].substring(0, 30) + '...' : 'none'
+      });
+      
       // Add real response
       const newMessage: MessageType = {
         id: uuidv4(),
@@ -143,7 +150,7 @@ export const createMessageService = (
     }
   };
   
-  // Handle comparing models - similar improvements for model comparison
+  // Handle comparing models - improved to better handle media
   const handleCompareModels = async (
     content: string,
     mode: ChatMode,
@@ -186,6 +193,13 @@ export const createMessageService = (
         apiService.sendRequest(content, mode, leftModelId, files, params),
         apiService.sendRequest(content, mode, rightModelId, files, params)
       ]);
+      
+      console.log("API responses received for comparison:", {
+        leftModel: leftModelId,
+        rightModel: rightModelId,
+        leftHasFiles: responseLeft.files && responseLeft.files.length > 0,
+        rightHasFiles: responseRight.files && responseRight.files.length > 0,
+      });
       
       // Remove loading messages
       setMessages((prevMessages) => 

@@ -136,6 +136,11 @@ async function handleAIChat(req: Request): Promise<Response> {
           ]);
           clearTimeout(timeoutId);
           console.log("Processamento de vídeo concluído com sucesso");
+          
+          // Adicionar timestamp à URL do vídeo para evitar cache
+          if (response.files && response.files.length > 0) {
+            response.files[0] = addTimestampToUrl(response.files[0]);
+          }
         } catch (error) {
           clearTimeout(timeoutId);
           throw error;
@@ -152,6 +157,11 @@ async function handleAIChat(req: Request): Promise<Response> {
         
         response = await lumaService.generateImage(content, imageParams);
         console.log("Processamento de imagem concluído com sucesso");
+        
+        // Adicionar timestamp à URL da imagem para evitar cache
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
       }
       
       // OpenAI models
@@ -170,6 +180,11 @@ async function handleAIChat(req: Request): Promise<Response> {
         console.log("Iniciando geração de imagem com DALL-E via OpenAI");
         response = await openaiService.generateImage(content, "dall-e-3");
         console.log("Geração de imagem concluída com sucesso");
+        
+        // Adicionar timestamp à URL da imagem para evitar cache
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
       }
       
       // Anthropic models
@@ -203,22 +218,49 @@ async function handleAIChat(req: Request): Promise<Response> {
         
         response = await elevenlabsService.generateSpeech(content, voiceParams);
         console.log("Geração de áudio concluída com sucesso");
+        
+        // Adicionar timestamp à URL do áudio para evitar cache
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
       }
       
       // Simulation for other models
       else if (modelId.includes("ideogram") && mode === "image") {
         response = mockService.generateImage(content, "Ideogram");
+        
+        // Adicionar timestamp à URL da imagem para evitar cache
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
       } 
       else if (modelId.includes("kligin") && mode === "image") {
         response = mockService.generateImage(content, "Kligin AI");
+        
+        // Adicionar timestamp à URL da imagem para evitar cache
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
       }
       else if (modelId.includes("kligin") && mode === "video") {
         response = mockService.generateVideo(content, "Kligin AI");
+        
+        // Adicionar timestamp à URL do vídeo para evitar cache
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
       }
       else {
         // Default mock response for any other model/mode
         response = mockService.generateText(content, modelId, mode);
       }
+      
+      // Log dos resultados
+      console.log(`Resposta do modelo ${modelId} no modo ${mode} gerada com sucesso:`, {
+        hasFiles: response.files && response.files.length > 0,
+        fileCount: response.files?.length || 0,
+        contentLength: response.content?.length || 0
+      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logError("SERVICE_ERROR", { error: errorMessage, model: modelId, mode });
@@ -277,6 +319,13 @@ async function handleAIChat(req: Request): Promise<Response> {
       }
     );
   }
+}
+
+// Helper function to add timestamp to URLs for cache busting
+function addTimestampToUrl(url: string): string {
+  if (!url) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}t=${Date.now()}`;
 }
 
 // Setup the server

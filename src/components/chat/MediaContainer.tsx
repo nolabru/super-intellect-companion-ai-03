@@ -51,6 +51,13 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     }
   }, [mediaError, isVideo, mediaUrl, retryCount, retryMediaLoad]);
 
+  // Reset retry count when mediaUrl changes
+  useEffect(() => {
+    if (mediaUrl) {
+      setRetryCount(0);
+    }
+  }, [mediaUrl]);
+
   const handleSaveToGallery = async () => {
     if (!mediaUrl && !audioData) {
       toast.error('Não há mídia para salvar na galeria');
@@ -79,8 +86,8 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
           <span>
             Não foi possível carregar a mídia. 
-            {isVideo && "Isso pode ocorrer porque o vídeo ainda está sendo processado ou devido a limitações temporárias."}
-            {!isVideo && "Isto pode ocorrer devido a erros na API ou problemas temporários de conexão."}
+            {isVideo && " Isso pode ocorrer porque o vídeo ainda está sendo processado ou devido a limitações temporárias."}
+            {!isVideo && " Isto pode ocorrer devido a erros na API ou problemas temporários de conexão."}
           </span>
         </p>
         <div className="mt-2 flex space-x-2">
@@ -104,6 +111,9 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
       </div>
     );
   }
+  
+  // For debugging purposes
+  console.log(`MediaContainer rendering with mode=${mode}, isMediaLoading=${isMediaLoading}, mediaUrl=${mediaUrl ? 'exists' : 'none'}`);
   
   if (isImage && mediaUrl) {
     return (

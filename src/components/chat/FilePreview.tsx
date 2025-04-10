@@ -16,6 +16,8 @@ const FilePreview: React.FC<FilePreviewProps> = ({
 }) => {
   if (fileUrls.length === 0) return null;
 
+  console.log(`FilePreview rendering with mode=${mode}, fileUrls=${fileUrls.length}`);
+
   return (
     <div className="flex flex-wrap gap-2 mb-2">
       {fileUrls.map((url, index) => (
@@ -27,7 +29,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({
             <img src={url} alt="Preview" className="h-full w-full object-cover" />
           )}
           {mode === 'video' && (
-            <video src={url} className="h-full w-full object-cover" />
+            <video src={url} className="h-full w-full object-cover" controls={false} />
           )}
           {mode === 'audio' && (
             <div className="flex items-center justify-center h-full w-full bg-inventu-darker">
