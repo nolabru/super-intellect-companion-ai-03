@@ -24,25 +24,29 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     createNewConversation,
     deleteConversation,
     renameConversation,
-    clearMessages,
-    setMessages
+    clearMessages
   } = useConversation();
   
   const { user } = useAuth();
 
   // Função para criar uma nova conversa
-  const handleNewConversation = async () => {
+  const handleNewConversation = () => {
     console.log('[ConversationSidebar] Criando nova conversa');
     
     // Primeiro limpar mensagens para feedback visual imediato
     clearMessages();
     
     // Criar nova conversa
-    const success = await createNewConversation();
-    
-    if (!success) {
-      toast.error('Não foi possível criar uma nova conversa');
-    }
+    createNewConversation()
+      .then(success => {
+        if (!success) {
+          toast.error('Não foi possível criar uma nova conversa');
+        }
+      })
+      .catch(err => {
+        console.error('[ConversationSidebar] Erro ao criar conversa:', err);
+        toast.error('Erro ao criar nova conversa');
+      });
   };
 
   // Função para selecionar uma conversa existente
@@ -54,9 +58,10 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       return;
     }
     
-    // Atualizar o ID da conversa atual - isso irá acionar o efeito em useConversation
-    // que carregará as mensagens
+    // Limpar mensagens antes de mudar a conversa para feedback visual imediato
     clearMessages();
+    
+    // Atualizar o ID da conversa atual
     setCurrentConversationId(conversationId);
   };
 

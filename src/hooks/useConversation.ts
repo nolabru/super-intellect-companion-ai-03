@@ -107,6 +107,15 @@ export function useConversation() {
     }
   }, [clearMessages, setError, setLoading, setMessages]);
 
+  // Função para forçar o recarregamento de mensagens
+  const forceReloadMessages = useCallback(() => {
+    if (currentConversationId) {
+      lastLoadedConversationRef.current = null;
+      setInitialLoadDone(false);
+      loadConversationMessages(currentConversationId);
+    }
+  }, [currentConversationId, loadConversationMessages]);
+
   // Efeito simplificado e robusto para carregar mensagens quando a conversa muda
   useEffect(() => {
     if (!currentConversationId) {
@@ -124,6 +133,7 @@ export function useConversation() {
       !initialLoadDone;
     
     if (needToLoadConversation && !loadingRef.current) {
+      console.log(`[useConversation] Mudança detectada, carregando conversa: ${currentConversationId}`);
       // Carregar mensagens para a conversa selecionada
       loadConversationMessages(currentConversationId);
     }
@@ -248,6 +258,7 @@ export function useConversation() {
     saveUserMessage,
     removeLoadingMessages,
     loadMessages: loadConversationMessages,
+    forceReloadMessages,
     
     // Ações de conversa
     updateConversations,

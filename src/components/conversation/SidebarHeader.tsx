@@ -17,11 +17,11 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   onToggleSidebar,
   isUserLoggedIn
 }) => {
-  const handleNewConversation = async () => {
+  const handleNewConversation = () => {
     console.log('[SidebarHeader] Iniciando nova conversa');
     
     // Chamar o handler de nova conversa
-    await onNewConversation();
+    onNewConversation();
   };
   
   return (
