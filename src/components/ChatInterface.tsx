@@ -30,7 +30,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 }) => {
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
-    (!msg.id?.startsWith('loading-') || msg.model === model)
+    (msg.sender === 'assistant' && !msg.id?.startsWith('loading-')) || 
+    (msg.id?.startsWith('loading-') && msg.model === model)
   );
   
   const getModelDisplayName = (modelId: string) => {

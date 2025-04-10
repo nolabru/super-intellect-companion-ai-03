@@ -63,7 +63,7 @@ export function useConversation() {
     // Only proceed if we have a valid conversation ID that's different from the last loaded one
     if (currentConversationId && 
         !loadingRef.current && 
-        currentConversationId !== lastLoadedConversationRef.current) {
+        (currentConversationId !== lastLoadedConversationRef.current || !initialLoadDone)) {
       console.log(`[useConversation] Current conversation changed to ${currentConversationId}, loading messages`);
       
       // Update the last loaded conversation reference
@@ -100,13 +100,13 @@ export function useConversation() {
       lastLoadedConversationRef.current = null;
       setInitialLoadDone(false);
     }
-  }, [currentConversationId, clearMessages, setMessages, setLoading, setError]);
+  }, [currentConversationId, clearMessages, setMessages, setLoading, setError, initialLoadDone]);
 
   // Create a new conversation with improved message clearing
   const handleCreateNewConversation = async () => {
     console.log('[useConversation] Creating new conversation');
     
-    // Clear messages first to ensure we start fresh
+    // Clear messages before creating new conversation
     clearMessages();
     
     const success = await createNewConversation(
@@ -116,9 +116,12 @@ export function useConversation() {
       setError
     );
     
-    // Clear messages again after state is updated with the new conversation ID
+    // Ensure messages are cleared after state is updated
     if (success) {
       clearMessages();
+      // Reset the last loaded conversation to force a refresh
+      lastLoadedConversationRef.current = null;
+      setInitialLoadDone(false);
     }
     
     return success;

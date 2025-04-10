@@ -39,15 +39,15 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
         <Loader2 className="h-12 w-12 mb-4 animate-spin text-inventu-blue" />
         <p className="text-base font-medium text-white">
           {isKliginVideo 
-            ? "Kligin AI is processing your video..." 
+            ? "Kligin AI está processando seu vídeo..." 
             : isLumaVideo
-            ? "Luma AI is processing your video request..."
-            : "Generating your video..."}
+            ? "Luma AI está processando sua solicitação de vídeo..."
+            : "Gerando seu vídeo..."}
         </p>
         <p className="text-sm text-inventu-gray mt-2 text-center">
           {isLumaVideo 
-            ? "The process may take between 30 seconds and 2 minutes depending on complexity. We're using the official Luma SDK."
-            : "This may take a moment. Please wait."}
+            ? "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando o SDK oficial da Luma."
+            : "Isso pode levar um momento. Por favor, aguarde."}
         </p>
         <div className="mt-4 h-2 w-full bg-inventu-darker rounded-full overflow-hidden">
           <div 
