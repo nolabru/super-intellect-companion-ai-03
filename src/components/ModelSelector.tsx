@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   DropdownMenu,
@@ -190,6 +189,15 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     modes: ['image'],
   },
 ];
+
+export const getModelsByMode = (mode: ModelMode): ModelInfo[] => {
+  return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
+};
+
+export const canModelGenerateImages = (modelId: string): boolean => {
+  const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+  return !!(model && model.modes.includes('image'));
+};
 
 interface ModelSelectorProps {
   selectedModel: string;
