@@ -1,15 +1,29 @@
+
 import React from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import { ChatMode } from './ModeSelector';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
   DropdownMenuTrigger,
   DropdownMenuGroup,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
-import { ChatMode } from './ModeSelector';
+import { Check, ChevronRight } from 'lucide-react';
 
 // Define a interface para cada modelo
 export interface ModelOption {
@@ -331,43 +345,55 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   }, [mode, selectedModel, onChange, availableModels]);
 
+  // Versão com DropdownMenu
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger 
-        disabled={disabled}
-        className={`flex items-center justify-between w-full px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background 
-                   focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
-      >
-        <span>{selectedModelDetails?.displayName || 'Selecionar modelo'}</span>
-        <ChevronDown className="h-4 w-4 ml-2 opacity-70" />
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <button 
+          className={`flex items-center justify-between w-full px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background 
+                    focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+        >
+          <span className="flex items-center gap-2">
+            <span>{selectedModelDetails?.displayName || 'Selecionar modelo'}</span>
+          </span>
+          <ChevronRight className="h-4 w-4 opacity-50" />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56 bg-[#121212] border-gray-800" align="start">
+      <DropdownMenuContent className="w-56" align="start">
+        <DropdownMenuLabel>Modelos disponíveis</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        
         {Object.entries(modelsByProvider).map(([provider, models]) => (
-          <React.Fragment key={provider}>
-            <DropdownMenuLabel className="text-gray-400">
-              {getProviderDisplayName(provider)}
-            </DropdownMenuLabel>
-            <DropdownMenuGroup>
-              {models.map(model => (
-                <DropdownMenuItem 
-                  key={`${model.id}-${model.modes.join('-')}`}
-                  className={`flex items-center justify-between ${
-                    selectedModel === model.id ? 'bg-purple-600 text-white' : 'hover:bg-gray-800'
-                  }`}
-                  onClick={() => onChange(model.id)}
-                >
-                  <div className="flex flex-col">
-                    <span>{model.displayName}</span>
-                    {model.description && (
-                      <span className="text-xs text-gray-400">{model.description}</span>
-                    )}
-                  </div>
-                  {selectedModel === model.id && <Check className="h-4 w-4" />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator className="bg-gray-800" />
-          </React.Fragment>
+          <DropdownMenuSub key={provider}>
+            <DropdownMenuSubTrigger>
+              <span>{getProviderDisplayName(provider)}</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent className="w-56">
+                {models.map(model => (
+                  <DropdownMenuItem 
+                    key={`${model.id}-${model.modes.join('-')}`}
+                    onSelect={() => onChange(model.id)}
+                    className="flex justify-between items-start"
+                  >
+                    <div className="flex flex-col">
+                      <span>{model.displayName}</span>
+                      {model.description && (
+                        <span className="text-xs text-muted-foreground">{model.description}</span>
+                      )}
+                      {model.canGenerateImages && mode === 'image' && (
+                        <span className="text-xs text-green-500">(gerador)</span>
+                      )}
+                      {model.canGenerateAudio && mode === 'audio' && (
+                        <span className="text-xs text-indigo-400">(text-to-speech)</span>
+                      )}
+                    </div>
+                    {selectedModel === model.id && <Check className="h-4 w-4" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
