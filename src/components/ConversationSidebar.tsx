@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
@@ -25,7 +25,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     deleteConversation,
     renameConversation,
     clearMessages,
-    forceReloadMessages
+    forceReloadMessages,
+    loading
   } = useConversation();
   
   const { user } = useAuth();
@@ -36,6 +37,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     
     // Limpar mensagens imediatamente para feedback visual
     clearMessages();
+    
+    // Desativar o ID da conversa atual temporariamente para forçar uma atualização completa
+    setCurrentConversationId(null);
     
     createNewConversation()
       .then(success => {
@@ -104,6 +108,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onDeleteConversation={deleteConversation}
           onRenameConversation={renameConversation}
           isUserLoggedIn={!!user}
+          isLoading={loading}
         />
       </div>
     </div>

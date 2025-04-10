@@ -7,6 +7,15 @@ import { ConversationType, DbOperationResult } from '@/types/conversation';
 // Save message to database
 export const saveMessageToDatabase = async (message: MessageType, conversationId: string): Promise<DbOperationResult> => {
   try {
+    if (!conversationId || !message || !message.id) {
+      console.error('[conversationUtils] Parâmetros inválidos para salvar mensagem');
+      return { 
+        data: null, 
+        error: 'Parâmetros inválidos para salvar mensagem',
+        success: false
+      };
+    }
+    
     console.log(`[conversationUtils] Saving message to database for conversation ${conversationId}`, message.id);
     
     const { error } = await supabase
@@ -49,7 +58,7 @@ export const loadUserConversations = async (): Promise<DbOperationResult<Convers
     
     if (!user || !user.user) {
       console.log('[conversationUtils] No authenticated user found');
-      return { data: [], error: "Usuário não autenticado" }; 
+      return { data: [], error: null }; 
     }
     
     const { data, error } = await supabase
@@ -64,11 +73,11 @@ export const loadUserConversations = async (): Promise<DbOperationResult<Convers
     }
     
     console.log(`[conversationUtils] Loaded ${data?.length || 0} conversations`);
-    return { data, error: null };
+    return { data: data || [], error: null };
   } catch (err) {
     console.error('[conversationUtils] Error loading conversations:', err);
     return { 
-      data: null, 
+      data: [], 
       error: err instanceof Error ? err.message : 'Erro desconhecido ao carregar conversas' 
     };
   }
@@ -96,11 +105,11 @@ export const loadConversationMessages = async (conversationId: string): Promise<
     }
     
     console.log(`[conversationUtils] Found ${data?.length || 0} messages for conversation ${conversationId}`);
-    return { data, error: null };
+    return { data: data || [], error: null };
   } catch (err) {
     console.error('[conversationUtils] Error loading messages:', err);
     return { 
-      data: null, 
+      data: [], 
       error: err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens' 
     };
   }
@@ -156,6 +165,11 @@ export const createConversation = async (): Promise<DbOperationResult<Conversati
 // Delete conversation
 export const deleteConversation = async (id: string): Promise<DbOperationResult> => {
   try {
+    if (!id) {
+      console.error('[conversationUtils] ID de conversa inválido para exclusão');
+      return { success: false, error: 'ID de conversa inválido', data: null };
+    }
+    
     console.log(`[conversationUtils] Deleting conversation ${id}`);
     
     // First delete all associated messages
@@ -197,6 +211,11 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
 // Rename conversation
 export const renameConversation = async (id: string, newTitle: string): Promise<DbOperationResult> => {
   try {
+    if (!id || !newTitle.trim()) {
+      console.error('[conversationUtils] ID de conversa ou título inválido para renomeação');
+      return { success: false, error: 'ID de conversa ou título inválido', data: null };
+    }
+    
     console.log(`[conversationUtils] Renaming conversation ${id} to "${newTitle}"`);
     const { error } = await supabase
       .from('conversations')
@@ -229,6 +248,11 @@ export const updateConversationTitle = async (
   conversations: ConversationType[]
 ): Promise<DbOperationResult<{newTitle: string}>> => {
   try {
+    if (!conversationId || !content.trim()) {
+      console.error('[conversationUtils] ID de conversa ou conteúdo inválido para atualização de título');
+      return { success: false, error: 'Parâmetros inválidos', data: null };
+    }
+    
     // Check if the current title is "Nova Conversa"
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (!conversation) {

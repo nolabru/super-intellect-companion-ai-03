@@ -63,6 +63,11 @@ export function useConversation() {
   const loadConversationMessages = useCallback(async (conversationId: string) => {
     console.log(`[useConversation] Carregando mensagens para conversa: ${conversationId}`);
     
+    if (!conversationId) {
+      console.log('[useConversation] ID de conversa inválido, ignorando carregamento');
+      return false;
+    }
+    
     if (loadingRef.current) {
       console.log('[useConversation] Já está carregando mensagens, ignorando requisição');
       return false;
@@ -117,7 +122,7 @@ export function useConversation() {
     }
   }, [currentConversationId, loadConversationMessages]);
 
-  // Efeito simplificado e robusto para carregar mensagens quando a conversa muda
+  // Efeito para carregar mensagens quando a conversa muda
   useEffect(() => {
     if (!currentConversationId) {
       // Se nenhuma conversa estiver selecionada, limpar mensagens
@@ -192,6 +197,13 @@ export function useConversation() {
   // Excluir conversa
   const handleDeleteConversation = async (id: string) => {
     try {
+      if (id === currentConversationId) {
+        // Limpar mensagens antes de excluir a conversa atual
+        clearMessages();
+        // Resetar o ID da conversa atual temporariamente
+        setCurrentConversationId(null);
+      }
+      
       const result = await deleteConversation(
         id, 
         setLoading, 
@@ -203,7 +215,6 @@ export function useConversation() {
       if (id === currentConversationId) {
         lastLoadedConversationRef.current = null;
         setInitialLoadDone(false);
-        clearMessages();
       }
       
       return result;

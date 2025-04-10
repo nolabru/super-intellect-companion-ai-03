@@ -19,6 +19,11 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   const handleNewConversation = () => {
     console.log('[SidebarHeader] Iniciando nova conversa');
     
+    if (!isUserLoggedIn) {
+      toast.error('Você precisa estar logado para criar uma nova conversa');
+      return;
+    }
+    
     // Chamar o handler de nova conversa e limpar mensagens imediatamente
     onNewConversation();
   };

@@ -57,7 +57,21 @@ export function useConversationMessages() {
 
   // Save user message to database
   const saveUserMessage = async (message: MessageType, conversationId: string) => {
-    return await saveMessageToDatabase(message, conversationId);
+    if (!conversationId || !message) {
+      console.error('[useConversationMessages] Parâmetros inválidos para salvar mensagem de usuário');
+      return { success: false, error: 'Parâmetros inválidos' };
+    }
+    
+    try {
+      console.log(`[useConversationMessages] Salvando mensagem ${message.id} na conversa ${conversationId}`);
+      return await saveMessageToDatabase(message, conversationId);
+    } catch (err) {
+      console.error('[useConversationMessages] Erro ao salvar mensagem de usuário:', err);
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Erro desconhecido ao salvar mensagem' 
+      };
+    }
   };
 
   // Remove loading messages

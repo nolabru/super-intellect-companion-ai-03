@@ -13,6 +13,12 @@ export const loadMessages = async (
   setError: (error: string | null) => void
 ) => {
   try {
+    if (!conversationId) {
+      console.error('[conversationActions] ID de conversa inválido');
+      setError('ID de conversa inválido');
+      return false;
+    }
+    
     console.log(`[conversationActions] Carregando mensagens para conversa: ${conversationId}`);
     
     setLoading(true);
@@ -105,6 +111,12 @@ export const deleteConversation = async (
   setError: (error: string | null) => void
 ) => {
   try {
+    if (!id) {
+      console.error('[conversationActions] ID de conversa inválido para exclusão');
+      setError('ID de conversa inválido');
+      return false;
+    }
+    
     console.log(`[conversationActions] Excluindo conversa: ${id}`);
     
     setLoading(true);
@@ -141,6 +153,12 @@ export const renameConversation = async (
   setError: (error: string | null) => void
 ) => {
   try {
+    if (!id || !newTitle.trim()) {
+      console.error('[conversationActions] ID de conversa ou título inválido');
+      setError('ID de conversa ou título inválido');
+      return false;
+    }
+    
     console.log(`[conversationActions] Renomeando conversa ${id} para: ${newTitle}`);
     
     setLoading(true);
@@ -176,6 +194,11 @@ export const handleTitleUpdate = async (
   content: string
 ): Promise<boolean> => {
   try {
+    if (!conversationId || !content.trim()) {
+      console.warn('[conversationActions] ID de conversa ou conteúdo inválido para atualização de título');
+      return false;
+    }
+    
     // Verificar se a conversa selecionada está na lista de conversas
     const selectedConversation = conversations.find(
       conv => conv.id === conversationId

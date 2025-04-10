@@ -2,6 +2,7 @@
 import React from 'react';
 import { ConversationType } from '@/types/conversation';
 import ConversationItem from './ConversationItem';
+import { Loader2 } from 'lucide-react';
 
 interface ConversationListProps {
   conversations: ConversationType[];
@@ -10,6 +11,7 @@ interface ConversationListProps {
   onDeleteConversation: (id: string) => void;
   onRenameConversation: (id: string, newTitle: string) => void;
   isUserLoggedIn: boolean;
+  isLoading?: boolean;
 }
 
 const ConversationList: React.FC<ConversationListProps> = ({ 
@@ -18,12 +20,22 @@ const ConversationList: React.FC<ConversationListProps> = ({
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
-  isUserLoggedIn
+  isUserLoggedIn,
+  isLoading = false
 }) => {
   if (!isUserLoggedIn) {
     return (
       <div className="p-4 text-center text-inventu-gray">
         <p>Faça login para ver suas conversas</p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-4 text-center text-inventu-gray flex flex-col items-center">
+        <Loader2 className="h-6 w-6 animate-spin mb-2" />
+        <p>Carregando conversas...</p>
       </div>
     );
   }
