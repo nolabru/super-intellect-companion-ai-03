@@ -309,8 +309,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
-        align="start" 
-        className="w-[280px] bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1"
+        align="end" 
+        className="w-[240px] bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1"
       >
         <DropdownMenuLabel className="text-xs uppercase tracking-wider text-white/60 px-3 py-2">
           Selecione um modelo
@@ -330,7 +330,9 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
               </DropdownMenuSubTrigger>
               <DropdownMenuPortal>
                 <DropdownMenuSubContent 
-                  className="bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1 min-w-[250px]"
+                  className="bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1 min-w-[220px]"
+                  sideOffset={-5}
+                  alignOffset={-5}
                 >
                   {modelsForProvider.map(model => (
                     <DropdownMenuItem 
