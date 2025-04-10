@@ -4,7 +4,7 @@ import { ConversationType } from '@/types/conversation';
 import { MessageType } from '@/components/ChatMessage';
 import { toast } from 'sonner';
 
-// Load messages
+// Carregar mensagens
 export const loadMessages = async (
   conversationId: string,
   setLoading: (loading: boolean) => void,
@@ -13,7 +13,7 @@ export const loadMessages = async (
   setError: (error: string | null) => void
 ) => {
   try {
-    console.log(`[conversationActions] Loading messages for conversation: ${conversationId}`);
+    console.log(`[conversationActions] Carregando mensagens para conversa: ${conversationId}`);
     
     setLoading(true);
     
@@ -23,17 +23,17 @@ export const loadMessages = async (
     const { data, error } = await loadConversationMessages(conversationId);
     
     if (error) {
-      console.error('[conversationActions] Error loading messages:', error);
+      console.error('[conversationActions] Erro ao carregar mensagens:', error);
       setError(error);
       return false;
     }
     
     if (data) {
-      console.log(`[conversationActions] Setting ${data.length} messages from conversation ${conversationId}`);
+      console.log(`[conversationActions] Definindo ${data.length} mensagens da conversa ${conversationId}`);
       // Definir mensagens do banco de dados diretamente
       setMessages(data as MessageType[]);
     } else {
-      console.log(`[conversationActions] No messages found for conversation ${conversationId}`);
+      console.log(`[conversationActions] Nenhuma mensagem encontrada para a conversa ${conversationId}`);
       // Garantir que as mensagens sejam limpas se não houver
       clearMessages();
       setMessages([]);
@@ -41,7 +41,7 @@ export const loadMessages = async (
     
     return true;
   } catch (err) {
-    console.error('[conversationActions] Error loading messages:', err);
+    console.error('[conversationActions] Erro ao carregar mensagens:', err);
     setError(err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens');
     return false;
   } finally {
@@ -49,7 +49,7 @@ export const loadMessages = async (
   }
 };
 
-// Create a new conversation
+// Criar uma nova conversa
 export const createNewConversation = async (
   setLoading: (loading: boolean) => void,
   addConversation: (conversation: any) => void,
@@ -57,24 +57,24 @@ export const createNewConversation = async (
   setError: (error: string | null) => void
 ) => {
   try {
-    console.log('[conversationActions] Creating new conversation');
+    console.log('[conversationActions] Criando nova conversa');
     setLoading(true);
     
-    // Limpar mensagens em vários pontos para garantir que a interface do usuário seja atualizada
+    // Limpar mensagens para garantir que a interface do usuário seja atualizada
     clearMessages();
     
     // Criar a conversa no banco de dados
     const { data, error, success } = await createConversation();
     
     if (error) {
-      console.error('[conversationActions] Error creating conversation:', error);
+      console.error('[conversationActions] Erro ao criar conversa:', error);
       setError(error);
       toast.error('Erro ao criar nova conversa');
       return { success: false };
     }
     
     if (data) {
-      console.log('[conversationActions] New conversation created:', data.id);
+      console.log('[conversationActions] Nova conversa criada:', data.id);
       // Adicionar a nova conversa ao estado
       addConversation(data);
       
@@ -88,7 +88,7 @@ export const createNewConversation = async (
     toast.error('Erro ao criar nova conversa');
     return { success: false };
   } catch (err) {
-    console.error('[conversationActions] Error creating conversation:', err);
+    console.error('[conversationActions] Erro ao criar conversa:', err);
     setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa');
     toast.error('Erro ao criar nova conversa');
     return { success: false };
@@ -97,7 +97,7 @@ export const createNewConversation = async (
   }
 };
 
-// Delete conversation
+// Excluir conversa
 export const deleteConversation = async (
   id: string,
   setLoading: (loading: boolean) => void,
@@ -105,25 +105,25 @@ export const deleteConversation = async (
   setError: (error: string | null) => void
 ) => {
   try {
-    console.log(`[conversationActions] Deleting conversation: ${id}`);
+    console.log(`[conversationActions] Excluindo conversa: ${id}`);
     
     setLoading(true);
     
     const { error, success } = await deleteConversationFromDB(id);
     
     if (error || !success) {
-      console.error('[conversationActions] Error deleting conversation:', error);
+      console.error('[conversationActions] Erro ao excluir conversa:', error);
       setError(error || 'Erro desconhecido ao excluir conversa');
       toast.error('Erro ao excluir conversa');
       return false;
     }
     
-    console.log(`[conversationActions] Conversation ${id} deleted successfully`);
+    console.log(`[conversationActions] Conversa ${id} excluída com sucesso`);
     removeConversation(id);
     toast.success('Conversa excluída com sucesso');
     return true;
   } catch (err) {
-    console.error('[conversationActions] Error deleting conversation:', err);
+    console.error('[conversationActions] Erro ao excluir conversa:', err);
     setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
     toast.error('Erro ao excluir conversa');
     return false;
@@ -132,7 +132,7 @@ export const deleteConversation = async (
   }
 };
 
-// Rename conversation
+// Renomear conversa
 export const renameConversation = async (
   id: string,
   newTitle: string,
@@ -141,25 +141,25 @@ export const renameConversation = async (
   setError: (error: string | null) => void
 ) => {
   try {
-    console.log(`[conversationActions] Renaming conversation ${id} to: ${newTitle}`);
+    console.log(`[conversationActions] Renomeando conversa ${id} para: ${newTitle}`);
     
     setLoading(true);
     
     const { error, success } = await renameConversationFromDB(id, newTitle);
     
     if (error || !success) {
-      console.error('[conversationActions] Error renaming conversation:', error);
+      console.error('[conversationActions] Erro ao renomear conversa:', error);
       setError(error || 'Erro desconhecido ao renomear conversa');
       toast.error('Erro ao renomear conversa');
       return false;
     }
     
-    console.log(`[conversationActions] Conversation ${id} renamed successfully`);
+    console.log(`[conversationActions] Conversa ${id} renomeada com sucesso`);
     updateConversationTitle(id, newTitle);
     toast.success('Conversa renomeada com sucesso');
     return true;
   } catch (err) {
-    console.error('[conversationActions] Error renaming conversation:', err);
+    console.error('[conversationActions] Erro ao renomear conversa:', err);
     setError(err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa');
     toast.error('Erro ao renomear conversa');
     return false;
@@ -168,7 +168,7 @@ export const renameConversation = async (
   }
 };
 
-// Handle conversation title update
+// Lidar com atualização de título da conversa
 export const handleTitleUpdate = async (
   conversations: ConversationType[],
   updateConversationTitle: (id: string, newTitle: string) => void,
@@ -182,13 +182,13 @@ export const handleTitleUpdate = async (
     );
     
     if (!selectedConversation) {
-      console.warn(`[conversationActions] Cannot update title: Conversation ${conversationId} not found`);
+      console.warn(`[conversationActions] Não é possível atualizar o título: Conversa ${conversationId} não encontrada`);
       return false;
     }
     
     // Verificar se o título atual é "Nova Conversa"
     if (selectedConversation.title !== 'Nova Conversa') {
-      console.log(`[conversationActions] Not updating title: Current title is not default (${selectedConversation.title})`);
+      console.log(`[conversationActions] Não atualizando título: O título atual não é o padrão (${selectedConversation.title})`);
       return false;
     }
     
@@ -200,19 +200,19 @@ export const handleTitleUpdate = async (
     );
     
     if (error || !success) {
-      console.error('[conversationActions] Error updating conversation title:', error);
+      console.error('[conversationActions] Erro ao atualizar título da conversa:', error);
       return false;
     }
     
     if (data?.newTitle) {
-      console.log(`[conversationActions] Conversation ${conversationId} title updated to: ${data.newTitle}`);
+      console.log(`[conversationActions] Título da conversa ${conversationId} atualizado para: ${data.newTitle}`);
       updateConversationTitle(conversationId, data.newTitle);
       return true;
     }
     
     return false;
   } catch (err) {
-    console.error('[conversationActions] Error updating conversation title:', err);
+    console.error('[conversationActions] Erro ao atualizar título da conversa:', err);
     return false;
   }
 };

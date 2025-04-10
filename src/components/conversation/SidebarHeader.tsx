@@ -4,6 +4,7 @@ import { PlusCircle, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarNavigation from './SidebarNavigation';
 import { useConversation } from '@/hooks/useConversation';
+import { toast } from 'sonner';
 
 interface SidebarHeaderProps {
   onNewConversation: () => void;
@@ -16,15 +17,11 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   onToggleSidebar,
   isUserLoggedIn
 }) => {
-  const { clearMessages, setMessages } = useConversation();
-  
-  const handleNewConversation = () => {
-    // Limpar mensagens imediatamente para feedback visual
-    clearMessages();
-    setMessages([]);
+  const handleNewConversation = async () => {
+    console.log('[SidebarHeader] Iniciando nova conversa');
     
     // Chamar o handler de nova conversa
-    onNewConversation();
+    await onNewConversation();
   };
   
   return (

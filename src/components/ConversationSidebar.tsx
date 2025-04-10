@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
@@ -30,14 +30,14 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   
   const { user } = useAuth();
 
+  // Função para criar uma nova conversa
   const handleNewConversation = async () => {
-    console.log('[ConversationSidebar] Creating new conversation from sidebar button');
+    console.log('[ConversationSidebar] Criando nova conversa');
     
-    // Immediately clear messages for visual feedback
+    // Primeiro limpar mensagens para feedback visual imediato
     clearMessages();
-    setMessages([]);
     
-    // Create a new conversation
+    // Criar nova conversa
     const success = await createNewConversation();
     
     if (!success) {
@@ -45,29 +45,22 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   };
 
+  // Função para selecionar uma conversa existente
   const handleSelectConversation = (conversationId: string) => {
-    console.log(`[ConversationSidebar] Selecting conversation: ${conversationId}`);
+    console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
     
     if (currentConversationId === conversationId) {
-      console.log(`[ConversationSidebar] Conversation ${conversationId} is already selected`);
+      console.log(`[ConversationSidebar] Conversa ${conversationId} já está selecionada`);
       return;
     }
     
-    // Immediately clear messages for visual feedback
+    // Atualizar o ID da conversa atual - isso irá acionar o efeito em useConversation
+    // que carregará as mensagens
     clearMessages();
-    setMessages([]);
-    
-    // Update the current conversation ID
     setCurrentConversationId(conversationId);
   };
 
-  // Debugging logs
-  useEffect(() => {
-    console.log(`[ConversationSidebar] Current conversation ID: ${currentConversationId}`);
-    console.log(`[ConversationSidebar] Available conversations: ${conversations.map(c => c.id).join(', ')}`);
-  }, [currentConversationId, conversations]);
-
-  // Collapsed sidebar view
+  // Vista de barra lateral recolhida
   if (!isOpen && onToggleSidebar) {
     return (
       <div className="absolute left-0 top-24 z-10">

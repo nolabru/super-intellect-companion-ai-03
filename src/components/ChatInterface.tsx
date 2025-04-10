@@ -29,16 +29,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
-  // Debugging logs
+  // Logs de depuração
   useEffect(() => {
-    console.log(`[ChatInterface] Received ${messages.length} messages for model ${model}`);
+    console.log(`[ChatInterface] Recebeu ${messages.length} mensagens para o modelo ${model}`);
     if (messages.length === 0) {
-      console.log('[ChatInterface] No messages to display');
+      console.log('[ChatInterface] Nenhuma mensagem para exibir');
     }
   }, [messages, model]);
 
-  // Show all user messages and all assistant messages for the current model
-  // Filter only loading messages for the current model
+  // Mostrar todas as mensagens do usuário e todas as mensagens do assistente para o modelo atual
+  // Filtrar apenas mensagens de carregamento para o modelo atual
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
     (msg.sender === 'assistant' && !msg.id?.startsWith('loading-')) || 
@@ -109,19 +109,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   
   const openLumaDashboard = () => {
     window.open('https://lumalabs.ai/dashboard', '_blank');
-    toast.success('Opening Luma AI Dashboard');
+    toast.success('Abrindo Dashboard da Luma AI');
   };
   
   const showLumaKeyInstructions = () => {
     toast.info(
       <div className="space-y-2">
-        <p className="font-medium">How to configure the Luma AI API key</p>
+        <p className="font-medium">Como configurar a chave de API da Luma AI</p>
         <ol className="list-decimal pl-4 text-sm space-y-1">
-          <li>Access the Edge Function Manager in the Supabase interface</li>
-          <li>Select the "ai-chat" function</li>
-          <li>Go to "Settings" and then "Environment Variables"</li>
-          <li>Add the LUMA_API_KEY variable with your key</li>
-          <li>The key should start with "luma_" and can be obtained from the Luma AI website</li>
+          <li>Acesse o Gerenciador de Funções Edge na interface do Supabase</li>
+          <li>Selecione a função "ai-chat"</li>
+          <li>Vá para "Configurações" e depois "Variáveis de Ambiente"</li>
+          <li>Adicione a variável LUMA_API_KEY com sua chave</li>
+          <li>A chave deve começar com "luma_" e pode ser obtida no site da Luma AI</li>
         </ol>
       </div>,
       {
@@ -155,10 +155,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
-        {loading && filteredMessages.length === 0 ? (
+        {loading ? (
           <div className="flex items-center justify-center h-full text-gray-400">
             <Loader2 className="h-8 w-8 mr-2 animate-spin" />
-            <span>Loading messages...</span>
+            <span>Carregando mensagens...</span>
           </div>
         ) : filteredMessages.length > 0 ? (
           <>
@@ -172,11 +172,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   <AlertTriangle className="h-5 w-5 text-indigo-400 mr-2 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm text-indigo-400 font-medium">
-                      Video processing in Luma AI
+                      Processamento de vídeo na Luma AI
                     </p>
                     <p className="text-sm text-gray-300 mt-1">
-                      Luma AI is processing your video, but it may take longer than our wait limit. 
-                      You can check the result in the Luma AI dashboard with the ID: {lumaGenId}
+                      A Luma AI está processando seu vídeo, mas pode demorar mais do que nosso limite de espera. 
+                      Você pode verificar o resultado no dashboard da Luma AI com o ID: {lumaGenId}
                     </p>
                     <div className="mt-3">
                       <Button 
@@ -186,7 +186,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         onClick={openLumaDashboard}
                       >
                         <ExternalLink className="h-3 w-3" />
-                        <span>Open Luma AI Dashboard</span>
+                        <span>Abrir Dashboard da Luma AI</span>
                       </Button>
                     </div>
                   </div>
@@ -200,7 +200,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   <AlertTriangle className="h-5 w-5 text-red-400 mr-2 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm text-red-400 font-medium">
-                      Error processing request
+                      Erro ao processar solicitação
                     </p>
                     <p className="text-sm text-gray-300 mt-1">
                       {errorMessage.content}
@@ -208,7 +208,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     {(model === 'luma-video' || model === 'luma-image') && (
                       <div className="mt-3">
                         <p className="text-xs text-gray-400 mb-2">
-                          Verify that the Luma API key is correctly configured in the Edge Function environment variables.
+                          Verifique se a chave API da Luma está configurada corretamente nas variáveis de ambiente da Edge Function.
                         </p>
                         <Button 
                           variant="outline" 
@@ -217,7 +217,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                           onClick={showLumaKeyInstructions}
                         >
                           <RefreshCw className="h-3 w-3" />
-                          <span>View setup instructions</span>
+                          <span>Ver instruções de configuração</span>
                         </Button>
                       </div>
                     )}
@@ -228,7 +228,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-400">
-            No messages yet. Start a conversation!
+            Nenhuma mensagem ainda. Inicie uma conversa!
           </div>
         )}
       </div>
