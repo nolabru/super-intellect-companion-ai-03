@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -37,11 +37,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages, model]);
 
+  // Ref para o container de mensagens para rolagem automática
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Efeito para rolar para o final quando novas mensagens são adicionadas
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
   // Mostrar todas as mensagens do usuário e todas as mensagens do assistente para o modelo atual
   // Filtrar apenas mensagens de carregamento para o modelo atual
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
-    (msg.sender === 'assistant' && !msg.id?.startsWith('loading-')) || 
+    (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && (!msg.model || msg.model === model || isCompareMode)) || 
     (msg.id?.startsWith('loading-') && msg.model === model)
   );
   
@@ -219,6 +229,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </div>
               </div>
             )}
+            
+            {/* Referência para rolar para o final */}
+            <div ref={messagesEndRef} />
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-400">

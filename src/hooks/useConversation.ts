@@ -112,18 +112,28 @@ export function useConversation() {
     }
   }, [clearMessages, setError, setLoading, setMessages]);
 
-  // Função para forçar o recarregamento de mensagens
+  // Função para forçar o recarregamento de mensagens - Improved for reliability
   const forceReloadMessages = useCallback(() => {
     if (currentConversationId) {
       console.log(`[useConversation] Forçando recarregamento da conversa: ${currentConversationId}`);
+      // Reset tracking variables to force reload
       lastLoadedConversationRef.current = null;
       setInitialLoadDone(false);
+      // Clear messages first for immediate visual feedback
+      clearMessages();
+      // Load messages for the current conversation
       loadConversationMessages(currentConversationId);
+    } else {
+      console.log('[useConversation] Não há conversa selecionada para recarregar');
+      // Just clear messages when no conversation is selected
+      clearMessages();
     }
-  }, [currentConversationId, loadConversationMessages]);
+  }, [currentConversationId, loadConversationMessages, clearMessages]);
 
-  // Efeito para carregar mensagens quando a conversa muda
+  // Efeito para carregar mensagens quando a conversa muda - Improved for reliability
   useEffect(() => {
+    console.log(`[useConversation] Efeito de carregamento de conversa acionado. ID atual: ${currentConversationId}`);
+    
     if (!currentConversationId) {
       // Se nenhuma conversa estiver selecionada, limpar mensagens
       console.log('[useConversation] Nenhuma conversa selecionada, limpando mensagens');
@@ -142,6 +152,8 @@ export function useConversation() {
       console.log(`[useConversation] Mudança detectada, carregando conversa: ${currentConversationId}`);
       // Carregar mensagens para a conversa selecionada
       loadConversationMessages(currentConversationId);
+    } else {
+      console.log('[useConversation] Não é necessário recarregar a conversa atual');
     }
   }, [currentConversationId, clearMessages, loadConversationMessages, initialLoadDone]);
 

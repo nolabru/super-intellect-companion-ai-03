@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { ConversationType, ConversationState } from '@/types/conversation';
 import { loadUserConversations } from '@/utils/conversationUtils';
@@ -12,45 +12,52 @@ export function useConversationState() {
     error: null
   });
 
-  // Load user conversations on init
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        setConversationState(prev => ({ ...prev, loading: true }));
-        const { data, error: fetchError } = await loadUserConversations();
-        
-        if (fetchError) {
-          console.error('[useConversationState] Error loading conversations:', fetchError);
-          setConversationState(prev => ({ ...prev, error: fetchError }));
-          return;
-        }
-        
-        if (data) {
-          console.log(`[useConversationState] Loaded ${data.length} conversations`);
-          
-          // Select most recent conversation if none is selected and there are conversations available
-          const updatedState: Partial<ConversationState> = { conversations: data };
-          
-          if (!conversationState.currentConversationId && data.length > 0) {
-            console.log(`[useConversationState] Auto-selecting the most recent conversation: ${data[0].id}`);
-            updatedState.currentConversationId = data[0].id;
-          }
-          
-          setConversationState(prev => ({ ...prev, ...updatedState }));
-        }
-      } catch (err) {
-        console.error('[useConversationState] Error loading conversations:', err);
-        setConversationState(prev => ({ 
-          ...prev, 
-          error: err instanceof Error ? err.message : 'Erro desconhecido ao buscar conversas'
-        }));
-      } finally {
-        setConversationState(prev => ({ ...prev, loading: false }));
+  // Improved load user conversations function with better error handling
+  const fetchConversations = useCallback(async () => {
+    try {
+      console.log('[useConversationState] Carregando conversas do usuário');
+      setConversationState(prev => ({ ...prev, loading: true }));
+      
+      const { data, error: fetchError } = await loadUserConversations();
+      
+      if (fetchError) {
+        console.error('[useConversationState] Erro ao carregar conversas:', fetchError);
+        toast.error(`Erro ao carregar conversas: ${fetchError}`);
+        setConversationState(prev => ({ ...prev, error: fetchError, loading: false }));
+        return;
       }
-    };
-    
+      
+      if (data) {
+        console.log(`[useConversationState] Carregadas ${data.length} conversas`);
+        
+        // Select most recent conversation if none is selected and there are conversations available
+        const updatedState: Partial<ConversationState> = { 
+          conversations: data, 
+          loading: false,
+          error: null
+        };
+        
+        if (!conversationState.currentConversationId && data.length > 0) {
+          console.log(`[useConversationState] Auto-selecionando a conversa mais recente: ${data[0].id}`);
+          updatedState.currentConversationId = data[0].id;
+        }
+        
+        setConversationState(prev => ({ ...prev, ...updatedState }));
+      } else {
+        setConversationState(prev => ({ ...prev, loading: false, error: null }));
+      }
+    } catch (err) {
+      console.error('[useConversationState] Erro ao carregar conversas:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro desconhecido ao buscar conversas';
+      toast.error(`Erro ao carregar conversas: ${errorMessage}`);
+      setConversationState(prev => ({ ...prev, error: errorMessage, loading: false }));
+    }
+  }, [conversationState.currentConversationId]);
+
+  // Load user conversations on component mount
+  useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [fetchConversations]);
 
   const setLoading = (loading: boolean) => {
     setConversationState(prev => ({ ...prev, loading }));
@@ -61,6 +68,7 @@ export function useConversationState() {
   };
 
   const setCurrentConversationId = (id: string | null) => {
+    console.log(`[useConversationState] Definindo ID de conversa atual: ${id || 'null'}`);
     setConversationState(prev => ({ ...prev, currentConversationId: id }));
   };
 
@@ -69,6 +77,7 @@ export function useConversationState() {
   };
 
   const addConversation = (conversation: ConversationType) => {
+    console.log(`[useConversationState] Adicionando nova conversa: ${conversation.id}`);
     setConversationState(prev => ({
       ...prev,
       currentConversationId: conversation.id,
@@ -77,6 +86,7 @@ export function useConversationState() {
   };
 
   const updateConversationTitle = (id: string, newTitle: string) => {
+    console.log(`[useConversationState] Atualizando título da conversa ${id} para: ${newTitle}`);
     setConversationState(prev => ({
       ...prev,
       conversations: prev.conversations.map(conv => 
@@ -86,6 +96,7 @@ export function useConversationState() {
   };
 
   const removeConversation = (id: string) => {
+    console.log(`[useConversationState] Removendo conversa: ${id}`);
     setConversationState(prev => {
       const updatedState: Partial<ConversationState> = {
         conversations: prev.conversations.filter(conv => conv.id !== id)
@@ -95,8 +106,10 @@ export function useConversationState() {
         const remainingConversations = prev.conversations.filter(conv => conv.id !== id);
         
         if (remainingConversations.length > 0) {
+          console.log(`[useConversationState] Conversando atual excluída, selecionando outra: ${remainingConversations[0].id}`);
           updatedState.currentConversationId = remainingConversations[0].id;
         } else {
+          console.log('[useConversationState] Não há mais conversas, definindo ID atual como null');
           updatedState.currentConversationId = null;
         }
       }
@@ -104,6 +117,12 @@ export function useConversationState() {
       return { ...prev, ...updatedState };
     });
   };
+
+  // Force refresh conversations from database
+  const refreshConversations = useCallback(() => {
+    console.log('[useConversationState] Forçando atualização das conversas');
+    fetchConversations();
+  }, [fetchConversations]);
 
   return {
     ...conversationState,
@@ -113,6 +132,7 @@ export function useConversationState() {
     updateConversations,
     addConversation,
     updateConversationTitle,
-    removeConversation
+    removeConversation,
+    refreshConversations
   };
 }

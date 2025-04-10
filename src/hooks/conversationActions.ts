@@ -1,10 +1,16 @@
 
-import { createConversation, deleteConversation as deleteConversationFromDB, renameConversation as renameConversationFromDB, loadConversationMessages, updateConversationTitle as updateConversationTitleInDB } from '../utils/conversationUtils';
+import { 
+  createConversation, 
+  deleteConversation as deleteConversationFromDB, 
+  renameConversation as renameConversationFromDB, 
+  loadConversationMessages, 
+  updateConversationTitle as updateConversationTitleInDB 
+} from '../utils/conversationUtils';
 import { ConversationType } from '@/types/conversation';
 import { MessageType } from '@/components/ChatMessage';
 import { toast } from 'sonner';
 
-// Carregar mensagens
+// Carregar mensagens - improved with cleaner error handling
 export const loadMessages = async (
   conversationId: string,
   setLoading: (loading: boolean) => void,
@@ -31,12 +37,14 @@ export const loadMessages = async (
     if (error) {
       console.error('[conversationActions] Erro ao carregar mensagens:', error);
       setError(error);
+      // Still try to set empty messages array for clean UI
+      setMessages([]);
       return false;
     }
     
     if (data) {
       console.log(`[conversationActions] Definindo ${data.length} mensagens da conversa ${conversationId}`);
-      // Definir mensagens do banco de dados diretamente
+      // Definir mensagens do banco de dados
       setMessages(data as MessageType[]);
     } else {
       console.log(`[conversationActions] Nenhuma mensagem encontrada para a conversa ${conversationId}`);
@@ -49,13 +57,16 @@ export const loadMessages = async (
   } catch (err) {
     console.error('[conversationActions] Erro ao carregar mensagens:', err);
     setError(err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens');
+    // Ensure messages are cleared on error
+    clearMessages();
+    setMessages([]);
     return false;
   } finally {
     setLoading(false);
   }
 };
 
-// Criar uma nova conversa
+// Criar uma nova conversa - improved with better error handling
 export const createNewConversation = async (
   setLoading: (loading: boolean) => void,
   addConversation: (conversation: any) => void,
@@ -186,7 +197,7 @@ export const renameConversation = async (
   }
 };
 
-// Lidar com atualização de título da conversa
+// Lidar com atualização de título da conversa - improved with better validation
 export const handleTitleUpdate = async (
   conversations: ConversationType[],
   updateConversationTitle: (id: string, newTitle: string) => void,
@@ -194,7 +205,7 @@ export const handleTitleUpdate = async (
   content: string
 ): Promise<boolean> => {
   try {
-    if (!conversationId || !content.trim()) {
+    if (!conversationId || !content || content.trim() === '') {
       console.warn('[conversationActions] ID de conversa ou conteúdo inválido para atualização de título');
       return false;
     }

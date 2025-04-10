@@ -8,9 +8,10 @@ import { ChatMode } from '@/components/ModeSelector';
 export function useConversationMessages() {
   const [messages, setMessages] = useState<MessageType[]>([]);
 
-  // Clear messages
+  // Clear messages - Improved for reliability
   const clearMessages = useCallback(() => {
     console.log('[useConversationMessages] Clearing all messages');
+    // Force empty array to ensure complete reset
     setMessages([]);
   }, []);
 
@@ -30,12 +31,14 @@ export function useConversationMessages() {
       files
     };
     
+    // Use functional update to ensure correct state update
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     return userMessageId;
   };
 
   // Add an assistant message
   const addAssistantMessage = (message: MessageType) => {
+    // Use functional update to ensure correct state update
     setMessages((prevMessages) => [...prevMessages, message]);
   };
 
@@ -51,6 +54,7 @@ export function useConversationMessages() {
       error: true
     };
     
+    // Use functional update to ensure correct state update
     setMessages((prevMessages) => [...prevMessages, errorMessage]);
     return errorMessage;
   };

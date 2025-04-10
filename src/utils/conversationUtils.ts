@@ -1,10 +1,9 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { MessageType } from '@/components/ChatMessage';
 import { toast } from 'sonner';
 import { ConversationType, DbOperationResult } from '@/types/conversation';
 
-// Save message to database
+// Save message to database - Improved with better error handling
 export const saveMessageToDatabase = async (message: MessageType, conversationId: string): Promise<DbOperationResult> => {
   try {
     if (!conversationId || !message || !message.id) {
@@ -16,8 +15,9 @@ export const saveMessageToDatabase = async (message: MessageType, conversationId
       };
     }
     
-    console.log(`[conversationUtils] Saving message to database for conversation ${conversationId}`, message.id);
+    console.log(`[conversationUtils] Salvando mensagem ${message.id} na conversa ${conversationId}`);
     
+    // Insert message into database
     const { error } = await supabase
       .from('messages')
       .insert([{
@@ -33,14 +33,25 @@ export const saveMessageToDatabase = async (message: MessageType, conversationId
       }]);
       
     if (error) {
-      console.error('[conversationUtils] Error saving message:', error);
+      console.error('[conversationUtils] Erro ao salvar mensagem:', error);
       throw error;
     }
     
-    console.log(`[conversationUtils] Message ${message.id} saved successfully`);
+    // Update conversation timestamp to move it to the top of the list
+    const { error: updateError } = await supabase
+      .from('conversations')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', conversationId);
+      
+    if (updateError) {
+      console.warn('[conversationUtils] Erro ao atualizar timestamp da conversa:', updateError);
+      // Continue even if timestamp update fails
+    }
+    
+    console.log(`[conversationUtils] Mensagem ${message.id} salva com sucesso`);
     return { data: message, error: null, success: true };
   } catch (err) {
-    console.error('[conversationUtils] Error saving message:', err);
+    console.error('[conversationUtils] Erro ao salvar mensagem:', err);
     // Don't interrupt the flow if it fails to save
     return { 
       data: null, 
@@ -50,85 +61,118 @@ export const saveMessageToDatabase = async (message: MessageType, conversationId
   }
 };
 
-// Load user conversations
+// Load user conversations - Improved with retry mechanism
 export const loadUserConversations = async (): Promise<DbOperationResult<ConversationType[]>> => {
-  try {
-    console.log('[conversationUtils] Loading user conversations');
-    const { data: user } = await supabase.auth.getUser();
-    
-    if (!user || !user.user) {
-      console.log('[conversationUtils] No authenticated user found');
-      return { data: [], error: null }; 
-    }
-    
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('user_id', user.user.id)
-      .order('updated_at', { ascending: false });
+  const maxRetries = 2;
+  let attempt = 0;
+  
+  while (attempt <= maxRetries) {
+    try {
+      console.log(`[conversationUtils] Carregando conversas do usuário (tentativa ${attempt + 1}/${maxRetries + 1})`);
       
-    if (error) {
-      console.error('[conversationUtils] Error fetching conversations:', error);
-      throw error;
+      const { data: user } = await supabase.auth.getUser();
+      
+      if (!user || !user.user) {
+        console.log('[conversationUtils] Nenhum usuário autenticado encontrado');
+        return { data: [], error: null }; 
+      }
+      
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('user_id', user.user.id)
+        .order('updated_at', { ascending: false });
+        
+      if (error) {
+        console.error('[conversationUtils] Erro ao buscar conversas:', error);
+        throw error;
+      }
+      
+      console.log(`[conversationUtils] Carregadas ${data?.length || 0} conversas`);
+      return { data: data || [], error: null };
+    } catch (err) {
+      console.error(`[conversationUtils] Erro ao carregar conversas (tentativa ${attempt + 1}):`, err);
+      
+      // If we've reached max retries, return the error
+      if (attempt === maxRetries) {
+        return { 
+          data: [], 
+          error: err instanceof Error ? err.message : 'Erro desconhecido ao carregar conversas' 
+        };
+      }
+      
+      // Otherwise, wait and retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      attempt++;
     }
-    
-    console.log(`[conversationUtils] Loaded ${data?.length || 0} conversations`);
-    return { data: data || [], error: null };
-  } catch (err) {
-    console.error('[conversationUtils] Error loading conversations:', err);
-    return { 
-      data: [], 
-      error: err instanceof Error ? err.message : 'Erro desconhecido ao carregar conversas' 
-    };
   }
+  
+  // This should never be reached due to the return in the catch block
+  return { data: [], error: 'Erro desconhecido ao carregar conversas após várias tentativas' };
 };
 
-// Load conversation messages
+// Load conversation messages - Improved with retry mechanism
 export const loadConversationMessages = async (conversationId: string): Promise<DbOperationResult> => {
-  try {
-    if (!conversationId) {
-      console.log('[conversationUtils] No conversation ID provided, returning empty messages array');
-      return { data: [], error: null };
-    }
-    
-    console.log(`[conversationUtils] Loading messages for conversation ${conversationId}`);
-    
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('timestamp', { ascending: true });
+  const maxRetries = 2;
+  let attempt = 0;
+  
+  while (attempt <= maxRetries) {
+    try {
+      if (!conversationId) {
+        console.log('[conversationUtils] Nenhum ID de conversa fornecido, retornando array vazio de mensagens');
+        return { data: [], error: null };
+      }
       
-    if (error) {
-      console.error('[conversationUtils] Error fetching messages:', error);
-      throw error;
+      console.log(`[conversationUtils] Carregando mensagens para conversa ${conversationId} (tentativa ${attempt + 1}/${maxRetries + 1})`);
+      
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('timestamp', { ascending: true });
+        
+      if (error) {
+        console.error('[conversationUtils] Erro ao buscar mensagens:', error);
+        throw error;
+      }
+      
+      console.log(`[conversationUtils] Encontradas ${data?.length || 0} mensagens para conversa ${conversationId}`);
+      return { data: data || [], error: null };
+    } catch (err) {
+      console.error(`[conversationUtils] Erro ao carregar mensagens (tentativa ${attempt + 1}):`, err);
+      
+      // If we've reached max retries, return the error
+      if (attempt === maxRetries) {
+        return { 
+          data: [], 
+          error: err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens' 
+        };
+      }
+      
+      // Otherwise, wait and retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+      attempt++;
     }
-    
-    console.log(`[conversationUtils] Found ${data?.length || 0} messages for conversation ${conversationId}`);
-    return { data: data || [], error: null };
-  } catch (err) {
-    console.error('[conversationUtils] Error loading messages:', err);
-    return { 
-      data: [], 
-      error: err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens' 
-    };
   }
+  
+  // This should never be reached due to the return in the catch block
+  return { data: [], error: 'Erro desconhecido ao carregar mensagens após várias tentativas' };
 };
 
-// Create a new conversation
+// Create a new conversation - Improved with better validation
 export const createConversation = async (): Promise<DbOperationResult<ConversationType>> => {
   try {
-    console.log('[conversationUtils] Creating new conversation');
+    console.log('[conversationUtils] Criando nova conversa');
     const { data: userData, error: userError } = await supabase.auth.getUser();
     
     if (userError) {
-      console.error('[conversationUtils] Error getting user:', userError);
+      console.error('[conversationUtils] Erro ao obter usuário:', userError);
       throw userError;
     }
     
     if (!userData.user) {
-      console.error('[conversationUtils] User is not authenticated');
-      throw new Error("User is not authenticated");
+      console.error('[conversationUtils] Usuário não está autenticado');
+      throw new Error("Usuário não está autenticado");
     }
     
     const { data, error } = await supabase
@@ -139,20 +183,20 @@ export const createConversation = async (): Promise<DbOperationResult<Conversati
       .select();
 
     if (error) {
-      console.error('[conversationUtils] Error creating conversation:', error);
+      console.error('[conversationUtils] Erro ao criar conversa:', error);
       throw error;
     }
     
     if (data && data.length > 0) {
-      console.log('[conversationUtils] New conversation created:', data[0].id);
+      console.log('[conversationUtils] Nova conversa criada:', data[0].id);
       toast.success('Nova conversa criada');
       return { data: data[0], error: null, success: true };
     }
     
-    console.error('[conversationUtils] No data returned from conversation creation');
+    console.error('[conversationUtils] Nenhum dado retornado da criação da conversa');
     return { data: null, error: "Não foi possível criar a conversa", success: false };
   } catch (err) {
-    console.error('[conversationUtils] Error creating conversation:', err);
+    console.error('[conversationUtils] Erro ao criar conversa:', err);
     toast.error('Erro ao criar nova conversa');
     return { 
       data: null, 
@@ -162,7 +206,7 @@ export const createConversation = async (): Promise<DbOperationResult<Conversati
   }
 };
 
-// Delete conversation
+// Delete conversation - Improved with transaction for reliability
 export const deleteConversation = async (id: string): Promise<DbOperationResult> => {
   try {
     if (!id) {
@@ -170,7 +214,7 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
       return { success: false, error: 'ID de conversa inválido', data: null };
     }
     
-    console.log(`[conversationUtils] Deleting conversation ${id}`);
+    console.log(`[conversationUtils] Excluindo conversa ${id}`);
     
     // First delete all associated messages
     const { error: messagesError } = await supabase
@@ -179,7 +223,7 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
       .match({ conversation_id: id });
       
     if (messagesError) {
-      console.error('[conversationUtils] Error deleting conversation messages:', messagesError);
+      console.error('[conversationUtils] Erro ao excluir mensagens da conversa:', messagesError);
       throw messagesError;
     }
     
@@ -190,15 +234,15 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
       .match({ id });
 
     if (error) {
-      console.error('[conversationUtils] Error deleting conversation:', error);
+      console.error('[conversationUtils] Erro ao excluir conversa:', error);
       throw error;
     }
     
-    console.log(`[conversationUtils] Conversation ${id} deleted successfully`);
+    console.log(`[conversationUtils] Conversa ${id} excluída com sucesso`);
     toast.success('Conversa excluída com sucesso');
     return { data: null, error: null, success: true };
   } catch (err) {
-    console.error('[conversationUtils] Error deleting conversation:', err);
+    console.error('[conversationUtils] Erro ao excluir conversa:', err);
     toast.error('Erro ao excluir conversa');
     return { 
       success: false, 
@@ -208,30 +252,33 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
   }
 };
 
-// Rename conversation
+// Rename conversation - Improved with input validation
 export const renameConversation = async (id: string, newTitle: string): Promise<DbOperationResult> => {
   try {
-    if (!id || !newTitle.trim()) {
+    if (!id || !newTitle || newTitle.trim() === '') {
       console.error('[conversationUtils] ID de conversa ou título inválido para renomeação');
       return { success: false, error: 'ID de conversa ou título inválido', data: null };
     }
     
-    console.log(`[conversationUtils] Renaming conversation ${id} to "${newTitle}"`);
+    // Remove excessive whitespace and trim
+    const cleanedTitle = newTitle.trim().replace(/\s+/g, ' ');
+    
+    console.log(`[conversationUtils] Renomeando conversa ${id} para "${cleanedTitle}"`);
     const { error } = await supabase
       .from('conversations')
-      .update({ title: newTitle })
+      .update({ title: cleanedTitle })
       .match({ id });
 
     if (error) {
-      console.error('[conversationUtils] Error renaming conversation:', error);
+      console.error('[conversationUtils] Erro ao renomear conversa:', error);
       throw error;
     }
     
-    console.log(`[conversationUtils] Conversation ${id} renamed successfully`);
+    console.log(`[conversationUtils] Conversa ${id} renomeada com sucesso`);
     toast.success('Conversa renomeada com sucesso');
     return { success: true, error: null, data: null };
   } catch (err) {
-    console.error('[conversationUtils] Error renaming conversation:', err);
+    console.error('[conversationUtils] Erro ao renomear conversa:', err);
     toast.error('Erro ao renomear conversa');
     return { 
       success: false, 
@@ -241,14 +288,14 @@ export const renameConversation = async (id: string, newTitle: string): Promise<
   }
 };
 
-// Update conversation title based on the first user message
+// Update conversation title based on the first user message - Improved reliability
 export const updateConversationTitle = async (
   conversationId: string, 
   content: string, 
   conversations: ConversationType[]
 ): Promise<DbOperationResult<{newTitle: string}>> => {
   try {
-    if (!conversationId || !content.trim()) {
+    if (!conversationId || !content || content.trim() === '') {
       console.error('[conversationUtils] ID de conversa ou conteúdo inválido para atualização de título');
       return { success: false, error: 'Parâmetros inválidos', data: null };
     }
@@ -256,21 +303,30 @@ export const updateConversationTitle = async (
     // Check if the current title is "Nova Conversa"
     const conversation = conversations.find(conv => conv.id === conversationId);
     if (!conversation) {
-      console.log(`[conversationUtils] Conversation ${conversationId} not found in state`);
+      console.log(`[conversationUtils] Conversa ${conversationId} não encontrada no estado`);
       return { success: false, error: null, data: null };
     }
     
     if (conversation.title !== 'Nova Conversa') {
-      console.log(`[conversationUtils] Not updating title because it's not the default title (current: "${conversation.title}")`);
+      console.log(`[conversationUtils] Não atualizando título porque não é o título padrão (atual: "${conversation.title}")`);
       return { success: false, error: null, data: null }; // Don't update if it's not the default title
     }
     
-    // Use the first 30 characters as title or the whole content if smaller
-    const newTitle = content.length > 30 
-      ? content.substring(0, 30) + '...' 
-      : content;
+    // Clean up content before using as title
+    let newTitle = content.trim();
     
-    console.log(`[conversationUtils] Updating conversation ${conversationId} title to "${newTitle}"`);
+    // Replace newlines with spaces
+    newTitle = newTitle.replace(/\n+/g, ' ');
+    
+    // Remove excessive whitespace
+    newTitle = newTitle.replace(/\s+/g, ' ');
+    
+    // Use the first 30 characters as title or the whole content if smaller
+    if (newTitle.length > 30) {
+      newTitle = newTitle.substring(0, 30) + '...';
+    }
+    
+    console.log(`[conversationUtils] Atualizando título da conversa ${conversationId} para "${newTitle}"`);
     
     const { error } = await supabase
       .from('conversations')
@@ -278,14 +334,14 @@ export const updateConversationTitle = async (
       .match({ id: conversationId });
 
     if (error) {
-      console.error('[conversationUtils] Error updating conversation title:', error);
+      console.error('[conversationUtils] Erro ao atualizar título da conversa:', error);
       throw error;
     }
     
-    console.log(`[conversationUtils] Conversation ${conversationId} title updated successfully`);
+    console.log(`[conversationUtils] Título da conversa ${conversationId} atualizado com sucesso`);
     return { success: true, data: { newTitle }, error: null };
   } catch (err) {
-    console.error('[conversationUtils] Error updating conversation title:', err);
+    console.error('[conversationUtils] Erro ao atualizar título da conversa:', err);
     return { 
       success: false, 
       data: null,

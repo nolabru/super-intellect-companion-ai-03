@@ -31,38 +31,50 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   
   const { user } = useAuth();
 
-  // Função para criar uma nova conversa
+  // Função para criar uma nova conversa - Improved for reliability
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Criando nova conversa');
     
-    // Limpar mensagens imediatamente para feedback visual
+    // Feedback visual imediato - limpar mensagens
     clearMessages();
     
-    // Desativar o ID da conversa atual temporariamente
+    // Desselecionar conversa atual para feedback visual
     setCurrentConversationId(null);
     
-    // Criar nova conversa
-    const success = await createNewConversation();
-    
-    if (!success) {
-      toast.error('Não foi possível criar uma nova conversa');
+    // Criar nova conversa com tratamento de erro
+    try {
+      const success = await createNewConversation();
+      if (!success) {
+        toast.error('Não foi possível criar uma nova conversa');
+      }
+    } catch (error) {
+      console.error('[ConversationSidebar] Erro ao criar nova conversa:', error);
+      toast.error('Ocorreu um erro ao criar nova conversa');
     }
   };
 
-  // Função para selecionar uma conversa existente
+  // Função para selecionar uma conversa existente - Improved for reliability
   const handleSelectConversation = (conversationId: string) => {
+    if (!conversationId) {
+      console.error('[ConversationSidebar] ID de conversa inválido');
+      return;
+    }
+    
     console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
     
     if (currentConversationId === conversationId) {
       console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
+      // Limpar mensagens para feedback visual antes do recarregamento
+      clearMessages();
+      // Força recarregar as mensagens da conversa atual
       forceReloadMessages();
       return;
     }
     
-    // Limpar mensagens antes de mudar a conversa para feedback visual imediato
+    // Limpar mensagens imediatamente para feedback visual
     clearMessages();
     
-    // Atualizar o ID da conversa atual
+    // Atualizar conversa selecionada
     setCurrentConversationId(conversationId);
   };
 
