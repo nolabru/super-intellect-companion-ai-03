@@ -24,7 +24,7 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
       return;
     }
     
-    // Chamar o handler de nova conversa e limpar mensagens imediatamente
+    // Chamar o handler de nova conversa
     onNewConversation();
   };
   

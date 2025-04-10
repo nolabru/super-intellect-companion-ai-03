@@ -32,25 +32,21 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const { user } = useAuth();
 
   // Função para criar uma nova conversa
-  const handleNewConversation = () => {
+  const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Criando nova conversa');
     
     // Limpar mensagens imediatamente para feedback visual
     clearMessages();
     
-    // Desativar o ID da conversa atual temporariamente para forçar uma atualização completa
+    // Desativar o ID da conversa atual temporariamente
     setCurrentConversationId(null);
     
-    createNewConversation()
-      .then(success => {
-        if (!success) {
-          toast.error('Não foi possível criar uma nova conversa');
-        }
-      })
-      .catch(err => {
-        console.error('[ConversationSidebar] Erro ao criar conversa:', err);
-        toast.error('Erro ao criar nova conversa');
-      });
+    // Criar nova conversa
+    const success = await createNewConversation();
+    
+    if (!success) {
+      toast.error('Não foi possível criar uma nova conversa');
+    }
   };
 
   // Função para selecionar uma conversa existente
@@ -58,8 +54,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
     
     if (currentConversationId === conversationId) {
-      console.log(`[ConversationSidebar] Conversa ${conversationId} já está selecionada`);
-      forceReloadMessages(); // Forçar recarregamento mesmo se for a mesma conversa
+      console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
+      forceReloadMessages();
       return;
     }
     

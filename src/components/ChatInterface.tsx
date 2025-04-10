@@ -76,12 +76,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
   
-  const hasVideoLoadingMessage = filteredMessages.some(msg => 
-    msg.id?.startsWith('loading-') && 
-    msg.mode === 'video' && 
-    msg.model === model
-  );
-  
   const hasErrorMessage = filteredMessages.some(msg => 
     msg.error && 
     msg.model === model
