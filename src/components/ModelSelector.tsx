@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   DropdownMenu,
@@ -12,7 +13,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
@@ -302,7 +303,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
                 {getProviderIcon(selectedModelInfo.provider)}
               </span>
             )}
-            <span className="font-medium">{selectedModelInfo?.displayName || selectedModel}</span>
+            <span className="font-medium">{selectedModelInfo?.displayName || 'Selecionar Modelo'}</span>
           </span>
           <ChevronDown className="h-4 w-4 opacity-70" />
         </button>
@@ -322,40 +323,51 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
           if (modelsForProvider.length === 0) return null;
           
           return (
-            <DropdownMenuGroup key={provider}>
-              <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2 text-sm text-white/80">
+            <DropdownMenuSub key={provider}>
+              <DropdownMenuSubTrigger className="flex items-center gap-2 px-3 py-2 text-sm text-white hover:bg-white/5 rounded-lg mx-1 my-0.5">
                 <span className="text-sm">{getProviderIcon(provider)}</span>
                 <span>{getProviderDisplayName(provider)}</span>
-              </DropdownMenuLabel>
-              
-              {modelsForProvider.map(model => (
-                <DropdownMenuItem 
-                  key={model.id}
-                  className={`gap-2 px-3 py-2 flex flex-col items-start rounded-lg mx-1 my-0.5 cursor-pointer
-                             ${selectedModel === model.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
-                  onClick={() => onChange(model.id)}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent 
+                  className="bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1 min-w-[250px]"
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="font-medium text-white">{model.displayName}</span>
-                    {model.modes.map(modelMode => (
-                      <span 
-                        key={modelMode} 
-                        className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/70"
-                      >
-                        {modelMode}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-xs text-white/60 w-full">
-                    {model.description}
-                  </p>
-                </DropdownMenuItem>
-              ))}
-              
-              <DropdownMenuSeparator className="bg-white/10 my-1" />
-            </DropdownMenuGroup>
+                  {modelsForProvider.map(model => (
+                    <DropdownMenuItem 
+                      key={model.id}
+                      className={`gap-2 px-3 py-2 flex flex-col items-start rounded-lg mx-1 my-0.5 cursor-pointer
+                                ${selectedModel === model.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                      onClick={() => onChange(model.id)}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-medium text-white">{model.displayName}</span>
+                        {model.modes.map(modelMode => (
+                          <span 
+                            key={modelMode} 
+                            className="text-xs px-1.5 py-0.5 rounded bg-white/10 text-white/70"
+                          >
+                            {modelMode}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs text-white/60 w-full">
+                        {model.description}
+                      </p>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
           );
         })}
+        
+        {/* Opção "Mais modelos" como no exemplo */}
+        <DropdownMenuItem 
+          className="flex items-center justify-between gap-2 px-3 py-2 mt-1 text-sm text-white hover:bg-white/5 rounded-lg mx-1 my-0.5 cursor-pointer"
+        >
+          <span className="font-medium">Mais modelos</span>
+          <ChevronRight className="h-4 w-4 opacity-70" />
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
