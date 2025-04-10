@@ -26,10 +26,27 @@ const FilePreview: React.FC<FilePreviewProps> = ({
           className="relative rounded-md overflow-hidden h-20 w-20 border border-inventu-gray/30"
         >
           {mode === 'image' && (
-            <img src={url} alt="Preview" className="h-full w-full object-cover" />
+            <img 
+              src={url} 
+              alt="Preview" 
+              className="h-full w-full object-cover" 
+              onError={(e) => {
+                console.error("Error loading image preview:", url);
+                (e.target as HTMLImageElement).src = '/placeholder.svg';
+              }}
+            />
           )}
           {mode === 'video' && (
-            <video src={url} className="h-full w-full object-cover" controls={false} />
+            <video 
+              src={url} 
+              className="h-full w-full object-cover" 
+              controls={false}
+              onError={(e) => {
+                console.error("Error loading video preview:", url);
+                const videoEl = e.target as HTMLVideoElement;
+                videoEl.poster = '/placeholder.svg';
+              }}
+            />
           )}
           {mode === 'audio' && (
             <div className="flex items-center justify-center h-full w-full bg-inventu-darker">

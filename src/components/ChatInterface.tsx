@@ -2,11 +2,11 @@
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
-import { AVAILABLE_MODELS } from './ModelSelector';
+import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
+import ModelSelector from './ModelSelector';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -55,13 +55,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     (msg.id?.startsWith('loading-') && msg.model === model)
   );
   
+  const getModelInfo = (modelId: string) => {
+    return AVAILABLE_MODELS.find(m => m.id === modelId);
+  };
+
   const getModelDisplayName = (modelId: string) => {
-    const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
+    const modelInfo = getModelInfo(modelId);
     return modelInfo?.displayName || modelId;
   };
 
   const getModelColor = (modelId: string) => {
-    const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
+    const modelInfo = getModelInfo(modelId);
     if (!modelInfo) return "text-inventu-blue";
     
     switch (modelInfo.provider) {
@@ -135,27 +139,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     );
   };
   
+  const modelInfo = getModelInfo(model);
+  const providerName = modelInfo ? getProviderDisplayName(modelInfo.provider) : "";
+  
   return (
     <div className={cn("flex flex-col h-full", className)}>
       <div className={cn(
-        "p-2 text-center flex justify-center items-center",
+        "p-2 text-center flex justify-center items-center gap-2",
         getModelColor(model)
       )}>
-        <Select value={model} onValueChange={onModelChange || (() => {})}>
-          <SelectTrigger className="w-48 bg-inventu-card text-white border-inventu-gray/30 font-bold">
-            <SelectValue placeholder={getModelDisplayName(model)} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableModels.map(modelOption => {
-              const displayName = getModelDisplayName(modelOption);
-              return (
-                <SelectItem key={modelOption} value={modelOption}>
-                  {displayName}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
+        {onModelChange && availableModels.length > 0 ? (
+          <div className="w-full max-w-sm">
+            <ModelSelector 
+              mode={modelInfo?.modes[0] || 'text'} 
+              selectedModel={model} 
+              onChange={onModelChange || (() => {})} 
+              disabled={!onModelChange}
+            />
+          </div>
+        ) : (
+          <div className="font-bold">
+            {getModelDisplayName(model)}
+            {providerName && <span className="ml-1 text-xs opacity-75">({providerName})</span>}
+          </div>
+        )}
       </div>
       
       <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
