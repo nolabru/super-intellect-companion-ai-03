@@ -3,6 +3,7 @@ import React from 'react';
 import { PlusCircle, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarNavigation from './SidebarNavigation';
+import { useConversation } from '@/hooks/useConversation';
 
 interface SidebarHeaderProps {
   onNewConversation: () => void;
@@ -15,12 +16,23 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   onToggleSidebar,
   isUserLoggedIn
 }) => {
+  const { clearMessages, setMessages } = useConversation();
+  
+  const handleNewConversation = () => {
+    // Limpar mensagens imediatamente para feedback visual
+    clearMessages();
+    setMessages([]);
+    
+    // Chamar o handler de nova conversa
+    onNewConversation();
+  };
+  
   return (
     <div className="p-4 border-b border-inventu-gray/30">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <Button 
-            onClick={onNewConversation}
+            onClick={handleNewConversation}
             className="flex-1 bg-inventu-blue hover:bg-inventu-blue/80 text-white"
             disabled={!isUserLoggedIn}
           >

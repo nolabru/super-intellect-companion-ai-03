@@ -10,6 +10,7 @@ import {
   handleTitleUpdate
 } from './conversationActions';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export function useConversation() {
   const conversationState = useConversationState();
@@ -60,20 +61,31 @@ export function useConversation() {
 
   // Improved loading messages when conversation changes
   useEffect(() => {
+    if (!currentConversationId) {
+      // If no conversation is selected, clear messages
+      console.log('[useConversation] No conversation selected, clearing messages');
+      clearMessages();
+      setMessages([]);
+      lastLoadedConversationRef.current = null;
+      setInitialLoadDone(false);
+      return;
+    }
+    
     // Only proceed if we have a valid conversation ID that's different from the last loaded one
-    if (currentConversationId && 
-        !loadingRef.current && 
+    if (!loadingRef.current && 
         (currentConversationId !== lastLoadedConversationRef.current || !initialLoadDone)) {
-      console.log(`[useConversation] Current conversation changed to ${currentConversationId}, loading messages`);
       
-      // Update the last loaded conversation reference
-      lastLoadedConversationRef.current = currentConversationId;
+      console.log(`[useConversation] Loading conversation: ${currentConversationId}`);
+      
+      // Force clear messages before loading new ones for visual feedback
+      clearMessages();
+      setMessages([]); 
       
       // Set flag to prevent multiple calls
       loadingRef.current = true;
       
-      // Important: Clear messages BEFORE loading new ones
-      clearMessages();
+      // Update the last loaded conversation reference
+      lastLoadedConversationRef.current = currentConversationId;
       
       // Load messages for the selected conversation
       loadMessages(
@@ -85,6 +97,7 @@ export function useConversation() {
       )
       .then(() => {
         setInitialLoadDone(true);
+        console.log(`[useConversation] Finished loading conversation: ${currentConversationId}`);
       })
       .catch((err) => {
         console.error("[useConversation] Error loading messages:", err);
@@ -94,11 +107,6 @@ export function useConversation() {
         // Always reset loading flag when operation finishes
         loadingRef.current = false;
       });
-    } else if (!currentConversationId) {
-      console.log('[useConversation] No conversation selected, clearing messages');
-      clearMessages();
-      lastLoadedConversationRef.current = null;
-      setInitialLoadDone(false);
     }
   }, [currentConversationId, clearMessages, setMessages, setLoading, setError, initialLoadDone]);
 
@@ -107,10 +115,12 @@ export function useConversation() {
     console.log('[useConversation] Creating new conversation');
     
     try {
-      // Important: Forcefully clear messages TWICE - once before and once after
-      // This ensures the UI is immediately updated
+      // Force-clear messages immediately for visual feedback
       clearMessages();
-      setMessages([]); // Direct state update for immediate visual feedback
+      setMessages([]);
+      
+      // Set loading state
+      setLoading(true);
       
       // Create the new conversation
       const { success, data } = await createNewConversation(
@@ -125,24 +135,29 @@ export function useConversation() {
         
         // Force clear messages again after new conversation is created
         clearMessages();
-        setMessages([]); // Direct state update for immediate visual feedback
+        setMessages([]);
         
         // Reset tracking variables to force a refresh
         lastLoadedConversationRef.current = data.id;
         setInitialLoadDone(true);
         
-        // Explicitly set the current conversation ID
+        // Set the current conversation ID explicitly
         setCurrentConversationId(data.id);
         
+        toast.success('Nova conversa criada');
         return true;
       } else {
         console.error('[useConversation] Failed to create new conversation');
+        toast.error('Erro ao criar nova conversa');
         return false;
       }
     } catch (err) {
       console.error('[useConversation] Error creating new conversation:', err);
       setError(err instanceof Error ? err.message : 'Unknown error creating conversation');
+      toast.error('Erro ao criar nova conversa');
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -161,7 +176,7 @@ export function useConversation() {
         lastLoadedConversationRef.current = null;
         setInitialLoadDone(false);
         clearMessages();
-        setMessages([]); // Direct state update for immediate visual feedback
+        setMessages([]);
       }
       
       return result;

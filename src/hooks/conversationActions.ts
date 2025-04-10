@@ -2,6 +2,7 @@
 import { createConversation, deleteConversation as deleteConversationFromDB, renameConversation as renameConversationFromDB, loadConversationMessages, updateConversationTitle as updateConversationTitleInDB } from '../utils/conversationUtils';
 import { ConversationType } from '@/types/conversation';
 import { MessageType } from '@/components/ChatMessage';
+import { toast } from 'sonner';
 
 // Load messages
 export const loadMessages = async (
@@ -16,8 +17,8 @@ export const loadMessages = async (
     
     setLoading(true);
     
-    // We'll assume clearMessages has already been called by the parent function
-    // to avoid multiple clearing operations
+    // Limpar mensagens antes de carregar novas para um feedback visual imediato
+    clearMessages();
     
     const { data, error } = await loadConversationMessages(conversationId);
     
@@ -29,11 +30,11 @@ export const loadMessages = async (
     
     if (data) {
       console.log(`[conversationActions] Setting ${data.length} messages from conversation ${conversationId}`);
-      // Set messages from DB directly
+      // Definir mensagens do banco de dados diretamente
       setMessages(data as MessageType[]);
     } else {
       console.log(`[conversationActions] No messages found for conversation ${conversationId}`);
-      // Ensure messages are cleared if none found
+      // Garantir que as mensagens sejam limpas se não houver
       clearMessages();
       setMessages([]);
     }
@@ -59,33 +60,37 @@ export const createNewConversation = async (
     console.log('[conversationActions] Creating new conversation');
     setLoading(true);
     
-    // Clear messages at multiple points to ensure UI is updated
+    // Limpar mensagens em vários pontos para garantir que a interface do usuário seja atualizada
     clearMessages();
     
-    // Create the conversation in the database
+    // Criar a conversa no banco de dados
     const { data, error, success } = await createConversation();
     
     if (error) {
       console.error('[conversationActions] Error creating conversation:', error);
       setError(error);
+      toast.error('Erro ao criar nova conversa');
       return { success: false };
     }
     
     if (data) {
       console.log('[conversationActions] New conversation created:', data.id);
-      // Add the new conversation to the state
+      // Adicionar a nova conversa ao estado
       addConversation(data);
       
-      // Clear messages again after conversation is created for good measure
+      // Limpar mensagens novamente após a conversa ser criada
       clearMessages();
       
+      toast.success('Nova conversa criada');
       return { success: true, data };
     }
     
+    toast.error('Erro ao criar nova conversa');
     return { success: false };
   } catch (err) {
     console.error('[conversationActions] Error creating conversation:', err);
-    setError(err instanceof Error ? err.message : 'Unknown error creating conversation');
+    setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa');
+    toast.error('Erro ao criar nova conversa');
     return { success: false };
   } finally {
     setLoading(false);
@@ -109,15 +114,18 @@ export const deleteConversation = async (
     if (error || !success) {
       console.error('[conversationActions] Error deleting conversation:', error);
       setError(error || 'Erro desconhecido ao excluir conversa');
+      toast.error('Erro ao excluir conversa');
       return false;
     }
     
     console.log(`[conversationActions] Conversation ${id} deleted successfully`);
     removeConversation(id);
+    toast.success('Conversa excluída com sucesso');
     return true;
   } catch (err) {
     console.error('[conversationActions] Error deleting conversation:', err);
     setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
+    toast.error('Erro ao excluir conversa');
     return false;
   } finally {
     setLoading(false);
@@ -142,15 +150,18 @@ export const renameConversation = async (
     if (error || !success) {
       console.error('[conversationActions] Error renaming conversation:', error);
       setError(error || 'Erro desconhecido ao renomear conversa');
+      toast.error('Erro ao renomear conversa');
       return false;
     }
     
     console.log(`[conversationActions] Conversation ${id} renamed successfully`);
     updateConversationTitle(id, newTitle);
+    toast.success('Conversa renomeada com sucesso');
     return true;
   } catch (err) {
     console.error('[conversationActions] Error renaming conversation:', err);
     setError(err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa');
+    toast.error('Erro ao renomear conversa');
     return false;
   } finally {
     setLoading(false);

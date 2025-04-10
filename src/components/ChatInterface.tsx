@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +29,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
+  // Debugging logs
+  useEffect(() => {
+    console.log(`[ChatInterface] Received ${messages.length} messages for model ${model}`);
+    if (messages.length === 0) {
+      console.log('[ChatInterface] No messages to display');
+    }
+  }, [messages, model]);
+
   // Show all user messages and all assistant messages for the current model
   // Filter only loading messages for the current model
   const filteredMessages = messages.filter(msg => 

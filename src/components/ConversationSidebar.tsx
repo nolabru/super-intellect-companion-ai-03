@@ -6,6 +6,7 @@ import { useConversation } from '@/hooks/useConversation';
 import { useAuth } from '@/contexts/AuthContext';
 import SidebarHeader from './conversation/SidebarHeader';
 import ConversationList from './conversation/ConversationList';
+import { toast } from 'sonner';
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
@@ -26,40 +27,47 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     clearMessages,
     setMessages
   } = useConversation();
+  
   const { user } = useAuth();
 
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Creating new conversation from sidebar button');
     
+    // Immediately clear messages for visual feedback
     clearMessages();
     setMessages([]);
     
+    // Create a new conversation
     const success = await createNewConversation();
     
-    console.log(`[ConversationSidebar] New conversation created: ${success ? 'success' : 'failed'}`);
     if (!success) {
-      // This toast is handled in the createNewConversation function
+      toast.error('Não foi possível criar uma nova conversa');
     }
   };
 
   const handleSelectConversation = (conversationId: string) => {
-    console.log(`[ConversationSidebar] Selecting conversation from sidebar: ${conversationId}`);
+    console.log(`[ConversationSidebar] Selecting conversation: ${conversationId}`);
+    
     if (currentConversationId === conversationId) {
       console.log(`[ConversationSidebar] Conversation ${conversationId} is already selected`);
       return;
     }
     
+    // Immediately clear messages for visual feedback
     clearMessages();
     setMessages([]);
     
+    // Update the current conversation ID
     setCurrentConversationId(conversationId);
   };
 
+  // Debugging logs
   useEffect(() => {
     console.log(`[ConversationSidebar] Current conversation ID: ${currentConversationId}`);
     console.log(`[ConversationSidebar] Available conversations: ${conversations.map(c => c.id).join(', ')}`);
   }, [currentConversationId, conversations]);
 
+  // Collapsed sidebar view
   if (!isOpen && onToggleSidebar) {
     return (
       <div className="absolute left-0 top-24 z-10">
