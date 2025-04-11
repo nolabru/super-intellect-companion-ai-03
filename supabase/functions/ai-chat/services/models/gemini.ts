@@ -1,7 +1,7 @@
 
 // Service for Google Gemini AI models
 import { validateApiKey } from "../../utils/validation.ts";
-import { GoogleGenAI } from "npm:@google/genai@latest";
+import { GoogleGenerativeAI } from "npm:@google/genai@latest";
 
 // Validate API key for Google Gemini
 export function verifyApiKey() {
@@ -13,7 +13,7 @@ export function verifyApiKey() {
 // Initialize Google Genai instance
 const initializeGemini = () => {
   const apiKey = verifyApiKey();
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenerativeAI(apiKey);
 };
 
 // Generate text using Gemini models
@@ -27,9 +27,9 @@ export async function generateText(content: string, modelId: string): Promise<{c
     // Initialize the Google Genai client
     const genAI = initializeGemini();
     
-    console.log(`Enviando prompt para o modelo ${modelName}`);
+    console.log(`Enviando prompt para o modelo ${modelName}...`);
     
-    // Generate content using the generative language API
+    // Get the generative model
     const model = genAI.getGenerativeModel({ model: modelName });
     
     // Generate content
@@ -74,7 +74,7 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     
     console.log(`Enviando prompt e imagem para o modelo ${modelName}`);
     
-    // Create image part
+    // Create image part using the correct structure from the new SDK
     const imagePart = {
       inlineData: {
         data: imageBase64,
@@ -88,7 +88,7 @@ export async function processImage(content: string, imageUrl: string, modelId: s
       imagePart
     ];
     
-    // Generate content with image
+    // Generate content with image using the parts array format
     const result = await model.generateContent(parts);
     const response = result.response;
     const text = response.text();
@@ -117,16 +117,16 @@ async function blobToBase64(blob: Blob): Promise<string> {
 function getGeminiModelName(modelId: string): string {
   switch (modelId) {
     case 'gemini-pro':
-      return 'gemini-2.0-pro';
+      return 'gemini-1.5-pro';
     case 'gemini-flash':
-      return 'gemini-2.0-flash';
+      return 'gemini-1.5-flash';
     default:
-      return 'gemini-2.0-pro'; // Default to 2.0 Pro
+      return 'gemini-1.5-pro'; // Default to 1.5 Pro
   }
 }
 
 // Get vision-enabled model name
 function getGeminiVisionModel(modelId: string): string {
-  // Use Gemini 2.0 Pro Vision for image analysis
-  return 'gemini-2.0-pro-vision';
+  // Use Gemini 1.5 Pro Vision for image analysis
+  return 'gemini-1.5-pro-vision';
 }
