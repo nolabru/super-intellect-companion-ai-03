@@ -1,7 +1,6 @@
-
 // Service for Google Gemini AI models
 import { validateApiKey } from "../../utils/validation.ts";
-import { GoogleGenerativeAI } from "npm:@google/genai@latest";
+import { GoogleGenAI } from "npm:@google/genai@latest";
 
 // Validate API key for Google Gemini
 export function verifyApiKey() {
@@ -13,7 +12,7 @@ export function verifyApiKey() {
 // Initialize Google Genai instance
 const initializeGemini = () => {
   const apiKey = verifyApiKey();
-  return new GoogleGenerativeAI(apiKey);
+  return new GoogleGenAI({ apiKey });
 };
 
 // Generate text using Gemini models
@@ -29,15 +28,14 @@ export async function generateText(content: string, modelId: string): Promise<{c
     
     console.log(`Enviando prompt para o modelo ${modelName}...`);
     
-    // Get the generative model
-    const model = genAI.getGenerativeModel({ model: modelName });
+    // Generate content using the new API format
+    const response = await genAI.models.generateContent({
+      model: modelName,
+      contents: content,
+    });
     
-    // Generate content
-    const result = await model.generateContent(content);
-    
-    // Extract text from response
-    const response = result.response;
-    const text = response.text();
+    // Extract text from response using the new format
+    const text = response.text;
     
     console.log(`Resposta gerada com sucesso: ${text.substring(0, 100)}...`);
     
@@ -59,9 +57,6 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     // Initialize the Google Genai client
     const genAI = initializeGemini();
     
-    // Get the generative model
-    const model = genAI.getGenerativeModel({ model: modelName });
-    
     // Fetch the image data
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
@@ -74,7 +69,7 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     
     console.log(`Enviando prompt e imagem para o modelo ${modelName}`);
     
-    // Create image part using the correct structure from the new SDK
+    // Create image part with the new API format
     const imagePart = {
       inlineData: {
         data: imageBase64,
@@ -82,16 +77,17 @@ export async function processImage(content: string, imageUrl: string, modelId: s
       }
     };
     
-    // Create prompt parts with both text and image
-    const parts = [
-      { text: content },
-      imagePart
-    ];
+    // Using the new API format for multimodal content
+    const response = await genAI.models.generateContent({
+      model: modelName,
+      contents: [
+        { text: content },
+        imagePart
+      ]
+    });
     
-    // Generate content with image using the parts array format
-    const result = await model.generateContent(parts);
-    const response = result.response;
-    const text = response.text();
+    // Extract text from response using the new format
+    const text = response.text;
     
     console.log(`Resposta de análise de imagem gerada com sucesso: ${text.substring(0, 100)}...`);
     
@@ -117,16 +113,16 @@ async function blobToBase64(blob: Blob): Promise<string> {
 function getGeminiModelName(modelId: string): string {
   switch (modelId) {
     case 'gemini-pro':
-      return 'gemini-1.5-pro';
+      return 'gemini-2.0-pro';
     case 'gemini-flash':
-      return 'gemini-1.5-flash';
+      return 'gemini-2.0-flash';
     default:
-      return 'gemini-1.5-pro'; // Default to 1.5 Pro
+      return 'gemini-2.0-pro'; // Default to 2.0 Pro
   }
 }
 
 // Get vision-enabled model name
 function getGeminiVisionModel(modelId: string): string {
-  // Use Gemini 1.5 Pro Vision for image analysis
-  return 'gemini-1.5-pro-vision';
+  // Use Gemini 2.0 Pro Vision for image analysis
+  return 'gemini-2.0-pro-vision';
 }
