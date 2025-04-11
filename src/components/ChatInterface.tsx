@@ -1,12 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+
+import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
-import { Loader2, AlertTriangle, RefreshCw, ExternalLink, MessageSquare, ArrowDown } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
 import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import ModelSelector from './ModelSelector';
-import AnimatedTypingIndicator from './chat/AnimatedTypingIndicator';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -29,9 +29,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  
   useEffect(() => {
     console.log(`[ChatInterface] Recebeu ${messages.length} mensagens para o modelo ${model}`);
     if (messages.length === 0) {
@@ -39,35 +36,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages, model]);
 
-  const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = () => {
+  useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  };
-
-  useEffect(() => {
-    if (autoScroll && messagesEndRef.current) {
-      scrollToBottom();
-    }
-  }, [messages, autoScroll]);
-
-  useEffect(() => {
-    const chatContainer = chatContainerRef.current;
-    if (!chatContainer) return;
-
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = chatContainer;
-      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-      setAutoScroll(isAtBottom);
-      setShowScrollToBottom(!isAtBottom);
-    };
-
-    chatContainer.addEventListener('scroll', handleScroll);
-    return () => chatContainer.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [messages]);
 
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
@@ -165,7 +140,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   return (
     <div className={cn("flex flex-col h-full bg-inventu-darker shadow-md rounded-xl overflow-hidden", className)}>
       <div className={cn(
-        "p-3 backdrop-blur-sm bg-black/20 border-b border-white/5 flex justify-center items-center gap-2 transition-colors",
+        "p-3 backdrop-blur-sm bg-black/20 border-b border-white/5 flex justify-center items-center gap-2",
         getModelColor(model)
       )}>
         {onModelChange && availableModels.length > 0 ? (
@@ -178,17 +153,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             />
           </div>
         ) : (
-          <div className="font-medium text-white flex items-center">
-            <span className="mr-1">{getModelDisplayName(model)}</span>
-            {providerName && <span className="ml-1 text-xs opacity-75 bg-white/10 px-2 py-0.5 rounded-full">({providerName})</span>}
+          <div className="font-medium text-white">
+            {getModelDisplayName(model)}
+            {providerName && <span className="ml-1 text-xs opacity-75">({providerName})</span>}
           </div>
         )}
       </div>
       
-      <div 
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-5 space-y-5 relative scroll-smooth"
-      >
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 relative">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3 animate-fade-in">
             <Loader2 className="h-8 w-8 animate-spin text-white/70" />
@@ -205,7 +177,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             </div>
             
             {lumaGenId && (
-              <div className="p-4 bg-indigo-900/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl my-4 animate-fade-in shadow-lg hover:bg-indigo-900/20 transition-colors">
+              <div className="p-4 bg-indigo-900/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl my-4 animate-fade-in shadow-lg">
                 <div className="flex items-start">
                   <AlertTriangle className="h-5 w-5 text-indigo-400 mr-3 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -220,7 +192,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-indigo-500/30 transition-colors"
+                        className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-indigo-500/30"
                         onClick={openLumaDashboard}
                       >
                         <ExternalLink className="h-3 w-3" />
@@ -233,7 +205,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             )}
             
             {hasErrorMessage && errorMessage && (
-              <div className="p-4 bg-red-900/10 backdrop-blur-sm border border-red-500/20 rounded-xl my-4 animate-fade-in shadow-lg hover:bg-red-900/20 transition-colors">
+              <div className="p-4 bg-red-900/10 backdrop-blur-sm border border-red-500/20 rounded-xl my-4 animate-fade-in shadow-lg">
                 <div className="flex items-start">
                   <AlertTriangle className="h-5 w-5 text-red-400 mr-3 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -251,7 +223,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-red-500/30 transition-colors"
+                          className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-red-500/30"
                           onClick={showLumaKeyInstructions}
                         >
                           <RefreshCw className="h-3 w-3" />
@@ -269,20 +241,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         ) : (
           <div className="flex flex-col items-center justify-center h-full space-y-4 animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-xl">
-              <MessageSquare className="h-8 w-8 text-white opacity-80" />
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-8 w-8 text-white opacity-80" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={1.5} 
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" 
+                />
+              </svg>
             </div>
             <p className="text-gray-400 font-medium">Nenhuma mensagem ainda</p>
             <p className="text-gray-500 text-sm px-8 text-center">Inicie uma conversa enviando uma mensagem abaixo</p>
           </div>
-        )}
-
-        {showScrollToBottom && (
-          <button
-            className="absolute bottom-5 right-5 bg-inventu-blue/80 hover:bg-inventu-blue text-white rounded-full p-2 shadow-lg animate-fade-in transition-all hover:scale-110"
-            onClick={scrollToBottom}
-          >
-            <ArrowDown className="h-5 w-5" />
-          </button>
         )}
       </div>
     </div>

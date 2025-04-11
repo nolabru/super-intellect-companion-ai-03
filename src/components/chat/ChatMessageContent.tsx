@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { cn } from '@/lib/utils';
 
 interface ChatMessageContentProps {
   content: string;
@@ -21,21 +20,15 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   if (isLoading) {
     return (
       <div className="flex items-center">
-        <div className="relative mr-2">
-          <div className="flex space-x-1">
-            <div className="h-2 w-2 bg-inventu-blue/70 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="h-2 w-2 bg-inventu-blue/70 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="h-2 w-2 bg-inventu-blue/70 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-          </div>
-        </div>
-        <span className="text-gray-300">{content || 'Gerando resposta...'}</span>
+        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+        {content}
       </div>
     );
   }
   
   if (isError) {
     return (
-      <div className="flex flex-col animate-fade-in">
+      <div className="flex flex-col">
         <div className="text-red-400 font-medium mb-1 flex items-center">
           <AlertTriangle size={16} className="mr-1" /> Erro
         </div>
@@ -54,11 +47,11 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   
   // Use ReactMarkdown to render formatted content
   return (
-    <div className="markdown-content animate-fade-in">
+    <div className="markdown-content">
       <ReactMarkdown
         components={{
           // Custom component for paragraphs to preserve line breaks
-          p: ({ children }) => <p className="mb-2 transition-all duration-200 hover:text-white">{children}</p>,
+          p: ({ children }) => <p className="mb-2">{children}</p>,
           // Custom components for strong/bold text
           strong: ({ children }) => <span className="font-bold text-white">{children}</span>,
           // Custom component for headings
@@ -66,34 +59,18 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
           h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-1">{children}</h2>,
           h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-1">{children}</h3>,
           // Custom component for list items
-          li: ({ children }) => <li className="ml-4 mb-1 transition-all duration-200 hover:text-white">• {children}</li>,
+          li: ({ children }) => <li className="ml-4 mb-1">• {children}</li>,
           // Custom component for links
           a: ({ href, children }) => (
             <a 
               href={href}
               target="_blank" 
               rel="noopener noreferrer" 
-              className="text-inventu-blue underline hover:text-inventu-blue/80 transition-colors duration-200"
+              className="text-inventu-blue underline hover:text-inventu-blue/80"
             >
               {children}
-              <ExternalLink className="inline-block h-3 w-3 ml-1" />
             </a>
-          ),
-          // Custom component for code blocks
-          code: ({ node, className, children, ...props }) => {
-            const isInline = !className;
-            return (
-              <code 
-                className={cn(
-                  isInline ? "bg-black/40 border border-white/5 px-1.5 py-0.5 rounded text-xs font-mono" : "block p-3 bg-black/40 border border-white/5 rounded-xl overflow-x-auto mb-3 shadow-md",
-                  className
-                )} 
-                {...props}
-              >
-                {children}
-              </code>
-            );
-          },
+          )
         }}
         // Enable breaking lines on line breaks
         remarkPlugins={[remarkGfm]}
