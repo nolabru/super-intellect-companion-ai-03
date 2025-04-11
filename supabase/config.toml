@@ -93,3 +93,8 @@ detailed_errors = false
 port = 54327
 verify_jwt = true
 timeout_seconds = 600
+
+[experimental.functions.media-storage]
+port = 54328
+verify_jwt = true
+timeout_seconds = 300

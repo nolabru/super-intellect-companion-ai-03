@@ -1,8 +1,10 @@
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
+
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
+
 export interface ModelInfo {
   id: string;
   displayName: string;
@@ -11,6 +13,7 @@ export interface ModelInfo {
   description: string;
   modes: ModelMode[];
 }
+
 export const AVAILABLE_MODELS: ModelInfo[] = [
 // OpenAI Models
 {
@@ -75,10 +78,17 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
 // Google Models
 {
   id: 'gemini-pro',
-  displayName: 'Gemini Pro',
+  displayName: 'Gemini 1.5 Pro',
   provider: 'google',
-  capabilities: ['Multimodal', 'Conhecimento amplo'],
-  description: 'Modelo multimodal avançado do Google.',
+  capabilities: ['Compreensão multimodal', 'Raciocínio avançado'],
+  description: 'Modelo avançado do Google com excelente entendimento contextual.',
+  modes: ['text']
+}, {
+  id: 'gemini-flash',
+  displayName: 'Gemini 1.5 Flash',
+  provider: 'google',
+  capabilities: ['Respostas rápidas', 'Eficiência'],
+  description: 'Versão mais rápida e leve do Gemini, ideal para uso frequente.',
   modes: ['text']
 }, {
   id: 'gemini-vision',
@@ -156,13 +166,16 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   description: 'Modelo de código aberto para geração de imagens de alta qualidade.',
   modes: ['image']
 }];
+
 export const getModelsByMode = (mode: ModelMode): ModelInfo[] => {
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
 };
+
 export const canModelGenerateImages = (modelId: string): boolean => {
   const model = AVAILABLE_MODELS.find(m => m.id === modelId);
   return !!(model && model.modes.includes('image'));
 };
+
 interface ModelSelectorProps {
   selectedModel: string;
   onChange: (model: string) => void;
@@ -170,6 +183,7 @@ interface ModelSelectorProps {
   disabled?: boolean;
   className?: string;
 }
+
 const getProviderDisplayName = (provider: ModelProvider): string => {
   switch (provider) {
     case 'openai':
@@ -194,7 +208,9 @@ const getProviderDisplayName = (provider: ModelProvider): string => {
       return provider;
   }
 };
+
 export { getProviderDisplayName };
+
 const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModel,
   onChange,
@@ -296,4 +312,5 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       </DropdownMenuContent>
     </DropdownMenu>;
 };
+
 export default ModelSelector;

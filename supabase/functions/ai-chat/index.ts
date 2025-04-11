@@ -9,6 +9,7 @@ import * as mockService from "./services/models/mock.ts";
 import * as openaiService from "./services/models/openai.ts";
 import * as anthropicService from "./services/models/anthropic.ts";
 import * as elevenlabsService from "./services/models/elevenlabs.ts";
+import * as geminiService from "./services/models/gemini.ts";
 
 // Define response type
 interface ResponseData {
@@ -97,6 +98,25 @@ async function handleAIChat(req: Request): Promise<Response> {
             JSON.stringify({
               content: error.message,
               error: "ELEVENLABS_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
+      }
+      
+      // Verificação para Google Gemini
+      if (modelId.includes("gemini")) {
+        try {
+          // Verificar a chave API do Gemini antes de prosseguir
+          geminiService.verifyApiKey();
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "GEMINI_API_KEY não configurada",
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -203,6 +223,19 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
+      // Google Gemini models
+      else if (modelId.includes("gemini") && mode === "text") {
+        console.log("Iniciando processamento de texto com Google Gemini");
+        response = await geminiService.generateText(content, modelId);
+        console.log("Processamento de texto concluído com sucesso");
+      }
+      else if (modelId.includes("gemini") && mode === "image" && files && files.length > 0) {
+        console.log("Iniciando processamento de análise de imagem com Google Gemini Vision");
+        const imageUrl = files[0];
+        response = await geminiService.processImage(content, imageUrl, modelId);
+        console.log("Análise de imagem concluída com sucesso");
+      }
+      
       // ElevenLabs models
       else if (modelId === "eleven-labs" && mode === "audio") {
         console.log("Iniciando geração de áudio com ElevenLabs");
@@ -283,6 +316,12 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do ElevenLabs não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
           friendlyError = `Erro na geração de áudio com ElevenLabs: ${errorMessage}`;
+        }
+      } else if (modelId.includes("gemini")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("authenticate")) {
+          friendlyError = "Erro de configuração: A chave API do Google Gemini não está configurada corretamente. Por favor, verifique suas configurações.";
+        } else {
+          friendlyError = `Erro na geração com Google Gemini: ${errorMessage}`;
         }
       }
       
