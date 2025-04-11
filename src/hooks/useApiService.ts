@@ -3,7 +3,11 @@ import { createClient } from '@supabase/supabase-js';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
 import { toast } from 'sonner';
-import { supabase, PROJECT_REF } from '@/integrations/supabase/client';
+
+// Corrigindo o cliente Supabase com URL e chave anônima
+const supabaseUrl = 'https://vygluorjwehcdigzxbaa.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Z2x1b3Jqd2VoY2RpZ3p4YmFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDI2NjcsImV4cCI6MjA1OTYxODY2N30.uuV_JYIUKuv1rV3-MicDiTT28azOWdhJoVjpHMfzVGg';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Interface para resposta da API
 export interface ApiResponse {

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,7 +9,7 @@ export const useMediaGallery = () => {
   const [deleting, setDeleting] = useState(false);
   
   /**
-   * Downloads and stores media in Supabase Storage
+   * Faz download da mídia e salva no Supabase Storage
    */
   const downloadAndStoreMedia = async (
     mediaUrl: string,
@@ -18,14 +17,14 @@ export const useMediaGallery = () => {
     userId: string
   ): Promise<string | null> => {
     try {
-      console.log('Starting media download:', mediaUrl);
+      console.log('Iniciando download da mídia:', mediaUrl);
       
-      // Validate URL
+      // Verificar se a URL é válida
       if (!mediaUrl || typeof mediaUrl !== 'string') {
-        throw new Error('Invalid media URL');
+        throw new Error('URL de mídia inválida');
       }
 
-      // Get appropriate extension based on media type
+      // Obter a extensão apropriada com base no tipo de mídia
       let fileExtension = '';
       if (mediaType === 'image') {
         fileExtension = '.png';
@@ -35,17 +34,17 @@ export const useMediaGallery = () => {
         fileExtension = '.mp3';
       }
 
-      // Generate unique filename
+      // Gerar nome de arquivo único
       const fileName = `${uuidv4()}${fileExtension}`;
       const bucketName = 'media_gallery';
       const filePath = `${userId}/${fileName}`;
 
-      // Check if bucket exists and create if not
+      // Verificar se o bucket existe e criar se não existir
       const { data: buckets } = await supabase.storage.listBuckets();
       const bucketExists = buckets?.some(bucket => bucket.name === bucketName);
       
       if (!bucketExists) {
-        console.log('Creating media bucket:', bucketName);
+        console.log('Criando bucket de mídia:', bucketName);
         const { error: bucketError } = await supabase.storage.createBucket(bucketName, {
           public: true,
         });
@@ -53,16 +52,16 @@ export const useMediaGallery = () => {
         if (bucketError) throw bucketError;
       }
 
-      // Download the file
+      // Fazer download do arquivo
       const response = await fetch(mediaUrl);
       
       if (!response.ok) {
-        throw new Error(`Error downloading media: ${response.status} ${response.statusText}`);
+        throw new Error(`Erro ao fazer download da mídia: ${response.status} ${response.statusText}`);
       }
       
       const blob = await response.blob();
       
-      // Upload to Supabase Storage
+      // Fazer upload para o Supabase Storage
       const { error: uploadError, data } = await supabase.storage
         .from(bucketName)
         .upload(filePath, blob, {
@@ -72,20 +71,20 @@ export const useMediaGallery = () => {
         
       if (uploadError) throw uploadError;
       
-      // Get public URL of the file
+      // Obter URL pública do arquivo
       const { data: publicUrlData } = supabase.storage
         .from(bucketName)
         .getPublicUrl(filePath);
         
       if (!publicUrlData.publicUrl) {
-        throw new Error('Could not get public URL for the file');
+        throw new Error('Não foi possível obter a URL pública do arquivo');
       }
       
-      console.log('Media successfully saved to Storage:', publicUrlData.publicUrl);
+      console.log('Mídia salva com sucesso no Storage:', publicUrlData.publicUrl);
       return publicUrlData.publicUrl;
       
     } catch (error) {
-      console.error('Error downloading and storing media:', error);
+      console.error('Erro ao fazer download e armazenar mídia:', error);
       throw error;
     }
   };
@@ -102,19 +101,19 @@ export const useMediaGallery = () => {
       
       setSaving(true);
 
-      // Check if user is authenticated
+      // Verificar se o usuário está autenticado
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) {
-        console.log('User not authenticated, not saving to gallery');
+        console.log('Usuário não autenticado, não salvando na galeria');
         return;
       }
 
-      // Validate media URL
+      // Verificar se a URL de mídia é válida
       if (!mediaUrl || typeof mediaUrl !== 'string') {
-        throw new Error('Invalid media URL');
+        throw new Error('URL de mídia inválida');
       }
 
-      // Download media and save to Storage (for external URLs)
+      // Fazer download da mídia e salvar no Storage (para URLs externas)
       let storageUrl = mediaUrl;
       if (mediaUrl.startsWith('http') && !mediaUrl.includes(window.location.hostname)) {
         try {
@@ -123,12 +122,12 @@ export const useMediaGallery = () => {
             storageUrl = savedUrl;
           }
         } catch (error) {
-          console.error('Error storing media in Storage:', error);
-          // Continue with original URL if download fails
+          console.error('Erro ao armazenar mídia no Storage:', error);
+          // Continuar com a URL original se falhar o download
         }
       }
 
-      // Prepare data for insertion
+      // Preparar os dados para inserção
       const mediaData = {
         id: uuidv4(),
         user_id: userData.user.id,
@@ -144,26 +143,26 @@ export const useMediaGallery = () => {
         }
       };
 
-      // Insert into media table
+      // Inserir na tabela de mídia
       const { error } = await supabase
         .from('media_gallery')
         .insert([mediaData]);
 
       if (error) throw error;
 
-      console.log('Media saved to gallery successfully');
+      console.log('Mídia salva na galeria com sucesso');
       toast({
-        title: "Success",
-        description: "Media saved to gallery successfully",
+        title: "Sucesso",
+        description: "Mídia salva na galeria com sucesso",
       });
       
       return true;
     } catch (error) {
-      console.error('Error saving media to gallery:', error);
+      console.error('Erro ao salvar mídia na galeria:', error);
       toast({
-        title: "Error",
-        description: "Could not save media to gallery: " + 
-          (error instanceof Error ? error.message : "Unknown error"),
+        title: "Erro",
+        description: "Não foi possível salvar a mídia na galeria: " + 
+          (error instanceof Error ? error.message : "Erro desconhecido"),
         variant: "destructive",
       });
       return false;
