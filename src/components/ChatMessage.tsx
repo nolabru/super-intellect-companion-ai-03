@@ -8,6 +8,8 @@ import ModeIcon from './chat/ModeIcon';
 import ChatMessageContent from './chat/ChatMessageContent';
 import MediaContainer from './chat/MediaContainer';
 import VideoLoading from './chat/VideoLoading';
+import MessageWrapper from './chat/MessageWrapper';
+import MediaPreview from './chat/MediaPreview';
 
 export interface MessageType {
   id: string;
@@ -39,6 +41,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const [mediaError, setMediaError] = useState(false);
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [videoLoadingTimedOut, setVideoLoadingTimedOut] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // Verificar se a mensagem contém uma URL de mídia embutida
   const hasEmbeddedMedia = message.content?.includes('[Imagem gerada]:') || 
@@ -102,9 +105,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     setMediaError(true);
     setIsMediaLoading(false);
     
-    // Não esconder o elemento se for vídeo, para permitir nova tentativa
-    // Fix: Check if current target exists before accessing style
-    if (!isVideo && e.currentTarget) {
+    // Não tente manipular o style se currentTarget não existe
+    if (!isVideo && e.currentTarget && 'style' in e.currentTarget) {
       e.currentTarget.style.display = 'none';
     }
     
@@ -151,35 +153,17 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       toast.error('Tempo limite excedido para carregamento do vídeo');
     }
   };
+
+  // Função para abrir o preview
+  const openPreview = () => {
+    if (mediaUrl) {
+      setIsPreviewOpen(true);
+    }
+  };
   
   return (
-    <div className={cn(
-      "flex flex-col mb-4 animate-fade-in",
-      isUser ? "items-end" : "items-start"
-    )}>
-      <div className="flex items-center mb-1 text-sm text-gray-400">
-        {!isUser && (
-          <span className="font-medium mr-2">
-            {message.model}
-          </span>
-        )}
-        {isUser && <span className="font-medium mr-2">Você</span>}
-        <div className="flex items-center mr-2">
-          <ModeIcon mode={message.mode} />
-          <span className="capitalize">{message.mode || 'text'}</span>
-        </div>
-        <span>{message.timestamp}</span>
-      </div>
-      
-      {/* Conteúdo da mensagem */}
-      <div className={cn(
-        "chat-bubble",
-        isUser ? "user-bubble" : "ai-bubble",
-        "break-words p-3 rounded-xl max-w-[80%]",
-        isUser ? "bg-inventu-blue/20 text-white" : "bg-inventu-card text-white",
-        isLoading && !isVideo && "animate-pulse",
-        isError && "bg-red-900/20 border border-red-500/30"
-      )}>
+    <>
+      <MessageWrapper message={message}>
         <ChatMessageContent 
           content={displayContent}
           isLoading={isLoading && !isVideo}
@@ -196,19 +180,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         
         {/* Renderizar mídia se estiver presente e visível */}
         {mediaUrl && !isLoading && (message.mode === 'image' || message.mode === 'video' || message.mode === 'audio') && (
-          <MediaContainer 
-            mediaUrl={mediaUrl}
-            mode={message.mode}
-            onMediaLoaded={handleMediaLoaded}
-            onMediaError={handleMediaError}
-            mediaError={mediaError}
-            isMediaLoading={isMediaLoading}
-            retryMediaLoad={retryMediaLoad}
-            openMediaInNewTab={openMediaInNewTab}
-            audioData={message.audioData}
-            prompt={message.content}
-            modelId={message.model}
-          />
+          <div className={isImage ? "cursor-zoom-in transition-transform hover:scale-[1.02]" : ""}
+               onClick={isImage ? openPreview : undefined}>
+            <MediaContainer 
+              mediaUrl={mediaUrl}
+              mode={message.mode}
+              onMediaLoaded={handleMediaLoaded}
+              onMediaError={handleMediaError}
+              mediaError={mediaError}
+              isMediaLoading={isMediaLoading}
+              retryMediaLoad={retryMediaLoad}
+              openMediaInNewTab={openMediaInNewTab}
+              audioData={message.audioData}
+              prompt={message.content}
+              modelId={message.model}
+            />
+          </div>
         )}
         
         {/* Mensagem de debug para quando a mídia não é mostrada */}
@@ -217,8 +204,18 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             <p className="text-orange-400">Debug: Modo de mídia ({message.mode}) detectado mas nenhuma URL de mídia encontrada.</p>
           </div>
         )}
-      </div>
-    </div>
+      </MessageWrapper>
+
+      {/* Preview de mídia */}
+      {mediaUrl && (message.mode === 'image' || message.mode === 'video' || message.mode === 'audio') && (
+        <MediaPreview 
+          mediaUrl={mediaUrl}
+          mode={message.mode}
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+        />
+      )}
+    </>
   );
 };
 
