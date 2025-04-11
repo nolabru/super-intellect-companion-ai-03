@@ -133,7 +133,7 @@ export async function generateImage(
       n: 1,
       size: size as "1024x1024" | "1792x1024" | "1024x1792",
       quality: "standard",
-      response_format: "b64_json", // Use b64_json to get base64 encoded image
+      response_format: "b64_json", // Get base64 encoded image data
     });
     
     // Extract image data

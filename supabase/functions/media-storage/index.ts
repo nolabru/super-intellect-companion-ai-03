@@ -82,7 +82,7 @@ function getFileExtension(url: string, contentType?: string): string {
   // Default extensions based on URL patterns
   if (url.includes('video')) return 'mp4';
   if (url.includes('audio')) return 'mp3';
-  return 'jpg'; // Default to jpg
+  return 'png'; // Default for images (changed from jpg to png for DALL-E)
 }
 
 // Main handler
@@ -111,6 +111,11 @@ serve(async (req) => {
     }
     
     console.log(`Recebida solicitação para armazenar mídia${mediaUrl.startsWith('data:') ? ' (base64)' : ''}`);
+    
+    // Check for valid media URL (not placeholder/mock)
+    if (mediaUrl.includes('placeholder.com') || mediaUrl.includes('MockAI')) {
+      throw new Error('URL de placeholder ou mock não pode ser armazenada');
+    }
     
     // Determine content type
     let detectedContentType = contentType;
@@ -149,7 +154,7 @@ serve(async (req) => {
     const { data, error } = await supabase.storage
       .from(bucketName)
       .upload(storagePath, fileData, {
-        contentType: detectedContentType || getContentTypeFromExtension(extension),
+        contentType: detectedContentType || getContentTypeFromMode(mode),
         upsert: true
       });
     
@@ -230,6 +235,20 @@ function getContentTypeFromExtension(extension: string): string {
   };
   
   return contentTypeMap[extension.toLowerCase()] || 'application/octet-stream';
+}
+
+// Helper to get content type from mode
+function getContentTypeFromMode(mode: string): string {
+  switch (mode) {
+    case 'video':
+      return 'video/mp4';
+    case 'audio':
+      return 'audio/mpeg';
+    case 'image':
+      return 'image/png'; // Changed from image/jpeg to image/png for DALL-E
+    default:
+      return 'application/octet-stream';
+  }
 }
 
 // Helper to get media type from extension

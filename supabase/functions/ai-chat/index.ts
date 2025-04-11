@@ -1,10 +1,10 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
 
 // Import model services
 import * as lumaService from "./services/models/luma.ts";
-import * as mockService from "./services/models/mock.ts";
 import * as openaiService from "./services/models/openai.ts";
 import * as anthropicService from "./services/models/anthropic.ts";
 import * as elevenlabsService from "./services/models/elevenlabs.ts";
@@ -50,7 +50,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       }
       
       // Special check for OpenAI models
-      if (modelId.includes("gpt")) {
+      if (modelId.includes("gpt") || modelId.includes("dall-e")) {
         try {
           // Verify OpenAI API key before proceeding
           openaiService.verifyApiKey();
@@ -195,9 +195,9 @@ async function handleAIChat(req: Request): Promise<Response> {
         response = await openaiService.processImage(content, imageUrl, modelId);
         console.log("Análise de imagem concluída com sucesso");
       }
-      else if (modelId.includes("gpt") && mode === "image" && (!files || files.length === 0)) {
+      else if ((modelId.includes("gpt") || modelId === "dall-e-3") && mode === "image" && (!files || files.length === 0)) {
         console.log("Iniciando geração de imagem com DALL-E via OpenAI");
-        response = await openaiService.generateImage(content, "dall-e-3");
+        response = await openaiService.generateImage(content, modelId === "gpt-4o" ? "dall-e-3" : modelId);
         console.log("Geração de imagem concluída com sucesso");
         
         // Adicionar timestamp à URL da imagem para evitar cache
@@ -256,35 +256,17 @@ async function handleAIChat(req: Request): Promise<Response> {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
       }
-      
-      // Simulation for other models
-      else if (modelId.includes("ideogram") && mode === "image") {
-        response = mockService.generateImage(content, "Ideogram");
-        
-        // Adicionar timestamp à URL da imagem para evitar cache
-        if (response.files && response.files.length > 0) {
-          response.files[0] = addTimestampToUrl(response.files[0]);
-        }
-      } 
-      else if (modelId.includes("kligin") && mode === "image") {
-        response = mockService.generateImage(content, "Kligin AI");
-        
-        // Adicionar timestamp à URL da imagem para evitar cache
-        if (response.files && response.files.length > 0) {
-          response.files[0] = addTimestampToUrl(response.files[0]);
-        }
-      }
-      else if (modelId.includes("kligin") && mode === "video") {
-        response = mockService.generateVideo(content, "Kligin AI");
-        
-        // Adicionar timestamp à URL do vídeo para evitar cache
-        if (response.files && response.files.length > 0) {
-          response.files[0] = addTimestampToUrl(response.files[0]);
-        }
-      }
       else {
-        // Default mock response for any other model/mode
-        response = mockService.generateText(content, modelId, mode);
+        return new Response(
+          JSON.stringify({
+            content: `Combinação de modelo e modo não suportada: ${modelId} / ${mode}`,
+            error: "Combinação não suportada",
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          }
+        );
       }
       
       // Log dos resultados
@@ -321,6 +303,12 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do Google Gemini não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
           friendlyError = `Erro na geração com Google Gemini: ${errorMessage}`;
+        }
+      } else if (modelId.includes("dall-e") || modelId === "gpt-4o") {
+        if (errorMessage.includes("API key") || errorMessage.includes("authorize") || errorMessage.includes("authenticate")) {
+          friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada corretamente. Por favor, verifique suas configurações.";
+        } else {
+          friendlyError = `Erro na geração de ${mode === 'image' ? 'imagem' : 'texto'} com OpenAI: ${errorMessage}`;
         }
       }
       
@@ -362,6 +350,10 @@ async function handleAIChat(req: Request): Promise<Response> {
 // Helper function to add timestamp to URLs for cache busting
 function addTimestampToUrl(url: string): string {
   if (!url) return url;
+  
+  // Don't add timestamp to data URLs
+  if (url.startsWith('data:')) return url;
+  
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}t=${Date.now()}`;
 }

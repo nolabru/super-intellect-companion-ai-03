@@ -133,7 +133,8 @@ export function useApiService() {
         }
         
         // Se é uma mídia gerada, salvar no storage para persistência
-        if (data.files && data.files.length > 0 && (mode === 'image' || mode === 'video' || mode === 'audio')) {
+        if (data.files && data.files.length > 0 && (mode === 'image' || mode === 'video' || mode === 'audio') && 
+            (modelId === 'dall-e-3' || modelId === 'gpt-4o')) {
           try {
             // Obter informações do usuário atual
             const { data: userData } = await supabase.auth.getUser();
@@ -181,11 +182,17 @@ export function useApiService() {
                 data.content = data.content.replace(mediaUrl, storageResponse.publicUrl);
               }
             } else {
-              console.warn('Falha ao persistir mídia, usando URL original temporária');
+              // Para imagens geradas pela DALL-E, usar a base64 diretamente se o armazenamento falhar
+              if (mode === 'image' && isBase64) {
+                console.log('Usando dados base64 diretamente para a imagem DALL-E');
+                // Deixa o base64 original na resposta
+              } else {
+                console.warn('Falha ao persistir mídia, usando URL original temporária');
+              }
             }
           } catch (storageErr) {
             console.error('Erro ao tentar persistir mídia:', storageErr);
-            // Continuar com a URL original mesmo em caso de erro
+            // Continuar com a URL original mesmo em caso de erro - para base64, isso significa usar o base64 original
           }
         }
         
@@ -228,9 +235,9 @@ export function useApiService() {
       // Se não conseguir determinar, adivinhar pelo tipo
       if (url.includes('video')) return 'mp4';
       if (url.includes('audio')) return 'mp3';
-      return 'jpg'; // Padrão para imagens
+      return 'png'; // Mudado de jpg para png para DALL-E
     } catch (e) {
-      return 'bin'; // Fallback genérico
+      return 'png'; // Fallback para DALL-E (mudado de bin para png)
     }
   };
   
@@ -248,7 +255,7 @@ export function useApiService() {
       'audio/wav': 'wav'
     };
     
-    return map[contentType] || 'jpg';
+    return map[contentType] || 'png'; // Padrão para DALL-E (mudado de jpg para png)
   };
   
   // Função auxiliar para obter o content type com base no modo
@@ -259,7 +266,7 @@ export function useApiService() {
       case 'audio':
         return 'audio/mpeg';
       case 'image':
-        return 'image/jpeg';
+        return 'image/png'; // Mudado de image/jpeg para image/png para DALL-E
       default:
         return 'application/octet-stream';
     }
