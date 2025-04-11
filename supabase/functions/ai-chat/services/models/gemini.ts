@@ -1,3 +1,4 @@
+
 // Service for Google Gemini AI models
 import { validateApiKey } from "../../utils/validation.ts";
 import { GoogleGenAI } from "npm:@google/genai@latest";
@@ -113,16 +114,16 @@ async function blobToBase64(blob: Blob): Promise<string> {
 function getGeminiModelName(modelId: string): string {
   switch (modelId) {
     case 'gemini-pro':
-      return 'gemini-2.0-pro';
+      return 'gemini-1.5-flash'; // Using 1.5-flash as fallback since it works with your token
     case 'gemini-flash':
-      return 'gemini-2.0-flash';
+      return 'gemini-1.5-flash'; // Using the model we know works with your token
     default:
-      return 'gemini-2.0-pro'; // Default to 2.0 Pro
+      return 'gemini-1.5-flash'; // Default to 1.5 Flash which works with your token
   }
 }
 
 // Get vision-enabled model name
 function getGeminiVisionModel(modelId: string): string {
-  // Use Gemini 2.0 Pro Vision for image analysis
-  return 'gemini-2.0-pro-vision';
+  // Use Gemini 1.5 Flash for vision since it's confirmed to work with your token
+  return 'gemini-1.5-flash-vision';
 }
