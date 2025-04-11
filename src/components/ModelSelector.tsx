@@ -17,8 +17,8 @@ export interface ModelInfo {
 export const AVAILABLE_MODELS: ModelInfo[] = [
 // OpenAI Models
 {
-  id: 'gpt-4-turbo',
-  displayName: 'GPT-4 Turbo',
+  id: 'gpt-4o',
+  displayName: 'GPT-4o',
   provider: 'openai',
   capabilities: ['Raciocínio avançado', 'Conhecimento atualizado até 2023'],
   description: 'Modelo mais poderoso da OpenAI, com excelente raciocínio.',

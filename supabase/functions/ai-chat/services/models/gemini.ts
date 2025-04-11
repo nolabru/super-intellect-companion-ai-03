@@ -114,7 +114,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
 function getGeminiModelName(modelId: string): string {
   switch (modelId) {
     case 'gemini-pro':
-      return 'gemini-1.5-flash'; // Using 1.5-flash as fallback since it works with your token
+      return 'gemini-1.5-pro'; // Updated to use 1.5 Pro
     case 'gemini-flash':
       return 'gemini-1.5-flash'; // Using the model we know works with your token
     default:
@@ -125,5 +125,5 @@ function getGeminiModelName(modelId: string): string {
 // Get vision-enabled model name
 function getGeminiVisionModel(modelId: string): string {
   // Use Gemini 1.5 Flash for vision since it's confirmed to work with your token
-  return 'gemini-1.5-flash-vision';
+  return 'gemini-1.5-pro-vision';
 }
