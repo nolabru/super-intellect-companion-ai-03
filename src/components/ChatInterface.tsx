@@ -1,8 +1,7 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
-import { Loader2, AlertTriangle, RefreshCw, ExternalLink, MessageSquare, ScrollDown } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink, MessageSquare, ArrowDown } from 'lucide-react';
 import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
@@ -55,7 +54,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages, autoScroll]);
 
-  // Detectar quando o usuário rola para cima
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
     if (!chatContainer) return;
@@ -278,13 +276,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         )}
 
-        {/* Botão "Rolar para baixo" */}
         {showScrollToBottom && (
           <button
             className="absolute bottom-5 right-5 bg-inventu-blue/80 hover:bg-inventu-blue text-white rounded-full p-2 shadow-lg animate-fade-in transition-all hover:scale-110"
             onClick={scrollToBottom}
           >
-            <ScrollDown className="h-5 w-5" />
+            <ArrowDown className="h-5 w-5" />
           </button>
         )}
       </div>

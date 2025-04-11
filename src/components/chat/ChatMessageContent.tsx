@@ -80,17 +80,20 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
             </a>
           ),
           // Custom component for code blocks
-          code: ({ node, inline, className, children, ...props }) => (
-            <code 
-              className={cn(
-                inline ? "bg-black/40 border border-white/5 px-1.5 py-0.5 rounded text-xs font-mono" : "block p-3 bg-black/40 border border-white/5 rounded-xl overflow-x-auto mb-3 shadow-md",
-                className
-              )} 
-              {...props}
-            >
-              {children}
-            </code>
-          ),
+          code: ({ node, className, children, ...props }) => {
+            const isInline = !className;
+            return (
+              <code 
+                className={cn(
+                  isInline ? "bg-black/40 border border-white/5 px-1.5 py-0.5 rounded text-xs font-mono" : "block p-3 bg-black/40 border border-white/5 rounded-xl overflow-x-auto mb-3 shadow-md",
+                  className
+                )} 
+                {...props}
+              >
+                {children}
+              </code>
+            );
+          },
         }}
         // Enable breaking lines on line breaks
         remarkPlugins={[remarkGfm]}
