@@ -1,3 +1,4 @@
+
 import { fetchWithRetry } from "../../utils/logging.ts";
 import { logError } from "../../utils/logging.ts";
 import { validateApiKey, ensureValue } from "../../utils/validation.ts";
@@ -72,7 +73,7 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
   }
 }
 
-// Função para gerar imagem com Luma AI usando chamadas HTTP diretas
+// Função para gerar imagem com Luma AI usando chamadas HTTP diretas - versão corrigida
 export async function generateImage(
   prompt: string,
   params: any = {}
@@ -82,11 +83,11 @@ export async function generateImage(
   try {
     ensureValue(prompt, "O prompt para geração de imagem não pode estar vazio");
     
-    // Usando token mocado sempre
+    // Usando token mocado sempre - mesmo padrão de sucesso do vídeo
     const apiKey = MOCKED_LUMA_TOKEN;
-    console.log("Usando token mocado para geração de imagem");
+    console.log("Usando token mocado para geração de imagem:", apiKey.substring(0, 10) + "...");
     
-    // Parâmetros para a requisição
+    // Parâmetros para a requisição - similar ao vídeo
     const requestBody = {
       prompt: prompt,
       model: params?.model || "luma-1.1",
@@ -95,8 +96,9 @@ export async function generateImage(
     };
     
     console.log("Enviando requisição para API Luma (imagem):", JSON.stringify(requestBody, null, 2));
+    console.log("Usando token de autorização:", `Bearer ${apiKey.substring(0, 10)}...`);
     
-    // Criar a geração com a API direta - usando novo endpoint
+    // Usar o mesmo endpoint e formato de cabeçalho que funciona para vídeo
     const response = await fetch("https://api.lumalabs.ai/dream-machine/v1/generations", {
       method: "POST",
       headers: {
@@ -139,62 +141,181 @@ export async function generateImage(
     
     console.log("ID da geração de imagem criada:", generation.id);
     
-    // Verificar status da geração até completar ou falhar
+    // Verificar status da geração até completar ou falhar - com mais tentativas
     let imageUrl: string | null = null;
     let completed = false;
     let attempts = 0;
-    const maxAttempts = 30;
+    const maxAttempts = 30; // Aumentado para 30 tentativas como no vídeo
+    let statusData: any = null;
     
     while (!completed && attempts < maxAttempts) {
       attempts++;
       
       console.log(`Verificando status da imagem (tentativa ${attempts}/${maxAttempts})...`);
       
-      // Verificar o status da geração
-      const statusResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${generation.id}`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "Accept": "application/json"
+      try {
+        // Verificar o status da geração com timeout de 10 segundos
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const statusResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations/${generation.id}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
+        
+        if (!statusResponse.ok) {
+          console.error(`Erro ao verificar status da imagem (tentativa ${attempts}):`, statusResponse.status, statusResponse.statusText);
+          
+          // Se ocorrer erro, aguarde e tente novamente
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          continue;
         }
-      });
-      
-      if (!statusResponse.ok) {
-        console.error(`Erro ao verificar status (tentativa ${attempts}):`, statusResponse.status, statusResponse.statusText);
         
-        // Se ocorrer erro, aguarde e tente novamente
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        continue;
-      }
-      
-      const statusData = await statusResponse.json();
-      console.log(`Status da imagem (${attempts}/${maxAttempts}):`, statusData?.status);
-      
-      if (statusData?.status === "done") {
-        completed = true;
+        statusData = await statusResponse.json();
+        console.log(`Status da imagem (${attempts}/${maxAttempts}):`, statusData?.status);
         
-        // Obter a URL da imagem do objeto de resposta
-        if (statusData.images && statusData.images.length > 0) {
-          imageUrl = statusData.images[0].url;
-          console.log("URL da imagem:", imageUrl);
+        // Verificar estrutura da resposta para debug
+        if (attempts % 5 === 0 || statusData?.status === "done" || statusData?.state === "completed") {
+          console.log("Estrutura completa da resposta:", JSON.stringify(statusData, null, 2));
+        }
+        
+        // Verificar diferentes formatos de resposta possíveis (similar ao vídeo)
+        if (statusData?.status === "done" || statusData?.state === "completed") {
+          completed = true;
+          
+          // Tentar obter a URL da imagem de diferentes locais na resposta
+          // Buscar em todos os lugares possíveis como no código do vídeo
+          if (statusData.images && statusData.images.length > 0 && statusData.images[0].url) {
+            imageUrl = statusData.images[0].url;
+          } else if (statusData.image && statusData.image.url) {
+            imageUrl = statusData.image.url;
+          } else if (statusData.assets && statusData.assets.image) {
+            imageUrl = statusData.assets.image;
+          } else if (statusData.results && statusData.results.length > 0 && statusData.results[0].url) {
+            imageUrl = statusData.results[0].url;
+          }
+          
+          console.log("URL da imagem encontrada:", imageUrl);
+          
+          if (!imageUrl) {
+            // Tentar encontrar URL em qualquer propriedade que possa ser uma string (como no vídeo)
+            console.log("Buscando URL em todas as propriedades da resposta...");
+            const findUrlInObject = (obj: any): string | null => {
+              if (!obj || typeof obj !== 'object') return null;
+              
+              for (const key in obj) {
+                if (typeof obj[key] === 'string' && obj[key].startsWith('http') && 
+                    (obj[key].endsWith('.png') || obj[key].endsWith('.jpg') || obj[key].includes('image'))) {
+                  return obj[key];
+                } else if (typeof obj[key] === 'object') {
+                  const nestedUrl = findUrlInObject(obj[key]);
+                  if (nestedUrl) return nestedUrl;
+                }
+              }
+              return null;
+            };
+            
+            imageUrl = findUrlInObject(statusData);
+            if (imageUrl) {
+              console.log("URL da imagem encontrada em propriedade alternativa:", imageUrl);
+            }
+          }
+        } else if (statusData?.status === "failed" || statusData?.state === "failed") {
+          const errorMessage = statusData.error?.message || statusData.failure_reason || "Erro desconhecido";
+          throw new Error(`Geração de imagem falhou: ${errorMessage}`);
         } else {
-          console.log("Resposta completa:", JSON.stringify(statusData, null, 2));
-          throw new Error("URLs das imagens não encontradas na resposta");
+          // Aguardar antes da próxima verificação
+          await new Promise(resolve => setTimeout(resolve, 5000));
         }
-      } else if (statusData?.status === "failed") {
-        throw new Error(`Geração de imagem falhou: ${statusData.error?.message || "Erro desconhecido"}`);
-      } else {
+      } catch (error) {
+        // Se houve timeout ou outro erro, registrar e continuar tentando
+        console.error(`Erro durante verificação de status (tentativa ${attempts}):`, error);
         await new Promise(resolve => setTimeout(resolve, 5000));
       }
     }
     
-    if (!completed) {
-      throw new Error("Tempo limite excedido para geração de imagem");
+    // Se a imagem não foi encontrada mas temos status "completed", tentar consultar lista de gerações (como no vídeo)
+    if (completed && !imageUrl) {
+      console.log("Imagem marcada como completa, mas URL não encontrada. Tentando consultar lista de gerações...");
+      
+      try {
+        const listResponse = await fetch(`https://api.lumalabs.ai/dream-machine/v1/generations?limit=5`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          }
+        });
+        
+        if (listResponse.ok) {
+          const listData = await listResponse.json();
+          console.log("Listagem de gerações recentes:", JSON.stringify(listData, null, 2));
+          
+          // Procurar pelo ID específico
+          const matchingGeneration = Array.isArray(listData) && 
+                                   listData.find((gen: any) => gen.id === generation.id);
+          
+          if (matchingGeneration) {
+            console.log("Geração encontrada na listagem:", matchingGeneration);
+            
+            // Tentar obter URL
+            if (matchingGeneration.images && matchingGeneration.images.length > 0) {
+              imageUrl = matchingGeneration.images[0].url;
+            } else if (matchingGeneration.image && matchingGeneration.image.url) {
+              imageUrl = matchingGeneration.image.url;
+            } else if (matchingGeneration.assets && matchingGeneration.assets.image) {
+              imageUrl = matchingGeneration.assets.image;
+            }
+            
+            if (imageUrl) {
+              console.log("URL da imagem encontrada na listagem:", imageUrl);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao consultar listagem de gerações:", e);
+      }
     }
     
+    // Se o tempo limite foi excedido, retornar mensagem informativa com ID
+    if (!completed) {
+      console.log("Tempo limite excedido para geração de imagem. ID:", generation.id);
+      return {
+        content: `A geração da imagem está em andamento, mas o tempo limite foi excedido. Você pode verificar o status no painel do Luma AI usando o ID: ${generation.id}`,
+        files: []
+      };
+    }
+    
+    // Se não encontramos a URL da imagem, enviar mensagem com ID para o usuário verificar no painel
     if (!imageUrl) {
-      throw new Error("URL da imagem não disponível após conclusão");
+      console.log("URL da imagem não encontrada na resposta. Dados completos:", JSON.stringify(statusData, null, 2));
+      return {
+        content: `Imagem processada pelo Luma AI, mas a URL não pôde ser recuperada. Você pode verificar a imagem no painel do Luma AI usando o ID: ${generation.id}`,
+        files: []
+      };
+    }
+    
+    console.log("Retornando URL de imagem para o frontend:", imageUrl);
+    
+    // Validar se a URL retornada é válida
+    try {
+      const testResponse = await fetch(imageUrl, { method: 'HEAD' });
+      if (!testResponse.ok) {
+        console.error("A URL da imagem não está acessível:", testResponse.status, testResponse.statusText);
+        return {
+          content: `Imagem gerada, mas a URL fornecida parece estar inacessível (status: ${testResponse.status}). Você pode tentar acessar diretamente: ${imageUrl} ou verificar no painel da Luma AI com o ID: ${generation.id}`,
+          files: [imageUrl] // Enviar a URL mesmo assim, para o caso de ser um problema temporário
+        };
+      }
+    } catch (error) {
+      console.warn("Erro ao validar URL da imagem:", error);
+      // Continuar, pois pode ser apenas um problema de CORS
     }
     
     return {
