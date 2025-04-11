@@ -29,14 +29,15 @@ export async function generateText(content: string, modelId: string): Promise<{c
     
     console.log(`Enviando prompt para o modelo ${modelName}`);
     
+    // Generate content using the generative language API
+    const model = genAI.getGenerativeModel({ model: modelName });
+    
     // Generate content
-    const result = await genAI.generateContent({
-      model: modelName,
-      contents: [{ role: "user", parts: [{ text: content }] }],
-    });
+    const result = await model.generateContent(content);
     
     // Extract text from response
-    const text = result.response.text();
+    const response = result.response;
+    const text = response.text();
     
     console.log(`Resposta gerada com sucesso: ${text.substring(0, 100)}...`);
     
@@ -58,6 +59,9 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     // Initialize the Google Genai client
     const genAI = initializeGemini();
     
+    // Get the generative model
+    const model = genAI.getGenerativeModel({ model: modelName });
+    
     // Fetch the image data
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
@@ -65,33 +69,29 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     }
     
     const imageData = await imageResponse.blob();
-    
-    // Create content parts with both text and image
     const imageBase64 = await blobToBase64(imageData);
     const mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
     
     console.log(`Enviando prompt e imagem para o modelo ${modelName}`);
     
-    // Generate content with image
-    const result = await genAI.generateContent({
-      model: modelName,
-      contents: [
-        { 
-          role: "user", 
-          parts: [
-            { text: content },
-            { 
-              inline_data: {
-                data: imageBase64,
-                mime_type: mimeType
-              }
-            }
-          ]
-        }
-      ],
-    });
+    // Create image part
+    const imagePart = {
+      inlineData: {
+        data: imageBase64,
+        mimeType
+      }
+    };
     
-    const text = result.response.text();
+    // Create prompt parts with both text and image
+    const parts = [
+      { text: content },
+      imagePart
+    ];
+    
+    // Generate content with image
+    const result = await model.generateContent(parts);
+    const response = result.response;
+    const text = response.text();
     
     console.log(`Resposta de análise de imagem gerada com sucesso: ${text.substring(0, 100)}...`);
     
@@ -117,16 +117,16 @@ async function blobToBase64(blob: Blob): Promise<string> {
 function getGeminiModelName(modelId: string): string {
   switch (modelId) {
     case 'gemini-pro':
-      return 'gemini-1.5-pro';
+      return 'gemini-2.0-pro';
     case 'gemini-flash':
-      return 'gemini-1.5-flash';
+      return 'gemini-2.0-flash';
     default:
-      return 'gemini-1.5-pro'; // Default to 1.5 Pro
+      return 'gemini-2.0-pro'; // Default to 2.0 Pro
   }
 }
 
 // Get vision-enabled model name
 function getGeminiVisionModel(modelId: string): string {
-  // Currently all 1.5 models support vision capabilities
-  return 'gemini-1.5-pro';
+  // Use Gemini 2.0 Pro Vision for image analysis
+  return 'gemini-2.0-pro-vision';
 }
