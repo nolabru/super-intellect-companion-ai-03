@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -23,29 +22,29 @@ const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1
 async function handleAIChat(req: Request): Promise<Response> {
   try {
     const { content, mode, modelId, files, params } = await req.json();
-    console.log(`Recebida solicitação para modelo ${modelId} no modo ${mode}`, {
+    console.log(`Received request for model ${modelId} in mode ${mode}`, {
       contentLength: content?.length,
       filesCount: files?.length,
       paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none'
     });
     
     let response: ResponseData = {
-      content: "Não foi possível processar sua solicitação."
+      content: "Not able to process your request."
     };
     
     // Process based on model and mode
     try {
-      // Verificação específica para modelos Luma
+      // Verification specific for Luma models
       if (modelId.includes("luma")) {
-        // Usando token mocado para Luma
-        console.log("Modelo Luma selecionado, usando token mocado configurado diretamente no código");
-        // Pré-configuramos a variável LUMA_TOKEN_MOCK no service
+        // Using token mocado for Luma
+        console.log("Luma model selected, using mocked token configured directly in code");
+        // Pre-configured LUMA_TOKEN_MOCK variable in service
         lumaService.setMockedToken(MOCKED_LUMA_TOKEN);
         
-        // Validação opcional para ver se o token funciona
+        // Optional validation to check if the token works
         const isValid = await lumaService.testApiKey(MOCKED_LUMA_TOKEN);
         if (!isValid) {
-          console.warn("O token mocado da Luma pode não estar funcionando corretamente");
+          console.warn("The mocked Luma token may not be working correctly");
         }
       }
       
@@ -58,7 +57,7 @@ async function handleAIChat(req: Request): Promise<Response> {
           return new Response(
             JSON.stringify({
               content: error.message,
-              error: "OPENAI_API_KEY não configurada",
+              error: "OPENAI_API_KEY not configured",
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -77,7 +76,7 @@ async function handleAIChat(req: Request): Promise<Response> {
           return new Response(
             JSON.stringify({
               content: error.message,
-              error: "ANTHROPIC_API_KEY não configurada",
+              error: "ANTHROPIC_API_KEY not configured",
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,16 +86,16 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
-      // Verificação para ElevenLabs
+      // Verification for ElevenLabs
       if (modelId.includes("eleven")) {
         try {
-          // Verificar a chave API do ElevenLabs antes de prosseguir
+          // Verify the ElevenLabs API key before proceeding
           elevenlabsService.verifyApiKey();
         } catch (error) {
           return new Response(
             JSON.stringify({
               content: error.message,
-              error: "ELEVENLABS_API_KEY não configurada",
+              error: "ELEVENLABS_API_KEY not configured",
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -108,36 +107,36 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // Luma AI models
       if (modelId === "luma-video" && mode === "video") {
-        console.log("Iniciando processamento de vídeo com Luma AI");
+        console.log("Starting Luma AI video processing");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
         
-        // Se não houver parâmetros definidos, use valores padrão para o modelo Luma
+        // If no parameters are defined, use default values for the Luma model
         const videoParams = {
           ...params,
           model: params?.model || "ray-2"
         };
         
-        // Usar AbortController para limitar o tempo total da operação
+        // Use AbortController to limit the total processing time
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
-          console.log("Atingido tempo máximo global para processamento de vídeo (5 minutos)");
+          console.log("Global video processing time limit reached (5 minutes)");
           controller.abort();
-        }, 300000); // 5 minutos
+        }, 300000); // 5 minutes
         
         try {
           response = await Promise.race([
             lumaService.generateVideo(content, videoParams, imageUrl),
             new Promise<ResponseData>((_, reject) => {
-              // Se o AbortController for acionado, este Promise rejeitará
+              // If the AbortController is triggered, this Promise will reject
               controller.signal.addEventListener('abort', () => {
-                reject(new Error("Tempo limite global excedido para processamento de vídeo (5 minutos)"));
+                reject(new Error("Global video processing time limit exceeded (5 minutes)"));
               });
             })
           ]);
           clearTimeout(timeoutId);
-          console.log("Processamento de vídeo concluído com sucesso");
+          console.log("Video processing completed successfully");
           
-          // Adicionar timestamp à URL do vídeo para evitar cache
+          // Add timestamp to the video URL to avoid caching
           if (response.files && response.files.length > 0) {
             response.files[0] = addTimestampToUrl(response.files[0]);
           }
@@ -147,18 +146,18 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       } 
       else if (modelId === "luma-image" && mode === "image") {
-        console.log("Iniciando processamento de imagem com Luma AI");
+        console.log("Starting Luma AI image processing");
         
-        // Se não houver parâmetros definidos, use valores padrão para o modelo Luma
+        // If no parameters are defined, use default values for the Luma model
         const imageParams = {
           ...params,
           model: params?.model || "luma-1.1"
         };
         
         response = await lumaService.generateImage(content, imageParams);
-        console.log("Processamento de imagem concluído com sucesso");
+        console.log("Image processing completed successfully");
         
-        // Adicionar timestamp à URL da imagem para evitar cache
+        // Add timestamp to the image URL to avoid caching
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
@@ -166,22 +165,22 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // OpenAI models
       else if (modelId.includes("gpt") && mode === "text") {
-        console.log("Iniciando processamento de texto com OpenAI");
+        console.log("Starting OpenAI text processing");
         response = await openaiService.generateText(content, modelId);
-        console.log("Processamento de texto concluído com sucesso");
+        console.log("Text processing completed successfully");
       }
       else if (modelId.includes("gpt") && mode === "image" && files && files.length > 0) {
-        console.log("Iniciando processamento de análise de imagem com OpenAI");
+        console.log("Starting OpenAI image analysis processing");
         const imageUrl = files[0];
         response = await openaiService.processImage(content, imageUrl, modelId);
-        console.log("Análise de imagem concluída com sucesso");
+        console.log("Image analysis completed successfully");
       }
       else if (modelId.includes("gpt") && mode === "image" && (!files || files.length === 0)) {
-        console.log("Iniciando geração de imagem com DALL-E via OpenAI");
+        console.log("Starting DALL-E image generation via OpenAI");
         response = await openaiService.generateImage(content, "dall-e-3");
-        console.log("Geração de imagem concluída com sucesso");
+        console.log("Image generation completed successfully");
         
-        // Adicionar timestamp à URL da imagem para evitar cache
+        // Add timestamp to the image URL to avoid caching
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
@@ -189,26 +188,26 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // Anthropic models
       else if (modelId.includes("claude") && mode === "text") {
-        console.log("Iniciando processamento de texto com Anthropic");
+        console.log("Starting Anthropic text processing");
         response = await anthropicService.generateText(content, modelId);
-        console.log("Processamento de texto concluído com sucesso");
+        console.log("Text processing completed successfully");
       }
       else if (modelId.includes("claude") && mode === "image") {
-        console.log("Iniciando processamento de imagem com Anthropic");
+        console.log("Starting Anthropic image processing");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
         if (imageUrl) {
           response = await anthropicService.processImage(content, imageUrl, modelId);
         } else {
-          response = { content: "Erro: Necessário fornecer uma imagem para análise." };
+          response = { content: "Error: Image analysis requires an image." };
         }
       }
       
       // ElevenLabs models
       else if (modelId === "eleven-labs" && mode === "audio") {
-        console.log("Iniciando geração de áudio com ElevenLabs");
-        // Extraindo parâmetros
+        console.log("Starting ElevenLabs audio generation");
+        // Extracting parameters
         const voiceParams = {
-          voiceId: params?.voiceId || "EXAVITQu4vr4xnSDxMaL", // Sarah por padrão
+          voiceId: params?.voiceId || "EXAVITQu4vr4xnSDxMaL", // Sarah by default
           model: params?.model || "eleven_multilingual_v2",
           stability: params?.stability || 0.5,
           similarityBoost: params?.similarityBoost || 0.75,
@@ -217,9 +216,9 @@ async function handleAIChat(req: Request): Promise<Response> {
         };
         
         response = await elevenlabsService.generateSpeech(content, voiceParams);
-        console.log("Geração de áudio concluída com sucesso");
+        console.log("Audio generation completed successfully");
         
-        // Adicionar timestamp à URL do áudio para evitar cache
+        // Add timestamp to the audio URL to avoid caching
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
@@ -229,7 +228,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       else if (modelId.includes("ideogram") && mode === "image") {
         response = mockService.generateImage(content, "Ideogram");
         
-        // Adicionar timestamp à URL da imagem para evitar cache
+        // Add timestamp to the image URL to avoid caching
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
@@ -237,7 +236,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       else if (modelId.includes("kligin") && mode === "image") {
         response = mockService.generateImage(content, "Kligin AI");
         
-        // Adicionar timestamp à URL da imagem para evitar cache
+        // Add timestamp to the image URL to avoid caching
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
@@ -245,7 +244,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       else if (modelId.includes("kligin") && mode === "video") {
         response = mockService.generateVideo(content, "Kligin AI");
         
-        // Adicionar timestamp à URL do vídeo para evitar cache
+        // Add timestamp to the video URL to avoid caching
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
@@ -255,8 +254,8 @@ async function handleAIChat(req: Request): Promise<Response> {
         response = mockService.generateText(content, modelId, mode);
       }
       
-      // Log dos resultados
-      console.log(`Resposta do modelo ${modelId} no modo ${mode} gerada com sucesso:`, {
+      // Log the results
+      console.log(`Response from model ${modelId} in mode ${mode} generated successfully:`, {
         hasFiles: response.files && response.files.length > 0,
         fileCount: response.files?.length || 0,
         contentLength: response.content?.length || 0
@@ -265,24 +264,24 @@ async function handleAIChat(req: Request): Promise<Response> {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logError("SERVICE_ERROR", { error: errorMessage, model: modelId, mode });
       
-      let friendlyError = `Erro ao processar solicitação: ${errorMessage}`;
+      let friendlyError = `Error processing request: ${errorMessage}`;
       
-      // Mensagens de erro específicas
+      // Specific error messages
       if (modelId.includes("luma")) {
         if (errorMessage.includes("API key") || errorMessage.includes("Authorization") || errorMessage.includes("authenticate")) {
-          friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada corretamente. Por favor, verifique suas configurações.";
+          friendlyError = "Configuration error: Luma AI API key is not configured correctly. Please check your settings.";
         } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
-          friendlyError = "Erro na API Luma: Endpoint não encontrado. A API pode ter sido atualizada.";
+          friendlyError = "Luma API Error: Endpoint not found. The API may have been updated.";
         } else if (errorMessage.includes("Tempo limite")) {
-          friendlyError = `O processamento do ${mode === 'video' ? 'vídeo' : 'imagem'} excedeu o tempo limite. A geração pode estar em andamento no servidor do Luma AI, verifique seu painel de controle.`;
+          friendlyError = `Video/image processing exceeded the global time limit. The generation may be ongoing on the Luma AI server, check your Luma AI dashboard.`;
         } else {
-          friendlyError = `Erro na geração do ${mode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
+          friendlyError = `Luma AI image/video generation error: ${errorMessage}`;
         }
       } else if (modelId.includes("eleven")) {
         if (errorMessage.includes("API key") || errorMessage.includes("xi-api-key") || errorMessage.includes("authenticate")) {
-          friendlyError = "Erro de configuração: A chave API do ElevenLabs não está configurada corretamente. Por favor, verifique suas configurações.";
+          friendlyError = "Configuration error: ElevenLabs API key is not configured correctly. Please check your settings.";
         } else {
-          friendlyError = `Erro na geração de áudio com ElevenLabs: ${errorMessage}`;
+          friendlyError = `Audio generation error with ElevenLabs: ${errorMessage}`;
         }
       }
       
@@ -303,14 +302,14 @@ async function handleAIChat(req: Request): Promise<Response> {
       status: 200,
     });
   } catch (error) {
-    console.error("Erro ao processar solicitação:", error);
+    console.error("Error processing request:", error);
     
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     logError("REQUEST_ERROR", { error: errorMessage });
     
     return new Response(
       JSON.stringify({
-        content: `Erro: ${errorMessage}`,
+        content: `Error: ${errorMessage}`,
         error: errorMessage,
       }),
       {

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, ExternalLink, Loader2, RefreshCw, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   useEffect(() => {
     if (mediaError && isVideo && mediaUrl && retryCount < 3) {
       const retryTimer = setTimeout(() => {
-        console.log(`Tentativa automática ${retryCount + 1} de carregar o vídeo`);
+        console.log(`Attempt ${retryCount + 1} to load video`);
         retryMediaLoad();
         setRetryCount(prev => prev + 1);
       }, 3000);
@@ -51,7 +50,6 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     }
   }, [mediaError, isVideo, mediaUrl, retryCount, retryMediaLoad]);
 
-  // Reset retry count when mediaUrl changes
   useEffect(() => {
     if (mediaUrl) {
       setRetryCount(0);
@@ -60,7 +58,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
 
   const handleSaveToGallery = async () => {
     if (!mediaUrl && !audioData) {
-      toast.error('Não há mídia para salvar na galeria');
+      toast.error('No media to save to gallery');
       return;
     }
 
@@ -72,10 +70,10 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
         modelId
       );
 
-      toast.success('Mídia salva na galeria com sucesso');
+      toast.success('Media saved to gallery successfully');
     } catch (error) {
-      console.error('Erro ao salvar na galeria:', error);
-      toast.error('Não foi possível salvar a mídia na galeria');
+      console.error('Error saving to gallery:', error);
+      toast.error('Could not save media to gallery');
     }
   };
   
@@ -85,9 +83,9 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
         <p className="text-sm text-red-400 flex items-start">
           <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
           <span>
-            Não foi possível carregar a mídia. 
-            {isVideo && " Isso pode ocorrer porque o vídeo ainda está sendo processado ou devido a limitações temporárias."}
-            {!isVideo && " Isto pode ocorrer devido a erros na API ou problemas temporários de conexão."}
+            Media could not be loaded. 
+            {isVideo && " This may occur because the video is still being processed or due to temporary limitations."}
+            {!isVideo && " This may occur due to API errors or temporary connection issues."}
           </span>
         </p>
         <div className="mt-2 flex space-x-2">
@@ -96,7 +94,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
             className="text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded flex items-center"
           >
             <RefreshCw size={12} className="mr-1" />
-            Tentar novamente
+            Retry
           </button>
           {mediaUrl && (
             <button 
@@ -104,7 +102,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
               className="text-xs bg-inventu-darker/50 hover:bg-inventu-darker/80 text-white py-1 px-2 rounded flex items-center"
             >
               <ExternalLink size={12} className="mr-1" />
-              Abrir link diretamente
+              Open link directly
             </button>
           )}
         </div>
@@ -112,7 +110,6 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     );
   }
   
-  // For debugging purposes
   console.log(`MediaContainer rendering with mode=${mode}, isMediaLoading=${isMediaLoading}, mediaUrl=${mediaUrl ? 'exists' : 'none'}`);
   
   if (isImage && mediaUrl) {
@@ -125,7 +122,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
         )}
         <img 
           src={mediaUrl} 
-          alt="Imagem gerada" 
+          alt="Generated image" 
           className="max-w-full rounded-lg max-h-80 object-contain" 
           onLoad={onMediaLoaded}
           onError={onMediaError}
@@ -144,7 +141,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
               ) : (
                 <Save size={12} className="mr-1" />
               )}
-              Salvar na galeria
+              Save to gallery
             </Button>
             <Button
               variant="ghost"
@@ -153,7 +150,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
               onClick={openMediaInNewTab}
             >
               <ExternalLink size={12} className="mr-1" />
-              Abrir em nova aba
+              Open in new tab
             </Button>
           </div>
         )}
@@ -194,7 +191,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
               ) : (
                 <Save size={12} className="mr-1" />
               )}
-              Salvar na galeria
+              Save to gallery
             </Button>
             <Button
               variant="ghost"
@@ -203,7 +200,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
               onClick={openMediaInNewTab}
             >
               <ExternalLink size={12} className="mr-1" />
-              Abrir em nova aba
+              Open in new tab
             </Button>
           </div>
         )}
@@ -242,7 +239,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
               ) : (
                 <Save size={12} className="mr-1" />
               )}
-              Salvar na galeria
+              Save to gallery
             </Button>
           </div>
         )}
