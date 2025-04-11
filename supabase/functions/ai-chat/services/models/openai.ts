@@ -111,6 +111,7 @@ export async function processImage(
 // Function to download an image and return as base64
 async function downloadImage(url: string): Promise<string> {
   try {
+    console.log(`Tentando baixar imagem de: ${url}`);
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Falha ao baixar imagem: ${response.status} ${response.statusText}`);
@@ -120,6 +121,7 @@ async function downloadImage(url: string): Promise<string> {
     const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
     const contentType = response.headers.get("content-type") || "image/png";
     
+    console.log(`Imagem baixada com sucesso, tamanho: ${arrayBuffer.byteLength} bytes, tipo: ${contentType}`);
     return `data:${contentType};base64,${base64}`;
   } catch (error) {
     console.error("Erro ao baixar imagem:", error);
@@ -166,17 +168,19 @@ export async function generateImage(
     // Download imagem em base64 para evitar problemas com expiração do link
     try {
       const base64Image = await downloadImage(imageUrl);
-      console.log("Imagem convertida para base64 com sucesso");
+      console.log("Imagem convertida para base64 com sucesso, tamanho aproximado: ", 
+                  base64Image.length > 100 ? `${Math.round(base64Image.length / 1024)} KB` : "muito pequeno");
       
+      // Retorna tanto o conteúdo descritivo quanto a URL da imagem em base64
       return {
-        content: `Imagem gerada com sucesso.\n\n[Imagem gerada]: ${imageUrl}`,
+        content: `Imagem gerada com sucesso.`,
         files: [base64Image]
       };
     } catch (dlError) {
       console.error("Erro ao baixar imagem como base64:", dlError);
       // Fallback para o URL original se falhar o download
       return {
-        content: `Imagem gerada com sucesso.\n\n[Imagem gerada]: ${imageUrl}`,
+        content: `Imagem gerada com sucesso. [Imagem gerada]: ${imageUrl}`,
         files: [imageUrl]
       };
     }

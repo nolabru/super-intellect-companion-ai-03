@@ -38,6 +38,12 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   const isAudio = mode === 'audio';
   const { saveMediaToGallery, saving } = useMediaGallery();
   const [retryCount, setRetryCount] = useState(0);
+  const [imgSrc, setImgSrc] = useState<string | null>(mediaUrl);
+  
+  // Use efeito para atualizar imgSrc quando mediaUrl mudar
+  useEffect(() => {
+    setImgSrc(mediaUrl);
+  }, [mediaUrl]);
   
   useEffect(() => {
     if (mediaError && isVideo && mediaUrl && retryCount < 3) {
@@ -79,6 +85,16 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     }
   };
   
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.error('Erro ao carregar imagem:', e);
+    onMediaError(e);
+    
+    // Tentar recuperar o src se for uma URL de data:image que pode estar truncada
+    if (mediaUrl && mediaUrl.startsWith('data:image') && mediaUrl.length > 100) {
+      console.log('Tentando abrir imagem em uma nova aba diretamente');
+    }
+  };
+  
   if (mediaError) {
     return (
       <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
@@ -115,7 +131,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   // For debugging purposes
   console.log(`MediaContainer rendering with mode=${mode}, isMediaLoading=${isMediaLoading}, mediaUrl=${mediaUrl ? 'exists' : 'none'}`);
   
-  if (isImage && mediaUrl) {
+  if (isImage && imgSrc) {
     return (
       <div className="mt-2 relative">
         {isMediaLoading && (
@@ -124,11 +140,11 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           </div>
         )}
         <img 
-          src={mediaUrl} 
+          src={imgSrc} 
           alt="Imagem gerada" 
           className="max-w-full rounded-lg max-h-80 object-contain" 
           onLoad={onMediaLoaded}
-          onError={onMediaError}
+          onError={handleImageError}
         />
         {!isMediaLoading && (
           <div className="mt-1 flex justify-end gap-2">

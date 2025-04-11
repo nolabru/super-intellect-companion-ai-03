@@ -11,6 +11,27 @@ const corsHeaders = {
 // Helper function to download file from URL
 async function downloadFile(url: string): Promise<ArrayBuffer> {
   try {
+    // Handle data:image URLs
+    if (url.startsWith('data:')) {
+      const matches = url.match(/^data:([^;]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        throw new Error('Invalid data URL format');
+      }
+      
+      console.log(`Processando imagem base64 com tipo MIME: ${matches[1]}`);
+      const base64Data = matches[2];
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      return bytes.buffer;
+    }
+    
+    // Handle regular URLs
+    console.log(`Baixando arquivo da URL: ${url.substring(0, 100)}...`);
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
@@ -37,6 +58,20 @@ function getFileExtension(url: string, contentType?: string): string {
     };
     
     const extension = extensionMap[contentType];
+    if (extension) return extension;
+  }
+  
+  // Check if it's a data URL
+  if (url.startsWith('data:')) {
+    const mimeType = url.split(';')[0].split(':')[1];
+    const extensionMap: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp'
+    };
+    
+    const extension = extensionMap[mimeType];
     if (extension) return extension;
   }
   
@@ -75,17 +110,25 @@ serve(async (req) => {
       throw new Error('Media URL is required');
     }
     
-    console.log(`Recebida solicitação para armazenar mídia: ${mediaUrl.substring(0, 100)}...`);
+    console.log(`Recebida solicitação para armazenar mídia${mediaUrl.startsWith('data:') ? ' (base64)' : ''}`);
+    
+    // Determine content type
+    let detectedContentType = contentType;
+    if (mediaUrl.startsWith('data:')) {
+      detectedContentType = mediaUrl.split(';')[0].split(':')[1] || contentType;
+      console.log(`Tipo de conteúdo detectado da URL de dados: ${detectedContentType}`);
+    }
     
     // Create a unique file name
     const timestamp = new Date().getTime();
-    const extension = getFileExtension(mediaUrl, contentType);
+    const extension = getFileExtension(mediaUrl, detectedContentType);
     const storagePath = fileName || `${timestamp}-${Math.random().toString(36).substring(2, 10)}.${extension}`;
     const bucketName = 'ai-generated-media';
     
     // Download the media file
-    console.log(`Baixando arquivo de: ${mediaUrl.substring(0, 100)}...`);
+    console.log(`Baixando mídia...`);
     const fileData = await downloadFile(mediaUrl);
+    console.log(`Mídia baixada com sucesso, tamanho: ${fileData.byteLength} bytes`);
     
     // Make sure the bucket exists
     const { data: buckets } = await supabase.storage.listBuckets();
@@ -106,7 +149,7 @@ serve(async (req) => {
     const { data, error } = await supabase.storage
       .from(bucketName)
       .upload(storagePath, fileData, {
-        contentType: contentType || getContentTypeFromExtension(extension),
+        contentType: detectedContentType || getContentTypeFromExtension(extension),
         upsert: true
       });
     
@@ -132,7 +175,7 @@ serve(async (req) => {
           conversation_id: conversationId,
           file_path: storagePath,
           media_url: publicUrl,
-          original_url: mediaUrl,
+          original_url: mediaUrl.startsWith('data:') ? null : mediaUrl,
           media_type: mode || getMediaTypeFromExtension(extension),
           created_at: new Date().toISOString()
         });

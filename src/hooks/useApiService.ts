@@ -40,7 +40,7 @@ export function useApiService() {
     mode?: string
   ): Promise<StorageResponse> => {
     try {
-      console.log(`Armazenando mídia no Supabase: ${mediaUrl.substring(0, 100)}...`);
+      console.log(`Armazenando mídia no Supabase: ${mediaUrl.startsWith('data:') ? 'base64' : mediaUrl.substring(0, 50) + '...'}`);
       
       const { data, error } = await supabase.functions.invoke('media-storage', {
         body: {
@@ -108,6 +108,12 @@ export function useApiService() {
           throw new Error(`Erro ao chamar a API: ${error.message}`);
         }
         
+        console.log('Resposta recebida da Edge Function:', {
+          contentLength: data.content?.length,
+          hasFiles: data.files && data.files.length > 0,
+          fileType: data.files && data.files.length > 0 && data.files[0].startsWith('data:') ? 'base64' : 'url'
+        });
+        
         // Se é uma mídia gerada, salvar no storage para persistência
         if (data.files && data.files.length > 0 && (mode === 'image' || mode === 'video' || mode === 'audio')) {
           try {
@@ -117,9 +123,24 @@ export function useApiService() {
             
             // Tentar salvar a mídia no storage
             const mediaUrl = data.files[0];
-            const fileName = `${Date.now()}-${modelId}.${getExtensionFromUrl(mediaUrl)}`;
+            const isBase64 = mediaUrl.startsWith('data:');
             
-            const contentType = getContentTypeFromMode(mode);
+            let fileExt;
+            let contentType;
+            
+            if (isBase64) {
+              // Extrair o tipo de conteúdo da URL base64
+              const matches = mediaUrl.match(/^data:([^;]+);base64,/);
+              contentType = matches ? matches[1] : getContentTypeFromMode(mode);
+              fileExt = getExtensionFromContentType(contentType);
+            } else {
+              fileExt = getExtensionFromUrl(mediaUrl);
+              contentType = getContentTypeFromMode(mode);
+            }
+            
+            const fileName = `${Date.now()}-${modelId}.${fileExt}`;
+            
+            console.log(`Preparando para armazenar mídia ${isBase64 ? 'base64' : 'URL'}, tipo: ${contentType}, extensão: ${fileExt}`);
             
             const storageResponse = await storeMedia(
               mediaUrl,
@@ -193,6 +214,23 @@ export function useApiService() {
     } catch (e) {
       return 'bin'; // Fallback genérico
     }
+  };
+  
+  // Função auxiliar para obter extensão a partir do tipo de conteúdo
+  const getExtensionFromContentType = (contentType: string): string => {
+    const map: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'video/mp4': 'mp4',
+      'video/quicktime': 'mov',
+      'audio/mpeg': 'mp3',
+      'audio/wav': 'wav'
+    };
+    
+    return map[contentType] || 'jpg';
   };
   
   // Função auxiliar para obter o content type com base no modo
