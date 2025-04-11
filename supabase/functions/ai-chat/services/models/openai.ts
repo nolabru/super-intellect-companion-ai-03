@@ -108,27 +108,6 @@ export async function processImage(
   }
 }
 
-// Function to download an image and return as base64
-async function downloadImage(url: string): Promise<string> {
-  try {
-    console.log(`Tentando baixar imagem de: ${url}`);
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Falha ao baixar imagem: ${response.status} ${response.statusText}`);
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    const contentType = response.headers.get("content-type") || "image/png";
-    
-    console.log(`Imagem baixada com sucesso, tamanho: ${arrayBuffer.byteLength} bytes, tipo: ${contentType}`);
-    return `data:${contentType};base64,${base64}`;
-  } catch (error) {
-    console.error("Erro ao baixar imagem:", error);
-    throw error;
-  }
-}
-
 // Function to generate image with DALL-E
 export async function generateImage(
   prompt: string,
@@ -154,7 +133,7 @@ export async function generateImage(
       n: 1,
       size: size as "1024x1024" | "1792x1024" | "1024x1792",
       quality: "standard",
-      response_format: "b64_json", // Change to b64_json to get base64 encoded image
+      response_format: "b64_json", // Use b64_json to get base64 encoded image
     });
     
     // Extract image data

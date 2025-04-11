@@ -43,10 +43,14 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   // Use efeito para atualizar imgSrc quando mediaUrl mudar
   useEffect(() => {
     // Skip if mediaUrl is the placeholder URL
-    if (mediaUrl && mediaUrl.includes('placeholder.com')) {
+    if (mediaUrl && (mediaUrl.includes('placeholder.com') || mediaUrl.includes('MockAI'))) {
       console.log('Detectada URL de placeholder, não utilizando', mediaUrl);
       setRetryCount(prev => prev + 1);
-      onMediaError({} as React.SyntheticEvent<HTMLImageElement>);
+      // Safe error event object to prevent undefined.style error
+      const safeEvent = {
+        currentTarget: null
+      } as React.SyntheticEvent<HTMLImageElement>;
+      onMediaError(safeEvent);
       return;
     }
 
@@ -98,9 +102,13 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     console.error('Erro ao carregar imagem:', e);
     
     // Check if using placeholder image, if so trigger an error
-    if (imgSrc && imgSrc.includes('placeholder.com')) {
+    if (imgSrc && (imgSrc.includes('placeholder.com') || imgSrc.includes('MockAI'))) {
       console.error('Imagem de placeholder detectada, reportando erro');
-      onMediaError(e);
+      // Create a safe event object without accessing currentTarget.style
+      const safeEvent = {
+        currentTarget: null
+      } as React.SyntheticEvent<HTMLImageElement>;
+      onMediaError(safeEvent);
       return;
     }
     
@@ -131,7 +139,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
             <RefreshCw size={12} className="mr-1" />
             Tentar novamente
           </button>
-          {mediaUrl && !mediaUrl.includes('placeholder.com') && (
+          {mediaUrl && !mediaUrl.includes('placeholder.com') && !mediaUrl.includes('MockAI') && (
             <button 
               onClick={openMediaInNewTab}
               className="text-xs bg-inventu-darker/50 hover:bg-inventu-darker/80 text-white py-1 px-2 rounded flex items-center"
@@ -148,7 +156,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   // For debugging purposes
   console.log(`MediaContainer rendering with mode=${mode}, isMediaLoading=${isMediaLoading}, mediaUrl=${mediaUrl ? 'exists' : 'none'}`);
   
-  if (isImage && imgSrc && !imgSrc.includes('placeholder.com')) {
+  if (isImage && imgSrc && !imgSrc.includes('placeholder.com') && !imgSrc.includes('MockAI')) {
     return (
       <div className="mt-2 relative">
         {isMediaLoading && (

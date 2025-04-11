@@ -5,7 +5,7 @@ export interface ResponseData {
   files?: string[];
 }
 
-// Função para gerar imagem simulada
+// All mock functions now throw errors to prevent accidental use
 export function generateImage(
   content: string,
   modelId: string
@@ -13,7 +13,6 @@ export function generateImage(
   throw new Error("Mock service is disabled. Please use the real OpenAI API.");
 }
 
-// Função para gerar vídeo simulado
 export function generateVideo(
   content: string,
   modelId: string
@@ -21,7 +20,6 @@ export function generateVideo(
   throw new Error("Mock service is disabled. Please use the real OpenAI API.");
 }
 
-// Função para gerar texto simulado
 export function generateText(
   content: string,
   modelId: string,

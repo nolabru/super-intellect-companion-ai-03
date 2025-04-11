@@ -103,7 +103,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
     setIsMediaLoading(false);
     
     // Não esconder o elemento se for vídeo, para permitir nova tentativa
-    if (!isVideo) {
+    // Fix: Check if current target exists before accessing style
+    if (!isVideo && e.currentTarget) {
       e.currentTarget.style.display = 'none';
     }
     
