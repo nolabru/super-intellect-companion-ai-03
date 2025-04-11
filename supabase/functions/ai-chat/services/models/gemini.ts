@@ -29,13 +29,10 @@ export async function generateText(content: string, modelId: string): Promise<{c
     
     console.log(`Enviando prompt para o modelo ${modelName}`);
     
-    // Get the model
-    const model = genAI.models.generateContent;
-    
     // Generate content
-    const result = await genAI.models.generateContent({
+    const result = await genAI.generateContent({
       model: modelName,
-      contents: content,
+      contents: [{ role: "user", parts: [{ text: content }] }],
     });
     
     // Extract text from response
@@ -70,21 +67,27 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     const imageData = await imageResponse.blob();
     
     // Create content parts with both text and image
-    const imagePart = {
-      inlineData: {
-        data: await blobToBase64(imageData),
-        mimeType: imageResponse.headers.get("content-type") || "image/jpeg"
-      }
-    };
+    const imageBase64 = await blobToBase64(imageData);
+    const mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
     
     console.log(`Enviando prompt e imagem para o modelo ${modelName}`);
     
     // Generate content with image
-    const result = await genAI.models.generateContent({
+    const result = await genAI.generateContent({
       model: modelName,
       contents: [
-        { text: content },
-        { inlineData: imagePart.inlineData }
+        { 
+          role: "user", 
+          parts: [
+            { text: content },
+            { 
+              inline_data: {
+                data: imageBase64,
+                mime_type: mimeType
+              }
+            }
+          ]
+        }
       ],
     });
     
