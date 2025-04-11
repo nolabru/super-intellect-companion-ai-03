@@ -40,6 +40,15 @@ export function useApiService() {
     mode?: string
   ): Promise<StorageResponse> => {
     try {
+      // Check if it's a placeholder or mock URL and reject it
+      if (mediaUrl.includes('placeholder.com') || mediaUrl.includes('MockAI')) {
+        console.error('Detectada URL de placeholder ou mock, não armazenando:', mediaUrl);
+        return {
+          success: false,
+          error: 'URL de placeholder ou mock detectada, não é possível armazenar'
+        };
+      }
+      
       console.log(`Armazenando mídia no Supabase: ${mediaUrl.startsWith('data:') ? 'base64' : mediaUrl.substring(0, 50) + '...'}`);
       
       const { data, error } = await supabase.functions.invoke('media-storage', {
@@ -111,8 +120,17 @@ export function useApiService() {
         console.log('Resposta recebida da Edge Function:', {
           contentLength: data.content?.length,
           hasFiles: data.files && data.files.length > 0,
-          fileType: data.files && data.files.length > 0 && data.files[0].startsWith('data:') ? 'base64' : 'url'
+          fileType: data.files && data.files.length > 0 && data.files[0].startsWith('data:') ? 'base64' : 'url',
+          firstFewChars: data.files && data.files.length > 0 ? data.files[0].substring(0, 30) + '...' : 'none'
         });
+        
+        // Check if we got a placeholder or mock URL and reject it
+        if (data.files && 
+            data.files.length > 0 && 
+            (data.files[0].includes('placeholder.com') || data.files[0].includes('MockAI'))) {
+          console.error('Detectada URL de placeholder ou mock na resposta:', data.files[0]);
+          throw new Error('A API retornou uma URL de placeholder ou mock. Verifique a configuração do OPENAI_API_KEY no Supabase.');
+        }
         
         // Se é uma mídia gerada, salvar no storage para persistência
         if (data.files && data.files.length > 0 && (mode === 'image' || mode === 'video' || mode === 'audio')) {

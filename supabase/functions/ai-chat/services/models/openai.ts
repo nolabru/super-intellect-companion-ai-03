@@ -140,7 +140,7 @@ export async function generateImage(
     const apiKey = verifyApiKey();
     validateApiKey("OPENAI_API_KEY", apiKey);
     
-    console.log(`Iniciando geração de imagem com DALL-E. Prompt: "${prompt.substring(0, 50)}..."`);
+    console.log(`Iniciando geração de imagem com ${modelId}. Prompt: "${prompt.substring(0, 50)}..."`);
     
     // Instantiate OpenAI client with API key
     const openai = new OpenAI({
@@ -154,36 +154,30 @@ export async function generateImage(
       n: 1,
       size: size as "1024x1024" | "1792x1024" | "1024x1792",
       quality: "standard",
-      response_format: "url",
+      response_format: "b64_json", // Change to b64_json to get base64 encoded image
     });
     
-    // Extract image URL
-    const imageUrl = response.data[0]?.url;
-    if (!imageUrl) {
-      throw new Error("Não foi possível obter a URL da imagem gerada.");
+    // Extract image data
+    if (!response.data || response.data.length === 0) {
+      throw new Error("Não foi possível obter dados da imagem gerada.");
     }
     
-    console.log(`Imagem gerada com sucesso. URL: ${imageUrl}`);
-    
-    // Download imagem em base64 para evitar problemas com expiração do link
-    try {
-      const base64Image = await downloadImage(imageUrl);
-      console.log("Imagem convertida para base64 com sucesso, tamanho aproximado: ", 
-                  base64Image.length > 100 ? `${Math.round(base64Image.length / 1024)} KB` : "muito pequeno");
-      
-      // Retorna tanto o conteúdo descritivo quanto a URL da imagem em base64
-      return {
-        content: `Imagem gerada com sucesso.`,
-        files: [base64Image]
-      };
-    } catch (dlError) {
-      console.error("Erro ao baixar imagem como base64:", dlError);
-      // Fallback para o URL original se falhar o download
-      return {
-        content: `Imagem gerada com sucesso. [Imagem gerada]: ${imageUrl}`,
-        files: [imageUrl]
-      };
+    // Get the base64 encoded image
+    const imageData = response.data[0];
+    if (!imageData.b64_json) {
+      throw new Error("Dados base64 da imagem não encontrados na resposta.");
     }
+    
+    // Format as data URL
+    const contentType = "image/png"; // DALL-E returns PNG images
+    const base64Image = `data:${contentType};base64,${imageData.b64_json}`;
+    
+    console.log("Imagem gerada com sucesso e codificada em base64");
+    
+    return {
+      content: `Imagem gerada com sucesso.`,
+      files: [base64Image]
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logError("OPENAI_IMAGE_GENERATION_ERROR", { error: errorMessage, model: modelId });

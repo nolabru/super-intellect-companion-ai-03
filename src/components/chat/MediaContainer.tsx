@@ -42,8 +42,17 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   
   // Use efeito para atualizar imgSrc quando mediaUrl mudar
   useEffect(() => {
+    // Skip if mediaUrl is the placeholder URL
+    if (mediaUrl && mediaUrl.includes('placeholder.com')) {
+      console.log('Detectada URL de placeholder, não utilizando', mediaUrl);
+      setRetryCount(prev => prev + 1);
+      onMediaError({} as React.SyntheticEvent<HTMLImageElement>);
+      return;
+    }
+
     setImgSrc(mediaUrl);
-  }, [mediaUrl]);
+    console.log('MediaContainer: URL de mídia atualizada', mediaUrl?.substring(0, 30) + '...');
+  }, [mediaUrl, onMediaError]);
   
   useEffect(() => {
     if (mediaError && isVideo && mediaUrl && retryCount < 3) {
@@ -87,6 +96,14 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
     console.error('Erro ao carregar imagem:', e);
+    
+    // Check if using placeholder image, if so trigger an error
+    if (imgSrc && imgSrc.includes('placeholder.com')) {
+      console.error('Imagem de placeholder detectada, reportando erro');
+      onMediaError(e);
+      return;
+    }
+    
     onMediaError(e);
     
     // Tentar recuperar o src se for uma URL de data:image que pode estar truncada
@@ -114,7 +131,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
             <RefreshCw size={12} className="mr-1" />
             Tentar novamente
           </button>
-          {mediaUrl && (
+          {mediaUrl && !mediaUrl.includes('placeholder.com') && (
             <button 
               onClick={openMediaInNewTab}
               className="text-xs bg-inventu-darker/50 hover:bg-inventu-darker/80 text-white py-1 px-2 rounded flex items-center"
@@ -131,7 +148,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   // For debugging purposes
   console.log(`MediaContainer rendering with mode=${mode}, isMediaLoading=${isMediaLoading}, mediaUrl=${mediaUrl ? 'exists' : 'none'}`);
   
-  if (isImage && imgSrc) {
+  if (isImage && imgSrc && !imgSrc.includes('placeholder.com')) {
     return (
       <div className="mt-2 relative">
         {isMediaLoading && (
