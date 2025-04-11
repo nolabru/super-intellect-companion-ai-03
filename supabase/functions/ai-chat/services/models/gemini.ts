@@ -1,7 +1,7 @@
 
 // Service for Google Gemini AI models
 import { validateApiKey } from "../../utils/validation.ts";
-import { GoogleGenAI, type GenerateContentResult } from "npm:@google/genai@latest";
+import { GoogleGenAI } from "npm:@google/genai@latest";
 
 // Validate API key for Google Gemini
 export function verifyApiKey() {
@@ -27,15 +27,19 @@ export async function generateText(content: string, modelId: string): Promise<{c
     // Initialize the Google Genai client
     const genAI = initializeGemini();
     
-    // Get the model
-    const model = genAI.models.getGenerativeModel({ model: modelName });
-    
     console.log(`Enviando prompt para o modelo ${modelName}`);
     
+    // Get the model
+    const model = genAI.models.generateContent;
+    
     // Generate content
-    const result = await model.generateContent(content);
-    const response = result.response;
-    const text = response.text();
+    const result = await genAI.models.generateContent({
+      model: modelName,
+      contents: content,
+    });
+    
+    // Extract text from response
+    const text = result.response.text();
     
     console.log(`Resposta gerada com sucesso: ${text.substring(0, 100)}...`);
     
@@ -57,9 +61,6 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     // Initialize the Google Genai client
     const genAI = initializeGemini();
     
-    // Get the model
-    const model = genAI.models.getGenerativeModel({ model: modelName });
-    
     // Fetch the image data
     const imageResponse = await fetch(imageUrl);
     if (!imageResponse.ok) {
@@ -79,9 +80,15 @@ export async function processImage(content: string, imageUrl: string, modelId: s
     console.log(`Enviando prompt e imagem para o modelo ${modelName}`);
     
     // Generate content with image
-    const result = await model.generateContent([content, imagePart]);
-    const response = result.response;
-    const text = response.text();
+    const result = await genAI.models.generateContent({
+      model: modelName,
+      contents: [
+        { text: content },
+        { inlineData: imagePart.inlineData }
+      ],
+    });
+    
+    const text = result.response.text();
     
     console.log(`Resposta de análise de imagem gerada com sucesso: ${text.substring(0, 100)}...`);
     
