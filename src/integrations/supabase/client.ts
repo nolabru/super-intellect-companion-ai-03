@@ -10,3 +10,12 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Get Supabase project reference from URL
+export const getProjectRef = () => {
+  const match = SUPABASE_URL.match(/https:\/\/([^.]+)/);
+  return match ? match[1] : null;
+};
+
+// Export project ref for edge function calls
+export const PROJECT_REF = getProjectRef();

@@ -105,8 +105,43 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
+      // Google Gemini models integration
+      if (modelId.includes("gemini") && mode === "text") {
+        console.log("Starting Gemini text processing");
+        
+        try {
+          // Call the Gemini edge function
+          const { data: geminiData, error: geminiError } = await fetch(
+            `${req.url.split('/ai-chat')[0]}/gemini-chat`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': req.headers.get('Authorization') || ''
+              },
+              body: JSON.stringify({
+                content,
+                model: modelId
+              })
+            }
+          ).then(res => res.json());
+          
+          if (geminiError) {
+            throw new Error(`Gemini API error: ${geminiError}`);
+          }
+          
+          response = {
+            content: geminiData.content
+          };
+          
+          console.log("Gemini text processing completed successfully");
+        } catch (error) {
+          throw new Error(`Error processing Gemini request: ${error.message}`);
+        }
+      }
+      
       // Luma AI models
-      if (modelId === "luma-video" && mode === "video") {
+      else if (modelId === "luma-video" && mode === "video") {
         console.log("Starting Luma AI video processing");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
         
@@ -282,6 +317,12 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Configuration error: ElevenLabs API key is not configured correctly. Please check your settings.";
         } else {
           friendlyError = `Audio generation error with ElevenLabs: ${errorMessage}`;
+        }
+      } else if (modelId.includes("gemini")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("credential") || errorMessage.includes("authenticate")) {
+          friendlyError = "Configuration error: Google Gemini API key is not configured correctly. Please check your settings.";
+        } else {
+          friendlyError = `Google Gemini text generation error: ${errorMessage}`;
         }
       }
       
