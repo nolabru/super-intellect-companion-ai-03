@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, ExternalLink, RefreshCw } from 'lucide-react';
 import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
 import ModelSelector from './ModelSelector';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 interface ChatInterfaceProps {
   messages: MessageType[];

@@ -1,6 +1,10 @@
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @layer utilities {
-  // Add new background gradient utilities
+  /* Add new background gradient utilities */
   .bg-chat-gradient {
     @apply bg-gradient-to-br from-gray-900/80 to-gray-800/90 backdrop-blur-xl;
   }
