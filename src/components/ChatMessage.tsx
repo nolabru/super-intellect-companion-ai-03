@@ -157,29 +157,22 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       "flex flex-col mb-4 animate-fade-in",
       isUser ? "items-end" : "items-start"
     )}>
-      <div className="flex items-center mb-1 text-sm text-gray-400">
-        {!isUser && (
-          <span className="font-medium mr-2">
-            {message.model}
-          </span>
-        )}
-        {isUser && <span className="font-medium mr-2">Você</span>}
-        <div className="flex items-center mr-2">
-          <ModeIcon mode={message.mode} />
-          <span className="capitalize">{message.mode || 'text'}</span>
-        </div>
-        <span>{message.timestamp}</span>
-      </div>
-      
-      {/* Conteúdo da mensagem */}
       <div className={cn(
-        "chat-bubble",
+        "chat-bubble group",
         isUser ? "user-bubble" : "ai-bubble",
-        "break-words p-3 rounded-xl max-w-[80%]",
-        isUser ? "bg-inventu-blue/20 text-white" : "bg-inventu-card text-white",
+        "break-words p-4 rounded-2xl max-w-[85%]",
+        isUser ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white" : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-white",
         isLoading && !isVideo && "animate-pulse",
-        isError && "bg-red-900/20 border border-red-500/30"
+        isError && "bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30"
       )}>
+        {/* Nome do modelo ou "Você" - Mostrado discretamente */}
+        <div className="text-xs opacity-70 mb-1">
+          {isUser ? "Você" : message.model}
+          {!isUser && message.mode && message.mode !== 'text' && (
+            <span className="ml-1 opacity-70">• <ModeIcon mode={message.mode} className="h-3 w-3 inline" /></span>
+          )}
+        </div>
+        
         <ChatMessageContent 
           content={displayContent}
           isLoading={isLoading && !isVideo}

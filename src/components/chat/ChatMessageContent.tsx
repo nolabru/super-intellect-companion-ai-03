@@ -21,7 +21,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
     return (
       <div className="flex items-center">
         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        {content}
+        <span className="text-white/90">{content}</span>
       </div>
     );
   }
@@ -47,7 +47,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   
   // Use ReactMarkdown to render formatted content
   return (
-    <div className="markdown-content">
+    <div className="markdown-content text-white">
       <ReactMarkdown
         components={{
           // Custom component for paragraphs to preserve line breaks
@@ -66,7 +66,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
               href={href}
               target="_blank" 
               rel="noopener noreferrer" 
-              className="text-inventu-blue underline hover:text-inventu-blue/80"
+              className="text-blue-400 underline hover:text-blue-300"
             >
               {children}
             </a>

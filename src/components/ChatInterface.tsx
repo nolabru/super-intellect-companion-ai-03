@@ -108,13 +108,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   const getModelColor = (modelId: string) => {
     const modelInfo = getModelInfo(modelId);
-    if (!modelInfo) return "text-inventu-blue";
+    if (!modelInfo) return "text-blue-500";
     
     switch (modelInfo.provider) {
       case 'openai':
-        return "text-inventu-blue";
+        return "text-blue-500";
       case 'anthropic':
-        return "text-inventu-purple";
+        return "text-purple-500";
       case 'google':
         return "text-green-500";
       case 'kligin':
@@ -128,7 +128,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       case 'luma':
         return "text-indigo-500";
       default:
-        return "text-inventu-blue";
+        return "text-blue-500";
     }
   };
   
@@ -185,9 +185,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const providerName = modelInfo ? getProviderDisplayName(modelInfo.provider) : "";
   
   return (
-    <div className={cn("flex flex-col h-full bg-inventu-darker shadow-md rounded-xl overflow-hidden", className)}>
+    <div className={cn("flex flex-col h-full bg-black shadow-lg rounded-2xl overflow-hidden", className)}>
       <div className={cn(
-        "p-3 backdrop-blur-sm bg-black/20 border-b border-white/5 flex justify-center items-center gap-2",
+        "p-3 backdrop-blur-xl bg-black/40 border-b border-white/10 flex justify-center items-center gap-2",
         getModelColor(model)
       )}>
         {onModelChange && availableModels.length > 0 ? (
@@ -207,7 +207,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
         )}
       </div>
       
-      <div className="flex-1 overflow-y-auto p-5 space-y-5 relative">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 relative scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3 animate-fade-in">
             <Loader2 className="h-8 w-8 animate-spin text-white/70" />
@@ -215,7 +215,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         ) : filteredMessages.length > 0 ? (
           <>
-            <div className="space-y-5">
+            <div className="space-y-6">
               {filteredMessages.map((message) => (
                 <div key={message.id} className="animate-fade-in">
                   <ChatMessage message={message} />
@@ -287,7 +287,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full space-y-4 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shadow-xl">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-xl">
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
                 className="h-8 w-8 text-white opacity-80" 
