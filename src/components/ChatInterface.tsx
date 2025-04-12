@@ -46,27 +46,43 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
   // Filtrar mensagens para mostrar apenas mensagens do usuário e respostas do modelo específico
   const filteredMessages = messages.filter(msg => {
-    // Sempre mostrar mensagens de usuário se não estiver em modo de comparação desvinculado
-    if (msg.sender === 'user' && !isCompareMode) {
-      return true;
+    // No modo de comparação desvinculado:
+    if (isCompareMode) {
+      // Mostrar apenas mensagens de usuário destinadas a este modelo específico
+      if (msg.sender === 'user') {
+        return msg.model === model || (!msg.model && msg.id?.includes(model));
+      }
+      
+      // Mostrar mensagens de carregamento (loading) apenas para este modelo
+      if (msg.id?.startsWith('loading-') && msg.model === model) {
+        return true;
+      }
+      
+      // Mostrar respostas de assistente apenas deste modelo e não mensagens de carregamento
+      if (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && msg.model === model) {
+        return true;
+      }
+      
+      return false;
+    } else {
+      // Modo normal (não comparação):
+      // Sempre mostrar mensagens de usuário
+      if (msg.sender === 'user') {
+        return true;
+      }
+      
+      // Mostrar mensagens de carregamento (loading) apenas para este modelo
+      if (msg.id?.startsWith('loading-') && msg.model === model) {
+        return true;
+      }
+      
+      // Mostrar respostas de assistente apenas deste modelo e não mensagens de carregamento
+      if (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && msg.model === model) {
+        return true;
+      }
+      
+      return false;
     }
-    
-    // Em modo de comparação desvinculado, mostrar apenas mensagens de usuário destinadas a este modelo
-    if (msg.sender === 'user' && isCompareMode) {
-      return !msg.model || msg.model === model;
-    }
-    
-    // Mostrar mensagens de carregamento (loading) apenas para este modelo
-    if (msg.id?.startsWith('loading-') && msg.model === model) {
-      return true;
-    }
-    
-    // Mostrar respostas de assistente apenas deste modelo e não mensagens de carregamento
-    if (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && msg.model === model) {
-      return true;
-    }
-    
-    return false;
   });
   
   const getModelInfo = (modelId: string) => {

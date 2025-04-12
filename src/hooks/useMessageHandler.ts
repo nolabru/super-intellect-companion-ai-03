@@ -56,17 +56,31 @@ export function useMessageHandler(
       console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Add user message - adicionar informação de qual modelo é destinatário no modo desvinculado
+      // Add user message
       const userMessageId = uuidv4();
+      let targetModel: string | undefined;
+      
+      // Determinar qual modelo receberá a mensagem
+      if (comparing && !leftModel && rightModel) {
+        // Modo desvinculado - apenas modelo direito
+        targetModel = rightModel;
+      } else if (comparing && leftModel && !rightModel) {
+        // Modo desvinculado - apenas modelo esquerdo
+        targetModel = leftModel;
+      } else {
+        // Modo vinculado ou normal
+        targetModel = undefined;
+      }
+      
+      // Criar mensagem do usuário com uma ID que contenha o modelo de destino no modo desvinculado
       const userMessage: MessageType = {
-        id: userMessageId,
+        id: targetModel ? `${userMessageId}-${targetModel}` : userMessageId,
         content,
         sender: 'user',
         timestamp: new Date().toISOString(),
         mode,
         files,
-        model: !comparing && leftModel ? leftModel : 
-               comparing && rightModel && !leftModel ? rightModel : undefined
+        model: targetModel
       };
       
       setMessages(prev => [...prev, userMessage]);
