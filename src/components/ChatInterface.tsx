@@ -1,11 +1,12 @@
+
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
-import { AlertTriangle, Loader2, ExternalLink, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
 import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
+import { Button } from './ui/button';
+import { toast } from 'sonner';
 import ModelSelector from './ModelSelector';
-import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -43,7 +44,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages]);
 
+  // Filtrar mensagens para mostrar apenas mensagens do usuário e respostas do modelo específico
   const filteredMessages = messages.filter(msg => {
+    // Logging para depuração
     console.log(`[ChatInterface:${model}] Avaliando mensagem:`, {
       id: msg.id,
       sender: msg.sender,
@@ -52,31 +55,40 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       isLoading: msg.id?.startsWith('loading-')
     });
     
+    // No modo de comparação desvinculado:
     if (isCompareMode) {
+      // Para mensagens do usuário, mostrar apenas as destinadas a este modelo específico
       if (msg.sender === 'user') {
         const shouldShow = msg.model === model;
         console.log(`[ChatInterface:${model}] Mensagem de usuário ${shouldShow ? 'aceita' : 'rejeitada'} para modelo ${model}`);
         return shouldShow;
       }
       
+      // Mensagens de carregamento apenas para este modelo
       if (msg.id?.startsWith('loading-') && msg.model === model) {
         return true;
       }
       
+      // Respostas do assistente apenas deste modelo específico
       if (msg.sender === 'assistant' && msg.model === model) {
         return true;
       }
       
       return false;
     } else {
+      // Modo normal (não comparação):
+      
+      // Sempre mostrar mensagens de usuário
       if (msg.sender === 'user') {
         return true;
       }
       
+      // Mensagens de carregamento apenas para este modelo
       if (msg.id?.startsWith('loading-') && msg.model === model) {
         return true;
       }
       
+      // Respostas do assistente apenas deste modelo
       if (msg.sender === 'assistant' && msg.model === model) {
         return true;
       }
@@ -173,11 +185,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const providerName = modelInfo ? getProviderDisplayName(modelInfo.provider) : "";
   
   return (
-    <div className={cn(
-      "flex flex-col h-full shadow-lg rounded-2xl overflow-hidden",
-      "bg-chat-soft-gradient",
-      className
-    )}>
+    <div className={cn("flex flex-col h-full bg-black shadow-lg rounded-2xl overflow-hidden", className)}>
       <div className={cn(
         "p-3 backdrop-blur-xl bg-black/40 border-b border-white/10 flex justify-center items-center gap-2",
         getModelColor(model)
