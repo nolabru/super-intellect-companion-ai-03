@@ -1,29 +1,24 @@
 
 import React from 'react';
-import { ImageIcon, VideoIcon, MicIcon, Type } from 'lucide-react';
+import { Text, Image, Video, AudioLines } from 'lucide-react';
 import { ChatMode } from '../ModeSelector';
 
 interface ModeIconProps {
-  mode: ChatMode;
-  className?: string;
+  mode?: ChatMode;
 }
 
-const ModeIcon: React.FC<ModeIconProps> = ({ mode, className = '' }) => {
-  const iconProps = {
-    className: `h-4 w-4 ${className}`
-  };
-
+const ModeIcon: React.FC<ModeIconProps> = ({ mode }) => {
   switch (mode) {
     case 'image':
-      return <ImageIcon {...iconProps} />;
+      return <Image size={14} className="mr-1" />;
     case 'video':
-      return <VideoIcon {...iconProps} />;
+      return <Video size={14} className="mr-1" />;
     case 'audio':
-      return <MicIcon {...iconProps} />;
+      return <AudioLines size={14} className="mr-1" />;
+    case 'text':
     default:
-      return <Type {...iconProps} />;
+      return <Text size={14} className="mr-1" />;
   }
 };
 
 export default ModeIcon;
-

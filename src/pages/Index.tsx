@@ -12,7 +12,6 @@ import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
 import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
-import LumaParamsButton, { LumaParams, defaultLumaParams } from '@/components/LumaParamsButton';
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(false);
@@ -32,7 +31,6 @@ const Index: React.FC = () => {
   } = useConversation();
   
   const { conversationId } = useParams<{ conversationId: string }>();
-  const [lumaParams, setLumaParams] = useState<LumaParams>(defaultLumaParams);
   
   useEffect(() => {
     if (conversationId && conversationId !== currentConversationId) {
@@ -170,10 +168,6 @@ const Index: React.FC = () => {
     }
   };
 
-  const handleLumaParamsChange = (params: LumaParams) => {
-    setLumaParams(params);
-  };
-
   return (
     <div className="flex flex-col h-screen bg-inventu-darker">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
@@ -255,15 +249,6 @@ const Index: React.FC = () => {
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
-                )}
-                
-                {leftModel && leftModel.includes('luma') && (activeMode === 'image' || activeMode === 'video') && (
-                  <LumaParamsButton 
-                    mode={activeMode} 
-                    model={leftModel} 
-                    params={lumaParams} 
-                    onParamsChange={handleLumaParamsChange} 
-                  />
                 )}
               </div>
             </div>
