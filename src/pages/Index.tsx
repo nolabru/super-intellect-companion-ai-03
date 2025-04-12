@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
@@ -11,7 +12,7 @@ import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
 import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
-import LumaParamsButton, { LumaParams, defaultLumaParams } from './LumaParamsButton';
+import LumaParamsButton, { LumaParams, defaultLumaParams } from '@/components/LumaParamsButton';
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(false);
@@ -256,10 +257,10 @@ const Index: React.FC = () => {
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
                 )}
                 
-                {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
+                {leftModel && leftModel.includes('luma') && (activeMode === 'image' || activeMode === 'video') && (
                   <LumaParamsButton 
-                    mode={mode} 
-                    model={model} 
+                    mode={activeMode} 
+                    model={leftModel} 
                     params={lumaParams} 
                     onParamsChange={handleLumaParamsChange} 
                   />
