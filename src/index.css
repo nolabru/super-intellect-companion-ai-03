@@ -6,7 +6,7 @@
 @layer utilities {
   /* Add new background gradient utilities */
   .bg-chat-gradient {
-    @apply bg-gradient-to-br from-gray-900/80 via-gray-800/90 to-gray-950/90 backdrop-blur-xl;
+    @apply bg-gradient-to-br from-gray-900/80 to-gray-800/90 backdrop-blur-xl;
   }
   
   .bg-chat-soft-gradient {

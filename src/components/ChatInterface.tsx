@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
-import { Loader2, AlertTriangle, RefreshCw, ExternalLink } from 'lucide-react';
+import { AlertTriangle, Loader2, ExternalLink, RefreshCw } from 'lucide-react';
 import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
-import { Button } from './ui/button';
-import { toast } from 'sonner';
 import ModelSelector from './ModelSelector';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -147,7 +147,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   
   const openLumaDashboard = () => {
     window.open('https://lumalabs.ai/dashboard', '_blank');
-    toast.success('Dashboard da Luma AI aberto');
+    toast.success('Abrindo Dashboard da Luma AI');
   };
   
   const showLumaKeyInstructions = () => {
@@ -174,9 +174,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   
   return (
     <div className={cn(
-      "flex flex-col h-full shadow-lg rounded-2xl overflow-hidden", 
-      className,
-      "bg-gradient-to-br from-gray-900/80 via-gray-800/90 to-gray-950/90 backdrop-blur-xl"
+      "flex flex-col h-full shadow-lg rounded-2xl overflow-hidden",
+      "bg-chat-soft-gradient",
+      className
     )}>
       <div className={cn(
         "p-3 backdrop-blur-xl bg-black/40 border-b border-white/10 flex justify-center items-center gap-2",
