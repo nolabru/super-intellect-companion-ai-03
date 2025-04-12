@@ -61,20 +61,29 @@ export function useMessageHandler(
       let targetModel: string | undefined;
       
       // Determinar qual modelo receberá a mensagem
-      if (comparing && !leftModel && rightModel) {
-        // Modo desvinculado - apenas modelo direito
-        targetModel = rightModel;
-      } else if (comparing && leftModel && !rightModel) {
-        // Modo desvinculado - apenas modelo esquerdo
-        targetModel = leftModel;
+      if (comparing) {
+        if (!leftModel && rightModel) {
+          // Modo desvinculado - apenas modelo direito
+          targetModel = rightModel;
+          console.log(`[useMessageHandler] Mensagem direcionada para o modelo direito: ${rightModel}`);
+        } else if (leftModel && !rightModel) {
+          // Modo desvinculado - apenas modelo esquerdo
+          targetModel = leftModel;
+          console.log(`[useMessageHandler] Mensagem direcionada para o modelo esquerdo: ${leftModel}`);
+        } else if (leftModel && rightModel) {
+          // Modo vinculado - ambos modelos
+          targetModel = undefined;
+          console.log(`[useMessageHandler] Mensagem direcionada para ambos os modelos: ${leftModel} e ${rightModel}`);
+        }
       } else {
-        // Modo vinculado ou normal
-        targetModel = undefined;
+        // Modo regular - apenas um modelo
+        targetModel = modelId;
+        console.log(`[useMessageHandler] Mensagem direcionada para o modelo: ${modelId}`);
       }
       
-      // Criar mensagem do usuário com uma ID que contenha o modelo de destino no modo desvinculado
+      // Criar mensagem do usuário com o modelo de destino explicitamente definido
       const userMessage: MessageType = {
-        id: targetModel ? `${userMessageId}-${targetModel}` : userMessageId,
+        id: userMessageId,
         content,
         sender: 'user',
         timestamp: new Date().toISOString(),
@@ -82,6 +91,8 @@ export function useMessageHandler(
         files,
         model: targetModel
       };
+      
+      console.log(`[useMessageHandler] Criando mensagem de usuário para modelo: ${targetModel || 'todos'}`);
       
       setMessages(prev => [...prev, userMessage]);
       
