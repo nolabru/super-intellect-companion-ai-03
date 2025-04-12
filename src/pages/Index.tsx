@@ -74,28 +74,46 @@ const Index: React.FC = () => {
   const handleSendMessage = (content: string, files?: string[], params?: any, targetModel?: string) => {
     console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`, params);
     
-    if (!comparing || isLinked) {
+    if (comparing) {
+      if (isLinked) {
+        // Modo vinculado: enviar para ambos os modelos
+        sendMessage(
+          content, 
+          activeMode, 
+          leftModel, // Pode ser qualquer um dos modelos, pois estamos enviando para ambos
+          true,      // Modo de comparação ativo
+          leftModel, 
+          rightModel,
+          files,
+          params
+        );
+      } else {
+        // Modo desvinculado: enviar apenas para o modelo específico
+        if (!targetModel) {
+          console.error("Modelo alvo não especificado no modo desvinculado");
+          return;
+        }
+        
+        sendMessage(
+          content,
+          activeMode,
+          targetModel,
+          false, // Não é comparação simultânea, é apenas para um modelo
+          targetModel === leftModel ? leftModel : null,
+          targetModel === rightModel ? rightModel : null,
+          files,
+          params
+        );
+      }
+    } else {
+      // Modo único - enviar apenas para o modelo selecionado
       sendMessage(
         content, 
         activeMode, 
-        comparing ? leftModel : leftModel, 
-        comparing, 
         leftModel, 
-        rightModel,
-        files,
-        params
-      );
-    } else {
-      const actualLeftModel = targetModel === leftModel ? leftModel : null;
-      const actualRightModel = targetModel === rightModel ? rightModel : null;
-      
-      sendMessage(
-        content,
-        activeMode,
-        targetModel || leftModel,
-        false,
-        actualLeftModel,
-        actualRightModel,
+        false,   // Não é comparação
+        leftModel, 
+        null,
         files,
         params
       );
@@ -174,7 +192,7 @@ const Index: React.FC = () => {
                     title={leftModel}
                     onModelChange={handleLeftModelChange}
                     availableModels={availableModels}
-                    isCompareMode={true}
+                    isCompareMode={!isLinked} // Só é verdadeiramente modo de comparação se estiver desvinculado
                     loading={authLoading || (messagesLoading && !initialLoadDone)}
                   />
                   {!isLinked && (
@@ -195,7 +213,7 @@ const Index: React.FC = () => {
                     title={rightModel}
                     onModelChange={handleRightModelChange}
                     availableModels={availableModels}
-                    isCompareMode={true}
+                    isCompareMode={!isLinked} // Só é verdadeiramente modo de comparação se estiver desvinculado
                     loading={authLoading || (messagesLoading && !initialLoadDone)}
                   />
                   {!isLinked && (

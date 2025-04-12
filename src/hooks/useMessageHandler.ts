@@ -36,8 +36,8 @@ export function useMessageHandler(
     mode: ChatMode = 'text',
     modelId: string,
     comparing = false,
-    leftModel?: string,
-    rightModel?: string,
+    leftModel?: string | null,
+    rightModel?: string | null,
     files?: string[],
     params?: LumaParams
   ) => {
@@ -56,7 +56,7 @@ export function useMessageHandler(
       console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Add user message
+      // Add user message - adicionar informação de qual modelo é destinatário no modo desvinculado
       const userMessageId = uuidv4();
       const userMessage: MessageType = {
         id: userMessageId,
@@ -64,7 +64,9 @@ export function useMessageHandler(
         sender: 'user',
         timestamp: new Date().toISOString(),
         mode,
-        files
+        files,
+        model: !comparing && leftModel ? leftModel : 
+               comparing && rightModel && !leftModel ? rightModel : undefined
       };
       
       setMessages(prev => [...prev, userMessage]);
@@ -90,8 +92,32 @@ export function useMessageHandler(
           files,
           params
         );
+      } else if (comparing && leftModel && !rightModel) {
+        // Modo desvinculado - apenas modelo esquerdo
+        await messageService.handleSingleModelMessage(
+          content,
+          mode,
+          leftModel,
+          currentConversationId,
+          messages,
+          conversations,
+          files,
+          params
+        );
+      } else if (comparing && !leftModel && rightModel) {
+        // Modo desvinculado - apenas modelo direito
+        await messageService.handleSingleModelMessage(
+          content,
+          mode,
+          rightModel,
+          currentConversationId,
+          messages,
+          conversations,
+          files,
+          params
+        );
       } else {
-        // Single model
+        // Single model - modo padrão
         await messageService.handleSingleModelMessage(
           content,
           mode,
