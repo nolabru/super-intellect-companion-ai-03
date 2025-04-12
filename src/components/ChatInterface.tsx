@@ -44,9 +44,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages]);
 
+  // Filtrar mensagens para mostrar apenas mensagens do usuário e respostas do modelo específico
   const filteredMessages = messages.filter(msg => 
     msg.sender === 'user' || 
-    (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && (!msg.model || msg.model === model || isCompareMode)) || 
+    (msg.sender === 'assistant' && !msg.id?.startsWith('loading-') && msg.model === model) || 
     (msg.id?.startsWith('loading-') && msg.model === model)
   );
   

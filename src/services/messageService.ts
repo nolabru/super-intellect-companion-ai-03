@@ -150,7 +150,7 @@ export const createMessageService = (
     }
   };
   
-  // Handle comparing models - improved to better handle media
+  // Handle comparing models - improved for model-specific responses
   const handleCompareModels = async (
     content: string,
     mode: ChatMode,
@@ -206,14 +206,14 @@ export const createMessageService = (
         prevMessages.filter(msg => msg.id !== loadingIdLeft && msg.id !== loadingIdRight)
       );
       
-      // Add real responses
+      // Add real responses with explicit model attribution
       const newMessages: MessageType[] = [
         {
           id: uuidv4(),
           content: responseLeft.content,
           sender: 'assistant',
           timestamp: new Date().toISOString(),
-          model: leftModelId,
+          model: leftModelId, // Garantir que a mensagem está associada ao modelo correto
           mode,
           files: responseLeft.files,
           mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
@@ -223,7 +223,7 @@ export const createMessageService = (
           content: responseRight.content,
           sender: 'assistant',
           timestamp: new Date().toISOString(),
-          model: rightModelId,
+          model: rightModelId, // Garantir que a mensagem está associada ao modelo correto
           mode,
           files: responseRight.files,
           mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
