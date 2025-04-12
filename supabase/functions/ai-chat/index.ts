@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -88,7 +87,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       }
       
       // Verificação para ElevenLabs
-      if (modelId.includes("eleven")) {
+      if (modelId.includes("eleven") || modelId.includes("elevenlabs-tts")) {
         try {
           // Verificar a chave API do ElevenLabs antes de prosseguir
           elevenlabsService.verifyApiKey();
@@ -236,7 +235,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       }
       
       // ElevenLabs models
-      else if (modelId === "eleven-labs" && mode === "audio") {
+      else if ((modelId === "eleven-labs" || modelId === "elevenlabs-tts") && mode === "audio") {
         console.log("Iniciando geração de áudio com ElevenLabs");
         // Extraindo parâmetros
         const voiceParams = {

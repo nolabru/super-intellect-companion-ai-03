@@ -39,6 +39,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (isImageGenerationModel) {
       return "Descreva a imagem que você deseja gerar...";
     }
+    if (mode === 'audio') {
+      return "Digite o texto para converter em áudio...";
+    }
     if (model) {
       return `Pergunte ao ${model}...`;
     }
