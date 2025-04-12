@@ -10,6 +10,6 @@
   }
   
   .bg-chat-soft-gradient {
-    @apply bg-gradient-to-br from-gray-800/70 via-gray-850/80 to-gray-900/90 backdrop-blur-lg;
+    @apply bg-gradient-to-br from-gray-800/70 via-gray-900/60 to-gray-900/90 backdrop-blur-lg;
   }
 }
