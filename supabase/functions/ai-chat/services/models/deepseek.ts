@@ -1,5 +1,6 @@
 
-import { Deepseek } from 'deepseek-sdk';
+// Import deepseek-sdk from a CDN URL for Deno compatibility
+import { Deepseek } from 'https://esm.sh/deepseek-sdk@1.0.0';
 
 export async function generateText(content: string, modelId: string): Promise<{ content: string }> {
   const deepseek = new Deepseek({
