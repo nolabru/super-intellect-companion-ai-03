@@ -2,7 +2,7 @@ import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate';
+export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate' | 'deepseek';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 
 export interface ModelInfo {
@@ -165,7 +165,24 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   capabilities: ['Geração de imagens', 'Código aberto'],
   description: 'Modelo de código aberto para geração de imagens de alta qualidade.',
   modes: ['image']
-}];
+},
+// Add Deepseek models to the AVAILABLE_MODELS array
+{
+  id: 'deepseek-chat',
+  displayName: 'DeepSeek Chat',
+  provider: 'deepseek',
+  capabilities: ['Conversational AI', 'Code Generation'],
+  description: 'Advanced AI model for chat and code generation',
+  modes: ['text']
+}, {
+  id: 'deepseek-coder',
+  displayName: 'DeepSeek Coder',
+  provider: 'deepseek',
+  capabilities: ['Code Generation', 'Programming Support'],
+  description: 'Specialized AI model for coding tasks',
+  modes: ['text']
+}
+];
 
 export const getModelsByMode = (mode: ModelMode): ModelInfo[] => {
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
@@ -204,6 +221,9 @@ const getProviderDisplayName = (provider: ModelProvider): string => {
       return 'Luma AI';
     case 'replicate':
       return 'Replicate';
+    // In the getProviderDisplayName function, add a case for deepseek
+    case 'deepseek':
+      return 'DeepSeek';
     default:
       return provider;
   }
@@ -251,6 +271,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         return '🎬';
       case 'replicate':
         return '⚙️';
+      case 'deepseek':
+        return '⚫';
       default:
         return '•';
     }

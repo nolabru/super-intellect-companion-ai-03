@@ -8,6 +8,7 @@ import * as openaiService from "./services/models/openai.ts";
 import * as anthropicService from "./services/models/anthropic.ts";
 import * as elevenlabsService from "./services/models/elevenlabs.ts";
 import * as geminiService from "./services/models/gemini.ts";
+import * as deepseekService from "./services/models/deepseek.ts";
 
 // Define response type
 interface ResponseData {
@@ -254,6 +255,11 @@ async function handleAIChat(req: Request): Promise<Response> {
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
+      }
+      else if ((modelId === 'deepseek-chat' || modelId === 'deepseek-coder') && mode === 'text') {
+        console.log("Iniciando processamento de texto com Deepseek");
+        response = await deepseekService.generateText(content, modelId);
+        console.log("Processamento de texto concluído com sucesso");
       }
       else {
         return new Response(
