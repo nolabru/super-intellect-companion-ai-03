@@ -125,6 +125,27 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
+      // Verificação para Deepseek
+      if (modelId.includes("deepseek")) {
+        try {
+          console.log("Verificando DEEPSEEK_API_KEY...");
+          // Verificar a chave API do Deepseek antes de prosseguir
+          deepseekService.verifyApiKey();
+        } catch (error) {
+          console.error("Erro na verificação do DEEPSEEK_API_KEY:", error);
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "DEEPSEEK_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
+      }
+      
       // Luma AI models
       if (modelId === "luma-video" && mode === "video") {
         console.log("Iniciando processamento de vídeo com Luma AI");
@@ -314,6 +335,12 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
           friendlyError = `Erro na geração de ${mode === 'image' ? 'imagem' : 'texto'} com OpenAI: ${errorMessage}`;
+        }
+      } else if (modelId.includes("deepseek")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("authorize") || errorMessage.includes("authenticate")) {
+          friendlyError = "Erro de configuração: A chave API do Deepseek não está configurada corretamente. Por favor, verifique suas configurações.";
+        } else {
+          friendlyError = `Erro na geração de texto com Deepseek: ${errorMessage}`;
         }
       }
       

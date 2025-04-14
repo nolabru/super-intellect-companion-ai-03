@@ -20,6 +20,8 @@ export async function generateText(content: string, modelId: string): Promise<{ 
         throw new Error(`Unsupported Deepseek model: ${modelId}`);
     }
 
+    console.log(`Calling Deepseek API with model: ${model}`);
+    
     const response = await deepseek.chat.completions.create({
       model: model,
       messages: [
@@ -28,6 +30,8 @@ export async function generateText(content: string, modelId: string): Promise<{ 
       ]
     });
 
+    console.log("Deepseek API response received");
+    
     return {
       content: response.choices[0].message.content || 'No response generated.'
     };
@@ -42,4 +46,5 @@ export function verifyApiKey(): void {
   if (!apiKey) {
     throw new Error('DEEPSEEK_API_KEY is not configured');
   }
+  console.log('DEEPSEEK_API_KEY is configured');
 }
