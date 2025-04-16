@@ -1,6 +1,8 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
-import { logError } from "./utils/logging.ts";
+import { logError, logTokenConsumption } from "./utils/logging.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 // Import model services
 import * as lumaService from "./services/models/luma.ts";
@@ -16,22 +18,75 @@ interface ResponseData {
   files?: string[];
 }
 
+// Create Supabase client for token management
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
 // Token mocado para testes com a Luma API - usando o token fornecido pelo usuário
 const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1c6-4e73-b6d4-42078e8c7775";
 
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {
   try {
-    const { content, mode, modelId, files, params } = await req.json();
+    const { content, mode, modelId, files, params, userId } = await req.json();
     console.log(`Recebida solicitação para modelo ${modelId} no modo ${mode}`, {
       contentLength: content?.length,
       filesCount: files?.length,
-      paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none'
+      paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none',
+      userId: userId || 'anonymous'
     });
     
     let response: ResponseData = {
       content: "Não foi possível processar sua solicitação."
     };
+    
+    // Check if user has enough tokens (if userId provided)
+    if (userId) {
+      try {
+        // Call the SQL function to check and update token balance
+        const { data, error } = await supabase.rpc('check_and_update_token_balance', {
+          p_user_id: userId,
+          p_model_id: modelId,
+          p_mode: mode
+        });
+        
+        if (error) {
+          console.error("Error checking token balance:", error);
+          return new Response(
+            JSON.stringify({
+              content: "Erro ao verificar saldo de tokens. Por favor, tente novamente mais tarde.",
+              error: "TOKEN_BALANCE_CHECK_ERROR",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
+        }
+        
+        if (data === false) {
+          // User doesn't have enough tokens
+          return new Response(
+            JSON.stringify({
+              content: "Saldo de tokens insuficiente. Cada usuário recebe 10.000 tokens por mês. Seu saldo será restaurado no próximo ciclo mensal.",
+              error: "INSUFFICIENT_TOKENS",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 403,
+            }
+          );
+        }
+        
+        console.log("Token balance check successful, proceeding with request");
+      } catch (tokenError) {
+        console.error("Exception during token balance check:", tokenError);
+        // Continue processing in case of token check error
+      }
+    } else {
+      console.log("No userId provided, skipping token balance check");
+    }
     
     // Process based on model and mode
     try {
@@ -301,6 +356,34 @@ async function handleAIChat(req: Request): Promise<Response> {
         fileCount: response.files?.length || 0,
         contentLength: response.content?.length || 0
       });
+      
+      // Log token consumption if userId provided
+      if (userId) {
+        try {
+          // Get token consumption rate for this model and mode
+          const { data: rateData, error: rateError } = await supabase
+            .from('token_consumption_rates')
+            .select('tokens_per_request')
+            .eq('model_id', modelId)
+            .eq('mode', mode)
+            .single();
+            
+          if (!rateError && rateData) {
+            logTokenConsumption(
+              userId, 
+              modelId, 
+              mode, 
+              rateData.tokens_per_request, 
+              true
+            );
+          } else {
+            // Use default value if rate not found
+            logTokenConsumption(userId, modelId, mode, 50, true);
+          }
+        } catch (logError) {
+          console.error("Error logging token consumption:", logError);
+        }
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logError("SERVICE_ERROR", { error: errorMessage, model: modelId, mode });

@@ -11,6 +11,18 @@ export function logError(errorType: string, details: any) {
   console.error(`AI-CHAT ERROR [${errorType}] [${timestamp}]:`, JSON.stringify(errorLog, null, 2));
 }
 
+// Function to log token consumption
+export function logTokenConsumption(userId: string, modelId: string, mode: string, tokensConsumed: number, isSuccess: boolean) {
+  const timestamp = new Date().toISOString();
+  console.log(`TOKEN CONSUMPTION [${timestamp}]:`, JSON.stringify({
+    userId,
+    modelId,
+    mode,
+    tokensConsumed,
+    success: isSuccess
+  }, null, 2));
+}
+
 // Function to handle requests with retries and exponential backoff
 export async function fetchWithRetry(
   url: string,

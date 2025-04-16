@@ -24,10 +24,73 @@ interface StorageResponse {
   error?: string;
 }
 
+// Interface para o token do usuário
+export interface UserTokenInfo {
+  tokens_remaining: number;
+  tokens_used: number;
+  next_reset_date: string;
+}
+
 /**
  * Hook que fornece serviços de API para comunicação com modelos de IA
  */
 export function useApiService() {
+  /**
+   * Obtém o saldo de tokens do usuário atual
+   */
+  const getUserTokenBalance = async (): Promise<UserTokenInfo | null> => {
+    try {
+      // Get current user
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData?.user) {
+        console.log('Usuário não autenticado, não é possível obter saldo de tokens');
+        return null;
+      }
+      
+      // Get token balance
+      const { data, error } = await supabase
+        .from('user_tokens')
+        .select('tokens_remaining, tokens_used, next_reset_date')
+        .eq('user_id', userData.user.id)
+        .single();
+        
+      if (error) {
+        console.error('Erro ao obter saldo de tokens:', error);
+        return null;
+      }
+      
+      return data as UserTokenInfo;
+    } catch (err) {
+      console.error('Erro ao obter informações de tokens do usuário:', err);
+      return null;
+    }
+  };
+
+  /**
+   * Obtém a taxa de consumo de tokens para um modelo e modo específicos
+   */
+  const getTokenConsumptionRate = async (modelId: string, mode: ChatMode): Promise<number> => {
+    try {
+      const { data, error } = await supabase
+        .from('token_consumption_rates')
+        .select('tokens_per_request')
+        .eq('model_id', modelId)
+        .eq('mode', mode)
+        .single();
+        
+      if (error) {
+        console.error('Erro ao obter taxa de consumo de tokens:', error);
+        return 50; // Default fallback
+      }
+      
+      return data.tokens_per_request;
+    } catch (err) {
+      console.error('Erro ao obter taxa de consumo de tokens:', err);
+      return 50; // Default fallback
+    }
+  };
+
   /**
    * Salva uma mídia gerada no storage do Supabase
    */
@@ -94,6 +157,10 @@ export function useApiService() {
     const maxRetries = 2;
     let lastError;
     
+    // Get current user for token tracking
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         // Registrar tentativas de retry
@@ -108,11 +175,16 @@ export function useApiService() {
             mode,
             modelId,
             files,
-            params
+            params,
+            userId // Pass the user ID for token tracking
           },
         });
         
         if (error) {
+          if (error.message?.includes('INSUFFICIENT_TOKENS')) {
+            toast.error('Saldo de tokens insuficiente. Você recebe 10.000 tokens por mês.');
+            throw new Error('Saldo de tokens insuficiente');
+          }
           console.error('Erro ao chamar a Edge Function:', error);
           throw new Error(`Erro ao chamar a API: ${error.message}`);
         }
@@ -274,6 +346,8 @@ export function useApiService() {
   
   return {
     sendRequest,
-    storeMedia
+    storeMedia,
+    getUserTokenBalance,
+    getTokenConsumptionRate
   };
 }

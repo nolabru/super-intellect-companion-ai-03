@@ -7,6 +7,7 @@ import { useApiService } from '@/hooks/useApiService';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { saveMessageToDatabase, updateConversationTitle } from '@/utils/conversationUtils';
 import { ConversationType } from '@/types/conversation';
+import { toast } from 'sonner';
 
 // Factory function to create message service
 export const createMessageService = (
@@ -27,6 +28,31 @@ export const createMessageService = (
     files?: string[],
     params?: LumaParams
   ) => {
+    // Get token consumption rate for this request
+    const tokenConsumptionRate = await apiService.getTokenConsumptionRate(modelId, mode);
+    
+    // Get user token balance
+    const userTokens = await apiService.getUserTokenBalance();
+    
+    // Check if user has enough tokens
+    if (userTokens && userTokens.tokens_remaining < tokenConsumptionRate) {
+      toast.error(`Saldo de tokens insuficiente. Esta operação requer ${tokenConsumptionRate} tokens, mas você tem apenas ${userTokens.tokens_remaining}.`);
+      
+      const errorMessage: MessageType = {
+        id: uuidv4(),
+        content: `Saldo de tokens insuficiente. Esta operação requer ${tokenConsumptionRate} tokens. Você receberá mais 10.000 tokens em ${new Date(userTokens.next_reset_date).toLocaleDateString()}.`,
+        sender: 'assistant',
+        timestamp: new Date().toISOString(),
+        model: modelId,
+        mode,
+        error: true
+      };
+      
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      await saveMessageToDatabase(errorMessage, conversationId);
+      return { success: false, error: 'INSUFFICIENT_TOKENS' };
+    }
+    
     // Add loading message
     const loadingId = `loading-${modelId}-${uuidv4()}`;
     
@@ -121,6 +147,23 @@ export const createMessageService = (
         prevMessages.filter(msg => msg.id !== loadingId)
       );
       
+      // Check if this is a token error
+      if (err instanceof Error && err.message.includes('tokens insuficiente')) {
+        const errorMessage: MessageType = {
+          id: uuidv4(),
+          content: `Saldo de tokens insuficiente. Você receberá mais 10.000 tokens no próximo mês.`,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: modelId,
+          mode,
+          error: true
+        };
+        
+        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        await saveMessageToDatabase(errorMessage, conversationId);
+        return { success: false, error: 'INSUFFICIENT_TOKENS' };
+      }
+      
       // Add specific error message based on mode and error
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       let friendlyError = `An error occurred processing your request. ${errorMsg}`;
@@ -160,6 +203,33 @@ export const createMessageService = (
     files?: string[],
     params?: LumaParams
   ) => {
+    // Get token consumption rates for both models
+    const leftTokenRate = await apiService.getTokenConsumptionRate(leftModelId, mode);
+    const rightTokenRate = await apiService.getTokenConsumptionRate(rightModelId, mode);
+    const totalTokensRequired = leftTokenRate + rightTokenRate;
+    
+    // Get user token balance
+    const userTokens = await apiService.getUserTokenBalance();
+    
+    // Check if user has enough tokens for both models
+    if (userTokens && userTokens.tokens_remaining < totalTokensRequired) {
+      toast.error(`Saldo de tokens insuficiente. Esta comparação requer ${totalTokensRequired} tokens no total.`);
+      
+      const errorMessage: MessageType = {
+        id: uuidv4(),
+        content: `Saldo de tokens insuficiente. Esta comparação requer ${totalTokensRequired} tokens (${leftTokenRate} para ${leftModelId} e ${rightTokenRate} para ${rightModelId}). Você receberá mais 10.000 tokens em ${new Date(userTokens.next_reset_date).toLocaleDateString()}.`,
+        sender: 'assistant',
+        timestamp: new Date().toISOString(),
+        model: leftModelId,
+        mode,
+        error: true
+      };
+      
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
+      await saveMessageToDatabase(errorMessage, conversationId);
+      return { success: false, error: 'INSUFFICIENT_TOKENS' };
+    }
+    
     // Add loading messages
     const loadingIdLeft = `loading-${leftModelId}-${uuidv4()}`;
     const loadingIdRight = `loading-${rightModelId}-${uuidv4()}`;
@@ -280,6 +350,23 @@ export const createMessageService = (
       setMessages((prevMessages) => 
         prevMessages.filter(msg => msg.id !== loadingIdLeft && msg.id !== loadingIdRight)
       );
+      
+      // Check if this is a token error
+      if (err instanceof Error && err.message.includes('tokens insuficiente')) {
+        const errorMessage: MessageType = {
+          id: uuidv4(),
+          content: `Saldo de tokens insuficiente. Você receberá mais 10.000 tokens no próximo mês.`,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: leftModelId,
+          mode,
+          error: true
+        };
+        
+        setMessages((prevMessages) => [...prevMessages, errorMessage]);
+        await saveMessageToDatabase(errorMessage, conversationId);
+        return { success: false, error: 'INSUFFICIENT_TOKENS' };
+      }
       
       // Add error message for both models
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
