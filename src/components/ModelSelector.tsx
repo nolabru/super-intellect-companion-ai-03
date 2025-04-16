@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -144,7 +143,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   displayName: 'ElevenLabs TTS',
   provider: 'elevenlabs',
   capabilities: ['Vozes realistas', 'Múltiplos idiomas'],
-  description: 'Conversão de texto para fala com vozes extremamente realistas.',
+  description: 'Modelo de conversão de texto para fala com qualidade natural.',
   modes: ['audio']
 },
 // Kligin Models
@@ -155,15 +154,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   capabilities: ['Vozes brasileiras', 'Naturalidade'],
   description: 'Conversão de texto para fala com vozes brasileiras naturais.',
   modes: ['audio']
-},
-// MiniMax Models
-{
-  id: 'minimax',
-  displayName: 'MiniMax',
-  provider: 'minimax',
-  capabilities: ['Linguagem fluente', 'Respostas rápidas'],
-  description: 'Modelo equilibrado entre qualidade e velocidade de resposta.',
-  modes: ['text']
 },
 // Replicate Models
 {
