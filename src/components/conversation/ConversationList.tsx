@@ -205,7 +205,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
       
       {folders.map((folder) => {
         // Get the drop target for this folder from our pre-created map
-        const [{ isOver }, drop] = folderDropTargets[folder.id];
+        const dropTarget = folderDropTargets[folder.id];
+        // Now we properly destructure to access isOver and the ref
+        const [{ isOver }, drop] = dropTarget;
         
         return (
           <div 
