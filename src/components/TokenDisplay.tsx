@@ -86,8 +86,8 @@ const TokenDisplay = () => {
   // Determine badge color based on remaining tokens
   const getBadgeVariant = () => {
     if (tokenInfo.tokens_remaining < 1000) return 'destructive';
-    if (tokenInfo.tokens_remaining < 3000) return 'warning';
-    return 'secondary';
+    if (tokenInfo.tokens_remaining < 3000) return 'secondary';
+    return 'default';
   };
   
   return (

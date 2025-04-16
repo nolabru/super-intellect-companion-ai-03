@@ -6,20 +6,21 @@ import { cn } from '@/lib/utils';
 
 interface ModeIconProps {
   mode?: ChatMode;
+  size?: number;
   className?: string;
 }
 
-const ModeIcon: React.FC<ModeIconProps> = ({ mode, className }) => {
+const ModeIcon: React.FC<ModeIconProps> = ({ mode, size = 14, className }) => {
   switch (mode) {
     case 'image':
-      return <Image size={14} className={cn("mr-1", className)} />;
+      return <Image size={size} className={cn("mr-1", className)} />;
     case 'video':
-      return <Video size={14} className={cn("mr-1", className)} />;
+      return <Video size={size} className={cn("mr-1", className)} />;
     case 'audio':
-      return <AudioLines size={14} className={cn("mr-1", className)} />;
+      return <AudioLines size={size} className={cn("mr-1", className)} />;
     case 'text':
     default:
-      return <Text size={14} className={cn("mr-1", className)} />;
+      return <Text size={size} className={cn("mr-1", className)} />;
   }
 };
 

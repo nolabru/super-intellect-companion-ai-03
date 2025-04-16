@@ -1,17 +1,20 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { UserMenu } from "@/components/UserMenu";
-import { ModeIcon } from "@/components/chat/ModeIcon";
+import UserMenu from "@/components/UserMenu";
+import ModeIcon from "@/components/chat/ModeIcon";
 import { useNavigate } from 'react-router-dom';
 import TokenDisplay from './TokenDisplay';
 
 interface AppHeaderProps {
-  sidebarOpen: boolean;
-  onToggleSidebar: () => void;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
+const AppHeader: React.FC<AppHeaderProps> = ({ 
+  sidebarOpen = false, 
+  onToggleSidebar = () => {} 
+}) => {
   const navigate = useNavigate();
   
   const navigateToGallery = () => {
