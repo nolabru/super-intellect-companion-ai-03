@@ -69,29 +69,6 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   return (
     <div className="markdown-content text-white">
       <ReactMarkdown
-        components={{
-          // Custom component for paragraphs to preserve line breaks
-          p: ({ children }) => <p className="mb-2">{children}</p>,
-          // Custom components for strong/bold text
-          strong: ({ children }) => <span className="font-bold text-white">{children}</span>,
-          // Custom component for headings
-          h1: ({ children }) => <h1 className="text-xl font-bold mb-3 mt-1">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-1">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-md font-bold mb-2 mt-1">{children}</h3>,
-          // Custom component for list items
-          li: ({ children }) => <li className="ml-4 mb-1">• {children}</li>,
-          // Custom component for links
-          a: ({ href, children }) => (
-            <a 
-              href={href}
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-blue-400 underline hover:text-blue-300"
-            >
-              {children}
-            </a>
-          )
-        }}
         remarkPlugins={[remarkGfm]}
       >
         {displayedContent}

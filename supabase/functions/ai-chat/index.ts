@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -58,7 +57,7 @@ async function handleAIChat(req: Request): Promise<Response> {
         const tokenCheck = await checkUserTokens(userId, modelId, mode);
         
         if (!tokenCheck.hasEnoughTokens) {
-          console.log(`User ${userId} does not have enough tokens for this operation`);
+          console.log(`User ${userId} does not have enough tokens for this operation: ${tokenCheck.tokensRequired} required, ${tokenCheck.tokensRemaining} remaining`);
           return new Response(
             JSON.stringify({
               content: tokenCheck.error || "Não há tokens suficientes para essa operação",
@@ -70,23 +69,17 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 402 // Alterado para 402 Payment Required, que é mais apropriado para este caso
+              status: 402 // Payment Required
             }
           );
         }
         
         tokensUsed = tokenCheck.tokensRequired || 0;
         tokensRemaining = tokenCheck.tokensRemaining || 0;
-        console.log(`Token check passed for user ${userId}. Remaining: ${tokenCheck.tokensRemaining}`);
+        console.log(`Token check passed for user ${userId}. Required: ${tokensUsed}, Remaining: ${tokenCheck.tokensRemaining}`);
       } catch (error) {
-        // Se ocorrer um erro na verificação de tokens, permitir a operação e prosseguir
+        // Log error but allow operation to proceed
         console.warn(`Erro ao verificar tokens para usuário ${userId}, prosseguindo sem verificação:`, error);
-        
-        // Mas vamos tentar responder de forma mais amigável se for um erro que podemos identificar
-        if (error.message && error.message.includes("JSON object requested, multiple (or no) rows returned")) {
-          // Usuário não tem registro na tabela de tokens, vamos criar um token temporário
-          console.log("Usuário não tem registro na tabela de tokens, prosseguindo com tokens temporários");
-        }
       }
     } else {
       console.log(`No user ID provided, proceeding without token check`);
@@ -270,8 +263,24 @@ async function handleAIChat(req: Request): Promise<Response> {
       // OpenAI models
       else if (modelId.includes("gpt") && mode === "text") {
         console.log("Iniciando processamento de texto com OpenAI");
-        response = await openaiService.generateText(content, modelId);
-        console.log("Processamento de texto concluído com sucesso");
+        
+        try {
+          // Verify OpenAI API key exists
+          const apiKey = openaiService.verifyApiKey();
+          console.log("Chave API do OpenAI verificada com sucesso");
+          
+          // Log a amostra mascarada da chave para debugging (apenas os primeiros e últimos 4 caracteres)
+          if (apiKey.length > 8) {
+            const maskedKey = apiKey.substring(0, 4) + "..." + apiKey.substring(apiKey.length - 4);
+            console.log(`Usando chave API do OpenAI: ${maskedKey}`);
+          }
+          
+          response = await openaiService.generateText(content, modelId);
+          console.log("Processamento de texto concluído com sucesso");
+        } catch (openaiError) {
+          console.error("Erro detalhado ao processar texto com OpenAI:", openaiError);
+          throw openaiError;
+        }
       }
       else if (modelId.includes("gpt") && mode === "image" && files && files.length > 0) {
         console.log("Iniciando processamento de análise de imagem com OpenAI");
@@ -375,12 +384,21 @@ async function handleAIChat(req: Request): Promise<Response> {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Erro detalhado no processamento:", error);
       logError("SERVICE_ERROR", { error: errorMessage, model: modelId, mode });
       
       let friendlyError = `Erro ao processar solicitação: ${errorMessage}`;
       
-      // Mensagens de erro específicas
-      if (modelId.includes("luma")) {
+      // Mensagens de erro específicas baseadas no erro original
+      if (modelId.includes("gpt") || modelId === "dall-e-3") {
+        if (errorMessage.includes("API key") || errorMessage.includes("authorize") || errorMessage.includes("authenticate")) {
+          friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada corretamente. Por favor, verifique suas configurações.";
+        } else if (errorMessage.includes("billing") || errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+          friendlyError = "Erro de limite: Você excedeu seu limite de uso da OpenAI. Verifique seu plano e faturamento.";
+        } else {
+          friendlyError = `Erro na geração de ${mode === 'image' ? 'imagem' : 'texto'} com OpenAI: ${errorMessage}`;
+        }
+      } else if (modelId.includes("luma")) {
         if (errorMessage.includes("API key") || errorMessage.includes("Authorization") || errorMessage.includes("authenticate")) {
           friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
@@ -401,12 +419,6 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do Google Gemini não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
           friendlyError = `Erro na geração com Google Gemini: ${errorMessage}`;
-        }
-      } else if (modelId.includes("dall-e") || modelId === "gpt-4o") {
-        if (errorMessage.includes("API key") || errorMessage.includes("authorize") || errorMessage.includes("authenticate")) {
-          friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada corretamente. Por favor, verifique suas configurações.";
-        } else {
-          friendlyError = `Erro na geração de ${mode === 'image' ? 'imagem' : 'texto'} com OpenAI: ${errorMessage}`;
         }
       } else if (modelId.includes("deepseek")) {
         if (errorMessage.includes("API key") || errorMessage.includes("authorize") || errorMessage.includes("authenticate")) {

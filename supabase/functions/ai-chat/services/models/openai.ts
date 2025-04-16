@@ -18,7 +18,7 @@ export function verifyApiKey(): string {
   return apiKey;
 }
 
-// Function to generate text response with OpenAI using streaming
+// Function to generate text response with OpenAI
 export async function generateText(
   prompt: string,
   modelId: string = "gpt-4o"
@@ -35,7 +35,7 @@ export async function generateText(
       apiKey: apiKey,
     });
     
-    // Create chat completion without streaming first (simpler approach for Edge Function)
+    // Create chat completion with proper parameters according to OpenAI documentation
     const response = await openai.chat.completions.create({
       model: modelId,
       messages: [
@@ -45,7 +45,10 @@ export async function generateText(
         },
       ],
       temperature: 0.7,
-      stream: false,
+      max_tokens: 2000, // Added reasonable max_tokens value
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0,
     });
     
     const content = response.choices[0]?.message?.content || "Não foi possível gerar uma resposta.";
@@ -56,6 +59,7 @@ export async function generateText(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Erro detalhado ao gerar texto com OpenAI:", error);
     logError("OPENAI_TEXT_ERROR", { error: errorMessage, model: modelId });
     throw new Error(`Erro ao gerar texto com OpenAI: ${errorMessage}`);
   }
@@ -103,6 +107,7 @@ export async function processImage(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Erro detalhado ao analisar imagem com OpenAI:", error);
     logError("OPENAI_VISION_ERROR", { error: errorMessage, model: modelId, imageUrl });
     throw new Error(`Erro ao analisar imagem com OpenAI: ${errorMessage}`);
   }
@@ -159,6 +164,7 @@ export async function generateImage(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Erro detalhado ao gerar imagem com DALL-E:", error);
     logError("OPENAI_IMAGE_GENERATION_ERROR", { error: errorMessage, model: modelId });
     throw new Error(`Erro ao gerar imagem com DALL-E: ${errorMessage}`);
   }

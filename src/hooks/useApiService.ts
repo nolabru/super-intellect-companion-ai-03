@@ -140,15 +140,22 @@ export function useApiService() {
           });
           
           if (error) {
-            // Verificar se o erro é devido a tokens insuficientes
-            if (error.message && (error.message.includes('402') || error.message.includes('INSUFFICIENT_TOKENS'))) {
-              const errorMsg = 'Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.';
-              console.error(errorMsg);
-              toast.error(errorMsg);
-              throw new Error(errorMsg);
+            // Verificar o tipo de erro
+            console.error('Erro na resposta da Edge Function:', error);
+            
+            if (error.message) {
+              // Verificar se o erro é devido a tokens insuficientes
+              if (error.message.includes('402') || error.message.includes('INSUFFICIENT_TOKENS') || error.status === 402) {
+                throw new Error('Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.');
+              }
+              
+              // Verificar se o erro está relacionado à chave API
+              if (error.message.includes('API key') || error.message.includes('Authentication')) {
+                throw new Error('Verifique se a chave API do OpenAI está configurada corretamente na Edge Function.');
+              }
             }
             
-            throw new Error(`Erro ao chamar a API: ${error.message}`);
+            throw new Error(`Erro ao chamar a API: ${error.message || 'Edge Function retornou um código de status não 2xx'}`);
           }
           
           // Simular streaming com a resposta completa
@@ -191,13 +198,15 @@ export function useApiService() {
             // Verificar se o erro é sobre tokens insuficientes - verifica pelo código 402 ou pela mensagem
             if (error.status === 402 || 
                 (error.message && (error.message.includes('402') || error.message.includes('INSUFFICIENT_TOKENS')))) {
-              const errorMsg = 'Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.';
-              console.error(errorMsg);
-              toast.error(errorMsg);
-              throw new Error(errorMsg);
+              throw new Error('Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.');
             }
             
-            throw new Error(`Erro ao chamar a API: ${error.message}`);
+            // Verificar se o erro está relacionado à chave API
+            if (error.message && (error.message.includes('API key') || error.message.includes('Authentication'))) {
+              throw new Error('Verifique se a chave API do OpenAI está configurada corretamente na Edge Function.');
+            }
+            
+            throw new Error(`Erro ao chamar a API: ${error.message || 'Edge Function retornou um código de status não 2xx'}`);
           }
           
           console.log('Resposta recebida da Edge Function:', {
@@ -286,11 +295,13 @@ export function useApiService() {
         console.error(`Erro ao enviar para a API (tentativa ${attempt + 1}/${maxRetries + 1}):`, err);
         lastError = err;
         
-        // Se o erro é relacionado a tokens, não tente novamente
+        // Se o erro é relacionado a tokens ou à chave API, não tente novamente
         if (err instanceof Error && (
             err.message.includes('Token') || 
             err.message.includes('token') || 
-            err.message.includes('402')
+            err.message.includes('402') ||
+            err.message.includes('API key') ||
+            err.message.includes('Authentication')
         )) {
           break;
         }
