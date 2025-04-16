@@ -102,7 +102,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   // Use our custom hook to create all drop targets outside of render
   const { rootDropTarget, folderDropTargets } = useDropTargets(folders, onMoveConversation);
   const [rootDropProps, dropRoot] = rootDropTarget;
-  const { isOver: isOverRoot } = rootDropProps;
+  const { isOver: isOverRoot } = rootDropProps as DropResult;
   
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => ({
@@ -213,7 +213,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         const dropTarget = folderDropTargets[folder.id];
         // Correctly destructure the result
         const [folderDropProps, drop] = dropTarget;
-        const { isOver } = folderDropProps;
+        const { isOver } = folderDropProps as DropResult;
         
         return (
           <div 
