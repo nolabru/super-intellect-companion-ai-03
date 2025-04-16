@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MessageCircle, Trash2, Edit2, Check, X } from 'lucide-react';
+import { MessageCircle, Trash2, Edit2, Check, X, MoreVertical, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatDistanceToNow } from 'date-fns';
@@ -12,6 +12,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -24,12 +28,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// Interface para as pastas
+interface FolderType {
+  id: string;
+  name: string;
+  isOpen?: boolean;
+}
+
 interface ConversationItemProps {
   conversation: ConversationType;
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
   onRename: (newTitle: string) => void;
+  onMove?: (folderId: string | null) => void;
+  folders?: FolderType[];
+  currentFolderId: string | null;
 }
 
 const ConversationItem: React.FC<ConversationItemProps> = ({ 
@@ -37,7 +51,10 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   isActive, 
   onSelect, 
   onDelete,
-  onRename
+  onRename,
+  onMove,
+  folders = [],
+  currentFolderId
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState(conversation.title);
@@ -69,6 +86,12 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
       });
     } catch (e) {
       return dateString;
+    }
+  };
+
+  const handleMoveToFolder = (folderId: string | null) => {
+    if (onMove) {
+      onMove(folderId);
     }
   };
 
@@ -133,7 +156,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
               size="icon" 
               className="h-8 w-8 text-inventu-gray/70 hover:text-white hover:bg-inventu-gray/20"
             >
-              <Edit2 className="h-3.5 w-3.5" />
+              <MoreVertical className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-inventu-card border-inventu-gray/30">
@@ -144,6 +167,38 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
               <Edit2 className="mr-2 h-4 w-4" />
               Renomear
             </DropdownMenuItem>
+            
+            {/* Submenu para mover para pasta */}
+            {onMove && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-white hover:bg-inventu-gray/20 cursor-pointer">
+                  <Folder className="mr-2 h-4 w-4" />
+                  Mover para pasta
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="bg-inventu-card border-inventu-gray/30">
+                  <DropdownMenuItem 
+                    className="text-white hover:bg-inventu-gray/20 cursor-pointer"
+                    onClick={() => handleMoveToFolder(null)}
+                    disabled={currentFolderId === null}
+                  >
+                    <span className="ml-2">Sem pasta</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-inventu-gray/30" />
+                  {folders.map(folder => (
+                    <DropdownMenuItem 
+                      key={folder.id}
+                      className="text-white hover:bg-inventu-gray/20 cursor-pointer"
+                      onClick={() => handleMoveToFolder(folder.id)}
+                      disabled={currentFolderId === folder.id}
+                    >
+                      <span className="ml-2">{folder.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            
+            <DropdownMenuSeparator className="bg-inventu-gray/30" />
             <DropdownMenuItem 
               className="text-red-500 hover:bg-red-500/10 cursor-pointer"
               onClick={() => setShowDeleteDialog(true)}

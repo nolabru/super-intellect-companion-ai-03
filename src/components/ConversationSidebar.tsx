@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
@@ -8,6 +8,14 @@ import SidebarHeader from './conversation/SidebarHeader';
 import ConversationList from './conversation/ConversationList';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
+
+// Interface para as pastas
+interface FolderType {
+  id: string;
+  name: string;
+  isOpen?: boolean;
+}
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
@@ -18,6 +26,10 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onToggleSidebar,
   isOpen = true
 }) => {
+  // Estado para gerenciar pastas
+  const [folders, setFolders] = useState<FolderType[]>([]);
+  const [conversationFolders, setConversationFolders] = useState<Record<string, string | null>>({});
+  
   const { 
     conversations, 
     currentConversationId, 
@@ -32,6 +44,92 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Carregar pastas do localStorage ao iniciar
+  useEffect(() => {
+    if (user) {
+      const savedFolders = localStorage.getItem(`folders_${user.id}`);
+      const savedConversationFolders = localStorage.getItem(`conversation_folders_${user.id}`);
+      
+      if (savedFolders) {
+        try {
+          setFolders(JSON.parse(savedFolders));
+        } catch (e) {
+          console.error('Erro ao carregar pastas:', e);
+        }
+      }
+      
+      if (savedConversationFolders) {
+        try {
+          setConversationFolders(JSON.parse(savedConversationFolders));
+        } catch (e) {
+          console.error('Erro ao carregar associações de conversa-pasta:', e);
+        }
+      }
+    }
+  }, [user]);
+  
+  // Salvar pastas no localStorage quando mudar
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`folders_${user.id}`, JSON.stringify(folders));
+    }
+  }, [folders, user]);
+  
+  // Salvar associações de conversa-pasta no localStorage quando mudar
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`conversation_folders_${user.id}`, JSON.stringify(conversationFolders));
+    }
+  }, [conversationFolders, user]);
+
+  // Função para criar uma nova pasta
+  const handleCreateFolder = (name: string) => {
+    const newFolder: FolderType = {
+      id: uuidv4(),
+      name,
+      isOpen: true
+    };
+    
+    setFolders(prev => [newFolder, ...prev]);
+    toast.success(`Pasta "${name}" criada com sucesso`);
+  };
+  
+  // Função para renomear uma pasta
+  const handleRenameFolder = (id: string, newName: string) => {
+    setFolders(prev => 
+      prev.map(folder => 
+        folder.id === id ? { ...folder, name: newName } : folder
+      )
+    );
+    toast.success(`Pasta renomeada para "${newName}"`);
+  };
+  
+  // Função para excluir uma pasta
+  const handleDeleteFolder = (id: string) => {
+    // Remover associações de conversas com esta pasta
+    const updatedConversationFolders = { ...conversationFolders };
+    Object.keys(updatedConversationFolders).forEach(convId => {
+      if (updatedConversationFolders[convId] === id) {
+        updatedConversationFolders[convId] = null;
+      }
+    });
+    
+    setConversationFolders(updatedConversationFolders);
+    setFolders(prev => prev.filter(folder => folder.id !== id));
+    toast.success('Pasta excluída com sucesso');
+  };
+  
+  // Função para mover uma conversa para uma pasta
+  const handleMoveConversation = (conversationId: string, folderId: string | null) => {
+    setConversationFolders(prev => ({
+      ...prev,
+      [conversationId]: folderId
+    }));
+    
+    const folderName = folderId ? folders.find(f => f.id === folderId)?.name : 'Sem pasta';
+    toast.success(`Conversa movida para ${folderName}`);
+  };
 
   // Função para criar uma nova conversa com navegação atualizada
   const handleNewConversation = async () => {
@@ -121,6 +219,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onRenameConversation={renameConversation}
           isUserLoggedIn={!!user}
           isLoading={loading}
+          folders={folders}
+          onCreateFolder={handleCreateFolder}
+          onRenameFolder={handleRenameFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onMoveConversation={handleMoveConversation}
+          conversationFolders={conversationFolders}
         />
       </div>
     </div>
