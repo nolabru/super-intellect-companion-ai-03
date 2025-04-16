@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { ConversationType } from '@/types/conversation';
 import ConversationItem from './ConversationItem';
 import { Loader2, FolderPlus, ChevronRight, ChevronDown, Folder } from 'lucide-react';
@@ -37,6 +38,44 @@ interface DragItem {
 
 const CONVERSATION_TYPE = 'conversation';
 
+// Custom hook to create dropTargets outside of render
+const useDropTargets = (folders: FolderType[], onMoveConversation: (conversationId: string, folderId: string | null) => void) => {
+  const rootDropTarget = useDrop({
+    accept: CONVERSATION_TYPE,
+    drop: (item: DragItem) => {
+      if (item.currentFolderId !== null) {
+        onMoveConversation(item.id, null);
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  });
+
+  // Create a map of folder drop targets
+  const folderDropTargets = useMemo(() => {
+    const targets: Record<string, ReturnType<typeof useDrop>> = {};
+    
+    folders.forEach(folder => {
+      targets[folder.id] = useDrop({
+        accept: CONVERSATION_TYPE,
+        drop: (item: DragItem) => {
+          if (item.currentFolderId !== folder.id) {
+            onMoveConversation(item.id, folder.id);
+          }
+        },
+        collect: (monitor) => ({
+          isOver: !!monitor.isOver(),
+        }),
+      });
+    });
+    
+    return targets;
+  }, [folders, onMoveConversation]);
+
+  return { rootDropTarget, folderDropTargets };
+};
+
 const ConversationList: React.FC<ConversationListProps> = ({ 
   conversations, 
   currentConversationId, 
@@ -56,17 +95,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   
-  const [{ isOver: isOverRoot }, dropRoot] = useDrop({
-    accept: CONVERSATION_TYPE,
-    drop: (item: DragItem) => {
-      if (item.currentFolderId !== null) {
-        onMoveConversation(item.id, null);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  });
+  // Use our custom hook to create all drop targets outside of render
+  const { rootDropTarget, folderDropTargets } = useDropTargets(folders, onMoveConversation);
+  const [{ isOver: isOverRoot }, dropRoot] = rootDropTarget;
   
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => ({
@@ -173,17 +204,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
       )}
       
       {folders.map((folder) => {
-        const [{ isOver }, drop] = useDrop({
-          accept: CONVERSATION_TYPE,
-          drop: (item: DragItem) => {
-            if (item.currentFolderId !== folder.id) {
-              onMoveConversation(item.id, folder.id);
-            }
-          },
-          collect: (monitor) => ({
-            isOver: !!monitor.isOver(),
-          }),
-        });
+        // Get the drop target for this folder from our pre-created map
+        const [{ isOver }, drop] = folderDropTargets[folder.id];
         
         return (
           <div 
