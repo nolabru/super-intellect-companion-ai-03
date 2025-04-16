@@ -36,11 +36,15 @@ interface DragItem {
   currentFolderId: string | null;
 }
 
+interface DropResult {
+  isOver: boolean;
+}
+
 const CONVERSATION_TYPE = 'conversation';
 
 // Custom hook to create dropTargets outside of render
 const useDropTargets = (folders: FolderType[], onMoveConversation: (conversationId: string, folderId: string | null) => void) => {
-  const rootDropTarget = useDrop({
+  const rootDropTarget = useDrop<DragItem, void, DropResult>({
     accept: CONVERSATION_TYPE,
     drop: (item: DragItem) => {
       if (item.currentFolderId !== null) {
@@ -57,7 +61,7 @@ const useDropTargets = (folders: FolderType[], onMoveConversation: (conversation
     const targets: Record<string, ReturnType<typeof useDrop>> = {};
     
     folders.forEach(folder => {
-      targets[folder.id] = useDrop({
+      targets[folder.id] = useDrop<DragItem, void, DropResult>({
         accept: CONVERSATION_TYPE,
         drop: (item: DragItem) => {
           if (item.currentFolderId !== folder.id) {
@@ -206,8 +210,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
       {folders.map((folder) => {
         // Get the drop target for this folder from our pre-created map
         const dropTarget = folderDropTargets[folder.id];
-        // Now we properly destructure to access isOver and the ref
-        const [{ isOver }, drop] = dropTarget;
+        // Properly destructure with type safety
+        const [{ isOver }, drop] = dropTarget as [{ isOver: boolean }, React.RefObject<any>];
         
         return (
           <div 
