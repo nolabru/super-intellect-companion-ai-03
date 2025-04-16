@@ -1,12 +1,12 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { ConversationType } from '@/types/conversation';
 import ConversationItem from './ConversationItem';
 import { Loader2, FolderPlus, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { useDrop, ConnectDropTarget } from 'react-dnd';
+import { useDrop } from 'react-dnd';
 
 interface FolderType {
   id: string;
@@ -42,11 +42,42 @@ interface DropResult {
 
 const CONVERSATION_TYPE = 'conversation';
 
-// Custom hook to create dropTargets outside of render
-const useDropTargets = (folders: FolderType[], onMoveConversation: (conversationId: string, folderId: string | null) => void) => {
-  const rootDropTarget = useDrop<DragItem, void, DropResult>({
+// Separate drop target component for folders
+const FolderDropTarget: React.FC<{
+  folderId: string;
+  children: React.ReactNode;
+  onMoveConversation: (conversationId: string, folderId: string) => void;
+}> = ({ folderId, children, onMoveConversation }) => {
+  const [{ isOver }, drop] = useDrop<DragItem, void, { isOver: boolean }>({
     accept: CONVERSATION_TYPE,
-    drop: (item: DragItem) => {
+    drop: (item) => {
+      if (item.currentFolderId !== folderId) {
+        onMoveConversation(item.id, folderId);
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  });
+
+  return (
+    <div
+      ref={drop}
+      className={`space-y-1 ${isOver ? 'bg-inventu-gray/20 rounded-md' : ''}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+// Separate drop target component for root (no folder)
+const RootDropTarget: React.FC<{
+  children: React.ReactNode;
+  onMoveConversation: (conversationId: string, folderId: string | null) => void;
+}> = ({ children, onMoveConversation }) => {
+  const [{ isOver }, drop] = useDrop<DragItem, void, { isOver: boolean }>({
+    accept: CONVERSATION_TYPE,
+    drop: (item) => {
       if (item.currentFolderId !== null) {
         onMoveConversation(item.id, null);
       }
@@ -56,28 +87,14 @@ const useDropTargets = (folders: FolderType[], onMoveConversation: (conversation
     }),
   });
 
-  // Create a map of folder drop targets
-  const folderDropTargets = useMemo(() => {
-    const targets: Record<string, ReturnType<typeof useDrop>> = {};
-    
-    folders.forEach(folder => {
-      targets[folder.id] = useDrop<DragItem, void, DropResult>({
-        accept: CONVERSATION_TYPE,
-        drop: (item: DragItem) => {
-          if (item.currentFolderId !== folder.id) {
-            onMoveConversation(item.id, folder.id);
-          }
-        },
-        collect: (monitor) => ({
-          isOver: !!monitor.isOver(),
-        }),
-      });
-    });
-    
-    return targets;
-  }, [folders, onMoveConversation]);
-
-  return { rootDropTarget, folderDropTargets };
+  return (
+    <div
+      ref={drop}
+      className={`space-y-1 ${isOver ? 'bg-inventu-gray/20 rounded-md p-1' : ''}`}
+    >
+      {children}
+    </div>
+  );
 };
 
 const ConversationList: React.FC<ConversationListProps> = ({ 
@@ -98,11 +115,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
-  
-  // Use our custom hook to create all drop targets outside of render
-  const { rootDropTarget, folderDropTargets } = useDropTargets(folders, onMoveConversation);
-  const [rootDropProps, dropRoot] = rootDropTarget;
-  const { isOver: isOverRoot } = rootDropProps as DropResult;
   
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => ({
@@ -208,64 +220,53 @@ const ConversationList: React.FC<ConversationListProps> = ({
         </div>
       )}
       
-      {folders.map((folder) => {
-        // Get the drop target for this folder from our pre-created map
-        const dropTarget = folderDropTargets[folder.id];
-        // Correctly destructure the result
-        const [folderDropProps, drop] = dropTarget;
-        const { isOver } = folderDropProps as DropResult;
-        
-        return (
+      {folders.map((folder) => (
+        <FolderDropTarget 
+          key={folder.id} 
+          folderId={folder.id}
+          onMoveConversation={onMoveConversation}
+        >
           <div 
-            key={folder.id} 
-            className={`space-y-1 ${isOver ? 'bg-inventu-gray/20 rounded-md' : ''}`}
-            ref={drop}
+            className="flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-inventu-gray/10 text-inventu-gray hover:text-white"
+            onClick={() => toggleFolder(folder.id)}
           >
-            <div 
-              className="flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-inventu-gray/10 text-inventu-gray hover:text-white"
-              onClick={() => toggleFolder(folder.id)}
-            >
-              <div className="flex items-center">
-                {expandedFolders[folder.id] ? (
-                  <ChevronDown className="h-4 w-4 mr-2" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 mr-2" />
-                )}
-                <Folder className="h-4 w-4 mr-2" />
-                <span>{folder.name}</span>
-              </div>
+            <div className="flex items-center">
+              {expandedFolders[folder.id] ? (
+                <ChevronDown className="h-4 w-4 mr-2" />
+              ) : (
+                <ChevronRight className="h-4 w-4 mr-2" />
+              )}
+              <Folder className="h-4 w-4 mr-2" />
+              <span>{folder.name}</span>
             </div>
-            
-            {expandedFolders[folder.id] && (
-              <div className="pl-6 space-y-1">
-                {getConversationsInFolder(folder.id).map((conv) => (
-                  <ConversationItem
-                    key={conv.id}
-                    conversation={conv}
-                    isActive={currentConversationId === conv.id}
-                    onSelect={() => onSelectConversation(conv.id)}
-                    onDelete={() => onDeleteConversation(conv.id)}
-                    onRename={(newTitle) => onRenameConversation(conv.id, newTitle)}
-                    onMove={(folderId) => onMoveConversation(conv.id, folderId)}
-                    folders={folders}
-                    currentFolderId={folder.id}
-                  />
-                ))}
-                {getConversationsInFolder(folder.id).length === 0 && (
-                  <div className="text-sm text-inventu-gray/70 italic p-2">
-                    Pasta vazia
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-        );
-      })}
+          
+          {expandedFolders[folder.id] && (
+            <div className="pl-6 space-y-1">
+              {getConversationsInFolder(folder.id).map((conv) => (
+                <ConversationItem
+                  key={conv.id}
+                  conversation={conv}
+                  isActive={currentConversationId === conv.id}
+                  onSelect={() => onSelectConversation(conv.id)}
+                  onDelete={() => onDeleteConversation(conv.id)}
+                  onRename={(newTitle) => onRenameConversation(conv.id, newTitle)}
+                  onMove={(folderId) => onMoveConversation(conv.id, folderId)}
+                  folders={folders}
+                  currentFolderId={folder.id}
+                />
+              ))}
+              {getConversationsInFolder(folder.id).length === 0 && (
+                <div className="text-sm text-inventu-gray/70 italic p-2">
+                  Pasta vazia
+                </div>
+              )}
+            </div>
+          )}
+        </FolderDropTarget>
+      ))}
       
-      <div 
-        className={`space-y-1 ${isOverRoot ? 'bg-inventu-gray/20 rounded-md p-1' : ''}`}
-        ref={dropRoot}
-      >
+      <RootDropTarget onMoveConversation={onMoveConversation}>
         {unorganizedConversations.map((conv) => (
           <ConversationItem
             key={conv.id}
@@ -279,7 +280,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
             currentFolderId={null}
           />
         ))}
-      </div>
+      </RootDropTarget>
     </div>
   );
 };
