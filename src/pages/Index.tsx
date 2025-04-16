@@ -247,11 +247,11 @@ const Index: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
                 <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
+                <TokenDisplay />  {/* Movido para junto do ModeSelector */}
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
                 )}
-                <TokenDisplay />
               </div>
             </div>
             
