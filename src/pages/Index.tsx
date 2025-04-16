@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 import ChatInterface from '@/components/ChatInterface';
 import ChatInput from '@/components/ChatInput';
@@ -58,7 +59,7 @@ const Index: React.FC = () => {
       setRightModel(differentModel);
       console.log(`Modelo direito atualizado para ${differentModel} devido à mudança para o modo ${activeMode}`);
     }
-  }, [activeMode]);
+  }, [activeMode, leftModel]);
 
   useEffect(() => {
     if (comparing && leftModel === rightModel) {
@@ -72,13 +73,15 @@ const Index: React.FC = () => {
     }
   }, [comparing, leftModel, rightModel, activeMode]);
 
-  const handleSendMessage = (content: string, files?: string[], params?: any, targetModel?: string) => {
+  const handleSendMessage = async (content: string, files?: string[], params?: any, targetModel?: string) => {
     console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`, params);
+    
+    let result;
     
     if (comparing) {
       if (isLinked) {
         // Modo vinculado: enviar para ambos os modelos
-        sendMessage(
+        result = await sendMessage(
           content, 
           activeMode, 
           leftModel, // Pode ser qualquer um dos modelos, pois estamos enviando para ambos
@@ -95,7 +98,7 @@ const Index: React.FC = () => {
           return;
         }
         
-        sendMessage(
+        result = await sendMessage(
           content,
           activeMode,
           targetModel,
@@ -108,7 +111,7 @@ const Index: React.FC = () => {
       }
     } else {
       // Modo único - enviar apenas para o modelo selecionado
-      sendMessage(
+      result = await sendMessage(
         content, 
         activeMode, 
         leftModel, 
@@ -118,6 +121,13 @@ const Index: React.FC = () => {
         files,
         params
       );
+    }
+    
+    // Check if mode was switched by orchestrator
+    if (result && result.success && result.modeSwitch) {
+      // Update UI to reflect new mode
+      setActiveMode(result.modeSwitch as ChatMode);
+      toast.info(`Modo alterado para ${result.modeSwitch} baseado no seu pedido`);
     }
   };
 

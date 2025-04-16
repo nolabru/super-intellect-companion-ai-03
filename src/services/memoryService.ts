@@ -54,5 +54,48 @@ export const memoryService = {
       console.error('Error getting memory context:', err);
       return "";
     }
+  },
+
+  // Function to detect content type and suggest mode change
+  async detectContentTypeAndMode(messageContent: string) {
+    // Simple pattern matching for mode detection
+    const patterns = {
+      image: [
+        /imagem de/i, /mostre (uma|um) imagem/i, /gere (uma|um) imagem/i, 
+        /desenhe/i, /criar (uma|um) imagem/i, /visualizar/i, 
+        /foto de/i, /ilustra[çc][ãa]o/i
+      ],
+      video: [
+        /v[íi]deo de/i, /crie (um|uma) v[íi]deo/i, /gere (um|uma) v[íi]deo/i, 
+        /anima[çc][ãa]o de/i, /mostrar em v[íi]deo/i, /simula[çc][ãa]o/i
+      ],
+      audio: [
+        /[áa]udio de/i, /leia em voz alta/i, /narrar/i, /fale/i,
+        /som de/i, /pronunciar/i, /diga/i, /converter para [áa]udio/i
+      ]
+    };
+    
+    // Check for each pattern
+    for (const [mode, regexList] of Object.entries(patterns)) {
+      for (const regex of regexList) {
+        if (regex.test(messageContent)) {
+          return mode as 'image' | 'video' | 'audio';
+        }
+      }
+    }
+    
+    return 'text'; // Default mode
+  },
+  
+  // Get default model for a given mode
+  getDefaultModelForMode(mode: string) {
+    const defaultModels: Record<string, string> = {
+      'text': 'gpt-4o',
+      'image': 'luma-image',
+      'video': 'luma-video',
+      'audio': 'elevenlabs-tts'
+    };
+    
+    return defaultModels[mode] || 'gpt-4o';
   }
 };

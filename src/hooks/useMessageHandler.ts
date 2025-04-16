@@ -73,6 +73,38 @@ export function useMessageHandler(
     return content;
   }, [getMemoryContext]);
 
+  // Detect content type and adapt the mode accordingly
+  const detectAndAdaptMode = useCallback(async (
+    content: string,
+    currentMode: ChatMode
+  ): Promise<{
+    adaptedMode: ChatMode;
+    adaptedModel: string;
+    shouldSwitch: boolean;
+  }> => {
+    // Detect content type
+    const detectedMode = await memoryService.detectContentTypeAndMode(content);
+    
+    // If detected mode is different from current mode, switch
+    if (detectedMode !== currentMode) {
+      // Get default model for the detected mode
+      const defaultModel = memoryService.getDefaultModelForMode(detectedMode);
+      
+      return {
+        adaptedMode: detectedMode as ChatMode,
+        adaptedModel: defaultModel,
+        shouldSwitch: true
+      };
+    }
+    
+    // If no mode switch needed
+    return {
+      adaptedMode: currentMode,
+      adaptedModel: currentMode === 'text' ? 'gpt-4o' : memoryService.getDefaultModelForMode(currentMode),
+      shouldSwitch: false
+    };
+  }, []);
+
   // Send message to the model
   const sendMessage = useCallback(async (
     content: string,
@@ -102,6 +134,23 @@ export function useMessageHandler(
       // Process message for memory extraction
       if (user && user.id) {
         processUserMessageForMemory(content);
+      }
+      
+      // Check if mode needs to be adapted based on content
+      const { adaptedMode, adaptedModel, shouldSwitch } = await detectAndAdaptMode(content, mode);
+      
+      // If mode switch is needed
+      if (shouldSwitch) {
+        console.log(`[useMessageHandler] Mode switch detected: ${mode} -> ${adaptedMode}, model: ${adaptedModel}`);
+        
+        // Update parameters based on detected mode
+        mode = adaptedMode;
+        
+        if (!comparing) {
+          modelId = adaptedModel;
+        } else if (leftModel && !rightModel) {
+          leftModel = adaptedModel;
+        }
       }
       
       // Add user message
@@ -206,10 +255,10 @@ export function useMessageHandler(
         );
       }
       
-      return true;
+      return { success: true, modeSwitch: shouldSwitch ? mode : null };
     } catch (err) {
       console.error('[useMessageHandler] Error sending message:', err);
-      return false;
+      return { success: false, modeSwitch: null };
     } finally {
       setIsSending(false);
     }
@@ -225,7 +274,8 @@ export function useMessageHandler(
     messageService,
     user,
     processUserMessageForMemory,
-    enhanceWithMemoryContext
+    enhanceWithMemoryContext,
+    detectAndAdaptMode
   ]);
 
   return {

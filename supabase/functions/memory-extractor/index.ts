@@ -48,14 +48,18 @@ async function extractMemoryItems(content: string) {
     Return ONLY a JSON array of objects with the format:
     [
       {
-        "key": "name",
-        "value": "John Doe"
+        "key": "name", 
+        "value": "John Doe",
+        "title": "User's name"
       },
       {
         "key": "favorite_color",
-        "value": "blue"
+        "value": "blue",
+        "title": "Preferred color" 
       }
     ]
+    
+    The "title" field should be a brief human-readable description of what this memory represents.
     
     IMPORTANT: If no relevant information is found, return an empty array [].
     DO NOT invent or assume information not explicitly stated in the message.
@@ -168,6 +172,7 @@ serve(async (req) => {
             key_name: item.key,
             value: item.value,
             source: 'auto-extracted',
+            title: item.title || item.key.replace(/_/g, ' '),
             updated_at: new Date().toISOString()
           }, {
             onConflict: 'user_id,key_name'
