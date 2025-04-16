@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from '@/components/ui/use-toast';
 import { ConversationType } from '@/types/conversation';
+import { useDrag } from 'react-dnd';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +47,8 @@ interface ConversationItemProps {
   currentFolderId: string | null;
 }
 
+const CONVERSATION_TYPE = 'conversation';
+
 const ConversationItem: React.FC<ConversationItemProps> = ({ 
   conversation, 
   isActive, 
@@ -63,6 +66,19 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   useEffect(() => {
     setNewTitle(conversation.title);
   }, [conversation.title]);
+
+  // Configurar drag and drop
+  const [{ isDragging }, drag] = useDrag({
+    type: CONVERSATION_TYPE,
+    item: { 
+      id: conversation.id, 
+      type: CONVERSATION_TYPE,
+      currentFolderId: currentFolderId
+    },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  });
 
   const handleRename = () => {
     if (newTitle.trim() === '') {
@@ -132,12 +148,16 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   return (
     <>
       <div
+        ref={drag}
         className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
+          isDragging ? 'opacity-50' : ''
+        } ${
           isActive
             ? 'bg-inventu-gray/20 text-white'
             : 'hover:bg-inventu-gray/10 text-inventu-gray'
         }`}
         data-conversation-id={conversation.id}
+        style={{ cursor: 'grab' }}
       >
         <div className="flex-1 min-w-0" onClick={onSelect}>
           <div className="flex items-center">

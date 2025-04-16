@@ -6,6 +6,7 @@ import { Loader2, FolderPlus, ChevronRight, ChevronDown, Folder } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { useDrop } from 'react-dnd';
 
 // Interface para as pastas
 interface FolderType {
@@ -31,6 +32,15 @@ interface ConversationListProps {
   conversationFolders?: Record<string, string | null>; // Mapeia conversationId -> folderId
 }
 
+// Tipo para os itens arrastáveis
+interface DragItem {
+  type: string;
+  id: string;
+  currentFolderId: string | null;
+}
+
+const CONVERSATION_TYPE = 'conversation';
+
 const ConversationList: React.FC<ConversationListProps> = ({ 
   conversations, 
   currentConversationId, 
@@ -49,6 +59,19 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  
+  // Drop target para área sem pasta
+  const [{ isOver: isOverRoot }, dropRoot] = useDrop({
+    accept: CONVERSATION_TYPE,
+    drop: (item: DragItem) => {
+      if (item.currentFolderId !== null) {
+        onMoveConversation(item.id, null);
+      }
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+    }),
+  });
   
   // Toggle folder expansion
   const toggleFolder = (folderId: string) => {
@@ -161,51 +184,73 @@ const ConversationList: React.FC<ConversationListProps> = ({
       )}
       
       {/* Lista de pastas */}
-      {folders.map((folder) => (
-        <div key={folder.id} className="space-y-1">
+      {folders.map((folder) => {
+        // Drop target para cada pasta
+        const [{ isOver }, drop] = useDrop({
+          accept: CONVERSATION_TYPE,
+          drop: (item: DragItem) => {
+            if (item.currentFolderId !== folder.id) {
+              onMoveConversation(item.id, folder.id);
+            }
+          },
+          collect: (monitor) => ({
+            isOver: !!monitor.isOver(),
+          }),
+        });
+        
+        return (
           <div 
-            className="flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-inventu-gray/10 text-inventu-gray hover:text-white"
-            onClick={() => toggleFolder(folder.id)}
+            key={folder.id} 
+            className={`space-y-1 ${isOver ? 'bg-inventu-gray/20 rounded-md' : ''}`}
+            ref={drop}
           >
-            <div className="flex items-center">
-              {expandedFolders[folder.id] ? (
-                <ChevronDown className="h-4 w-4 mr-2" />
-              ) : (
-                <ChevronRight className="h-4 w-4 mr-2" />
-              )}
-              <Folder className="h-4 w-4 mr-2" />
-              <span>{folder.name}</span>
+            <div 
+              className="flex items-center justify-between p-2 rounded-md cursor-pointer hover:bg-inventu-gray/10 text-inventu-gray hover:text-white"
+              onClick={() => toggleFolder(folder.id)}
+            >
+              <div className="flex items-center">
+                {expandedFolders[folder.id] ? (
+                  <ChevronDown className="h-4 w-4 mr-2" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 mr-2" />
+                )}
+                <Folder className="h-4 w-4 mr-2" />
+                <span>{folder.name}</span>
+              </div>
             </div>
+            
+            {/* Conversas na pasta */}
+            {expandedFolders[folder.id] && (
+              <div className="pl-6 space-y-1">
+                {getConversationsInFolder(folder.id).map((conv) => (
+                  <ConversationItem
+                    key={conv.id}
+                    conversation={conv}
+                    isActive={currentConversationId === conv.id}
+                    onSelect={() => onSelectConversation(conv.id)}
+                    onDelete={() => onDeleteConversation(conv.id)}
+                    onRename={(newTitle) => onRenameConversation(conv.id, newTitle)}
+                    onMove={(folderId) => onMoveConversation(conv.id, folderId)}
+                    folders={folders}
+                    currentFolderId={folder.id}
+                  />
+                ))}
+                {getConversationsInFolder(folder.id).length === 0 && (
+                  <div className="text-sm text-inventu-gray/70 italic p-2">
+                    Pasta vazia
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          
-          {/* Conversas na pasta */}
-          {expandedFolders[folder.id] && (
-            <div className="pl-6 space-y-1">
-              {getConversationsInFolder(folder.id).map((conv) => (
-                <ConversationItem
-                  key={conv.id}
-                  conversation={conv}
-                  isActive={currentConversationId === conv.id}
-                  onSelect={() => onSelectConversation(conv.id)}
-                  onDelete={() => onDeleteConversation(conv.id)}
-                  onRename={(newTitle) => onRenameConversation(conv.id, newTitle)}
-                  onMove={(folderId) => onMoveConversation(conv.id, folderId)}
-                  folders={folders}
-                  currentFolderId={folder.id}
-                />
-              ))}
-              {getConversationsInFolder(folder.id).length === 0 && (
-                <div className="text-sm text-inventu-gray/70 italic p-2">
-                  Pasta vazia
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+        );
+      })}
       
       {/* Conversas não organizadas */}
-      <div className="space-y-1">
+      <div 
+        className={`space-y-1 ${isOverRoot ? 'bg-inventu-gray/20 rounded-md p-1' : ''}`}
+        ref={dropRoot}
+      >
         {unorganizedConversations.map((conv) => (
           <ConversationItem
             key={conv.id}
