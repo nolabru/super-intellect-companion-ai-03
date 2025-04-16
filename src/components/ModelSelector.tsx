@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -154,6 +155,20 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   capabilities: ['Vozes brasileiras', 'Naturalidade'],
   description: 'Conversão de texto para fala com vozes brasileiras naturais.',
   modes: ['audio']
+}, {
+  id: 'kligin-image',
+  displayName: 'Kligin Image',
+  provider: 'kligin',
+  capabilities: ['Geração de imagens', 'Estilo brasileiro'],
+  description: 'Gerador de imagens com foco no contexto brasileiro.',
+  modes: ['image']
+}, {
+  id: 'kligin-video',
+  displayName: 'Kligin Video',
+  provider: 'kligin',
+  capabilities: ['Geração de vídeos', 'Qualidade HD'],
+  description: 'Gerador de vídeos curtos com contexto brasileiro.',
+  modes: ['video']
 },
 // Replicate Models
 {
