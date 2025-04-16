@@ -8,6 +8,7 @@ interface MemoryItem {
   key_name: string;
   value: string;
   source?: string;
+  title?: string;
 }
 
 export function useUserMemory() {
@@ -30,7 +31,7 @@ export function useUserMemory() {
       
       const { data, error } = await supabase
         .from('user_memory')
-        .select('key_name, value, source')
+        .select('key_name, value, source, title')
         .eq('user_id', user.id);
       
       if (error) {
@@ -39,17 +40,17 @@ export function useUserMemory() {
       
       setMemoryItems(data || []);
     } catch (err) {
-      console.error('[useUserMemory] Error loading memory items:', err);
-      setError('Failed to load user memory items');
+      console.error('[useUserMemory] Erro ao carregar itens de memória:', err);
+      setError('Falha ao carregar itens de memória do usuário');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
   // Add or update a memory item
-  const saveMemoryItem = useCallback(async (key: string, value: string, source?: string) => {
+  const saveMemoryItem = useCallback(async (key: string, value: string, source?: string, title?: string) => {
     if (!user) {
-      console.error('[useUserMemory] Cannot save memory item: No user logged in');
+      console.error('[useUserMemory] Não é possível salvar item de memória: Nenhum usuário logado');
       return false;
     }
     
@@ -61,6 +62,7 @@ export function useUserMemory() {
           key_name: key,
           value,
           source,
+          title,
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id,key_name'
@@ -75,16 +77,16 @@ export function useUserMemory() {
         const exists = prev.some(item => item.key_name === key);
         if (exists) {
           return prev.map(item => 
-            item.key_name === key ? { key_name: key, value, source } : item
+            item.key_name === key ? { key_name: key, value, source, title } : item
           );
         } else {
-          return [...prev, { key_name: key, value, source }];
+          return [...prev, { key_name: key, value, source, title }];
         }
       });
       
       return true;
     } catch (err) {
-      console.error('[useUserMemory] Error saving memory item:', err);
+      console.error('[useUserMemory] Erro ao salvar item de memória:', err);
       return false;
     }
   }, [user]);
@@ -92,7 +94,7 @@ export function useUserMemory() {
   // Delete a memory item
   const deleteMemoryItem = useCallback(async (key: string) => {
     if (!user) {
-      console.error('[useUserMemory] Cannot delete memory item: No user logged in');
+      console.error('[useUserMemory] Não é possível excluir item de memória: Nenhum usuário logado');
       return false;
     }
     
@@ -111,7 +113,7 @@ export function useUserMemory() {
       setMemoryItems(prev => prev.filter(item => item.key_name !== key));
       return true;
     } catch (err) {
-      console.error('[useUserMemory] Error deleting memory item:', err);
+      console.error('[useUserMemory] Erro ao excluir item de memória:', err);
       return false;
     }
   }, [user]);
@@ -122,8 +124,8 @@ export function useUserMemory() {
       return "";
     }
     
-    return "User information from previous conversations:\n" + 
-      memoryItems.map(item => `- ${item.key_name}: ${item.value}`).join('\n');
+    return "Informações do usuário de conversas anteriores:\n" + 
+      memoryItems.map(item => `- ${item.title || item.key_name}: ${item.value}`).join('\n');
   }, [memoryItems]);
 
   // Get a specific memory item

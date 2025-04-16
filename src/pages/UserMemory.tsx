@@ -45,10 +45,10 @@ const UserMemory: React.FC = () => {
         
         <div className="flex-1 flex flex-col overflow-auto p-4">
           <div className="max-w-3xl mx-auto w-full">
-            <h1 className="text-2xl font-bold mb-6 text-white">User Memory Management</h1>
+            <h1 className="text-2xl font-bold mb-6 text-white">Gestão de Memória do Usuário</h1>
             <p className="mb-6 text-gray-300">
-              This system automatically learns about you from conversations and remembers key information for future chats.
-              You can also manually add, edit, or delete memory items below.
+              Este sistema aprende automaticamente sobre você a partir das conversas e lembra informações importantes para futuros diálogos.
+              Você também pode adicionar, editar ou excluir itens de memória manualmente abaixo.
             </p>
             
             <MemoryManager />
