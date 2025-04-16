@@ -8,6 +8,20 @@ import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { saveMessageToDatabase, updateConversationTitle } from '@/utils/conversationUtils';
 import { ConversationType } from '@/types/conversation';
 
+// Helper function to validate and convert a string to a ChatMode
+const validateChatMode = (modeString: string | undefined): ChatMode => {
+  if (!modeString) return 'text';
+  
+  // Check if the provided string is a valid ChatMode
+  if (['text', 'image', 'video', 'audio'].includes(modeString)) {
+    return modeString as ChatMode;
+  }
+  
+  // Default to 'text' if the mode is not valid
+  console.warn(`Invalid chat mode "${modeString}" received, defaulting to "text"`);
+  return 'text';
+};
+
 // Factory function to create message service
 export const createMessageService = (
   apiService: ReturnType<typeof useApiService>,
@@ -120,6 +134,11 @@ export const createMessageService = (
           )
         );
         
+        // Validate and convert the mode from response
+        const validatedMode = validateChatMode(
+          streamResponse.modeSwitch?.newMode || mode
+        );
+        
         // Salvar a mensagem final no banco de dados
         const finalMessage: MessageType = {
           id: messageId,
@@ -127,7 +146,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: modelId,
-          mode,
+          mode: validatedMode,
           files: streamResponse.files,
           mediaUrl: streamResponse.files && streamResponse.files.length > 0 ? streamResponse.files[0] : undefined
         };
@@ -190,6 +209,11 @@ export const createMessageService = (
           modeSwitch: response.modeSwitch ? 'detected' : 'none'
         });
         
+        // Validate and convert the mode from response
+        const validatedMode = validateChatMode(
+          response.modeSwitch?.newMode || mode
+        );
+        
         // Add real response
         const newMessage: MessageType = {
           id: uuidv4(),
@@ -197,7 +221,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: modelId,
-          mode: response.modeSwitch?.newMode || mode, // Usar novo modo se detectado
+          mode: validatedMode,
           files: response.files,
           mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
         };
@@ -423,6 +447,15 @@ export const createMessageService = (
         rightModeSwitch: responseRight.modeSwitch ? 'detected' : 'none'
       });
       
+      // Validate and convert the modes from responses
+      const leftValidatedMode = validateChatMode(
+        responseLeft.modeSwitch?.newMode || mode
+      );
+      
+      const rightValidatedMode = validateChatMode(
+        responseRight.modeSwitch?.newMode || mode
+      );
+      
       // Remove loading messages que podem ainda existir
       setMessages((prevMessages) => 
         prevMessages.filter(msg => 
@@ -462,7 +495,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: leftModelId,
-          mode: responseLeft.modeSwitch?.newMode || mode, // Usar novo modo se detectado
+          mode: leftValidatedMode,
           files: responseLeft.files,
           mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
         });
@@ -475,7 +508,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: rightModelId,
-          mode: responseRight.modeSwitch?.newMode || mode, // Usar novo modo se detectado
+          mode: rightValidatedMode,
           files: responseRight.files,
           mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
         });
@@ -493,7 +526,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: leftModelId,
-          mode: responseLeft.modeSwitch?.newMode || mode,
+          mode: leftValidatedMode,
           files: responseLeft.files,
           mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
         }, conversationId),
@@ -503,7 +536,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: rightModelId,
-          mode: responseRight.modeSwitch?.newMode || mode,
+          mode: rightValidatedMode,
           files: responseRight.files,
           mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
         }, conversationId)
