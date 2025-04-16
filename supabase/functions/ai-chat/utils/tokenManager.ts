@@ -1,6 +1,6 @@
 
 // Token manager utility for AI Chat
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.8.0';
 
 // Initialize the Supabase client for the edge function
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
