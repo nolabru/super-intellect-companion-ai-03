@@ -12,6 +12,7 @@ import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
 import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
+import TokenDisplay from '@/components/TokenDisplay';
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(false);
@@ -250,6 +251,7 @@ const Index: React.FC = () => {
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
                 )}
+                <TokenDisplay />
               </div>
             </div>
             

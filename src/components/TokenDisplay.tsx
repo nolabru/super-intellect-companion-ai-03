@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useApiService, UserTokenInfo } from '@/hooks/useApiService';
 import { supabase } from '@/integrations/supabase/client';
+import { CircleDollarSign } from 'lucide-react';
 
 const TokenDisplay = () => {
   const [tokenInfo, setTokenInfo] = useState<UserTokenInfo | null>(null);
@@ -95,8 +96,9 @@ const TokenDisplay = () => {
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="flex items-center">
-            <Badge variant={getBadgeVariant()} className="px-2 py-1">
-              {tokenInfo.tokens_remaining.toLocaleString()} tokens
+            <Badge variant={getBadgeVariant()} className="px-2 py-1 flex items-center gap-1">
+              <CircleDollarSign className="h-3.5 w-3.5" />
+              <span>{tokenInfo.tokens_remaining.toLocaleString()}</span>
             </Badge>
           </div>
         </TooltipTrigger>
