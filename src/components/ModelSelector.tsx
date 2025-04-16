@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -15,20 +16,20 @@ export interface ModelInfo {
 }
 
 export const AVAILABLE_MODELS: ModelInfo[] = [
-// OpenAI Models
+// OpenAI Models - Atualizados conforme documentação mais recente
 {
   id: 'gpt-4o',
   displayName: 'GPT-4o',
   provider: 'openai',
-  capabilities: ['Raciocínio avançado', 'Conhecimento atualizado até 2023'],
-  description: 'Modelo mais poderoso da OpenAI, com excelente raciocínio.',
+  capabilities: ['Raciocínio avançado', 'Análise de imagens', 'Conhecimento atualizado até Apr 2023'],
+  description: 'Modelo mais poderoso da OpenAI, com excelente raciocínio e análise de imagens.',
   modes: ['text']
 }, {
-  id: 'gpt-4-vision',
-  displayName: 'GPT-4 Vision',
+  id: 'gpt-4o-mini',
+  displayName: 'GPT-4o Mini',
   provider: 'openai',
-  capabilities: ['Análise de imagens', 'Raciocínio avançado'],
-  description: 'Modelo capaz de analisar imagens e responder perguntas sobre elas.',
+  capabilities: ['Raciocínio rápido', 'Análise de imagens', 'Bom custo-benefício'],
+  description: 'Versão mais rápida e econômica do GPT-4o, com capacidades multimodais.',
   modes: ['text']
 }, {
   id: 'gpt-3.5-turbo',
@@ -36,6 +37,13 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   provider: 'openai',
   capabilities: ['Respostas rápidas', 'Bom custo-benefício'],
   description: 'Modelo equilibrado entre custo e capacidade.',
+  modes: ['text']
+}, {
+  id: 'gpt-4.5-preview',
+  displayName: 'GPT-4.5 Preview',
+  provider: 'openai',
+  capabilities: ['Raciocínio superior', 'Compreensão contextual avançada', 'Conhecimento atualizado'],
+  description: 'Versão prévia do GPT-4.5 com raciocínio superior e novas capacidades.',
   modes: ['text']
 }, {
   id: 'dall-e-3',
@@ -166,7 +174,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   description: 'Modelo de código aberto para geração de imagens de alta qualidade.',
   modes: ['image']
 },
-// Add Deepseek models to the AVAILABLE_MODELS array
+// DeepSeek models
 {
   id: 'deepseek-chat',
   displayName: 'DeepSeek Chat',

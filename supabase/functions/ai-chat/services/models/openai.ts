@@ -35,9 +35,18 @@ export async function generateText(
       apiKey: apiKey,
     });
     
+    // Determine appropriate model params based on model selection
+    let model = modelId;
+    
+    // Use appropriate model if specified one is deprecated
+    if (modelId === 'gpt-4' || modelId === 'gpt-4-vision-preview') {
+      console.log(`Modelo ${modelId} está depreciado, substituindo por gpt-4o`);
+      model = 'gpt-4o';
+    }
+    
     // Create chat completion with proper parameters according to OpenAI documentation
     const response = await openai.chat.completions.create({
-      model: modelId,
+      model: model,
       messages: [
         {
           role: "user",
@@ -45,7 +54,7 @@ export async function generateText(
         },
       ],
       temperature: 0.7,
-      max_tokens: 2000, // Added reasonable max_tokens value
+      max_tokens: 2000,
       top_p: 1,
       frequency_penalty: 0,
       presence_penalty: 0,
@@ -83,9 +92,18 @@ export async function processImage(
       apiKey: apiKey,
     });
     
+    // Use appropriate model for vision capabilities
+    let model = modelId;
+    
+    // Use gpt-4o if specified model is deprecated
+    if (modelId === 'gpt-4-vision-preview' || modelId === 'gpt-4') {
+      console.log(`Modelo ${modelId} está depreciado, substituindo por gpt-4o`);
+      model = 'gpt-4o';
+    }
+    
     // Create chat completion request with image content
     const response = await openai.chat.completions.create({
-      model: modelId,
+      model: model,
       messages: [
         {
           role: "user",
@@ -131,9 +149,12 @@ export async function generateImage(
       apiKey: apiKey,
     });
     
+    // Ensure we're using a supported model
+    const dalleModel = modelId === "gpt-4o" ? "dall-e-3" : modelId;
+    
     // Call image generation API
     const response = await openai.images.generate({
-      model: modelId === "gpt-4o" ? "dall-e-3" : modelId,
+      model: dalleModel,
       prompt: prompt,
       n: 1,
       size: size as "1024x1024" | "1792x1024" | "1024x1792",

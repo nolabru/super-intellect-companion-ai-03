@@ -70,6 +70,48 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
     <div className="markdown-content text-white">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        components={{
+          pre: ({ node, ...props }) => (
+            <pre className="bg-black/50 p-4 rounded-md my-2 overflow-auto" {...props} />
+          ),
+          code: ({ node, inline, className, children, ...props }) => {
+            if (inline) {
+              return <code className="bg-black/30 px-1 py-0.5 rounded text-amber-300" {...props}>{children}</code>;
+            }
+            return (
+              <code className={`${className || ''}`} {...props}>
+                {children}
+              </code>
+            );
+          },
+          p: ({ node, children, ...props }) => (
+            <p className="mb-4" {...props}>{children}</p>
+          ),
+          ul: ({ node, children, ...props }) => (
+            <ul className="list-disc pl-6 mb-4 space-y-1" {...props}>{children}</ul>
+          ),
+          ol: ({ node, children, ...props }) => (
+            <ol className="list-decimal pl-6 mb-4 space-y-1" {...props}>{children}</ol>
+          ),
+          li: ({ node, children, ...props }) => (
+            <li className="mb-1" {...props}>{children}</li>
+          ),
+          h1: ({ node, children, ...props }) => (
+            <h1 className="text-2xl font-bold mt-6 mb-3" {...props}>{children}</h1>
+          ),
+          h2: ({ node, children, ...props }) => (
+            <h2 className="text-xl font-bold mt-5 mb-2" {...props}>{children}</h2>
+          ),
+          h3: ({ node, children, ...props }) => (
+            <h3 className="text-lg font-bold mt-4 mb-2" {...props}>{children}</h3>
+          ),
+          blockquote: ({ node, children, ...props }) => (
+            <blockquote className="border-l-4 border-gray-500/50 pl-4 italic my-3" {...props}>{children}</blockquote>
+          ),
+          a: ({ node, children, href, ...props }) => (
+            <a href={href} className="text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>
+          ),
+        }}
       >
         {displayedContent}
       </ReactMarkdown>
