@@ -19,6 +19,10 @@ export interface ApiResponse {
     tokensUsed: number;
     tokensRemaining: number;
   };
+  modeSwitch?: {
+    newMode: string;
+    newModel: string;
+  };
 }
 
 // Interface para a resposta da função de armazenamento de mídia
@@ -101,7 +105,9 @@ export function useApiService() {
     files?: string[],
     params?: LumaParams,
     enableStreaming: boolean = false,
-    streamListener?: StreamListener
+    streamListener?: StreamListener,
+    conversationHistory?: string,
+    userId?: string
   ): Promise<ApiResponse> => {
     const maxRetries = 2;
     let lastError;
@@ -128,7 +134,8 @@ export function useApiService() {
           modelId,
           files,
           params,
-          userId: user?.id // Include user ID for token checking
+          userId: user?.id || userId, // Usar userId passado ou do contexto
+          conversationHistory // Novo: Incluir histórico da conversa
         };
         
         if (canUseStreaming) {
@@ -214,7 +221,8 @@ export function useApiService() {
             hasFiles: data.files && data.files.length > 0,
             fileType: data.files && data.files.length > 0 && data.files[0].startsWith('data:') ? 'base64' : 'url',
             firstFewChars: data.files && data.files.length > 0 ? data.files[0].substring(0, 30) + '...' : 'none',
-            tokenInfo: data.tokenInfo
+            tokenInfo: data.tokenInfo,
+            modeSwitch: data.modeSwitch ? 'detected' : 'none'
           });
           
           // Check if we got a placeholder or mock URL and reject it
@@ -227,11 +235,11 @@ export function useApiService() {
           
           // Se é uma mídia gerada, salvar no storage para persistência
           if (data.files && data.files.length > 0 && (mode === 'image' || mode === 'video' || mode === 'audio') && 
-              (modelId === 'dall-e-3' || modelId === 'gpt-4o')) {
+              (modelId === 'dall-e-3' || modelId === 'gpt-4o' || data.modeSwitch)) {
             try {
               // Obter informações do usuário atual
               const { data: userData } = await supabase.auth.getUser();
-              const userId = userData?.user?.id;
+              const userIdForStorage = userData?.user?.id || userId;
               
               // Tentar salvar a mídia no storage
               const mediaUrl = data.files[0];
@@ -258,7 +266,7 @@ export function useApiService() {
                 mediaUrl,
                 fileName,
                 contentType,
-                userId,
+                userIdForStorage,
                 undefined, // conversationId não é necessário aqui
                 mode
               );

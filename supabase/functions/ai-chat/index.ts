@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -11,6 +12,9 @@ import * as elevenlabsService from "./services/models/elevenlabs.ts";
 import * as geminiService from "./services/models/gemini.ts";
 import * as deepseekService from "./services/models/deepseek.ts";
 
+// Import orchestrator service
+import * as orchestratorService from "./services/orchestrator.ts";
+
 // Define response type
 interface ResponseData {
   content: string;
@@ -18,6 +22,10 @@ interface ResponseData {
   tokenInfo?: {
     tokensUsed: number;
     tokensRemaining: number;
+  };
+  modeSwitch?: {
+    newMode: string;
+    newModel: string;
   };
 }
 
@@ -27,25 +35,82 @@ const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {
   try {
-    const { content, mode, modelId, files, params, userId } = await req.json();
-    console.log(`Recebida solicitação para modelo ${modelId} no modo ${mode}`, {
+    // Extrair dados da requisição
+    const { 
+      content, 
+      mode, 
+      modelId, 
+      files, 
+      params, 
+      userId, 
+      conversationId,
+      conversationHistory 
+    } = await req.json();
+    
+    console.log(`[AI-Chat] Recebida solicitação para modelo ${modelId} no modo ${mode}`, {
       contentLength: content?.length,
       filesCount: files?.length,
       paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none',
-      userIdProvided: !!userId
+      userIdProvided: !!userId,
+      conversationIdProvided: !!conversationId
     });
     
-    // Extract memory context if this is a memory-enhanced request
-    let enhancedContent = content;
+    // Variáveis que podem ser alteradas pelo orquestrador
+    let processedContent = content;
+    let processedMode = mode;
+    let processedModelId = modelId;
+    let modeSwitchDetected = false;
     
-    // Check if content has memory context prepended
-    if (content.includes("User information from previous conversations:") && 
-        content.includes("\n\n")) {
-      console.log("Detected memory-enhanced content");
-      
-      // Just for logging
-      const memoryLines = content.split("\n\n")[0].split("\n").length - 1;
-      console.log(`Memory context contains ${memoryLines} items`);
+    // Aplicar orquestrador se userId estiver presente e não for solicitação de mídia direta
+    if (userId && mode === "text") {
+      try {
+        console.log(`[AI-Chat] Iniciando orquestrador para analisar a mensagem`);
+        
+        // Processar a mensagem com o orquestrador
+        const orchestratorResult = await orchestratorService.processUserMessage(
+          content,
+          userId,
+          mode,
+          modelId,
+          conversationHistory
+        );
+        
+        // Verificar se o orquestrador sugeriu troca de modo
+        if (orchestratorResult.detectedMode !== mode) {
+          console.log(`[AI-Chat] Orquestrador detectou troca de modo: ${mode} -> ${orchestratorResult.detectedMode}`);
+          processedMode = orchestratorResult.detectedMode;
+          modeSwitchDetected = true;
+        }
+        
+        // Verificar se o orquestrador sugeriu trocar o modelo
+        if (orchestratorResult.recommendedModel !== modelId) {
+          console.log(`[AI-Chat] Orquestrador recomendou troca de modelo: ${modelId} -> ${orchestratorResult.recommendedModel}`);
+          processedModelId = orchestratorResult.recommendedModel;
+        }
+        
+        // Usar prompt melhorado do orquestrador
+        processedContent = orchestratorResult.enhancedPrompt;
+        console.log(`[AI-Chat] Prompt melhorado pelo orquestrador: "${processedContent.substring(0, 50)}..."`);
+        
+        // Se existirem itens de memória extraídos, salvá-los
+        if (orchestratorResult.memoryExtracted && orchestratorResult.memoryItems) {
+          // Aqui seria o código para salvar os itens de memória
+          console.log(`[AI-Chat] Itens de memória extraídos pelo orquestrador`);
+        }
+        
+        // Enriquecer o prompt com contexto de memória (se disponível)
+        if (userId) {
+          const memoryContext = await orchestratorService.getUserMemoryContext(userId);
+          if (memoryContext) {
+            processedContent = orchestratorService.enrichPromptWithMemory(processedContent, memoryContext);
+            console.log(`[AI-Chat] Prompt enriquecido com contexto de memória`);
+          }
+        }
+        
+      } catch (orchestratorError) {
+        console.error(`[AI-Chat] Erro no orquestrador, continuando com dados originais:`, orchestratorError);
+        // Em caso de erro, continuamos com o prompt original
+      }
     }
     
     // First check if user has enough tokens for this operation
@@ -54,7 +119,8 @@ async function handleAIChat(req: Request): Promise<Response> {
     
     if (userId) {
       try {
-        const tokenCheck = await checkUserTokens(userId, modelId, mode);
+        // Usar o modo e modelo processados pelo orquestrador
+        const tokenCheck = await checkUserTokens(userId, processedModelId, processedMode);
         
         if (!tokenCheck.hasEnoughTokens) {
           console.log(`User ${userId} does not have enough tokens for this operation: ${tokenCheck.tokensRequired} required, ${tokenCheck.tokensRemaining} remaining`);
@@ -76,13 +142,13 @@ async function handleAIChat(req: Request): Promise<Response> {
         
         tokensUsed = tokenCheck.tokensRequired || 0;
         tokensRemaining = tokenCheck.tokensRemaining || 0;
-        console.log(`Token check passed for user ${userId}. Required: ${tokensUsed}, Remaining: ${tokenCheck.tokensRemaining}`);
+        console.log(`[AI-Chat] Token check passed for user ${userId}. Required: ${tokensUsed}, Remaining: ${tokenCheck.tokensRemaining}`);
       } catch (error) {
         // Log error but allow operation to proceed
-        console.warn(`Erro ao verificar tokens para usuário ${userId}, prosseguindo sem verificação:`, error);
+        console.warn(`[AI-Chat] Erro ao verificar tokens para usuário ${userId}, prosseguindo sem verificação:`, error);
       }
     } else {
-      console.log(`No user ID provided, proceeding without token check`);
+      console.log(`[AI-Chat] No user ID provided, proceeding without token check`);
     }
     
     let response: ResponseData = {
@@ -92,23 +158,22 @@ async function handleAIChat(req: Request): Promise<Response> {
     // Process based on model and mode
     try {
       // Verificação específica para modelos Luma
-      if (modelId.includes("luma")) {
+      if (processedModelId.includes("luma")) {
         // Usando token mocado para Luma
-        console.log("Modelo Luma selecionado, usando token mocado configurado diretamente no código");
+        console.log("[AI-Chat] Modelo Luma selecionado, usando token mocado configurado diretamente no código");
         // Pré-configuramos a variável LUMA_TOKEN_MOCK no service
         lumaService.setMockedToken(MOCKED_LUMA_TOKEN);
         
         // Validação opcional para ver se o token funciona
         const isValid = await lumaService.testApiKey(MOCKED_LUMA_TOKEN);
         if (!isValid) {
-          console.warn("O token mocado da Luma pode não estar funcionando corretamente");
+          console.warn("[AI-Chat] O token mocado da Luma pode não estar funcionando corretamente");
         }
       }
       
-      // Special check for OpenAI models
-      if (modelId.includes("gpt") || modelId.includes("dall-e")) {
+      // Validações para diversos modelos
+      if (processedModelId.includes("gpt") || processedModelId.includes("dall-e")) {
         try {
-          // Verify OpenAI API key before proceeding
           openaiService.verifyApiKey();
         } catch (error) {
           return new Response(
@@ -122,12 +187,8 @@ async function handleAIChat(req: Request): Promise<Response> {
             }
           );
         }
-      }
-      
-      // Special check for Anthropic models
-      if (modelId.includes("claude")) {
+      } else if (processedModelId.includes("claude")) {
         try {
-          // Verify Anthropic API key before proceeding
           anthropicService.verifyApiKey();
         } catch (error) {
           return new Response(
@@ -141,12 +202,8 @@ async function handleAIChat(req: Request): Promise<Response> {
             }
           );
         }
-      }
-      
-      // Verificação para ElevenLabs
-      if (modelId.includes("eleven") || modelId.includes("elevenlabs-tts")) {
+      } else if (processedModelId.includes("eleven") || processedModelId.includes("elevenlabs-tts")) {
         try {
-          // Verificar a chave API do ElevenLabs antes de prosseguir
           elevenlabsService.verifyApiKey();
         } catch (error) {
           return new Response(
@@ -160,12 +217,8 @@ async function handleAIChat(req: Request): Promise<Response> {
             }
           );
         }
-      }
-      
-      // Verificação para Google Gemini
-      if (modelId.includes("gemini")) {
+      } else if (processedModelId.includes("gemini")) {
         try {
-          // Verificar a chave API do Gemini antes de prosseguir
           geminiService.verifyApiKey();
         } catch (error) {
           return new Response(
@@ -179,16 +232,11 @@ async function handleAIChat(req: Request): Promise<Response> {
             }
           );
         }
-      }
-      
-      // Verificação para Deepseek
-      if (modelId.includes("deepseek")) {
+      } else if (processedModelId.includes("deepseek")) {
         try {
-          console.log("Verificando DEEPSEEK_API_KEY...");
-          // Verificar a chave API do Deepseek antes de prosseguir
           deepseekService.verifyApiKey();
         } catch (error) {
-          console.error("Erro na verificação do DEEPSEEK_API_KEY:", error);
+          console.error("[AI-Chat] Erro na verificação do DEEPSEEK_API_KEY:", error);
           return new Response(
             JSON.stringify({
               content: error.message,
@@ -202,38 +250,35 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
+      // Processar solicitação com base no modo e modelo processados pelo orquestrador
       // Luma AI models
-      if (modelId === "luma-video" && mode === "video") {
-        console.log("Iniciando processamento de vídeo com Luma AI");
+      if (processedModelId === "luma-video" && processedMode === "video") {
+        console.log("[AI-Chat] Iniciando processamento de vídeo com Luma AI");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
         
-        // Se não houver parâmetros definidos, use valores padrão para o modelo Luma
         const videoParams = {
           ...params,
           model: params?.model || "ray-2"
         };
         
-        // Usar AbortController para limitar o tempo total da operação
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
-          console.log("Atingido tempo máximo global para processamento de vídeo (5 minutos)");
+          console.log("[AI-Chat] Atingido tempo máximo global para processamento de vídeo (5 minutos)");
           controller.abort();
         }, 300000); // 5 minutos
         
         try {
           response = await Promise.race([
-            lumaService.generateVideo(content, videoParams, imageUrl),
+            lumaService.generateVideo(processedContent, videoParams, imageUrl),
             new Promise<ResponseData>((_, reject) => {
-              // Se o AbortController for acionado, este Promise rejeitará
               controller.signal.addEventListener('abort', () => {
                 reject(new Error("Tempo limite global excedido para processamento de vídeo (5 minutos)"));
               });
             })
           ]);
           clearTimeout(timeoutId);
-          console.log("Processamento de vídeo concluído com sucesso");
+          console.log("[AI-Chat] Processamento de vídeo concluído com sucesso");
           
-          // Adicionar timestamp à URL do vídeo para evitar cache
           if (response.files && response.files.length > 0) {
             response.files[0] = addTimestampToUrl(response.files[0]);
           }
@@ -242,96 +287,84 @@ async function handleAIChat(req: Request): Promise<Response> {
           throw error;
         }
       } 
-      else if (modelId === "luma-image" && mode === "image") {
-        console.log("Iniciando processamento de imagem com Luma AI");
+      else if (processedModelId === "luma-image" && processedMode === "image") {
+        console.log("[AI-Chat] Iniciando processamento de imagem com Luma AI");
         
-        // Se não houver parâmetros definidos, use valores padrão para o modelo Luma
         const imageParams = {
           ...params,
           model: params?.model || "luma-1.1"
         };
         
-        response = await lumaService.generateImage(content, imageParams);
-        console.log("Processamento de imagem concluído com sucesso");
+        response = await lumaService.generateImage(processedContent, imageParams);
+        console.log("[AI-Chat] Processamento de imagem concluído com sucesso");
         
-        // Adicionar timestamp à URL da imagem para evitar cache
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
       }
-      
-      // OpenAI models
-      else if (modelId.includes("gpt") && mode === "text") {
-        console.log("Iniciando processamento de texto com OpenAI");
+      // OpenAI models 
+      else if (processedModelId.includes("gpt") && processedMode === "text") {
+        console.log("[AI-Chat] Iniciando processamento de texto com OpenAI");
         
         try {
-          // Verify OpenAI API key exists
           const apiKey = openaiService.verifyApiKey();
-          console.log("Chave API do OpenAI verificada com sucesso");
+          console.log("[AI-Chat] Chave API do OpenAI verificada com sucesso");
           
-          // Log a amostra mascarada da chave para debugging (apenas os primeiros e últimos 4 caracteres)
           if (apiKey.length > 8) {
             const maskedKey = apiKey.substring(0, 4) + "..." + apiKey.substring(apiKey.length - 4);
-            console.log(`Usando chave API do OpenAI: ${maskedKey}`);
+            console.log(`[AI-Chat] Usando chave API do OpenAI: ${maskedKey}`);
           }
           
-          response = await openaiService.generateText(content, modelId);
-          console.log("Processamento de texto concluído com sucesso");
+          response = await openaiService.generateText(processedContent, processedModelId);
+          console.log("[AI-Chat] Processamento de texto concluído com sucesso");
         } catch (openaiError) {
-          console.error("Erro detalhado ao processar texto com OpenAI:", openaiError);
+          console.error("[AI-Chat] Erro detalhado ao processar texto com OpenAI:", openaiError);
           throw openaiError;
         }
       }
-      else if (modelId.includes("gpt") && mode === "image" && files && files.length > 0) {
-        console.log("Iniciando processamento de análise de imagem com OpenAI");
+      else if (processedModelId.includes("gpt") && processedMode === "image" && files && files.length > 0) {
+        console.log("[AI-Chat] Iniciando processamento de análise de imagem com OpenAI");
         const imageUrl = files[0];
-        response = await openaiService.processImage(content, imageUrl, modelId);
-        console.log("Análise de imagem concluída com sucesso");
+        response = await openaiService.processImage(processedContent, imageUrl, processedModelId);
+        console.log("[AI-Chat] Análise de imagem concluída com sucesso");
       }
-      else if ((modelId.includes("gpt") || modelId === "dall-e-3") && mode === "image" && (!files || files.length === 0)) {
-        console.log("Iniciando geração de imagem com DALL-E via OpenAI");
-        response = await openaiService.generateImage(content, modelId === "gpt-4o" ? "dall-e-3" : modelId);
-        console.log("Geração de imagem concluída com sucesso");
+      else if ((processedModelId.includes("gpt") || processedModelId === "dall-e-3") && processedMode === "image" && (!files || files.length === 0)) {
+        console.log("[AI-Chat] Iniciando geração de imagem com DALL-E via OpenAI");
+        response = await openaiService.generateImage(processedContent, processedModelId === "gpt-4o" ? "dall-e-3" : processedModelId);
+        console.log("[AI-Chat] Geração de imagem concluída com sucesso");
         
-        // Adicionar timestamp à URL da imagem para evitar cache
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
       }
-      
-      // Anthropic models
-      else if (modelId.includes("claude") && mode === "text") {
-        console.log("Iniciando processamento de texto com Anthropic");
-        response = await anthropicService.generateText(content, modelId);
-        console.log("Processamento de texto concluído com sucesso");
+      // Outros modelos
+      else if (processedModelId.includes("claude") && processedMode === "text") {
+        console.log("[AI-Chat] Iniciando processamento de texto com Anthropic");
+        response = await anthropicService.generateText(processedContent, processedModelId);
+        console.log("[AI-Chat] Processamento de texto concluído com sucesso");
       }
-      else if (modelId.includes("claude") && mode === "image") {
-        console.log("Iniciando processamento de imagem com Anthropic");
+      else if (processedModelId.includes("claude") && processedMode === "image") {
+        console.log("[AI-Chat] Iniciando processamento de imagem com Anthropic");
         const imageUrl = files && files.length > 0 ? files[0] : undefined;
         if (imageUrl) {
-          response = await anthropicService.processImage(content, imageUrl, modelId);
+          response = await anthropicService.processImage(processedContent, imageUrl, processedModelId);
         } else {
           response = { content: "Erro: Necessário fornecer uma imagem para análise." };
         }
       }
-      
-      // Google Gemini models
-      else if (modelId.includes("gemini") && mode === "text") {
-        console.log("Iniciando processamento de texto com Google Gemini");
-        response = await geminiService.generateText(content, modelId);
-        console.log("Processamento de texto concluído com sucesso");
+      else if (processedModelId.includes("gemini") && processedMode === "text") {
+        console.log("[AI-Chat] Iniciando processamento de texto com Google Gemini");
+        response = await geminiService.generateText(processedContent, processedModelId);
+        console.log("[AI-Chat] Processamento de texto concluído com sucesso");
       }
-      else if (modelId.includes("gemini") && mode === "image" && files && files.length > 0) {
-        console.log("Iniciando processamento de análise de imagem com Google Gemini Vision");
+      else if (processedModelId.includes("gemini") && processedMode === "image" && files && files.length > 0) {
+        console.log("[AI-Chat] Iniciando processamento de análise de imagem com Google Gemini Vision");
         const imageUrl = files[0];
-        response = await geminiService.processImage(content, imageUrl, modelId);
-        console.log("Análise de imagem concluída com sucesso");
+        response = await geminiService.processImage(processedContent, imageUrl, processedModelId);
+        console.log("[AI-Chat] Análise de imagem concluída com sucesso");
       }
-      
-      // ElevenLabs models
-      else if ((modelId === "eleven-labs" || modelId === "elevenlabs-tts") && mode === "audio") {
-        console.log("Iniciando geração de áudio com ElevenLabs");
-        // Extraindo parâmetros
+      else if ((processedModelId === "eleven-labs" || processedModelId === "elevenlabs-tts") && processedMode === "audio") {
+        console.log("[AI-Chat] Iniciando geração de áudio com ElevenLabs");
         const voiceParams = {
           voiceId: params?.voiceId || "EXAVITQu4vr4xnSDxMaL", // Sarah por padrão
           model: params?.model || "eleven_multilingual_v2",
@@ -341,23 +374,22 @@ async function handleAIChat(req: Request): Promise<Response> {
           speakerBoost: params?.speakerBoost || true
         };
         
-        response = await elevenlabsService.generateSpeech(content, voiceParams);
-        console.log("Geração de áudio concluída com sucesso");
+        response = await elevenlabsService.generateSpeech(processedContent, voiceParams);
+        console.log("[AI-Chat] Geração de áudio concluída com sucesso");
         
-        // Adicionar timestamp à URL do áudio para evitar cache
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
       }
-      else if ((modelId === 'deepseek-chat' || modelId === 'deepseek-coder') && mode === 'text') {
-        console.log("Iniciando processamento de texto com Deepseek");
-        response = await deepseekService.generateText(content, modelId);
-        console.log("Processamento de texto concluído com sucesso");
+      else if ((processedModelId === 'deepseek-chat' || processedModelId === 'deepseek-coder') && processedMode === 'text') {
+        console.log("[AI-Chat] Iniciando processamento de texto com Deepseek");
+        response = await deepseekService.generateText(processedContent, processedModelId);
+        console.log("[AI-Chat] Processamento de texto concluído com sucesso");
       }
       else {
         return new Response(
           JSON.stringify({
-            content: `Combinação de modelo e modo não suportada: ${modelId} / ${mode}`,
+            content: `Combinação de modelo e modo não suportada: ${processedModelId} / ${processedMode}`,
             error: "Combinação não suportada",
           }),
           {
@@ -367,8 +399,7 @@ async function handleAIChat(req: Request): Promise<Response> {
         );
       }
       
-      // Log dos resultados
-      console.log(`Resposta do modelo ${modelId} no modo ${mode} gerada com sucesso:`, {
+      console.log(`[AI-Chat] Resposta do modelo ${processedModelId} no modo ${processedMode} gerada com sucesso:`, {
         hasFiles: response.files && response.files.length > 0,
         fileCount: response.files?.length || 0,
         contentLength: response.content?.length || 0
@@ -382,45 +413,53 @@ async function handleAIChat(req: Request): Promise<Response> {
         };
       }
       
+      // Se houver uma troca de modo detectada, adicionar à resposta
+      if (modeSwitchDetected) {
+        response.modeSwitch = {
+          newMode: processedMode,
+          newModel: processedModelId
+        };
+      }
+      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Erro detalhado no processamento:", error);
-      logError("SERVICE_ERROR", { error: errorMessage, model: modelId, mode });
+      console.error("[AI-Chat] Erro detalhado no processamento:", error);
+      logError("SERVICE_ERROR", { error: errorMessage, model: processedModelId, mode: processedMode });
       
       let friendlyError = `Erro ao processar solicitação: ${errorMessage}`;
       
       // Mensagens de erro específicas baseadas no erro original
-      if (modelId.includes("gpt") || modelId === "dall-e-3") {
+      if (processedModelId.includes("gpt") || processedModelId === "dall-e-3") {
         if (errorMessage.includes("API key") || errorMessage.includes("authorize") || errorMessage.includes("authenticate")) {
           friendlyError = "Erro de configuração: A chave API do OpenAI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("billing") || errorMessage.includes("429") || errorMessage.includes("rate limit")) {
           friendlyError = "Erro de limite: Você excedeu seu limite de uso da OpenAI. Verifique seu plano e faturamento.";
         } else {
-          friendlyError = `Erro na geração de ${mode === 'image' ? 'imagem' : 'texto'} com OpenAI: ${errorMessage}`;
+          friendlyError = `Erro na geração de ${processedMode === 'image' ? 'imagem' : 'texto'} com OpenAI: ${errorMessage}`;
         }
-      } else if (modelId.includes("luma")) {
+      } else if (processedModelId.includes("luma")) {
         if (errorMessage.includes("API key") || errorMessage.includes("Authorization") || errorMessage.includes("authenticate")) {
           friendlyError = "Erro de configuração: A chave API do Luma AI não está configurada corretamente. Por favor, verifique suas configurações.";
         } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
           friendlyError = "Erro na API Luma: Endpoint não encontrado. A API pode ter sido atualizada.";
         } else if (errorMessage.includes("Tempo limite")) {
-          friendlyError = `O processamento do ${mode === 'video' ? 'vídeo' : 'imagem'} excedeu o tempo limite. A geração pode estar em andamento no servidor do Luma AI, verifique seu painel de controle.`;
+          friendlyError = `O processamento do ${processedMode === 'video' ? 'vídeo' : 'imagem'} excedeu o tempo limite. A geração pode estar em andamento no servidor do Luma AI, verifique seu painel de controle.`;
         } else {
-          friendlyError = `Erro na geração do ${mode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
+          friendlyError = `Erro na geração do ${processedMode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
         }
-      } else if (modelId.includes("eleven")) {
+      } else if (processedModelId.includes("eleven")) {
         if (errorMessage.includes("API key") || errorMessage.includes("xi-api-key") || errorMessage.includes("authenticate")) {
           friendlyError = "Erro de configuração: A chave API do ElevenLabs não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
           friendlyError = `Erro na geração de áudio com ElevenLabs: ${errorMessage}`;
         }
-      } else if (modelId.includes("gemini")) {
+      } else if (processedModelId.includes("gemini")) {
         if (errorMessage.includes("API key") || errorMessage.includes("authenticate")) {
           friendlyError = "Erro de configuração: A chave API do Google Gemini não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
           friendlyError = `Erro na geração com Google Gemini: ${errorMessage}`;
         }
-      } else if (modelId.includes("deepseek")) {
+      } else if (processedModelId.includes("deepseek")) {
         if (errorMessage.includes("API key") || errorMessage.includes("authorize") || errorMessage.includes("authenticate")) {
           friendlyError = "Erro de configuração: A chave API do Deepseek não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
@@ -445,7 +484,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       status: 200,
     });
   } catch (error) {
-    console.error("Erro ao processar solicitação:", error);
+    console.error("[AI-Chat] Erro ao processar solicitação:", error);
     
     const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
     logError("REQUEST_ERROR", { error: errorMessage });

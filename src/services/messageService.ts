@@ -25,7 +25,9 @@ export const createMessageService = (
     messages: MessageType[],
     conversations: ConversationType[],
     files?: string[],
-    params?: LumaParams
+    params?: LumaParams,
+    conversationHistory?: string,
+    userId?: string
   ) => {
     // Add loading message
     const loadingId = `loading-${modelId}-${uuidv4()}`;
@@ -86,7 +88,7 @@ export const createMessageService = (
         // Preparar para iniciar o streaming
         let streamedContent = '';
         const streamListener = (chunk: string) => {
-          streamedContent += chunk;
+          streamedContent = chunk; // No streaming simulado, recebemos o conteúdo acumulado
           setMessages((prevMessages) => {
             return prevMessages.map(msg => 
               msg.id === messageId 
@@ -104,7 +106,9 @@ export const createMessageService = (
           files, 
           params, 
           true, // indicar que queremos streaming
-          streamListener
+          streamListener,
+          conversationHistory, // Novo parâmetro - histórico da conversa
+          userId // Novo parâmetro - ID do usuário
         );
         
         // Atualizar a mensagem final (remover flag de streaming)
@@ -148,13 +152,29 @@ export const createMessageService = (
             // Continue even if gallery save fails
           }
         }
+        
+        return { 
+          success: true, 
+          error: null,
+          modeSwitch: streamResponse.modeSwitch // Nova propriedade
+        };
       } else {
         // Send request to API with 3 minute timeout for modelos sem streaming
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error("Request timeout exceeded")), 180000);
         });
         
-        const responsePromise = apiService.sendRequest(content, mode, modelId, files, params);
+        const responsePromise = apiService.sendRequest(
+          content, 
+          mode, 
+          modelId, 
+          files, 
+          params,
+          false,
+          undefined,
+          conversationHistory, // Novo parâmetro - histórico da conversa
+          userId // Novo parâmetro - ID do usuário
+        );
         const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
         
         // Remove loading message
@@ -166,7 +186,8 @@ export const createMessageService = (
           mode,
           modelId,
           hasFiles: response.files && response.files.length > 0,
-          firstFile: response.files && response.files.length > 0 ? response.files[0].substring(0, 30) + '...' : 'none'
+          firstFile: response.files && response.files.length > 0 ? response.files[0].substring(0, 30) + '...' : 'none',
+          modeSwitch: response.modeSwitch ? 'detected' : 'none'
         });
         
         // Add real response
@@ -176,7 +197,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: modelId,
-          mode,
+          mode: response.modeSwitch?.newMode || mode, // Usar novo modo se detectado
           files: response.files,
           mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
         };
@@ -204,9 +225,13 @@ export const createMessageService = (
             // Continue even if gallery save fails
           }
         }
+        
+        return { 
+          success: true, 
+          error: null,
+          modeSwitch: response.modeSwitch // Nova propriedade
+        };
       }
-      
-      return { success: true, error: null };
     } catch (err) {
       console.error("Error during request:", err);
       
@@ -252,7 +277,9 @@ export const createMessageService = (
     rightModelId: string,
     conversationId: string,
     files?: string[],
-    params?: LumaParams
+    params?: LumaParams,
+    conversationHistory?: string,
+    userId?: string
   ) => {
     // Adicionar verificação de streaming para modelos de comparação
     const leftSupportsStreaming = mode === 'text' && (
@@ -337,7 +364,7 @@ export const createMessageService = (
       
       const leftStreamListener = (chunk: string) => {
         if (leftSupportsStreaming) {
-          leftStreamedContent += chunk;
+          leftStreamedContent = chunk; // Conteúdo acumulado
           setMessages((prevMessages) => {
             return prevMessages.map(msg => 
               msg.id === leftMessageId 
@@ -350,7 +377,7 @@ export const createMessageService = (
       
       const rightStreamListener = (chunk: string) => {
         if (rightSupportsStreaming) {
-          rightStreamedContent += chunk;
+          rightStreamedContent = chunk; // Conteúdo acumulado
           setMessages((prevMessages) => {
             return prevMessages.map(msg => 
               msg.id === rightMessageId 
@@ -370,7 +397,9 @@ export const createMessageService = (
           files, 
           params, 
           leftSupportsStreaming, 
-          leftStreamListener
+          leftStreamListener,
+          conversationHistory,
+          userId
         ),
         apiService.sendRequest(
           content, 
@@ -379,7 +408,9 @@ export const createMessageService = (
           files, 
           params, 
           rightSupportsStreaming, 
-          rightStreamListener
+          rightStreamListener,
+          conversationHistory,
+          userId
         )
       ]);
       
@@ -388,6 +419,8 @@ export const createMessageService = (
         rightModel: rightModelId,
         leftHasFiles: responseLeft.files && responseLeft.files.length > 0,
         rightHasFiles: responseRight.files && responseRight.files.length > 0,
+        leftModeSwitch: responseLeft.modeSwitch ? 'detected' : 'none',
+        rightModeSwitch: responseRight.modeSwitch ? 'detected' : 'none'
       });
       
       // Remove loading messages que podem ainda existir
@@ -429,7 +462,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: leftModelId,
-          mode,
+          mode: responseLeft.modeSwitch?.newMode || mode, // Usar novo modo se detectado
           files: responseLeft.files,
           mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
         });
@@ -442,7 +475,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: rightModelId,
-          mode,
+          mode: responseRight.modeSwitch?.newMode || mode, // Usar novo modo se detectado
           files: responseRight.files,
           mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
         });
@@ -460,7 +493,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: leftModelId,
-          mode,
+          mode: responseLeft.modeSwitch?.newMode || mode,
           files: responseLeft.files,
           mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
         }, conversationId),
@@ -470,7 +503,7 @@ export const createMessageService = (
           sender: 'assistant',
           timestamp: new Date().toISOString(),
           model: rightModelId,
-          mode,
+          mode: responseRight.modeSwitch?.newMode || mode,
           files: responseRight.files,
           mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
         }, conversationId)
@@ -513,7 +546,10 @@ export const createMessageService = (
         }
       }
       
-      return { success: true, error: null };
+      // Determinar se houve troca de modo
+      const modeSwitch = responseLeft.modeSwitch || responseRight.modeSwitch;
+      
+      return { success: true, error: null, modeSwitch };
     } catch (err) {
       console.error("Error during comparison of models:", err);
       

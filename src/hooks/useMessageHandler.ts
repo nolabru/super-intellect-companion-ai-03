@@ -73,36 +73,15 @@ export function useMessageHandler(
     return content;
   }, [getMemoryContext]);
 
-  // Detect content type and adapt the mode accordingly
-  const detectAndAdaptMode = useCallback(async (
-    content: string,
-    currentMode: ChatMode
-  ): Promise<{
-    adaptedMode: ChatMode;
-    adaptedModel: string;
-    shouldSwitch: boolean;
-  }> => {
-    // Detect content type
-    const detectedMode = await memoryService.detectContentTypeAndMode(content);
+  // Preparar o histórico da conversa para o orquestrador
+  const prepareConversationHistory = useCallback((msgs: MessageType[]): string => {
+    // Limitar a quantidade de mensagens anteriores (últimas 10, por exemplo)
+    const recentMessages = msgs.slice(-10);
     
-    // If detected mode is different from current mode, switch
-    if (detectedMode !== currentMode) {
-      // Get default model for the detected mode
-      const defaultModel = memoryService.getDefaultModelForMode(detectedMode);
-      
-      return {
-        adaptedMode: detectedMode as ChatMode,
-        adaptedModel: defaultModel,
-        shouldSwitch: true
-      };
-    }
-    
-    // If no mode switch needed
-    return {
-      adaptedMode: currentMode,
-      adaptedModel: currentMode === 'text' ? 'gpt-4o' : memoryService.getDefaultModelForMode(currentMode),
-      shouldSwitch: false
-    };
+    return recentMessages.map(msg => {
+      const role = msg.sender === 'user' ? 'User' : 'Assistant';
+      return `${role}: ${msg.content}`;
+    }).join('\n\n');
   }, []);
 
   // Send message to the model
@@ -136,46 +115,24 @@ export function useMessageHandler(
         processUserMessageForMemory(content);
       }
       
-      // Check if mode needs to be adapted based on content
-      const { adaptedMode, adaptedModel, shouldSwitch } = await detectAndAdaptMode(content, mode);
+      // Preparar histórico da conversa para o orquestrador
+      const conversationHistory = prepareConversationHistory(messages);
       
-      // If mode switch is needed
-      if (shouldSwitch) {
-        console.log(`[useMessageHandler] Mode switch detected: ${mode} -> ${adaptedMode}, model: ${adaptedModel}`);
-        
-        // Update parameters based on detected mode
-        mode = adaptedMode;
-        
-        if (!comparing) {
-          modelId = adaptedModel;
-        } else if (leftModel && !rightModel) {
-          leftModel = adaptedModel;
-        }
-      }
-      
-      // Add user message
+      // Criar mensagem do usuário
       const userMessageId = uuidv4();
       let targetModel: string | undefined;
       
       // Determinar qual modelo receberá a mensagem
       if (comparing) {
         if (!leftModel && rightModel) {
-          // Modo desvinculado - apenas modelo direito
           targetModel = rightModel;
-          console.log(`[useMessageHandler] Mensagem direcionada para o modelo direito: ${rightModel}`);
         } else if (leftModel && !rightModel) {
-          // Modo desvinculado - apenas modelo esquerdo
           targetModel = leftModel;
-          console.log(`[useMessageHandler] Mensagem direcionada para o modelo esquerdo: ${leftModel}`);
         } else if (leftModel && rightModel) {
-          // Modo vinculado - ambos modelos
           targetModel = undefined;
-          console.log(`[useMessageHandler] Mensagem direcionada para ambos os modelos: ${leftModel} e ${rightModel}`);
         }
       } else {
-        // Modo regular - apenas um modelo
         targetModel = modelId;
-        console.log(`[useMessageHandler] Mensagem direcionada para o modelo: ${modelId}`);
       }
       
       // Criar mensagem do usuário com o modelo de destino explicitamente definido
@@ -189,8 +146,6 @@ export function useMessageHandler(
         model: targetModel
       };
       
-      console.log(`[useMessageHandler] Criando mensagem de usuário para modelo: ${targetModel || 'todos'}`);
-      
       setMessages(prev => [...prev, userMessage]);
       
       // Save user message to database
@@ -198,16 +153,17 @@ export function useMessageHandler(
       
       // If this is the first message in the conversation, update the title
       if (messages.length === 0 || (messages.length === 1 && messages[0].sender === 'user')) {
-        console.log('[useMessageHandler] Updating conversation title');
         updateTitle(currentConversationId, content);
       }
       
       // Enhance content with memory context if needed
       const enhancedContent = await enhanceWithMemoryContext(content, messages);
       
-      // Process the message
+      // Processar a mensagem
+      let modeSwitch = null;
+      
       if (comparing && leftModel && rightModel) {
-        // Compare two models
+        // Modo de comparação - ambos os modelos
         await messageService.handleCompareModels(
           enhancedContent,
           mode,
@@ -215,11 +171,13 @@ export function useMessageHandler(
           rightModel,
           currentConversationId,
           files,
-          params
+          params,
+          conversationHistory,
+          user?.id
         );
       } else if (comparing && leftModel && !rightModel) {
         // Modo desvinculado - apenas modelo esquerdo
-        await messageService.handleSingleModelMessage(
+        const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
           leftModel,
@@ -227,11 +185,15 @@ export function useMessageHandler(
           messages,
           conversations,
           files,
-          params
+          params,
+          conversationHistory,
+          user?.id
         );
+        
+        modeSwitch = result?.modeSwitch || null;
       } else if (comparing && !leftModel && rightModel) {
         // Modo desvinculado - apenas modelo direito
-        await messageService.handleSingleModelMessage(
+        const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
           rightModel,
@@ -239,11 +201,15 @@ export function useMessageHandler(
           messages,
           conversations,
           files,
-          params
+          params,
+          conversationHistory,
+          user?.id
         );
+        
+        modeSwitch = result?.modeSwitch || null;
       } else {
-        // Single model - modo padrão
-        await messageService.handleSingleModelMessage(
+        // Modo padrão - apenas um modelo
+        const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
           modelId,
@@ -251,11 +217,18 @@ export function useMessageHandler(
           messages,
           conversations,
           files,
-          params
+          params,
+          conversationHistory,
+          user?.id
         );
+        
+        modeSwitch = result?.modeSwitch || null;
       }
       
-      return { success: true, modeSwitch: shouldSwitch ? mode : null };
+      return { 
+        success: true, 
+        modeSwitch: modeSwitch ? modeSwitch.newMode : null 
+      };
     } catch (err) {
       console.error('[useMessageHandler] Error sending message:', err);
       return { success: false, modeSwitch: null };
@@ -275,7 +248,7 @@ export function useMessageHandler(
     user,
     processUserMessageForMemory,
     enhanceWithMemoryContext,
-    detectAndAdaptMode
+    prepareConversationHistory
   ]);
 
   return {

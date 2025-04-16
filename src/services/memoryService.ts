@@ -2,13 +2,14 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export const memoryService = {
-  // Function to extract memory from a message
+  // Function to extract memory from a message using o orquestrador
   async extractMemoryFromMessage(messageContent: string, userId: string) {
     try {
       const { data, error } = await supabase.functions.invoke('memory-extractor', {
         body: {
           messageContent,
-          userId
+          userId,
+          useOrchestrator: true // Nova flag para indicar uso do orquestrador
         },
       });
       
@@ -58,6 +59,37 @@ export const memoryService = {
 
   // Function to detect content type and suggest mode change
   async detectContentTypeAndMode(messageContent: string) {
+    try {
+      // Tente usar o orquestrador para analisar o modo
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
+          content: messageContent,
+          mode: 'text',
+          modelId: 'gpt-4o-mini',
+          orchestratorOnly: true, // Flag para indicar que só queremos a análise do orquestrador
+        },
+      });
+      
+      if (error) {
+        console.warn('Error using orchestrator for mode detection, falling back to pattern matching:', error);
+        // Se falhar, use o método tradicional de pattern matching
+        return this.detectContentTypeByPatterns(messageContent);
+      }
+      
+      if (data && data.modeSwitch && data.modeSwitch.newMode) {
+        return data.modeSwitch.newMode;
+      }
+      
+      // Fallback para pattern matching
+      return this.detectContentTypeByPatterns(messageContent);
+    } catch (err) {
+      console.error('Error in orchestrated mode detection:', err);
+      return this.detectContentTypeByPatterns(messageContent);
+    }
+  },
+  
+  // Método de fallback para detectar o tipo de conteúdo por padrões
+  detectContentTypeByPatterns(messageContent: string) {
     // Simple pattern matching for mode detection
     const patterns = {
       image: [
