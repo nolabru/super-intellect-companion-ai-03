@@ -161,6 +161,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_memory: {
+        Row: {
+          created_at: string
+          id: string
+          key_name: string
+          source: string | null
+          updated_at: string
+          user_id: string
+          value: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_name: string
+          source?: string | null
+          updated_at?: string
+          user_id: string
+          value: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_name?: string
+          source?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: string
+        }
+        Relationships: []
+      }
       user_tokens: {
         Row: {
           created_at: string

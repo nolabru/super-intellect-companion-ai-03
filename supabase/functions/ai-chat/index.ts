@@ -35,6 +35,19 @@ async function handleAIChat(req: Request): Promise<Response> {
       userIdProvided: !!userId
     });
     
+    // Extract memory context if this is a memory-enhanced request
+    let enhancedContent = content;
+    
+    // Check if content has memory context prepended
+    if (content.includes("User information from previous conversations:") && 
+        content.includes("\n\n")) {
+      console.log("Detected memory-enhanced content");
+      
+      // Just for logging
+      const memoryLines = content.split("\n\n")[0].split("\n").length - 1;
+      console.log(`Memory context contains ${memoryLines} items`);
+    }
+    
     // First check if user has enough tokens for this operation
     if (userId) {
       const tokenCheck = await checkUserTokens(userId, modelId, mode);

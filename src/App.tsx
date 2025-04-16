@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import MediaGallery from "./pages/MediaGallery";
+import UserMemory from "./pages/UserMemory";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/c/:conversationId" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/gallery" element={<MediaGallery />} />
+            <Route path="/memory" element={<UserMemory />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

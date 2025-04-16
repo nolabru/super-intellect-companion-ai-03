@@ -8,6 +8,8 @@ import { useApiService } from '@/hooks/useApiService';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
+import { useAuth } from '@/contexts/AuthContext';
+import { memoryService } from '@/services/memoryService';
 
 export function useMessageHandler(
   messages: MessageType[],
@@ -21,6 +23,7 @@ export function useMessageHandler(
   const [isSending, setIsSending] = useState(false);
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
+  const { user } = useAuth();
   
   // Create message service
   const messageService = createMessageService(
@@ -29,6 +32,46 @@ export function useMessageHandler(
     setMessages,
     setError
   );
+
+  // Process user message for memory extraction
+  const processUserMessageForMemory = useCallback(async (content: string) => {
+    if (!user || !user.id) return;
+    
+    try {
+      // Process in background to not block the main flow
+      setTimeout(async () => {
+        await memoryService.extractMemoryFromMessage(content, user.id);
+      }, 0);
+    } catch (err) {
+      console.error('[useMessageHandler] Error processing memory extraction:', err);
+      // Don't block the main flow
+    }
+  }, [user]);
+
+  // Get memory context for a new conversation
+  const getMemoryContext = useCallback(async () => {
+    if (!user || !user.id) return "";
+    
+    try {
+      return await memoryService.getUserMemoryContext(user.id);
+    } catch (err) {
+      console.error('[useMessageHandler] Error getting memory context:', err);
+      return "";
+    }
+  }, [user]);
+
+  // Enhance content with memory context if it's a new conversation
+  const enhanceWithMemoryContext = useCallback(async (content: string, msgs: MessageType[]) => {
+    // Only add memory context for the first user message in a conversation
+    if (msgs.length === 0 || (msgs.length === 1 && msgs[0].sender === 'user')) {
+      const memoryContext = await getMemoryContext();
+      
+      if (memoryContext) {
+        return `${memoryContext}\n\n${content}`;
+      }
+    }
+    return content;
+  }, [getMemoryContext]);
 
   // Send message to the model
   const sendMessage = useCallback(async (
@@ -55,6 +98,11 @@ export function useMessageHandler(
     try {
       console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
+      
+      // Process message for memory extraction
+      if (user && user.id) {
+        processUserMessageForMemory(content);
+      }
       
       // Add user message
       const userMessageId = uuidv4();
@@ -105,11 +153,14 @@ export function useMessageHandler(
         updateTitle(currentConversationId, content);
       }
       
+      // Enhance content with memory context if needed
+      const enhancedContent = await enhanceWithMemoryContext(content, messages);
+      
       // Process the message
       if (comparing && leftModel && rightModel) {
         // Compare two models
         await messageService.handleCompareModels(
-          content,
+          enhancedContent,
           mode,
           leftModel,
           rightModel,
@@ -120,7 +171,7 @@ export function useMessageHandler(
       } else if (comparing && leftModel && !rightModel) {
         // Modo desvinculado - apenas modelo esquerdo
         await messageService.handleSingleModelMessage(
-          content,
+          enhancedContent,
           mode,
           leftModel,
           currentConversationId,
@@ -132,7 +183,7 @@ export function useMessageHandler(
       } else if (comparing && !leftModel && rightModel) {
         // Modo desvinculado - apenas modelo direito
         await messageService.handleSingleModelMessage(
-          content,
+          enhancedContent,
           mode,
           rightModel,
           currentConversationId,
@@ -144,7 +195,7 @@ export function useMessageHandler(
       } else {
         // Single model - modo padrão
         await messageService.handleSingleModelMessage(
-          content,
+          enhancedContent,
           mode,
           modelId,
           currentConversationId,
@@ -171,7 +222,10 @@ export function useMessageHandler(
     setError, 
     saveUserMessage, 
     updateTitle, 
-    messageService
+    messageService,
+    user,
+    processUserMessageForMemory,
+    enhanceWithMemoryContext
   ]);
 
   return {
