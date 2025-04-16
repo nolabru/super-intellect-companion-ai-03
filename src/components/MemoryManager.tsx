@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, PlusCircle, Trash2, RefreshCw } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, RefreshCw, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,6 +24,7 @@ export default function MemoryManager() {
   const [newTitle, setNewTitle] = useState('');
   const [newValue, setNewValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleAddMemory = async () => {
@@ -39,6 +40,7 @@ export default function MemoryManager() {
         toast.success('Memória adicionada com sucesso');
         setNewTitle('');
         setNewValue('');
+        setShowAddForm(false);
       } else {
         toast.error('Falha ao adicionar memória');
       }
@@ -80,57 +82,81 @@ export default function MemoryManager() {
           <h2 className="text-xl font-medium bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
             Memória do Usuário
           </h2>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={handleRefresh} 
-            disabled={isRefreshing}
-            className="bg-white/5 hover:bg-white/10 border-white/10"
-          >
-            {isRefreshing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
+          <div className="flex space-x-2">
+            {!showAddForm && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowAddForm(true)}
+                className="bg-white/5 hover:bg-white/10 border-white/10"
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Nova Memória
+              </Button>
             )}
-            Atualizar
-          </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRefresh} 
+              disabled={isRefreshing}
+              className="bg-white/5 hover:bg-white/10 border-white/10"
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Atualizar
+            </Button>
+          </div>
         </div>
         
         <Separator className="bg-inventu-gray/10" />
         
         <CardContent className="p-6 space-y-5">
-          <div className="space-y-4 bg-black/20 p-5 rounded-xl border border-white/5">
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-white/70">Nova Memória</h3>
-              
-              <Input
-                placeholder="Título da memória"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                className="bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all"
-              />
-              
-              <Textarea
-                placeholder="Valor ou descrição detalhada"
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value)}
-                className="min-h-[100px] bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all"
-              />
-              
-              <Button 
-                onClick={handleAddMemory} 
-                disabled={isAdding || !newTitle.trim() || !newValue.trim()}
-                className="w-full bg-gradient-to-r from-inventu-blue to-inventu-purple hover:from-inventu-blue/90 hover:to-inventu-purple/90 transition-all"
+          {showAddForm && (
+            <div className="space-y-4 bg-black/20 p-5 rounded-xl border border-white/5 relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAddForm(false)}
+                className="absolute top-2 right-2 opacity-60 hover:opacity-100 transition-opacity"
               >
-                {isAdding ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                )}
-                Adicionar
+                <X className="h-4 w-4 text-white/70" />
               </Button>
+              
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-white/70">Nova Memória</h3>
+                
+                <Input
+                  placeholder="Título da memória"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all"
+                />
+                
+                <Textarea
+                  placeholder="Valor ou descrição detalhada"
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value)}
+                  className="min-h-[100px] bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all"
+                />
+                
+                <Button 
+                  onClick={handleAddMemory} 
+                  disabled={isAdding || !newTitle.trim() || !newValue.trim()}
+                  className="w-full bg-gradient-to-r from-inventu-blue to-inventu-purple hover:from-inventu-blue/90 hover:to-inventu-purple/90 transition-all"
+                >
+                  {isAdding ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Adicionar
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
           
           {loading ? (
             <div className="flex justify-center py-6">
