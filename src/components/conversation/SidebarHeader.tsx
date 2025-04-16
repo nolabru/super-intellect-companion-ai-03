@@ -54,7 +54,9 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
           )}
         </div>
         
-        <SidebarNavigation />
+        <SidebarNavigation 
+          onCreateConversation={handleNewConversation} 
+        />
       </div>
     </div>
   );
