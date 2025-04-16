@@ -167,6 +167,7 @@ export type Database = {
           id: string
           key_name: string
           source: string | null
+          title: string | null
           updated_at: string
           user_id: string
           value: string
@@ -176,6 +177,7 @@ export type Database = {
           id?: string
           key_name: string
           source?: string | null
+          title?: string | null
           updated_at?: string
           user_id: string
           value: string
@@ -185,6 +187,7 @@ export type Database = {
           id?: string
           key_name?: string
           source?: string | null
+          title?: string | null
           updated_at?: string
           user_id?: string
           value?: string
