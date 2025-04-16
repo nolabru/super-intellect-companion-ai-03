@@ -96,8 +96,8 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
         remarkPlugins={[remarkGfm]}
       >
         {processedContent}
-        {isStreaming && cursorBlink && <span className="animate-pulse text-blue-400">▌</span>}
       </ReactMarkdown>
+      {isStreaming && cursorBlink && <span className="animate-pulse text-blue-400">▌</span>}
     </div>
   );
 };

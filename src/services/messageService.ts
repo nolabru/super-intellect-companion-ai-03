@@ -97,7 +97,7 @@ export const createMessageService = (
         };
         
         // Enviar solicitação com suporte a streaming
-        const response = await apiService.sendRequest(
+        const streamResponse = await apiService.sendRequest(
           content, 
           mode, 
           modelId, 
@@ -124,11 +124,30 @@ export const createMessageService = (
           timestamp: new Date().toISOString(),
           model: modelId,
           mode,
-          files: response.files,
-          mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
+          files: streamResponse.files,
+          mediaUrl: streamResponse.files && streamResponse.files.length > 0 ? streamResponse.files[0] : undefined
         };
         
         await saveMessageToDatabase(finalMessage, conversationId);
+        
+        // Always save media to gallery if exists
+        if (mode !== 'text' && 
+            streamResponse.files && 
+            streamResponse.files.length > 0) {
+          try {
+            await mediaGallery.saveMediaToGallery(
+              streamResponse.files[0],
+              content,
+              mode,
+              modelId,
+              params
+            );
+            console.log('[messageService] Media saved to gallery successfully');
+          } catch (err) {
+            console.error('[messageService] Error saving media to gallery:', err);
+            // Continue even if gallery save fails
+          }
+        }
       } else {
         // Send request to API with 3 minute timeout for modelos sem streaming
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -166,24 +185,24 @@ export const createMessageService = (
         
         // Save message in database
         await saveMessageToDatabase(newMessage, conversationId);
-      }
-      
-      // Always save media to gallery if exists - this ensures video persistency across refreshes
-      if (mode !== 'text' && 
-          response.files && 
-          response.files.length > 0) {
-        try {
-          await mediaGallery.saveMediaToGallery(
-            response.files[0],
-            content,
-            mode,
-            modelId,
-            params
-          );
-          console.log('[messageService] Media saved to gallery successfully');
-        } catch (err) {
-          console.error('[messageService] Error saving media to gallery:', err);
-          // Continue even if gallery save fails
+        
+        // Always save media to gallery if exists - this ensures video persistency across refreshes
+        if (mode !== 'text' && 
+            response.files && 
+            response.files.length > 0) {
+          try {
+            await mediaGallery.saveMediaToGallery(
+              response.files[0],
+              content,
+              mode,
+              modelId,
+              params
+            );
+            console.log('[messageService] Media saved to gallery successfully');
+          } catch (err) {
+            console.error('[messageService] Error saving media to gallery:', err);
+            // Continue even if gallery save fails
+          }
         }
       }
       
