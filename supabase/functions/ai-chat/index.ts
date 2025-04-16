@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -49,28 +50,38 @@ async function handleAIChat(req: Request): Promise<Response> {
     }
     
     // First check if user has enough tokens for this operation
+    let tokensUsed = 0;
+    let tokensRemaining = 0;
+    
     if (userId) {
-      const tokenCheck = await checkUserTokens(userId, modelId, mode);
-      
-      if (!tokenCheck.hasEnoughTokens) {
-        console.log(`User ${userId} does not have enough tokens for this operation`);
-        return new Response(
-          JSON.stringify({
-            content: tokenCheck.error || "Não há tokens suficientes para essa operação",
-            tokenInfo: {
-              tokensRequired: tokenCheck.tokensRequired,
-              tokensRemaining: tokenCheck.tokensRemaining || 0
-            },
-            error: "INSUFFICIENT_TOKENS"
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 403
-          }
-        );
+      try {
+        const tokenCheck = await checkUserTokens(userId, modelId, mode);
+        
+        if (!tokenCheck.hasEnoughTokens) {
+          console.log(`User ${userId} does not have enough tokens for this operation`);
+          return new Response(
+            JSON.stringify({
+              content: tokenCheck.error || "Não há tokens suficientes para essa operação",
+              tokenInfo: {
+                tokensRequired: tokenCheck.tokensRequired,
+                tokensRemaining: tokenCheck.tokensRemaining || 0
+              },
+              error: "INSUFFICIENT_TOKENS"
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 403
+            }
+          );
+        }
+        
+        tokensUsed = tokenCheck.tokensRequired || 0;
+        tokensRemaining = tokenCheck.tokensRemaining || 0;
+        console.log(`Token check passed for user ${userId}. Remaining: ${tokenCheck.tokensRemaining}`);
+      } catch (error) {
+        // Se ocorrer um erro na verificação de tokens, permitir a operação e prosseguir
+        console.warn(`Erro ao verificar tokens para usuário ${userId}, prosseguindo sem verificação:`, error);
       }
-      
-      console.log(`Token check passed for user ${userId}. Remaining: ${tokenCheck.tokensRemaining}`);
     } else {
       console.log(`No user ID provided, proceeding without token check`);
     }
@@ -350,19 +361,10 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // If user ID was provided, add token info to response
       if (userId) {
-        // Get updated token balance
-        const { data: tokenData, error: tokenError } = await supabase
-          .from('user_tokens')
-          .select('tokens_remaining, tokens_used')
-          .eq('user_id', userId)
-          .single();
-        
-        if (!tokenError && tokenData) {
-          response.tokenInfo = {
-            tokensRemaining: tokenData.tokens_remaining,
-            tokensUsed: tokenData.tokens_used
-          };
-        }
+        response.tokenInfo = {
+          tokensUsed: tokensUsed,
+          tokensRemaining: tokensRemaining
+        };
       }
       
     } catch (error) {

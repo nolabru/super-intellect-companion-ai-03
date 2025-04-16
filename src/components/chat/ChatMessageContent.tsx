@@ -34,7 +34,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
 
   // Efeito para atualizar o conteúdo sendo renderizado
   useEffect(() => {
-    setDisplayedContent(content);
+    setDisplayedContent(content || '');
   }, [content]);
 
   if (isLoading) {
@@ -62,8 +62,10 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   
   // Process content to handle asterisks for bold text if not already in markdown format
   const processedContent = displayedContent
-    .replace(/\*\*([^*]+)\*\*/g, '**$1**')  // Keep existing markdown
-    .replace(/(\d+)\.\s/g, '$1. ');         // Preserve numbered lists
+    ? displayedContent
+        .replace(/\*\*([^*]+)\*\*/g, '**$1**')  // Keep existing markdown
+        .replace(/(\d+)\.\s/g, '$1. ')         // Preserve numbered lists
+    : '';
   
   // Use ReactMarkdown to render formatted content
   return (
@@ -92,10 +94,9 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
             </a>
           )
         }}
-        // Enable breaking lines on line breaks
         remarkPlugins={[remarkGfm]}
       >
-        {processedContent}
+        {processedContent || ''}
       </ReactMarkdown>
       {isStreaming && cursorBlink && <span className="animate-pulse text-blue-400">▌</span>}
     </div>

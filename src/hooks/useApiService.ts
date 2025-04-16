@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
@@ -128,54 +127,49 @@ export function useApiService() {
           modelId,
           files,
           params,
-          userId: user?.id, // Include user ID for token checking
-          stream: canUseStreaming // Adicionar flag de streaming quando possível
+          userId: user?.id // Include user ID for token checking
         };
         
         if (canUseStreaming) {
           console.log(`Iniciando streaming com modelo ${modelId}`);
           
-          // Simular streaming a partir da Edge Function
-          try {
-            // Chamar Edge Function sem streaming (no futuro podemos implementar streaming real na edge function)
-            const { data, error } = await supabase.functions.invoke('ai-chat', {
-              body: requestBody,
-            });
-            
-            if (error) {
-              throw new Error(`Erro ao chamar a API: ${error.message}`);
-            }
-            
-            // Simular streaming com a resposta completa
-            if (data.content) {
-              // Dividir a mensagem em chunks para simular o streaming
-              const content = data.content;
-              const words = content.split(' ');
-              
-              // Número de palavras por chunk (ajustar conforme necessário)
-              const wordsPerChunk = 3;
-              
-              // Processar em chunks
-              for (let i = 0; i < words.length; i += wordsPerChunk) {
-                const chunk = words.slice(i, i + wordsPerChunk).join(' ') + (i + wordsPerChunk < words.length ? ' ' : '');
-                
-                // Enviar chunk para o listener
-                if (streamListener) {
-                  streamListener(chunk);
-                }
-                
-                // Adicionar pequeno delay para simular streaming natural
-                // Ajustar conforme necessário para fluir naturalmente
-                await new Promise(resolve => setTimeout(resolve, 50));
-              }
-            }
-            
-            // Retornar resposta completa depois do streaming simulado
-            return data;
-          } catch (err) {
-            console.error('Erro durante streaming:', err);
-            throw err;
+          // Chamar Edge Function para obter resposta completa
+          const { data, error } = await supabase.functions.invoke('ai-chat', {
+            body: requestBody,
+          });
+          
+          if (error) {
+            throw new Error(`Erro ao chamar a API: ${error.message}`);
           }
+          
+          // Simular streaming com a resposta completa
+          if (data.content) {
+            // Dividir a mensagem em chunks para simular o streaming
+            const content = data.content;
+            const words = content.split(' ');
+            
+            // Número de palavras por chunk (ajustar conforme necessário)
+            const wordsPerChunk = 3;
+            
+            let accumulatedContent = '';
+            
+            // Processar em chunks
+            for (let i = 0; i < words.length; i += wordsPerChunk) {
+              const chunk = words.slice(i, i + wordsPerChunk).join(' ') + (i + wordsPerChunk < words.length ? ' ' : '');
+              accumulatedContent += chunk;
+              
+              // Enviar chunk para o listener
+              if (streamListener) {
+                streamListener(accumulatedContent);
+              }
+              
+              // Adicionar pequeno delay para simular streaming natural
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
+          }
+          
+          // Retornar resposta completa depois do streaming simulado
+          return data;
         } else {
           // Chamar a Edge Function normalmente (sem streaming)
           const { data, error } = await supabase.functions.invoke('ai-chat', {

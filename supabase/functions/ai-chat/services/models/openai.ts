@@ -35,7 +35,7 @@ export async function generateText(
       apiKey: apiKey,
     });
     
-    // Create chat completion request with streaming
+    // Create chat completion without streaming first (simpler approach for Edge Function)
     const response = await openai.chat.completions.create({
       model: modelId,
       messages: [
@@ -45,31 +45,14 @@ export async function generateText(
         },
       ],
       temperature: 0.7,
-      stream: true,
+      stream: false,
     });
     
-    console.log(`Iniciando streaming de resposta do modelo ${modelId}`);
-    
-    // Process the stream response
-    let fullContent = "";
-    
-    // Process each chunk from the stream
-    for await (const chunk of response) {
-      // Extract the content from the chunk
-      const content = chunk.choices[0]?.delta?.content || "";
-      fullContent += content;
-    }
-    
-    console.log(`Resposta OpenAI completa recebida (${fullContent.length} caracteres)`);
-    
-    if (!fullContent) {
-      return {
-        content: "Não foi possível gerar uma resposta."
-      };
-    }
+    const content = response.choices[0]?.message?.content || "Não foi possível gerar uma resposta.";
+    console.log(`Resposta OpenAI completa recebida (${content.length} caracteres)`);
     
     return {
-      content: fullContent
+      content: content
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
