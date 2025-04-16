@@ -134,12 +134,75 @@ export type Database = {
         }
         Relationships: []
       }
+      token_consumption_rates: {
+        Row: {
+          created_at: string
+          id: string
+          mode: string
+          model_id: string
+          tokens_per_request: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mode: string
+          model_id: string
+          tokens_per_request: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mode?: string
+          model_id?: string
+          tokens_per_request?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_reset_date: string
+          next_reset_date: string
+          tokens_remaining: number
+          tokens_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_reset_date?: string
+          next_reset_date?: string
+          tokens_remaining?: number
+          tokens_used?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_reset_date?: string
+          next_reset_date?: string
+          tokens_remaining?: number
+          tokens_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_and_update_token_balance: {
+        Args: { p_user_id: string; p_model_id: string; p_mode: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

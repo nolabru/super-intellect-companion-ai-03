@@ -24,3 +24,4 @@ const ModeIcon: React.FC<ModeIconProps> = ({ mode, className }) => {
 };
 
 export default ModeIcon;
+export type { ChatMode };

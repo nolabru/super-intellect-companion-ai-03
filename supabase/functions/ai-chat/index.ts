@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
+import { checkUserTokens } from "./utils/tokenManager.ts";
 
 // Import model services
 import * as lumaService from "./services/models/luma.ts";
@@ -14,6 +15,10 @@ import * as deepseekService from "./services/models/deepseek.ts";
 interface ResponseData {
   content: string;
   files?: string[];
+  tokenInfo?: {
+    tokensUsed: number;
+    tokensRemaining: number;
+  };
 }
 
 // Token mocado para testes com a Luma API - usando o token fornecido pelo usuário
@@ -22,12 +27,40 @@ const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {
   try {
-    const { content, mode, modelId, files, params } = await req.json();
+    const { content, mode, modelId, files, params, userId } = await req.json();
     console.log(`Recebida solicitação para modelo ${modelId} no modo ${mode}`, {
       contentLength: content?.length,
       filesCount: files?.length,
-      paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none'
+      paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none',
+      userIdProvided: !!userId
     });
+    
+    // First check if user has enough tokens for this operation
+    if (userId) {
+      const tokenCheck = await checkUserTokens(userId, modelId, mode);
+      
+      if (!tokenCheck.hasEnoughTokens) {
+        console.log(`User ${userId} does not have enough tokens for this operation`);
+        return new Response(
+          JSON.stringify({
+            content: tokenCheck.error || "Não há tokens suficientes para essa operação",
+            tokenInfo: {
+              tokensRequired: tokenCheck.tokensRequired,
+              tokensRemaining: tokenCheck.tokensRemaining || 0
+            },
+            error: "INSUFFICIENT_TOKENS"
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 403
+          }
+        );
+      }
+      
+      console.log(`Token check passed for user ${userId}. Remaining: ${tokenCheck.tokensRemaining}`);
+    } else {
+      console.log(`No user ID provided, proceeding without token check`);
+    }
     
     let response: ResponseData = {
       content: "Não foi possível processar sua solicitação."
@@ -301,6 +334,24 @@ async function handleAIChat(req: Request): Promise<Response> {
         fileCount: response.files?.length || 0,
         contentLength: response.content?.length || 0
       });
+      
+      // If user ID was provided, add token info to response
+      if (userId) {
+        // Get updated token balance
+        const { data: tokenData, error: tokenError } = await supabase
+          .from('user_tokens')
+          .select('tokens_remaining, tokens_used')
+          .eq('user_id', userId)
+          .single();
+        
+        if (!tokenError && tokenData) {
+          response.tokenInfo = {
+            tokensRemaining: tokenData.tokens_remaining,
+            tokensUsed: tokenData.tokens_used
+          };
+        }
+      }
+      
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logError("SERVICE_ERROR", { error: errorMessage, model: modelId, mode });

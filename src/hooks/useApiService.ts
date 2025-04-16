@@ -1,8 +1,8 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Definindo o cliente Supabase com URL e chave anônima
 const supabaseUrl = 'https://vygluorjwehcdigzxbaa.supabase.co';
@@ -14,6 +14,10 @@ export interface ApiResponse {
   content: string;
   files?: string[];
   error?: string;
+  tokenInfo?: {
+    tokensUsed: number;
+    tokensRemaining: number;
+  };
 }
 
 // Interface para a resposta da função de armazenamento de mídia
@@ -28,6 +32,8 @@ interface StorageResponse {
  * Hook que fornece serviços de API para comunicação com modelos de IA
  */
 export function useApiService() {
+  const { user } = useAuth();
+  
   /**
    * Salva uma mídia gerada no storage do Supabase
    */
@@ -108,12 +114,20 @@ export function useApiService() {
             mode,
             modelId,
             files,
-            params
+            params,
+            userId: user?.id // Include user ID for token checking
           },
         });
         
         if (error) {
           console.error('Erro ao chamar a Edge Function:', error);
+          
+          // Check if error is related to tokens
+          if (error.message && error.message.includes('INSUFFICIENT_TOKENS')) {
+            toast.error('Tokens insuficientes para esta operação');
+            throw new Error('Tokens insuficientes para esta operação');
+          }
+          
           throw new Error(`Erro ao chamar a API: ${error.message}`);
         }
         
@@ -121,7 +135,8 @@ export function useApiService() {
           contentLength: data.content?.length,
           hasFiles: data.files && data.files.length > 0,
           fileType: data.files && data.files.length > 0 && data.files[0].startsWith('data:') ? 'base64' : 'url',
-          firstFewChars: data.files && data.files.length > 0 ? data.files[0].substring(0, 30) + '...' : 'none'
+          firstFewChars: data.files && data.files.length > 0 ? data.files[0].substring(0, 30) + '...' : 'none',
+          tokenInfo: data.tokenInfo
         });
         
         // Check if we got a placeholder or mock URL and reject it
@@ -200,6 +215,11 @@ export function useApiService() {
       } catch (err) {
         console.error(`Erro ao enviar para a API (tentativa ${attempt + 1}/${maxRetries + 1}):`, err);
         lastError = err;
+        
+        // If error is related to tokens, don't retry
+        if (err instanceof Error && err.message.includes('Token')) {
+          break;
+        }
         
         // Se não é a última tentativa, aguardar antes de tentar novamente
         if (attempt < maxRetries) {
