@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 import TokenUsageChart from '@/components/TokenUsageChart';
 import PlanCard, { PlanFeature } from '@/components/PlanCard';
 import TokenPurchaseDialog from '@/components/TokenPurchaseDialog';
@@ -9,12 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Coins, PlusCircle, BarChart3, Shield, Zap } from 'lucide-react';
+import { Coins, PlusCircle, BarChart3, Shield, Zap, ArrowLeft } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
-// Dados dos planos
 const PLANS = [
   {
     id: 'start',
@@ -60,7 +59,6 @@ const PLANS = [
   },
 ];
 
-// Gera dados fictícios para o gráfico de uso
 const generateMockData = () => {
   const data = [];
   for (let i = 30; i >= 0; i--) {
@@ -77,6 +75,7 @@ const generateMockData = () => {
 
 const TokensPlans: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tokenInfo, setTokenInfo] = useState<{ tokens_remaining: number; tokens_used: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPlan, setCurrentPlan] = useState<string | null>(null);
@@ -102,7 +101,6 @@ const TokensPlans: React.FC = () => {
         } else {
           setTokenInfo(data);
           
-          // Simulação de plano atual baseado no uso de tokens
           if (data.tokens_remaining + data.tokens_used <= 5000) {
             setCurrentPlan('start');
           } else if (data.tokens_remaining + data.tokens_used <= 20000) {
@@ -132,8 +130,11 @@ const TokensPlans: React.FC = () => {
       return;
     }
     
-    // Aqui seria implementada a integração com sistema de pagamento para assinatura
     toast.success(`Solicitação de assinatura do plano ${planId} registrada. Em breve estará disponível.`);
+  };
+
+  const handleBackToChat = () => {
+    navigate('/');
   };
 
   if (!user) {
@@ -151,13 +152,22 @@ const TokensPlans: React.FC = () => {
   return (
     <div className="container max-w-7xl py-10 px-4 md:px-6">
       <div className="flex flex-col space-y-8">
-        {/* Cabeçalho */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Tokens e Planos</h1>
-            <p className="text-white/70 mt-1">
-              Gerencie seu uso de tokens e escolha o plano ideal para suas necessidades
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleBackToChat}
+              className="text-white hover:bg-white/10"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </Button>
+            
+            <img 
+              src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
+              alt="InventuAI Logo" 
+              className="h-12" 
+            />
           </div>
           
           <Button
@@ -169,7 +179,6 @@ const TokensPlans: React.FC = () => {
           </Button>
         </div>
         
-        {/* Card de resumo de tokens */}
         <Card className="bg-inventu-dark/80 backdrop-blur-lg border-inventu-gray/20 shadow-lg overflow-hidden">
           <CardContent className="p-6 space-y-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
@@ -223,7 +232,6 @@ const TokensPlans: React.FC = () => {
             
             <Separator className="bg-white/5" />
             
-            {/* Gráfico de uso */}
             <div className="space-y-3">
               <h3 className="text-lg font-medium text-white flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-inventu-blue" />
@@ -234,7 +242,6 @@ const TokensPlans: React.FC = () => {
           </CardContent>
         </Card>
         
-        {/* Cartões de planos */}
         <div className="space-y-6">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
             <Shield className="h-5 w-5 text-inventu-blue" />
@@ -258,7 +265,6 @@ const TokensPlans: React.FC = () => {
         </div>
       </div>
       
-      {/* Dialog para compra de tokens adicionais */}
       <TokenPurchaseDialog
         open={isPurchaseDialogOpen}
         onOpenChange={setIsPurchaseDialogOpen}
