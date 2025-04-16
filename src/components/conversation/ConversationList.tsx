@@ -6,7 +6,7 @@ import { Loader2, FolderPlus, ChevronRight, ChevronDown, Folder } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { useDrop } from 'react-dnd';
+import { useDrop, ConnectDropTarget } from 'react-dnd';
 
 interface FolderType {
   id: string;
@@ -101,7 +101,8 @@ const ConversationList: React.FC<ConversationListProps> = ({
   
   // Use our custom hook to create all drop targets outside of render
   const { rootDropTarget, folderDropTargets } = useDropTargets(folders, onMoveConversation);
-  const [{ isOver: isOverRoot }, dropRoot] = rootDropTarget;
+  const [rootDropProps, dropRoot] = rootDropTarget;
+  const { isOver: isOverRoot } = rootDropProps;
   
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => ({
@@ -210,8 +211,9 @@ const ConversationList: React.FC<ConversationListProps> = ({
       {folders.map((folder) => {
         // Get the drop target for this folder from our pre-created map
         const dropTarget = folderDropTargets[folder.id];
-        // Properly destructure with type safety
-        const [{ isOver }, drop] = dropTarget as [{ isOver: boolean }, React.RefObject<any>];
+        // Correctly destructure the result
+        const [folderDropProps, drop] = dropTarget;
+        const { isOver } = folderDropProps;
         
         return (
           <div 
