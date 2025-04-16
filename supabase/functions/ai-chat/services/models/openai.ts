@@ -18,7 +18,7 @@ export function verifyApiKey(): string {
   return apiKey;
 }
 
-// Function to generate text response with OpenAI
+// Function to generate text response with OpenAI using streaming
 export async function generateText(
   prompt: string,
   modelId: string = "gpt-4o"
@@ -35,7 +35,7 @@ export async function generateText(
       apiKey: apiKey,
     });
     
-    // Create chat completion request
+    // Create chat completion request with streaming
     const response = await openai.chat.completions.create({
       model: modelId,
       messages: [
@@ -45,14 +45,31 @@ export async function generateText(
         },
       ],
       temperature: 0.7,
+      stream: true,
     });
     
-    // Extract response content
-    const content = response.choices[0]?.message?.content || "Não foi possível gerar uma resposta.";
-    console.log(`Resposta OpenAI recebida (${content.length} caracteres)`);
+    console.log(`Iniciando streaming de resposta do modelo ${modelId}`);
+    
+    // Process the stream response
+    let fullContent = "";
+    
+    // Process each chunk from the stream
+    for await (const chunk of response) {
+      // Extract the content from the chunk
+      const content = chunk.choices[0]?.delta?.content || "";
+      fullContent += content;
+    }
+    
+    console.log(`Resposta OpenAI completa recebida (${fullContent.length} caracteres)`);
+    
+    if (!fullContent) {
+      return {
+        content: "Não foi possível gerar uma resposta."
+      };
+    }
     
     return {
-      content: content
+      content: fullContent
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

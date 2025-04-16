@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ChatMode } from './ModeSelector';
 import { AlertTriangle, Loader2 } from 'lucide-react';
@@ -20,6 +21,7 @@ export interface MessageType {
   files?: string[];
   mediaUrl?: string;
   audioData?: string;
+  streaming?: boolean;
 }
 
 interface ChatMessageProps {
@@ -33,6 +35,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isImage = message.mode === 'image';
   const isAudio = message.mode === 'audio';
   const isError = message.error;
+  const isStreaming = message.streaming;
   
   const [mediaError, setMediaError] = useState(false);
   const [isMediaLoading, setIsMediaLoading] = useState(true);
@@ -158,6 +161,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           content={displayContent}
           isLoading={isLoading && !isVideo}
           isError={isError}
+          isStreaming={isStreaming}
         />
         
         <VideoLoading 

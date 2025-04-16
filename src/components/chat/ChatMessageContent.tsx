@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -10,13 +10,33 @@ interface ChatMessageContentProps {
   content: string;
   isLoading: boolean;
   isError: boolean;
+  isStreaming?: boolean;
 }
 
 const ChatMessageContent: React.FC<ChatMessageContentProps> = ({ 
   content, 
   isLoading, 
-  isError 
+  isError,
+  isStreaming
 }) => {
+  const [displayedContent, setDisplayedContent] = useState<string>('');
+  const [cursorBlink, setCursorBlink] = useState<boolean>(true);
+
+  // Efeito para animar o cursor piscando
+  useEffect(() => {
+    if (isStreaming) {
+      const interval = setInterval(() => {
+        setCursorBlink(prev => !prev);
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [isStreaming]);
+
+  // Efeito para atualizar o conteúdo sendo renderizado
+  useEffect(() => {
+    setDisplayedContent(content);
+  }, [content]);
+
   if (isLoading) {
     return (
       <div className="flex items-center">
@@ -41,7 +61,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   }
   
   // Process content to handle asterisks for bold text if not already in markdown format
-  const processedContent = content
+  const processedContent = displayedContent
     .replace(/\*\*([^*]+)\*\*/g, '**$1**')  // Keep existing markdown
     .replace(/(\d+)\.\s/g, '$1. ');         // Preserve numbered lists
   
@@ -76,6 +96,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
         remarkPlugins={[remarkGfm]}
       >
         {processedContent}
+        {isStreaming && cursorBlink && <span className="animate-pulse text-blue-400">▌</span>}
       </ReactMarkdown>
     </div>
   );

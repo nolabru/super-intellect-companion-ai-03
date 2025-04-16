@@ -58,45 +58,120 @@ export const createMessageService = (
     setMessages((prevMessages) => [...prevMessages, loadingMsg]);
     
     try {
-      // Send request to API with 3 minute timeout
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Request timeout exceeded")), 180000);
-      });
-      
-      const responsePromise = apiService.sendRequest(content, mode, modelId, files, params);
-      const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
-      
-      // Remove loading message
-      setMessages((prevMessages) => 
-        prevMessages.filter(msg => msg.id !== loadingId)
+      // Verificar se o modelo suporta streaming (modelos OpenAI de texto)
+      const supportsStreaming = mode === 'text' && (
+        modelId.includes('gpt') || 
+        modelId.includes('claude') || 
+        modelId.includes('gemini')
       );
       
-      console.log("API response received:", {
-        mode,
-        modelId,
-        hasFiles: response.files && response.files.length > 0,
-        firstFile: response.files && response.files.length > 0 ? response.files[0].substring(0, 30) + '...' : 'none'
-      });
-      
-      // Add real response
-      const newMessage: MessageType = {
-        id: uuidv4(),
-        content: response.content,
-        sender: 'assistant',
-        timestamp: new Date().toISOString(),
-        model: modelId,
-        mode,
-        files: response.files,
-        mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
-      };
-      
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-      
-      // Save message in database
-      await saveMessageToDatabase(newMessage, conversationId);
+      if (supportsStreaming) {
+        // Criar o ID da mensagem para streaming
+        const messageId = uuidv4();
+        
+        // Substituir a mensagem de loading com uma mensagem de streaming
+        setMessages((prevMessages) => {
+          const filteredMessages = prevMessages.filter(msg => msg.id !== loadingId);
+          return [...filteredMessages, {
+            id: messageId,
+            content: '',
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: modelId,
+            mode,
+            streaming: true
+          }];
+        });
+        
+        // Preparar para iniciar o streaming
+        let streamedContent = '';
+        const streamListener = (chunk: string) => {
+          streamedContent += chunk;
+          setMessages((prevMessages) => {
+            return prevMessages.map(msg => 
+              msg.id === messageId 
+                ? { ...msg, content: streamedContent }
+                : msg
+            );
+          });
+        };
+        
+        // Enviar solicitação com suporte a streaming
+        const response = await apiService.sendRequest(
+          content, 
+          mode, 
+          modelId, 
+          files, 
+          params, 
+          true, // indicar que queremos streaming
+          streamListener
+        );
+        
+        // Atualizar a mensagem final (remover flag de streaming)
+        setMessages((prevMessages) => 
+          prevMessages.map(msg => 
+            msg.id === messageId 
+              ? { ...msg, content: streamedContent, streaming: false }
+              : msg
+          )
+        );
+        
+        // Salvar a mensagem final no banco de dados
+        const finalMessage: MessageType = {
+          id: messageId,
+          content: streamedContent,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: modelId,
+          mode,
+          files: response.files,
+          mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
+        };
+        
+        await saveMessageToDatabase(finalMessage, conversationId);
+      } else {
+        // Send request to API with 3 minute timeout for modelos sem streaming
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Request timeout exceeded")), 180000);
+        });
+        
+        const responsePromise = apiService.sendRequest(content, mode, modelId, files, params);
+        const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
+        
+        // Remove loading message
+        setMessages((prevMessages) => 
+          prevMessages.filter(msg => msg.id !== loadingId)
+        );
+        
+        console.log("API response received:", {
+          mode,
+          modelId,
+          hasFiles: response.files && response.files.length > 0,
+          firstFile: response.files && response.files.length > 0 ? response.files[0].substring(0, 30) + '...' : 'none'
+        });
+        
+        // Add real response
+        const newMessage: MessageType = {
+          id: uuidv4(),
+          content: response.content,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: modelId,
+          mode,
+          files: response.files,
+          mediaUrl: response.files && response.files.length > 0 ? response.files[0] : undefined
+        };
+        
+        setMessages((prevMessages) => [...prevMessages, newMessage]);
+        
+        // Save message in database
+        await saveMessageToDatabase(newMessage, conversationId);
+      }
       
       // Always save media to gallery if exists - this ensures video persistency across refreshes
-      if (mode !== 'text' && response.files && response.files.length > 0) {
+      if (mode !== 'text' && 
+          response.files && 
+          response.files.length > 0) {
         try {
           await mediaGallery.saveMediaToGallery(
             response.files[0],
@@ -160,6 +235,19 @@ export const createMessageService = (
     files?: string[],
     params?: LumaParams
   ) => {
+    // Adicionar verificação de streaming para modelos de comparação
+    const leftSupportsStreaming = mode === 'text' && (
+      leftModelId.includes('gpt') || 
+      leftModelId.includes('claude') || 
+      leftModelId.includes('gemini')
+    );
+    
+    const rightSupportsStreaming = mode === 'text' && (
+      rightModelId.includes('gpt') || 
+      rightModelId.includes('claude') || 
+      rightModelId.includes('gemini')
+    );
+
     // Add loading messages
     const loadingIdLeft = `loading-${leftModelId}-${uuidv4()}`;
     const loadingIdRight = `loading-${rightModelId}-${uuidv4()}`;
@@ -188,10 +276,92 @@ export const createMessageService = (
     setMessages((prevMessages) => [...prevMessages, ...loadingMessages]);
     
     try {
+      // Criar IDs para mensagens de streaming
+      const leftMessageId = uuidv4();
+      const rightMessageId = uuidv4();
+      
+      if (leftSupportsStreaming) {
+        // Substituir a mensagem de loading com uma mensagem de streaming para o modelo esquerdo
+        setMessages((prevMessages) => {
+          const filteredMessages = prevMessages.filter(msg => msg.id !== loadingIdLeft);
+          return [...filteredMessages, {
+            id: leftMessageId,
+            content: '',
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: leftModelId,
+            mode,
+            streaming: true
+          }];
+        });
+      }
+      
+      if (rightSupportsStreaming) {
+        // Substituir a mensagem de loading com uma mensagem de streaming para o modelo direito
+        setMessages((prevMessages) => {
+          const filteredMessages = prevMessages.filter(msg => msg.id !== loadingIdRight);
+          return [...filteredMessages, {
+            id: rightMessageId,
+            content: '',
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: rightModelId,
+            mode,
+            streaming: true
+          }];
+        });
+      }
+      
+      // Preparar listeners para streaming
+      let leftStreamedContent = '';
+      let rightStreamedContent = '';
+      
+      const leftStreamListener = (chunk: string) => {
+        if (leftSupportsStreaming) {
+          leftStreamedContent += chunk;
+          setMessages((prevMessages) => {
+            return prevMessages.map(msg => 
+              msg.id === leftMessageId 
+                ? { ...msg, content: leftStreamedContent }
+                : msg
+            );
+          });
+        }
+      };
+      
+      const rightStreamListener = (chunk: string) => {
+        if (rightSupportsStreaming) {
+          rightStreamedContent += chunk;
+          setMessages((prevMessages) => {
+            return prevMessages.map(msg => 
+              msg.id === rightMessageId 
+                ? { ...msg, content: rightStreamedContent }
+                : msg
+            );
+          });
+        }
+      };
+      
       // Send to API for both models in parallel
       const [responseLeft, responseRight] = await Promise.all([
-        apiService.sendRequest(content, mode, leftModelId, files, params),
-        apiService.sendRequest(content, mode, rightModelId, files, params)
+        apiService.sendRequest(
+          content, 
+          mode, 
+          leftModelId, 
+          files, 
+          params, 
+          leftSupportsStreaming, 
+          leftStreamListener
+        ),
+        apiService.sendRequest(
+          content, 
+          mode, 
+          rightModelId, 
+          files, 
+          params, 
+          rightSupportsStreaming, 
+          rightStreamListener
+        )
       ]);
       
       console.log("API responses received for comparison:", {
@@ -201,39 +371,91 @@ export const createMessageService = (
         rightHasFiles: responseRight.files && responseRight.files.length > 0,
       });
       
-      // Remove loading messages
+      // Remove loading messages que podem ainda existir
       setMessages((prevMessages) => 
-        prevMessages.filter(msg => msg.id !== loadingIdLeft && msg.id !== loadingIdRight)
+        prevMessages.filter(msg => 
+          msg.id !== loadingIdLeft && 
+          msg.id !== loadingIdRight
+        )
       );
       
-      // Add real responses with explicit model attribution
-      const newMessages: MessageType[] = [
-        {
-          id: uuidv4(),
+      // Atualizar mensagens de streaming para remover flag de streaming
+      if (leftSupportsStreaming) {
+        setMessages((prevMessages) => 
+          prevMessages.map(msg => 
+            msg.id === leftMessageId 
+              ? { ...msg, streaming: false }
+              : msg
+          )
+        );
+      }
+      
+      if (rightSupportsStreaming) {
+        setMessages((prevMessages) => 
+          prevMessages.map(msg => 
+            msg.id === rightMessageId 
+              ? { ...msg, streaming: false }
+              : msg
+          )
+        );
+      }
+      
+      // Adicionar mensagens finais para modelos sem streaming
+      const newMessages: MessageType[] = [];
+      
+      if (!leftSupportsStreaming) {
+        newMessages.push({
+          id: leftMessageId,
           content: responseLeft.content,
           sender: 'assistant',
           timestamp: new Date().toISOString(),
-          model: leftModelId, // Garantir que a mensagem está associada ao modelo correto
+          model: leftModelId,
           mode,
           files: responseLeft.files,
           mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
-        },
-        {
-          id: uuidv4(),
+        });
+      }
+      
+      if (!rightSupportsStreaming) {
+        newMessages.push({
+          id: rightMessageId,
           content: responseRight.content,
           sender: 'assistant',
           timestamp: new Date().toISOString(),
-          model: rightModelId, // Garantir que a mensagem está associada ao modelo correto
+          model: rightModelId,
           mode,
           files: responseRight.files,
           mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
-        }
-      ];
+        });
+      }
       
-      setMessages((prevMessages) => [...prevMessages, ...newMessages]);
+      if (newMessages.length > 0) {
+        setMessages((prevMessages) => [...prevMessages, ...newMessages]);
+      }
       
       // Save messages to database
-      await Promise.all(newMessages.map(msg => saveMessageToDatabase(msg, conversationId)));
+      await Promise.all([
+        saveMessageToDatabase({
+          id: leftMessageId,
+          content: leftSupportsStreaming ? leftStreamedContent : responseLeft.content,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: leftModelId,
+          mode,
+          files: responseLeft.files,
+          mediaUrl: responseLeft.files && responseLeft.files.length > 0 ? responseLeft.files[0] : undefined
+        }, conversationId),
+        saveMessageToDatabase({
+          id: rightMessageId,
+          content: rightSupportsStreaming ? rightStreamedContent : responseRight.content,
+          sender: 'assistant',
+          timestamp: new Date().toISOString(),
+          model: rightModelId,
+          mode,
+          files: responseRight.files,
+          mediaUrl: responseRight.files && responseRight.files.length > 0 ? responseRight.files[0] : undefined
+        }, conversationId)
+      ]);
       
       // Always save both media files to gallery to ensure persistence
       if (mode !== 'text') {

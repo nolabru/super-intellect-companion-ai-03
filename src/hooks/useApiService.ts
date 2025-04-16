@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
@@ -27,6 +28,9 @@ interface StorageResponse {
   storagePath?: string;
   error?: string;
 }
+
+// Tipo para o callback de streaming
+export type StreamListener = (chunk: string) => void;
 
 /**
  * Hook que fornece serviços de API para comunicação com modelos de IA
@@ -95,7 +99,9 @@ export function useApiService() {
     mode: ChatMode, 
     modelId: string, 
     files?: string[],
-    params?: LumaParams
+    params?: LumaParams,
+    enableStreaming: boolean = false,
+    streamListener?: StreamListener
   ): Promise<ApiResponse> => {
     const maxRetries = 2;
     let lastError;
@@ -107,111 +113,169 @@ export function useApiService() {
           console.log(`Tentativa ${attempt}/${maxRetries} de chamar a Edge Function...`);
         }
         
-        // Chamar a Edge Function
-        const { data, error } = await supabase.functions.invoke('ai-chat', {
-          body: {
-            content,
-            mode,
-            modelId,
-            files,
-            params,
-            userId: user?.id // Include user ID for token checking
-          },
-        });
+        // Verificar se o streaming está disponível para esse modelo e modo
+        const canUseStreaming = enableStreaming && 
+                               mode === 'text' && 
+                               (modelId.includes('gpt') || 
+                                modelId.includes('claude') || 
+                                modelId.includes('gemini')) &&
+                               streamListener !== undefined;
         
-        if (error) {
-          console.error('Erro ao chamar a Edge Function:', error);
+        // Preparar os dados da requisição
+        const requestBody = {
+          content,
+          mode,
+          modelId,
+          files,
+          params,
+          userId: user?.id, // Include user ID for token checking
+          stream: canUseStreaming // Adicionar flag de streaming quando possível
+        };
+        
+        if (canUseStreaming) {
+          console.log(`Iniciando streaming com modelo ${modelId}`);
           
-          // Check if error is related to tokens
-          if (error.message && error.message.includes('INSUFFICIENT_TOKENS')) {
-            toast.error('Tokens insuficientes para esta operação');
-            throw new Error('Tokens insuficientes para esta operação');
-          }
-          
-          throw new Error(`Erro ao chamar a API: ${error.message}`);
-        }
-        
-        console.log('Resposta recebida da Edge Function:', {
-          contentLength: data.content?.length,
-          hasFiles: data.files && data.files.length > 0,
-          fileType: data.files && data.files.length > 0 && data.files[0].startsWith('data:') ? 'base64' : 'url',
-          firstFewChars: data.files && data.files.length > 0 ? data.files[0].substring(0, 30) + '...' : 'none',
-          tokenInfo: data.tokenInfo
-        });
-        
-        // Check if we got a placeholder or mock URL and reject it
-        if (data.files && 
-            data.files.length > 0 && 
-            (data.files[0].includes('placeholder.com') || data.files[0].includes('MockAI'))) {
-          console.error('Detectada URL de placeholder ou mock na resposta:', data.files[0]);
-          throw new Error('A API retornou uma URL de placeholder ou mock. Verifique a configuração do OPENAI_API_KEY no Supabase.');
-        }
-        
-        // Se é uma mídia gerada, salvar no storage para persistência
-        if (data.files && data.files.length > 0 && (mode === 'image' || mode === 'video' || mode === 'audio') && 
-            (modelId === 'dall-e-3' || modelId === 'gpt-4o')) {
+          // Simular streaming a partir da Edge Function
           try {
-            // Obter informações do usuário atual
-            const { data: userData } = await supabase.auth.getUser();
-            const userId = userData?.user?.id;
+            // Chamar Edge Function sem streaming (no futuro podemos implementar streaming real na edge function)
+            const { data, error } = await supabase.functions.invoke('ai-chat', {
+              body: requestBody,
+            });
             
-            // Tentar salvar a mídia no storage
-            const mediaUrl = data.files[0];
-            const isBase64 = mediaUrl.startsWith('data:');
-            
-            let fileExt;
-            let contentType;
-            
-            if (isBase64) {
-              // Extrair o tipo de conteúdo da URL base64
-              const matches = mediaUrl.match(/^data:([^;]+);base64,/);
-              contentType = matches ? matches[1] : getContentTypeFromMode(mode);
-              fileExt = getExtensionFromContentType(contentType);
-            } else {
-              fileExt = getExtensionFromUrl(mediaUrl);
-              contentType = getContentTypeFromMode(mode);
+            if (error) {
+              throw new Error(`Erro ao chamar a API: ${error.message}`);
             }
             
-            const fileName = `${Date.now()}-${modelId}.${fileExt}`;
-            
-            console.log(`Preparando para armazenar mídia ${isBase64 ? 'base64' : 'URL'}, tipo: ${contentType}, extensão: ${fileExt}`);
-            
-            const storageResponse = await storeMedia(
-              mediaUrl,
-              fileName,
-              contentType,
-              userId,
-              undefined, // conversationId não é necessário aqui
-              mode
-            );
-            
-            // Se o storage foi bem-sucedido, substituir a URL da mídia
-            if (storageResponse.success && storageResponse.publicUrl) {
-              console.log(`Mídia persistida com sucesso: ${storageResponse.publicUrl}`);
+            // Simular streaming com a resposta completa
+            if (data.content) {
+              // Dividir a mensagem em chunks para simular o streaming
+              const content = data.content;
+              const words = content.split(' ');
               
-              // Atualizar data.files com a URL persistida
-              data.files[0] = storageResponse.publicUrl;
+              // Número de palavras por chunk (ajustar conforme necessário)
+              const wordsPerChunk = 3;
               
-              // Se a resposta continha o URL original, atualizar a mensagem
-              if (data.content.includes(mediaUrl)) {
-                data.content = data.content.replace(mediaUrl, storageResponse.publicUrl);
-              }
-            } else {
-              // Para imagens geradas pela DALL-E, usar a base64 diretamente se o armazenamento falhar
-              if (mode === 'image' && isBase64) {
-                console.log('Usando dados base64 diretamente para a imagem DALL-E');
-                // Deixa o base64 original na resposta
-              } else {
-                console.warn('Falha ao persistir mídia, usando URL original temporária');
+              // Processar em chunks
+              for (let i = 0; i < words.length; i += wordsPerChunk) {
+                const chunk = words.slice(i, i + wordsPerChunk).join(' ') + (i + wordsPerChunk < words.length ? ' ' : '');
+                
+                // Enviar chunk para o listener
+                if (streamListener) {
+                  streamListener(chunk);
+                }
+                
+                // Adicionar pequeno delay para simular streaming natural
+                // Ajustar conforme necessário para fluir naturalmente
+                await new Promise(resolve => setTimeout(resolve, 50));
               }
             }
-          } catch (storageErr) {
-            console.error('Erro ao tentar persistir mídia:', storageErr);
-            // Continuar com a URL original mesmo em caso de erro - para base64, isso significa usar o base64 original
+            
+            // Retornar resposta completa depois do streaming simulado
+            return data;
+          } catch (err) {
+            console.error('Erro durante streaming:', err);
+            throw err;
           }
+        } else {
+          // Chamar a Edge Function normalmente (sem streaming)
+          const { data, error } = await supabase.functions.invoke('ai-chat', {
+            body: requestBody,
+          });
+          
+          if (error) {
+            console.error('Erro ao chamar a Edge Function:', error);
+            
+            // Check if error is related to tokens
+            if (error.message && error.message.includes('INSUFFICIENT_TOKENS')) {
+              toast.error('Tokens insuficientes para esta operação');
+              throw new Error('Tokens insuficientes para esta operação');
+            }
+            
+            throw new Error(`Erro ao chamar a API: ${error.message}`);
+          }
+          
+          console.log('Resposta recebida da Edge Function:', {
+            contentLength: data.content?.length,
+            hasFiles: data.files && data.files.length > 0,
+            fileType: data.files && data.files.length > 0 && data.files[0].startsWith('data:') ? 'base64' : 'url',
+            firstFewChars: data.files && data.files.length > 0 ? data.files[0].substring(0, 30) + '...' : 'none',
+            tokenInfo: data.tokenInfo
+          });
+          
+          // Check if we got a placeholder or mock URL and reject it
+          if (data.files && 
+              data.files.length > 0 && 
+              (data.files[0].includes('placeholder.com') || data.files[0].includes('MockAI'))) {
+            console.error('Detectada URL de placeholder ou mock na resposta:', data.files[0]);
+            throw new Error('A API retornou uma URL de placeholder ou mock. Verifique a configuração do OPENAI_API_KEY no Supabase.');
+          }
+          
+          // Se é uma mídia gerada, salvar no storage para persistência
+          if (data.files && data.files.length > 0 && (mode === 'image' || mode === 'video' || mode === 'audio') && 
+              (modelId === 'dall-e-3' || modelId === 'gpt-4o')) {
+            try {
+              // Obter informações do usuário atual
+              const { data: userData } = await supabase.auth.getUser();
+              const userId = userData?.user?.id;
+              
+              // Tentar salvar a mídia no storage
+              const mediaUrl = data.files[0];
+              const isBase64 = mediaUrl.startsWith('data:');
+              
+              let fileExt;
+              let contentType;
+              
+              if (isBase64) {
+                // Extrair o tipo de conteúdo da URL base64
+                const matches = mediaUrl.match(/^data:([^;]+);base64,/);
+                contentType = matches ? matches[1] : getContentTypeFromMode(mode);
+                fileExt = getExtensionFromContentType(contentType);
+              } else {
+                fileExt = getExtensionFromUrl(mediaUrl);
+                contentType = getContentTypeFromMode(mode);
+              }
+              
+              const fileName = `${Date.now()}-${modelId}.${fileExt}`;
+              
+              console.log(`Preparando para armazenar mídia ${isBase64 ? 'base64' : 'URL'}, tipo: ${contentType}, extensão: ${fileExt}`);
+              
+              const storageResponse = await storeMedia(
+                mediaUrl,
+                fileName,
+                contentType,
+                userId,
+                undefined, // conversationId não é necessário aqui
+                mode
+              );
+              
+              // Se o storage foi bem-sucedido, substituir a URL da mídia
+              if (storageResponse.success && storageResponse.publicUrl) {
+                console.log(`Mídia persistida com sucesso: ${storageResponse.publicUrl}`);
+                
+                // Atualizar data.files com a URL persistida
+                data.files[0] = storageResponse.publicUrl;
+                
+                // Se a resposta continha o URL original, atualizar a mensagem
+                if (data.content.includes(mediaUrl)) {
+                  data.content = data.content.replace(mediaUrl, storageResponse.publicUrl);
+                }
+              } else {
+                // Para imagens geradas pela DALL-E, usar a base64 diretamente se o armazenamento falhar
+                if (mode === 'image' && isBase64) {
+                  console.log('Usando dados base64 diretamente para a imagem DALL-E');
+                  // Deixa o base64 original na resposta
+                } else {
+                  console.warn('Falha ao persistir mídia, usando URL original temporária');
+                }
+              }
+            } catch (storageErr) {
+              console.error('Erro ao tentar persistir mídia:', storageErr);
+              // Continuar com a URL original mesmo em caso de erro - para base64, isso significa usar o base64 original
+            }
+          }
+          
+          return data;
         }
-        
-        return data;
       } catch (err) {
         console.error(`Erro ao enviar para a API (tentativa ${attempt + 1}/${maxRetries + 1}):`, err);
         lastError = err;
