@@ -7,6 +7,7 @@
  */
 
 import { logError } from "../../utils/logging.ts";
+import { fetchWithRetry } from "../../utils/logging.ts";
 
 // Define response types
 export interface KliginResponse {
@@ -32,8 +33,11 @@ export async function generateImage(prompt: string): Promise<KliginResponse> {
     
     console.log("[Kligin] Gerando imagem com prompt:", prompt.substring(0, 100) + "...");
     
-    // Using the correct endpoint from Kligin documentation
-    const response = await fetch("https://api.kligin.ai/v1/images/generations", {
+    // Debug logging - importante para verificar a configuração
+    console.log("[Kligin] API Key configurada corretamente:", apiKey ? "Sim" : "Não");
+    
+    // Usar o fetchWithRetry para ter tentativas múltiplas e logs detalhados
+    const response = await fetchWithRetry("https://api.kligin.ai/v1/images/generations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -45,10 +49,11 @@ export async function generateImage(prompt: string): Promise<KliginResponse> {
         size: "1024x1024",      // Image size
         response_format: "url"  // Return URL instead of base64
       })
-    });
+    }, 3, 1000);
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[Kligin] API retornou status ${response.status}:`, errorText);
       throw new Error(`Kligin API returned status ${response.status}: ${errorText}`);
     }
     
@@ -78,6 +83,7 @@ export async function generateImage(prompt: string): Promise<KliginResponse> {
         }
       };
     } else {
+      console.error("[Kligin] Resposta inesperada da API:", result);
       throw new Error("Resposta da API não contém URL da imagem");
     }
   } catch (error) {
@@ -103,7 +109,7 @@ export async function generateVideo(prompt: string): Promise<KliginResponse> {
     console.log("[Kligin] Gerando vídeo com prompt:", prompt.substring(0, 100) + "...");
     
     // Using the correct endpoint for video generation
-    const response = await fetch("https://api.kligin.ai/v1/videos/generations", {
+    const response = await fetchWithRetry("https://api.kligin.ai/v1/videos/generations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -115,10 +121,11 @@ export async function generateVideo(prompt: string): Promise<KliginResponse> {
         resolution: "720p",    // Video resolution
         negative_prompt: "low quality, blurry, distorted"
       })
-    });
+    }, 3, 1000);
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[Kligin] API retornou status ${response.status}:`, errorText);
       throw new Error(`Kligin API returned status ${response.status}: ${errorText}`);
     }
     
@@ -145,6 +152,7 @@ export async function generateVideo(prompt: string): Promise<KliginResponse> {
         }
       };
     } else {
+      console.error("[Kligin] Resposta inesperada da API:", result);
       throw new Error("Resposta da API não contém ID da tarefa ou URL do vídeo");
     }
   } catch (error) {
@@ -169,15 +177,16 @@ export async function checkVideoStatus(taskId: string): Promise<KliginResponse> 
     
     console.log("[Kligin] Verificando status do vídeo com ID:", taskId);
     
-    const response = await fetch(`https://api.kligin.ai/v1/videos/generations/${taskId}`, {
+    const response = await fetchWithRetry(`https://api.kligin.ai/v1/videos/generations/${taskId}`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${apiKey}`
       }
-    });
+    }, 3, 1000);
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error(`[Kligin] API retornou status ${response.status}:`, errorText);
       throw new Error(`Kligin API returned status ${response.status}: ${errorText}`);
     }
     
