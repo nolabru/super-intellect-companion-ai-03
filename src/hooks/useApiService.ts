@@ -4,6 +4,23 @@ import { mediaStorageService } from './api/mediaStorageService';
 import { useAuth } from '@/contexts/AuthContext';
 
 /**
+ * Interface para resposta da API
+ */
+export interface ApiResponse {
+  content: string;
+  files?: string[];
+  error?: string;
+  tokenInfo?: {
+    tokensUsed: number;
+    tokensRemaining: number;
+  };
+  modeSwitch?: {
+    newMode: string;
+    newModel: string;
+  };
+}
+
+/**
  * Hook que fornece serviços de API para comunicação com modelos de IA
  */
 export function useApiService() {

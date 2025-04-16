@@ -72,9 +72,10 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
           pre: ({ node, ...props }) => (
             <pre className="bg-black/50 p-4 rounded-md my-2 overflow-auto" {...props} />
           ),
-          code: ({ node, inline, className, children, ...props }) => {
-            // Verificar se é código inline baseado na presença da propriedade inline
-            if (inline) {
+          code: ({ node, className, children, ...props }) => {
+            // Verificar se é código inline ou bloco de código
+            const isInlineCode = !className;
+            if (isInlineCode) {
               return <code className="bg-black/30 px-1 py-0.5 rounded text-amber-300" {...props}>{children}</code>;
             }
             return (
