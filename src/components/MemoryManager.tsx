@@ -18,24 +18,22 @@ export default function MemoryManager() {
     deleteMemoryItem 
   } = useUserMemory();
   
-  const [newKey, setNewKey] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newValue, setNewValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleAddMemory = async () => {
-    if (!newKey.trim() || !newValue.trim() || !newTitle.trim()) {
+    if (!newValue.trim() || !newTitle.trim()) {
       toast.error('Título e valor são obrigatórios');
       return;
     }
     
     setIsAdding(true);
     try {
-      const success = await saveMemoryItem(newKey.trim(), newValue.trim(), 'manual', newTitle.trim());
+      const success = await saveMemoryItem(newTitle.trim(), newValue.trim(), 'manual', newTitle.trim());
       if (success) {
         toast.success('Memória adicionada com sucesso');
-        setNewKey('');
         setNewTitle('');
         setNewValue('');
       } else {
@@ -94,12 +92,6 @@ export default function MemoryManager() {
       <div className="space-y-4">
         <div className="grid gap-3">
           <Input
-            placeholder="Nome da memória (ex: nome, localização)"
-            value={newKey}
-            onChange={(e) => setNewKey(e.target.value)}
-            className="w-full"
-          />
-          <Input
             placeholder="Título da memória"
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
@@ -113,7 +105,7 @@ export default function MemoryManager() {
           />
           <Button 
             onClick={handleAddMemory} 
-            disabled={isAdding || !newKey.trim() || !newValue.trim() || !newTitle.trim()}
+            disabled={isAdding || !newTitle.trim() || !newValue.trim()}
             className="w-full"
           >
             {isAdding ? (

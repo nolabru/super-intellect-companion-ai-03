@@ -59,7 +59,7 @@ export function useUserMemory() {
         .from('user_memory')
         .upsert({
           user_id: user.id,
-          key_name: key,
+          key_name: title, // Use title as the key_name
           value,
           source,
           title,
@@ -74,13 +74,13 @@ export function useUserMemory() {
       
       // Update local state
       setMemoryItems(prev => {
-        const exists = prev.some(item => item.key_name === key);
+        const exists = prev.some(item => item.key_name === title);
         if (exists) {
           return prev.map(item => 
-            item.key_name === key ? { key_name: key, value, source, title } : item
+            item.key_name === title ? { key_name: title, value, source, title } : item
           );
         } else {
-          return [...prev, { key_name: key, value, source, title }];
+          return [...prev, { key_name: title, value, source, title }];
         }
       });
       
@@ -149,3 +149,4 @@ export function useUserMemory() {
     getMemoryItem
   };
 }
+
