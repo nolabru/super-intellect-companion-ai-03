@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useUserMemory } from '@/hooks/useUserMemory';
 import { Button } from '@/components/ui/button';
@@ -27,7 +26,7 @@ export default function MemoryManager() {
 
   const handleAddMemory = async () => {
     if (!newKey.trim() || !newValue.trim() || !newTitle.trim()) {
-      toast.error('Nome, título e valor são obrigatórios');
+      toast.error('Título e valor são obrigatórios');
       return;
     }
     
@@ -142,7 +141,7 @@ export default function MemoryManager() {
                 className="flex flex-col bg-inventu-gray/10 p-3 rounded"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-inventu-blue text-lg">{item.title || item.key_name}</span>
+                  <span className="font-medium text-inventu-blue text-lg">{item.title}</span>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -152,7 +151,6 @@ export default function MemoryManager() {
                   </Button>
                 </div>
                 <div className="mt-1">
-                  <span className="text-sm text-inventu-blue/70">{item.key_name}:</span>
                   <p className="text-white mt-1 whitespace-pre-wrap">{item.value}</p>
                 </div>
                 {item.source && (
