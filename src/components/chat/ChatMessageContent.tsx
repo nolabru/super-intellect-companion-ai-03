@@ -41,7 +41,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
     return (
       <div className="flex items-center">
         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-        <span className="text-white/90">{content}</span>
+        <span className="text-white/90">{content || 'Gerando resposta...'}</span>
       </div>
     );
   }
@@ -52,7 +52,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
         <div className="text-red-400 font-medium mb-1 flex items-center">
           <AlertTriangle size={16} className="mr-1" /> Erro
         </div>
-        <div>{content}</div>
+        <div>{content || 'Ocorreu um erro ao processar sua solicitação.'}</div>
         <div className="mt-2 text-sm text-red-400/80">
           Por favor, tente novamente ou escolha um parâmetro diferente.
         </div>
@@ -60,14 +60,12 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
     );
   }
   
-  // Process content to handle asterisks for bold text if not already in markdown format
-  const processedContent = displayedContent
-    ? displayedContent
-        .replace(/\*\*([^*]+)\*\*/g, '**$1**')  // Keep existing markdown
-        .replace(/(\d+)\.\s/g, '$1. ')         // Preserve numbered lists
-    : '';
+  // Verifica se temos conteúdo para exibir
+  if (!displayedContent) {
+    return <div className="text-gray-400">Aguardando resposta...</div>;
+  }
   
-  // Use ReactMarkdown to render formatted content
+  // Use ReactMarkdown para renderizar o conteúdo formatado
   return (
     <div className="markdown-content text-white">
       <ReactMarkdown
@@ -96,7 +94,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
         }}
         remarkPlugins={[remarkGfm]}
       >
-        {processedContent || ''}
+        {displayedContent}
       </ReactMarkdown>
       {isStreaming && cursorBlink && <span className="animate-pulse text-blue-400">▌</span>}
     </div>

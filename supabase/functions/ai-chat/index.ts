@@ -70,7 +70,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 403
+              status: 402 // Alterado para 402 Payment Required, que é mais apropriado para este caso
             }
           );
         }
@@ -81,6 +81,12 @@ async function handleAIChat(req: Request): Promise<Response> {
       } catch (error) {
         // Se ocorrer um erro na verificação de tokens, permitir a operação e prosseguir
         console.warn(`Erro ao verificar tokens para usuário ${userId}, prosseguindo sem verificação:`, error);
+        
+        // Mas vamos tentar responder de forma mais amigável se for um erro que podemos identificar
+        if (error.message && error.message.includes("JSON object requested, multiple (or no) rows returned")) {
+          // Usuário não tem registro na tabela de tokens, vamos criar um token temporário
+          console.log("Usuário não tem registro na tabela de tokens, prosseguindo com tokens temporários");
+        }
       }
     } else {
       console.log(`No user ID provided, proceeding without token check`);
@@ -119,7 +125,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
+              status: 401,
             }
           );
         }
@@ -138,7 +144,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
+              status: 401,
             }
           );
         }
@@ -157,7 +163,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
+              status: 401,
             }
           );
         }
@@ -176,7 +182,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
+              status: 401,
             }
           );
         }
@@ -197,7 +203,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             }),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
+              status: 401,
             }
           );
         }

@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
@@ -139,11 +140,19 @@ export function useApiService() {
           });
           
           if (error) {
+            // Verificar se o erro é devido a tokens insuficientes
+            if (error.message && (error.message.includes('402') || error.message.includes('INSUFFICIENT_TOKENS'))) {
+              const errorMsg = 'Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.';
+              console.error(errorMsg);
+              toast.error(errorMsg);
+              throw new Error(errorMsg);
+            }
+            
             throw new Error(`Erro ao chamar a API: ${error.message}`);
           }
           
           // Simular streaming com a resposta completa
-          if (data.content) {
+          if (data && data.content) {
             // Dividir a mensagem em chunks para simular o streaming
             const content = data.content;
             const words = content.split(' ');
@@ -179,10 +188,13 @@ export function useApiService() {
           if (error) {
             console.error('Erro ao chamar a Edge Function:', error);
             
-            // Check if error is related to tokens
-            if (error.message && error.message.includes('INSUFFICIENT_TOKENS')) {
-              toast.error('Tokens insuficientes para esta operação');
-              throw new Error('Tokens insuficientes para esta operação');
+            // Verificar se o erro é sobre tokens insuficientes - verifica pelo código 402 ou pela mensagem
+            if (error.status === 402 || 
+                (error.message && (error.message.includes('402') || error.message.includes('INSUFFICIENT_TOKENS')))) {
+              const errorMsg = 'Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.';
+              console.error(errorMsg);
+              toast.error(errorMsg);
+              throw new Error(errorMsg);
             }
             
             throw new Error(`Erro ao chamar a API: ${error.message}`);
@@ -274,8 +286,12 @@ export function useApiService() {
         console.error(`Erro ao enviar para a API (tentativa ${attempt + 1}/${maxRetries + 1}):`, err);
         lastError = err;
         
-        // If error is related to tokens, don't retry
-        if (err instanceof Error && err.message.includes('Token')) {
+        // Se o erro é relacionado a tokens, não tente novamente
+        if (err instanceof Error && (
+            err.message.includes('Token') || 
+            err.message.includes('token') || 
+            err.message.includes('402')
+        )) {
           break;
         }
         
