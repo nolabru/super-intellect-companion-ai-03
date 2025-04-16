@@ -9,8 +9,11 @@ import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
-import { memoryService } from '@/services/memoryService';
+import { useMessageProcessing } from './message/useMessageProcessing';
 
+/**
+ * Hook central para gerenciamento de envio de mensagens
+ */
 export function useMessageHandler(
   messages: MessageType[],
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>,
@@ -25,66 +28,19 @@ export function useMessageHandler(
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
   
-  // Create message service
+  // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
     apiService,
     mediaGallery,
     setMessages,
     setError
   );
+  
+  const messageProcessing = useMessageProcessing(user?.id);
 
-  // Process user message for memory extraction
-  const processUserMessageForMemory = useCallback(async (content: string) => {
-    if (!user || !user.id) return;
-    
-    try {
-      // Process in background to not block the main flow
-      setTimeout(async () => {
-        await memoryService.extractMemoryFromMessage(content, user.id);
-      }, 0);
-    } catch (err) {
-      console.error('[useMessageHandler] Error processing memory extraction:', err);
-      // Don't block the main flow
-    }
-  }, [user]);
-
-  // Get memory context for a new conversation
-  const getMemoryContext = useCallback(async () => {
-    if (!user || !user.id) return "";
-    
-    try {
-      return await memoryService.getUserMemoryContext(user.id);
-    } catch (err) {
-      console.error('[useMessageHandler] Error getting memory context:', err);
-      return "";
-    }
-  }, [user]);
-
-  // Enhance content with memory context if it's a new conversation
-  const enhanceWithMemoryContext = useCallback(async (content: string, msgs: MessageType[]) => {
-    // Only add memory context for the first user message in a conversation
-    if (msgs.length === 0 || (msgs.length === 1 && msgs[0].sender === 'user')) {
-      const memoryContext = await getMemoryContext();
-      
-      if (memoryContext) {
-        return `${memoryContext}\n\n${content}`;
-      }
-    }
-    return content;
-  }, [getMemoryContext]);
-
-  // Preparar o histórico da conversa para o orquestrador
-  const prepareConversationHistory = useCallback((msgs: MessageType[]): string => {
-    // Limitar a quantidade de mensagens anteriores (últimas 10, por exemplo)
-    const recentMessages = msgs.slice(-10);
-    
-    return recentMessages.map(msg => {
-      const role = msg.sender === 'user' ? 'User' : 'Assistant';
-      return `${role}: ${msg.content}`;
-    }).join('\n\n');
-  }, []);
-
-  // Send message to the model
+  /**
+   * Função principal para enviar mensagens aos modelos
+   */
   const sendMessage = useCallback(async (
     content: string,
     mode: ChatMode = 'text',
@@ -96,27 +52,29 @@ export function useMessageHandler(
     params?: LumaParams
   ) => {
     if (!currentConversationId) {
-      console.error('[useMessageHandler] Cannot send message: No conversation selected');
+      console.error('[useMessageHandler] Não é possível enviar mensagem: Nenhuma conversa selecionada');
       setError('Nenhuma conversa selecionada. Por favor, inicie uma nova conversa.');
       return false;
     }
     
     if (isSending) {
-      console.log('[useMessageHandler] Already sending a message, ignoring request');
+      console.log('[useMessageHandler] Já está enviando uma mensagem, ignorando solicitação');
       return false;
     }
     
     try {
-      console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
+      console.log(`[useMessageHandler] Enviando mensagem "${content}" para ${comparing ? 'modelos' : 'modelo'} ${leftModel || modelId}${rightModel ? ` e ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Process message for memory extraction
+      // Processar mensagem para extração de memória
       if (user && user.id) {
-        processUserMessageForMemory(content);
+        messageProcessing.processUserMessageForMemory(content);
       }
       
       // Preparar histórico da conversa para o orquestrador
-      const conversationHistory = prepareConversationHistory(messages);
+      const conversationHistory = messageProcessing.prepareConversationHistory(
+        messages.map(msg => ({ sender: msg.sender, content: msg.content }))
+      );
       
       // Criar mensagem do usuário
       const userMessageId = uuidv4();
@@ -157,14 +115,14 @@ export function useMessageHandler(
       }
       
       // Enhance content with memory context if needed
-      const enhancedContent = await enhanceWithMemoryContext(content, messages);
+      const enhancedContent = await messageProcessing.enhanceWithMemoryContext(content, messages.length);
       
       // Processar a mensagem
       let modeSwitch = null;
       
       if (comparing && leftModel && rightModel) {
         // Modo de comparação - ambos os modelos
-        await messageService.handleCompareModels(
+        const result = await messageService.handleCompareModels(
           enhancedContent,
           mode,
           leftModel,
@@ -175,6 +133,8 @@ export function useMessageHandler(
           conversationHistory,
           user?.id
         );
+        
+        modeSwitch = result?.modeSwitch || null;
       } else if (comparing && leftModel && !rightModel) {
         // Modo desvinculado - apenas modelo esquerdo
         const result = await messageService.handleSingleModelMessage(
@@ -230,7 +190,7 @@ export function useMessageHandler(
         modeSwitch: modeSwitch ? modeSwitch.newMode : null 
       };
     } catch (err) {
-      console.error('[useMessageHandler] Error sending message:', err);
+      console.error('[useMessageHandler] Erro ao enviar mensagem:', err);
       return { success: false, modeSwitch: null };
     } finally {
       setIsSending(false);
@@ -238,7 +198,7 @@ export function useMessageHandler(
   }, [
     currentConversationId, 
     isSending, 
-    messages, 
+    messages,
     conversations,
     setMessages, 
     setError, 
@@ -246,13 +206,12 @@ export function useMessageHandler(
     updateTitle, 
     messageService,
     user,
-    processUserMessageForMemory,
-    enhanceWithMemoryContext,
-    prepareConversationHistory
+    messageProcessing
   ]);
 
   return {
     sendMessage,
-    isSending
+    isSending,
+    detectContentType: messageProcessing.detectContentType
   };
 }
