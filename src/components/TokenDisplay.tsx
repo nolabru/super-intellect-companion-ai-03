@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Coins } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface TokenInfo {
   tokens_remaining: number;
@@ -16,6 +17,7 @@ const TokenDisplay = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTokenInfo = async () => {
@@ -65,6 +67,12 @@ const TokenDisplay = () => {
       return 'Data inválida';
     }
   };
+  
+  const handleTokensClick = () => {
+    if (user) {
+      navigate('/tokens');
+    }
+  };
 
   if (loading) {
     return (
@@ -100,18 +108,19 @@ const TokenDisplay = () => {
 
   return (
     <div 
-      className={`flex items-center text-xs px-2 py-1 rounded ${
-        isDepleted 
-          ? 'bg-red-900/40 text-red-300 border border-red-800/50' 
+      className={`flex items-center text-xs px-2 py-1 rounded cursor-pointer transition-all
+        ${isDepleted 
+          ? 'bg-red-900/40 text-red-300 border border-red-800/50 hover:bg-red-900/60' 
           : isLow 
-          ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-800/50' 
+          ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-800/50 hover:bg-yellow-900/50' 
           : 'bg-gray-700/30 text-white/70 hover:bg-gray-700/50'
-      }`}
+        }`}
       title={`${tokenInfo.tokens_remaining} tokens restantes. ${
         tokenInfo.next_reset_date 
           ? `Próximo reset em ${formatResetDate(tokenInfo.next_reset_date)}.` 
           : 'Data de reset não disponível.'
-      }`}
+      } Clique para gerenciar seus tokens.`}
+      onClick={handleTokensClick}
     >
       <Coins size={14} className="mr-1 opacity-70" />
       <span>
