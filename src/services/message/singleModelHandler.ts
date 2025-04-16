@@ -247,12 +247,17 @@ export const handleSingleModelMessage = async (
     
     // Add specific error message based on mode and error
     const errorMsg = err instanceof Error ? err.message : "Unknown error";
-    let friendlyError = `An error occurred processing your request. ${errorMsg}`;
+    let friendlyError = `Ocorreu um erro ao processar sua solicitação. ${errorMsg}`;
     
-    if (mode === 'video' && modelId.includes('luma')) {
-      friendlyError = `Video generation error: ${errorMsg}. Please check if the Luma API key is configured correctly.`;
+    // Detectar erros específicos para mostrar melhores mensagens
+    if (errorMsg.includes('tokens') || errorMsg.includes('Tokens') || errorMsg.includes('402') || errorMsg.includes('INSUFFICIENT_TOKENS')) {
+      friendlyError = 'Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.';
+    } else if (errorMsg.includes('API key') || errorMsg.includes('Authentication')) {
+      friendlyError = 'Erro de autenticação na API. Verifique se a chave da API está configurada corretamente.';
+    } else if (mode === 'video' && modelId.includes('luma')) {
+      friendlyError = `Erro na geração de vídeo: ${errorMsg}. Verifique se a chave API do Luma está configurada corretamente.`;
     } else if (mode === 'image' && modelId.includes('luma')) {
-      friendlyError = `Image generation error: ${errorMsg}. Please check if the Luma API key is configured correctly.`;
+      friendlyError = `Erro na geração de imagem: ${errorMsg}. Verifique se a chave API do Luma está configurada corretamente.`;
     }
     
     const errorMessage: MessageType = {

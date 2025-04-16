@@ -19,6 +19,7 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
 }) => {
   const [displayedContent, setDisplayedContent] = useState<string>('');
   const [cursorBlink, setCursorBlink] = useState<boolean>(true);
+  const [errorType, setErrorType] = useState<'token' | 'api' | 'generic'>('generic');
 
   // Efeito para animar o cursor piscando
   useEffect(() => {
@@ -33,7 +34,18 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
   // Efeito para atualizar o conteúdo sendo renderizado
   useEffect(() => {
     setDisplayedContent(content || '');
-  }, [content]);
+    
+    // Detectar tipo de erro para customizar a mensagem
+    if (isError && content) {
+      if (content.includes('tokens') || content.includes('Tokens') || content.includes('402') || content.includes('INSUFFICIENT_TOKENS')) {
+        setErrorType('token');
+      } else if (content.includes('API key') || content.includes('Authentication')) {
+        setErrorType('api');
+      } else {
+        setErrorType('generic');
+      }
+    }
+  }, [content, isError]);
 
   if (isLoading) {
     return (
@@ -50,10 +62,30 @@ const ChatMessageContent: React.FC<ChatMessageContentProps> = ({
         <div className="text-red-400 font-medium mb-1 flex items-center">
           <AlertTriangle size={16} className="mr-1" /> Erro
         </div>
-        <div>{content || 'Ocorreu um erro ao processar sua solicitação.'}</div>
-        <div className="mt-2 text-sm text-red-400/80">
-          Por favor, tente novamente ou escolha um parâmetro diferente.
-        </div>
+        
+        {errorType === 'token' ? (
+          <>
+            <div className="font-medium">Sem tokens suficientes</div>
+            <div className="mt-2 text-sm text-red-400/80">
+              Você não tem tokens suficientes para realizar esta operação. 
+              Os tokens são renovados mensalmente ou você pode entrar em contato com o suporte para mais informações.
+            </div>
+          </>
+        ) : errorType === 'api' ? (
+          <>
+            <div className="font-medium">Erro de configuração da API</div>
+            <div className="mt-2 text-sm text-red-400/80">
+              Há um problema com a configuração da API. Verifique se as chaves de API estão configuradas corretamente.
+            </div>
+          </>
+        ) : (
+          <>
+            <div>{content || 'Ocorreu um erro ao processar sua solicitação.'}</div>
+            <div className="mt-2 text-sm text-red-400/80">
+              Por favor, tente novamente ou escolha um parâmetro diferente.
+            </div>
+          </>
+        )}
       </div>
     );
   }

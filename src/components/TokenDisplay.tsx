@@ -1,188 +1,128 @@
 
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Coins, Info } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { Progress } from './ui/progress';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Coins } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-interface TokenConsumptionRate {
-  model_id: string;
-  mode: string;
-  tokens_per_request: number;
+interface TokenInfo {
+  tokens_remaining: number;
+  next_reset_date: string | null;
 }
 
 const TokenDisplay = () => {
-  const { user } = useAuth();
-  const [tokensRemaining, setTokensRemaining] = useState<number>(10000);
-  const [maxTokens, setMaxTokens] = useState<number>(10000);
-  const [nextResetDate, setNextResetDate] = useState<string | null>(null);
-  const [rates, setRates] = useState<TokenConsumptionRate[]>([]);
+  const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  
+  const [error, setError] = useState(false);
+  const { user } = useAuth();
+
   useEffect(() => {
-    const fetchTokenData = async () => {
+    const fetchTokenInfo = async () => {
       if (!user) {
         setLoading(false);
         return;
       }
-      
+
       try {
-        // Get user's token balance
-        const { data: tokenData, error: tokenError } = await supabase
+        const { data, error } = await supabase
           .from('user_tokens')
           .select('tokens_remaining, next_reset_date')
           .eq('user_id', user.id)
           .single();
-        
-        if (tokenError) {
-          console.error('Error fetching token data:', tokenError);
-        } else if (tokenData) {
-          setTokensRemaining(tokenData.tokens_remaining);
-          setNextResetDate(tokenData.next_reset_date);
-        }
-        
-        // Get token consumption rates
-        const { data: ratesData, error: ratesError } = await supabase
-          .from('token_consumption_rates')
-          .select('model_id, mode, tokens_per_request')
-          .order('tokens_per_request', { ascending: false });
-        
-        if (ratesError) {
-          console.error('Error fetching token rates:', ratesError);
-        } else if (ratesData) {
-          setRates(ratesData);
+
+        if (error) {
+          console.error('Erro ao buscar informações de tokens:', error);
+          // Se não tem registro, inicializa com 0 tokens
+          if (error.code === 'PGRST116' || error.message.includes('result contains 0 rows')) {
+            setTokenInfo({ tokens_remaining: 0, next_reset_date: null });
+          } else {
+            setError(true);
+          }
+        } else {
+          setTokenInfo(data);
         }
       } catch (err) {
-        console.error('Error loading token data:', err);
+        console.error('Exceção ao buscar tokens:', err);
+        setError(true);
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchTokenData();
-    
-    // Set up real-time subscription to token updates
-    const channel = supabase
-      .channel('token-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'user_tokens',
-          filter: user ? `user_id=eq.${user.id}` : undefined
-        },
-        (payload) => {
-          if (payload.new && typeof payload.new.tokens_remaining === 'number') {
-            setTokensRemaining(payload.new.tokens_remaining);
-            if (payload.new.next_reset_date) {
-              setNextResetDate(payload.new.next_reset_date);
-            }
-          }
-        }
-      )
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(channel);
-    };
+
+    fetchTokenInfo();
   }, [user]);
-  
-  // Format the next reset date
-  const formatNextReset = () => {
-    if (!nextResetDate) return 'data desconhecida';
+
+  // Função para formatar data de reset
+  const formatResetDate = (dateString: string | null) => {
+    if (!dateString) return 'Data não disponível';
+    
     try {
-      const date = new Date(nextResetDate);
-      return date.toLocaleDateString('pt-BR', { 
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    } catch (e) {
-      return 'data inválida';
+      const resetDate = new Date(dateString);
+      return format(resetDate, "d 'de' MMMM", { locale: ptBR });
+    } catch (err) {
+      console.error('Erro ao formatar data:', err);
+      return 'Data inválida';
     }
   };
-  
-  // Show top 3 most expensive operations
-  const topRates = rates.slice(0, 3);
-  
+
   if (loading) {
     return (
-      <div className="flex items-center gap-1 text-inventu-gray text-xs px-3 py-1 animate-pulse">
-        <Coins size={14} />
-        <span>Carregando tokens...</span>
+      <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded">
+        <Coins size={14} className="mr-1 opacity-70" />
+        <span className="animate-pulse">Carregando...</span>
       </div>
     );
   }
-  
-  const percentUsed = ((maxTokens - tokensRemaining) / maxTokens) * 100;
-  
+
+  if (error) {
+    return (
+      <div className="flex items-center text-xs text-red-300 px-2 py-1 rounded">
+        <Coins size={14} className="mr-1 opacity-70" />
+        <span className="animate-pulse">Erro</span>
+      </div>
+    );
+  }
+
+  if (!tokenInfo) {
+    return (
+      <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded bg-gray-700/30 hover:bg-gray-700/50" title="Informações de tokens não disponíveis">
+        <Coins size={14} className="mr-1 opacity-70" />
+        <span>Tokens: N/A</span>
+      </div>
+    );
+  }
+
+  // Mostrar alerta quando os tokens estiverem acabando (menos de 100)
+  const isLow = tokenInfo.tokens_remaining < 100;
+  // Mostrar alerta crítico quando não houver mais tokens
+  const isDepleted = tokenInfo.tokens_remaining <= 0;
+
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-2 border border-inventu-gray/30 rounded-lg px-3 py-1 bg-inventu-darker hover:bg-inventu-gray/10 cursor-help">
-            <Coins size={14} className="text-inventu-accent" />
-            <div className="flex items-center gap-1.5">
-              <span className="text-white font-medium">{tokensRemaining.toLocaleString()}</span>
-              <span className="text-inventu-gray text-xs">tokens</span>
-            </div>
-            <Progress 
-              value={100 - percentUsed} 
-              className="w-16 h-1.5 bg-inventu-gray/30" 
-            />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent className="max-w-xs p-4 bg-inventu-darker border-inventu-gray/30">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <CreditCard size={16} className="text-inventu-accent" />
-              <h3 className="font-medium">Seus Tokens Mensais</h3>
-            </div>
-            
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-inventu-gray">Tokens disponíveis:</span>
-                <span className="font-medium">{tokensRemaining.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-inventu-gray">Tokens utilizados:</span>
-                <span className="font-medium">{(maxTokens - tokensRemaining).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-inventu-gray">Próxima recarga:</span>
-                <span className="font-medium">{formatNextReset()}</span>
-              </div>
-              
-              <Progress 
-                value={100 - percentUsed} 
-                className="mt-2 h-2 bg-inventu-gray/30" 
-              />
-            </div>
-            
-            {topRates.length > 0 && (
-              <div className="pt-2 border-t border-inventu-gray/20">
-                <div className="flex items-center gap-1 mb-2">
-                  <Info size={14} className="text-inventu-accent" />
-                  <span className="text-xs text-inventu-gray">Custo de operações (tokens):</span>
-                </div>
-                <div className="space-y-1.5">
-                  {topRates.map((rate, idx) => (
-                    <div key={idx} className="flex justify-between text-xs">
-                      <span className="text-inventu-gray">
-                        {rate.model_id} ({rate.mode}):
-                      </span>
-                      <span className="font-medium">{rate.tokens_per_request}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div 
+      className={`flex items-center text-xs px-2 py-1 rounded ${
+        isDepleted 
+          ? 'bg-red-900/40 text-red-300 border border-red-800/50' 
+          : isLow 
+          ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-800/50' 
+          : 'bg-gray-700/30 text-white/70 hover:bg-gray-700/50'
+      }`}
+      title={`${tokenInfo.tokens_remaining} tokens restantes. ${
+        tokenInfo.next_reset_date 
+          ? `Próximo reset em ${formatResetDate(tokenInfo.next_reset_date)}.` 
+          : 'Data de reset não disponível.'
+      }`}
+    >
+      <Coins size={14} className="mr-1 opacity-70" />
+      <span>
+        {isDepleted 
+          ? 'Sem tokens!' 
+          : isLow 
+          ? `Tokens: ${tokenInfo.tokens_remaining} (Baixo)` 
+          : `Tokens: ${tokenInfo.tokens_remaining}`
+        }
+      </span>
+    </div>
   );
 };
 

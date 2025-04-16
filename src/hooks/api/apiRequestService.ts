@@ -86,16 +86,16 @@ export const apiRequestService = {
             // Verificar o tipo de erro
             console.error('[apiRequestService] Erro na resposta da Edge Function:', error);
             
-            if (error.message) {
-              // Verificar se o erro é devido a tokens insuficientes
-              if (error.message.includes('402') || error.message.includes('INSUFFICIENT_TOKENS') || error.status === 402) {
-                throw new Error('Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.');
-              }
-              
-              // Verificar se o erro está relacionado à chave API
-              if (error.message.includes('API key') || error.message.includes('Authentication')) {
-                throw new Error('Verifique se a chave API do OpenAI está configurada corretamente na Edge Function.');
-              }
+            // Verificar se o erro é devido a tokens insuficientes
+            if (error.message?.includes('402') || 
+                error.status === 402 || 
+                (data && data.error === 'INSUFFICIENT_TOKENS')) {
+              throw new Error('Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.');
+            }
+            
+            // Verificar se o erro está relacionado à chave API
+            if (error.message?.includes('API key') || error.message?.includes('Authentication')) {
+              throw new Error('Verifique se a chave API do OpenAI está configurada corretamente na Edge Function.');
             }
             
             throw new Error(`[apiRequestService] Erro ao chamar a API: ${error.message || 'Edge Function retornou um código de status não 2xx'}`);
@@ -138,14 +138,16 @@ export const apiRequestService = {
           if (error) {
             console.error('[apiRequestService] Erro ao chamar a Edge Function:', error);
             
-            // Verificar se o erro é sobre tokens insuficientes - verifica pelo código 402 ou pela mensagem
+            // Verificar se o erro é sobre tokens insuficientes
             if (error.status === 402 || 
-                (error.message && (error.message.includes('402') || error.message.includes('INSUFFICIENT_TOKENS')))) {
+                error.message?.includes('402') || 
+                error.message?.includes('INSUFFICIENT_TOKENS') ||
+                (data && data.error === 'INSUFFICIENT_TOKENS')) {
               throw new Error('Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.');
             }
             
             // Verificar se o erro está relacionado à chave API
-            if (error.message && (error.message.includes('API key') || error.message.includes('Authentication'))) {
+            if (error.message?.includes('API key') || error.message?.includes('Authentication')) {
               throw new Error('Verifique se a chave API do OpenAI está configurada corretamente na Edge Function.');
             }
             
@@ -237,8 +239,8 @@ export const apiRequestService = {
         
         // Se o erro é relacionado a tokens ou à chave API, não tente novamente
         if (err instanceof Error && (
-            err.message.includes('Token') || 
-            err.message.includes('token') || 
+            err.message.includes('tokens') || 
+            err.message.includes('Tokens') || 
             err.message.includes('402') ||
             err.message.includes('API key') ||
             err.message.includes('Authentication')
@@ -257,7 +259,14 @@ export const apiRequestService = {
     
     // Se chegamos aqui, todas as tentativas falharam
     const errorMessage = lastError instanceof Error ? lastError.message : "Falha após tentativas máximas";
-    toast.error(`Falha na comunicação com o servidor: ${errorMessage}`);
+    
+    // Verificar se o erro é sobre tokens insuficientes para mostrar uma mensagem mais amigável
+    if (errorMessage.includes('tokens') || errorMessage.includes('Tokens') || errorMessage.includes('402')) {
+      toast.error('Você não tem tokens suficientes para esta operação. Aguarde o próximo reset mensal ou entre em contato com o suporte.');
+    } else {
+      toast.error(`Falha na comunicação com o servidor: ${errorMessage}`);
+    }
+    
     throw lastError || new Error("Falha após tentativas máximas");
   }
 };
