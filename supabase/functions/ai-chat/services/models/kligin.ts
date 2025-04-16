@@ -28,15 +28,15 @@ export async function generateImage(prompt: string): Promise<KliginResponse> {
   try {
     const apiKey = Deno.env.get("KLIGIN_API_KEY");
     if (!apiKey) {
-      throw new Error("KLIGIN_API_KEY não está configurada");
+      throw new Error("KLIGIN_API_KEY is not configured");
     }
     
-    console.log("[Kligin] Gerando imagem com prompt:", prompt.substring(0, 100) + "...");
+    console.log("[Kligin] Generating image with prompt:", prompt.substring(0, 100) + "...");
     
-    // Debug logging - importante para verificar a configuração
-    console.log("[Kligin] API Key configurada corretamente:", apiKey ? "Sim" : "Não");
+    // Debug logging
+    console.log("[Kligin] API Key configured correctly:", apiKey ? "Yes" : "No");
     
-    // Usar o fetchWithRetry para ter tentativas múltiplas e logs detalhados
+    // Use fetchWithRetry for multiple attempts and detailed logs
     const response = await fetchWithRetry("https://api.kligin.ai/v1/images/generations", {
       method: "POST",
       headers: {
@@ -53,19 +53,26 @@ export async function generateImage(prompt: string): Promise<KliginResponse> {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Kligin] API retornou status ${response.status}:`, errorText);
+      console.error(`[Kligin] API returned status ${response.status}:`, errorText);
       throw new Error(`Kligin API returned status ${response.status}: ${errorText}`);
     }
     
     const result = await response.json();
-    console.log("[Kligin] Imagem gerada com sucesso:", result);
+    console.log("[Kligin] Image generated successfully:", result);
     
-    // Handle response structure according to Kligin documentation
+    // Handle response structure according to Kligin API response format
     if (result.data && result.data.length > 0) {
       return {
         success: true,
         data: {
           mediaUrl: result.data[0].url
+        }
+      };
+    } else if (result.data && result.data.url) {
+      return {
+        success: true,
+        data: {
+          mediaUrl: result.data.url
         }
       };
     } else if (result.url) {
@@ -75,23 +82,16 @@ export async function generateImage(prompt: string): Promise<KliginResponse> {
           mediaUrl: result.url
         }
       };
-    } else if (result.imageUrl) {
-      return {
-        success: true,
-        data: {
-          mediaUrl: result.imageUrl
-        }
-      };
     } else {
-      console.error("[Kligin] Resposta inesperada da API:", result);
-      throw new Error("Resposta da API não contém URL da imagem");
+      console.error("[Kligin] Unexpected API response:", result);
+      throw new Error("API response does not contain image URL");
     }
   } catch (error) {
-    console.error("[Kligin] Erro ao gerar imagem:", error);
+    console.error("[Kligin] Error generating image:", error);
     logError("KLIGIN_IMAGE_ERROR", { error: error instanceof Error ? error.message : String(error) });
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Erro desconhecido ao gerar imagem"
+      error: error instanceof Error ? error.message : "Unknown error generating image"
     };
   }
 }
@@ -103,10 +103,10 @@ export async function generateVideo(prompt: string): Promise<KliginResponse> {
   try {
     const apiKey = Deno.env.get("KLIGIN_API_KEY");
     if (!apiKey) {
-      throw new Error("KLIGIN_API_KEY não está configurada");
+      throw new Error("KLIGIN_API_KEY is not configured");
     }
     
-    console.log("[Kligin] Gerando vídeo com prompt:", prompt.substring(0, 100) + "...");
+    console.log("[Kligin] Generating video with prompt:", prompt.substring(0, 100) + "...");
     
     // Using the correct endpoint for video generation
     const response = await fetchWithRetry("https://api.kligin.ai/v1/videos/generations", {
@@ -125,12 +125,12 @@ export async function generateVideo(prompt: string): Promise<KliginResponse> {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Kligin] API retornou status ${response.status}:`, errorText);
+      console.error(`[Kligin] API returned status ${response.status}:`, errorText);
       throw new Error(`Kligin API returned status ${response.status}: ${errorText}`);
     }
     
     const result = await response.json();
-    console.log("[Kligin] Solicitação de vídeo recebida com sucesso:", result);
+    console.log("[Kligin] Video request received successfully:", result);
     
     // Check if video was generated instantly or if it's an async task
     if (result.status === "completed" && (result.videoUrl || result.url)) {
@@ -152,15 +152,15 @@ export async function generateVideo(prompt: string): Promise<KliginResponse> {
         }
       };
     } else {
-      console.error("[Kligin] Resposta inesperada da API:", result);
-      throw new Error("Resposta da API não contém ID da tarefa ou URL do vídeo");
+      console.error("[Kligin] Unexpected API response:", result);
+      throw new Error("API response does not contain task ID or video URL");
     }
   } catch (error) {
-    console.error("[Kligin] Erro ao gerar vídeo:", error);
+    console.error("[Kligin] Error generating video:", error);
     logError("KLIGIN_VIDEO_ERROR", { error: error instanceof Error ? error.message : String(error) });
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Erro desconhecido ao gerar vídeo"
+      error: error instanceof Error ? error.message : "Unknown error generating video"
     };
   }
 }
@@ -172,10 +172,10 @@ export async function checkVideoStatus(taskId: string): Promise<KliginResponse> 
   try {
     const apiKey = Deno.env.get("KLIGIN_API_KEY");
     if (!apiKey) {
-      throw new Error("KLIGIN_API_KEY não está configurada");
+      throw new Error("KLIGIN_API_KEY is not configured");
     }
     
-    console.log("[Kligin] Verificando status do vídeo com ID:", taskId);
+    console.log("[Kligin] Checking video status with ID:", taskId);
     
     const response = await fetchWithRetry(`https://api.kligin.ai/v1/videos/generations/${taskId}`, {
       method: "GET",
@@ -186,12 +186,12 @@ export async function checkVideoStatus(taskId: string): Promise<KliginResponse> 
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Kligin] API retornou status ${response.status}:`, errorText);
+      console.error(`[Kligin] API returned status ${response.status}:`, errorText);
       throw new Error(`Kligin API returned status ${response.status}: ${errorText}`);
     }
     
     const result = await response.json();
-    console.log("[Kligin] Status do vídeo:", result);
+    console.log("[Kligin] Video status:", result);
     
     return {
       success: true,
@@ -202,11 +202,11 @@ export async function checkVideoStatus(taskId: string): Promise<KliginResponse> 
       }
     };
   } catch (error) {
-    console.error("[Kligin] Erro ao verificar status do vídeo:", error);
+    console.error("[Kligin] Error checking video status:", error);
     logError("KLIGIN_STATUS_CHECK_ERROR", { error: error instanceof Error ? error.message : String(error) });
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Erro desconhecido ao verificar status do vídeo"
+      error: error instanceof Error ? error.message : "Unknown error checking video status"
     };
   }
 }

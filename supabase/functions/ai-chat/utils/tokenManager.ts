@@ -21,7 +21,7 @@ export async function updateTokenUsage(userId: string, tokensUsed: number): Prom
 
 /**
  * Check if a user has enough tokens for an operation
- * This is a simplified version for now
+ * This is a simplified version that always returns true
  */
 export function hasEnoughTokens(userId: string, tokensRequired: number = 1): boolean {
   // For now, always return true to avoid blocking users

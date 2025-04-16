@@ -40,19 +40,8 @@ serve(async (req) => {
       });
     }
     
-    // Check token allowance if userId is provided - simplificado para evitar o erro
+    // Simplified token check to avoid errors
     let allowTokenAccess = true;
-    if (userId) {
-      // Verificação simplificada de tokens
-      allowTokenAccess = true; // Por padrão, permitir acesso (podemos refiná-lo depois)
-      
-      if (!allowTokenAccess) {
-        return new Response(
-          JSON.stringify({ content: "Você não tem tokens suficientes para esta operação.", error: "INSUFFICIENT_TOKENS" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 402 }
-        );
-      }
-    }
     
     // Use orchestrator to process the message first
     const orchestratorResult = await processUserMessage(
@@ -97,19 +86,22 @@ serve(async (req) => {
       // Image generation
       if (modelId === "dall-e-3") {
         const response = await openaiGenerateImage(enhancedContent);
-        responseContent = `Imagem gerada com sucesso usando ${modelId}.`;
+        responseContent = `Image generated successfully using ${modelId}.`;
         mediaUrl = response.url;
       } else if (modelId === "luma-image") {
         const response = await lumaGenerateImage(enhancedContent, params);
-        responseContent = `Imagem gerada com sucesso usando Luma AI.`;
+        responseContent = `Image generated successfully using Luma AI.`;
         mediaUrl = response.url;
       } else if (modelId === "kligin-image") {
+        console.log("[AI-Chat] Calling Kligin image generation with prompt:", enhancedContent.substring(0, 100) + "...");
         const response = await kliginGenerateImage(enhancedContent);
         if (response.success && response.data?.mediaUrl) {
-          responseContent = `Imagem gerada com sucesso usando Kligin AI.`;
+          responseContent = `Image generated successfully using Kligin AI.`;
           mediaUrl = response.data.mediaUrl;
+          console.log("[AI-Chat] Kligin image URL:", mediaUrl);
         } else {
-          throw new Error(response.error || "Erro ao gerar imagem com Kligin");
+          console.error("[AI-Chat] Kligin image generation failed:", response.error);
+          throw new Error(response.error || "Error generating image with Kligin");
         }
       } else {
         throw new Error(`Unsupported image model: ${modelId}`);
@@ -118,19 +110,19 @@ serve(async (req) => {
       // Video generation
       if (modelId === "luma-video") {
         const response = await lumaGenerateVideo(enhancedContent, params);
-        responseContent = `Geração de vídeo iniciada com Luma AI. ${response.message || ""}`;
+        responseContent = `Video generation started with Luma AI. ${response.message || ""}`;
         mediaUrl = response.url;
       } else if (modelId === "kligin-video") {
         const response = await kliginGenerateVideo(enhancedContent);
         if (response.success) {
           if (response.data?.mediaUrl) {
-            responseContent = `Vídeo gerado com sucesso usando Kligin AI.`;
+            responseContent = `Video generated successfully using Kligin AI.`;
             mediaUrl = response.data.mediaUrl;
           } else if (response.data?.taskId) {
-            responseContent = `Geração de vídeo iniciada com Kligin AI. TaskID: ${response.data.taskId}. O processamento pode levar alguns minutos.`;
+            responseContent = `Video generation started with Kligin AI. TaskID: ${response.data.taskId}. Processing may take a few minutes.`;
           }
         } else {
-          throw new Error(response.error || "Erro ao gerar vídeo com Kligin");
+          throw new Error(response.error || "Error generating video with Kligin");
         }
       } else {
         throw new Error(`Unsupported video model: ${modelId}`);
@@ -139,14 +131,14 @@ serve(async (req) => {
       // Audio/speech generation
       if (modelId === "tts-1") {
         const response = await openaiGenerateSpeech(enhancedContent);
-        responseContent = `Áudio gerado com sucesso usando OpenAI TTS.`;
+        responseContent = `Audio generated successfully using OpenAI TTS.`;
         mediaUrl = response.url;
       } else if (modelId === "elevenlabs-tts") {
         const response = await elevenlabsGenerateSpeech(enhancedContent, "");
-        responseContent = `Áudio gerado com sucesso usando ElevenLabs.`;
+        responseContent = `Audio generated successfully using ElevenLabs.`;
         mediaUrl = response.url;
       } else if (modelId === "kligin-tts") {
-        responseContent = `Áudio não implementado para Kligin ainda.`;
+        responseContent = `Audio not implemented for Kligin yet.`;
       } else {
         throw new Error(`Unsupported audio model: ${modelId}`);
       }
@@ -200,7 +192,7 @@ serve(async (req) => {
     // Return an error response
     return new Response(
       JSON.stringify({
-        content: `Erro: ${error instanceof Error ? error.message : "Ocorreu um erro desconhecido."}`,
+        content: `Error: ${error instanceof Error ? error.message : "An unknown error occurred."}`,
         error: error instanceof Error ? error.message : "UNKNOWN_ERROR"
       }),
       {
