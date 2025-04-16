@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ConversationType } from '@/types/conversation';
 import ConversationItem from './ConversationItem';
@@ -8,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useDrop } from 'react-dnd';
 
-// Interface para as pastas
 interface FolderType {
   id: string;
   name: string;
@@ -23,16 +21,14 @@ interface ConversationListProps {
   onRenameConversation: (id: string, newTitle: string) => void;
   isUserLoggedIn: boolean;
   isLoading?: boolean;
-  // Props para gerenciamento de pastas
   folders?: FolderType[];
   onCreateFolder?: (name: string) => void;
   onRenameFolder?: (id: string, newName: string) => void;
   onDeleteFolder?: (id: string) => void;
   onMoveConversation?: (conversationId: string, folderId: string | null) => void;
-  conversationFolders?: Record<string, string | null>; // Mapeia conversationId -> folderId
+  conversationFolders?: Record<string, string | null>;
 }
 
-// Tipo para os itens arrastáveis
 interface DragItem {
   type: string;
   id: string;
@@ -60,7 +56,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
   const [newFolderName, setNewFolderName] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   
-  // Drop target para área sem pasta
   const [{ isOver: isOverRoot }, dropRoot] = useDrop({
     accept: CONVERSATION_TYPE,
     drop: (item: DragItem) => {
@@ -73,7 +68,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }),
   });
   
-  // Toggle folder expansion
   const toggleFolder = (folderId: string) => {
     setExpandedFolders(prev => ({
       ...prev,
@@ -81,7 +75,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
     }));
   };
   
-  // Handle folder creation
   const handleCreateFolder = () => {
     if (newFolderName.trim() === '') {
       toast.error('O nome da pasta não pode estar vazio');
@@ -93,7 +86,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
     setIsCreatingFolder(false);
   };
   
-  // Get conversations for a specific folder
   const getConversationsInFolder = (folderId: string | null) => {
     return conversations.filter(conv => {
       const convFolderId = conversationFolders[conv.id] || null;
@@ -127,12 +119,10 @@ const ConversationList: React.FC<ConversationListProps> = ({
     );
   }
 
-  // Conversas não organizadas em pastas
   const unorganizedConversations = getConversationsInFolder(null);
 
   return (
     <div className="flex flex-col p-2 space-y-2" id="conversation-list">
-      {/* Botão para criar nova pasta */}
       <Button 
         variant="ghost" 
         className="flex items-center justify-between text-inventu-gray hover:text-white hover:bg-inventu-gray/20" 
@@ -144,7 +134,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
         </div>
       </Button>
       
-      {/* Interface para criar nova pasta */}
       {isCreatingFolder && (
         <div className="flex items-center space-x-1 px-2 py-1 bg-inventu-gray/10 rounded-md">
           <Input
@@ -183,9 +172,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
         </div>
       )}
       
-      {/* Lista de pastas */}
       {folders.map((folder) => {
-        // Drop target para cada pasta
         const [{ isOver }, drop] = useDrop({
           accept: CONVERSATION_TYPE,
           drop: (item: DragItem) => {
@@ -219,7 +206,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
               </div>
             </div>
             
-            {/* Conversas na pasta */}
             {expandedFolders[folder.id] && (
               <div className="pl-6 space-y-1">
                 {getConversationsInFolder(folder.id).map((conv) => (
@@ -246,7 +232,6 @@ const ConversationList: React.FC<ConversationListProps> = ({
         );
       })}
       
-      {/* Conversas não organizadas */}
       <div 
         className={`space-y-1 ${isOverRoot ? 'bg-inventu-gray/20 rounded-md p-1' : ''}`}
         ref={dropRoot}

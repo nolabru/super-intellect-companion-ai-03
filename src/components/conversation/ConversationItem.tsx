@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, Trash2, Edit2, Check, X, MoreVertical, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -29,7 +28,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-// Interface para as pastas
 interface FolderType {
   id: string;
   name: string;
@@ -67,7 +65,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
     setNewTitle(conversation.title);
   }, [conversation.title]);
 
-  // Configurar drag and drop
   const [{ isDragging }, drag] = useDrag({
     type: CONVERSATION_TYPE,
     item: { 
@@ -188,7 +185,6 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
               Renomear
             </DropdownMenuItem>
             
-            {/* Submenu para mover para pasta */}
             {onMove && (
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger className="text-white hover:bg-inventu-gray/20 cursor-pointer">
