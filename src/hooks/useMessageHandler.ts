@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -33,7 +32,6 @@ export function useMessageHandler(
   const { user } = useAuth();
   const { isGoogleConnected, loading: googleAuthLoading, refreshTokensState } = useGoogleAuth();
   
-  // Monitorar e depurar estado de autenticação Google
   useEffect(() => {
     console.log('[useMessageHandler] Estado de autenticação Google:', { 
       isGoogleConnected, 
@@ -41,7 +39,6 @@ export function useMessageHandler(
     });
   }, [isGoogleConnected, googleAuthLoading]);
   
-  // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
     apiService,
     mediaGallery,
@@ -51,9 +48,6 @@ export function useMessageHandler(
   
   const messageProcessing = useMessageProcessing(user?.id);
 
-  /**
-   * Função principal para enviar mensagens para modelos
-   */
   const sendMessage = useCallback(async (
     content: string,
     mode: ChatMode = 'text',
@@ -75,7 +69,6 @@ export function useMessageHandler(
       return false;
     }
     
-    // Prevenir duplicação rápida da mesma mensagem (dentro de 2 segundos)
     const now = Date.now();
     if (
       content === lastMessageSent && 
@@ -86,7 +79,6 @@ export function useMessageHandler(
       return false;
     }
     
-    // Atualizar controle de mensagem enviada
     setLastMessageSent(content);
     setLastMessageTimestamp(now);
     
@@ -94,7 +86,6 @@ export function useMessageHandler(
       console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Verificação aprimorada de comando Google
       const isGoogleCommand = content.match(/@(calendar|sheet|doc|drive|email)\s/i);
       
       console.log('[useMessageHandler] Verificação de comando Google:', { 
@@ -104,15 +95,12 @@ export function useMessageHandler(
       });
       
       if (isGoogleCommand) {
-        // Forçar uma atualização do estado do token antes de verificar
         if (googleAuthLoading) {
           console.log('[useMessageHandler] Esperando o carregamento da autenticação Google...');
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          // Forçar uma atualização do estado do token
           await refreshTokensState();
           
-          // Verificar novamente após a atualização
           if (!isGoogleConnected) {
             toast.error(
               'Conta Google não conectada',
@@ -131,16 +119,11 @@ export function useMessageHandler(
         }
       }
       
-      // Preparar histórico de conversação para o orquestrador
-      // Usar a função aprimorada do messageService para melhor continuidade do contexto
       const conversationHistory = messageService.prepareConversationHistory(messages);
       
-      // Processar a mensagem
       let modeSwitch = null;
       
       if (comparing && leftModel && rightModel) {
-        // Modo de comparação - ambos os modelos (vinculado)
-        // Aqui criamos uma única mensagem de usuário sem modelo específico
         const userMessageId = uuidv4();
         const userMessage: MessageType = {
           id: userMessageId,
@@ -154,11 +137,12 @@ export function useMessageHandler(
         await saveUserMessage(userMessage, currentConversationId);
         
         const result = await messageService.handleCompareModels(
-          content, // Usar conteúdo original
+          content,
           mode,
           leftModel,
           rightModel,
           currentConversationId,
+          messages,
           files,
           params,
           conversationHistory,
@@ -167,10 +151,8 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && leftModel && !rightModel) {
-        // Modo destacado - apenas modelo esquerdo
-        // Não criamos mensagem de usuário aqui, o handler fará isso
         const result = await messageService.handleSingleModelMessage(
-          content, // Usar conteúdo original
+          content,
           mode,
           leftModel,
           currentConversationId,
@@ -184,10 +166,8 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && !leftModel && rightModel) {
-        // Modo destacado - apenas modelo direito
-        // Não criamos mensagem de usuário aqui, o handler fará isso
         const result = await messageService.handleSingleModelMessage(
-          content, // Usar conteúdo original
+          content,
           mode,
           rightModel,
           currentConversationId,
@@ -201,8 +181,6 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else {
-        // Modo padrão - modelo único
-        // Criamos a mensagem de usuário uma única vez aqui
         const userMessageId = uuidv4();
         const userMessage: MessageType = {
           id: userMessageId,
@@ -216,9 +194,8 @@ export function useMessageHandler(
         setMessages(prev => [...prev, userMessage]);
         await saveUserMessage(userMessage, currentConversationId);
         
-        // Modificação: Flag indicando que não deve criar nova mensagem de usuário
         const result = await messageService.handleSingleModelMessage(
-          content, // Usar conteúdo original
+          content,
           mode,
           modelId,
           currentConversationId,
@@ -228,18 +205,16 @@ export function useMessageHandler(
           params,
           conversationHistory,
           user?.id,
-          true // Alterado para true para garantir que a flag skipUserMessage seja passada corretamente
+          true
         );
         
         modeSwitch = result?.modeSwitch || null;
       }
       
-      // Processar em segundo plano, após a mensagem ser enviada e respondida
       if (user && user.id) {
         messageProcessing.processUserMessageForMemory(content);
       }
       
-      // Se esta for a primeira mensagem na conversa, atualizar o título
       if (messages.length === 0 || (messages.length === 1 && messages[0].sender === 'user')) {
         updateTitle(currentConversationId, content);
       }

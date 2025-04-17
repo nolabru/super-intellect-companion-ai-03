@@ -76,6 +76,7 @@ export const createMessageService = (
     leftModelId: string,
     rightModelId: string,
     conversationId: string,
+    messages: MessageType[], // Adicionado parâmetro de mensagens
     files?: string[],
     params?: LumaParams,
     conversationHistory?: string,
