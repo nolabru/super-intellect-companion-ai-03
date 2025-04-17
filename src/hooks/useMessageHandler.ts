@@ -9,7 +9,7 @@ import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGoogleAuth } from '@/contexts/google-auth';
+import { useGoogleAuth } from '@/contexts/google-auth/GoogleAuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
 
 /**

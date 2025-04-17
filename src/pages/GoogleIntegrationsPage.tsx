@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
+import { useGoogleAuth } from '@/contexts/google-auth/GoogleAuthContext';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
