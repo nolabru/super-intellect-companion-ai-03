@@ -7,6 +7,7 @@ import { canModelGenerateImages } from './ModelSelector';
 import FilePreview from './chat/FilePreview';
 import ImageGenerationTip from './chat/ImageGenerationTip';
 import MessageInput from './chat/MessageInput';
+import { identifyGoogleAgent } from '@/agents/GoogleAgents';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: string[], params?: any) => void;
@@ -27,6 +28,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isImageGenerationModel = mode === 'image' && model && canModelGenerateImages(model);
+  const isGoogleServiceCommand = message.trim() && identifyGoogleAgent(message) !== null;
   
   // Clear files when mode changes
   useEffect(() => {
@@ -146,11 +148,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setLumaParams(params);
   };
 
-  // Check if message starts with a Google service command
-  const isGoogleServiceCommand = message.trim().startsWith('@drive') || 
-                               message.trim().startsWith('@sheet') || 
-                               message.trim().startsWith('@calendar');
-
   // Get the specific Google service being used
   const getGoogleServiceType = () => {
     if (message.trim().startsWith('@drive')) return 'Google Drive';
@@ -161,16 +158,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <div className="relative mt-3">
-      {/* Google Service Command Alert */}
-      {isGoogleServiceCommand && (
-        <div className="mb-2 p-2 bg-blue-500/20 border border-blue-500/30 rounded-md text-sm">
-          <span className="font-semibold">Modo Serviço Google:</span> {getGoogleServiceType()}
-          <p className="text-xs text-inventu-gray mt-1">
-            Forneça detalhes do que deseja criar, como título e conteúdo
-          </p>
-        </div>
-      )}
-      
       {/* Luma AI Parameters Button */}
       {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
         <div className="flex justify-end mb-2">

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -281,7 +282,7 @@ async function createDriveDocument(accessToken: string, params: any, corsHeaders
 // Create a Google Sheet
 async function createSheetSpreadsheet(accessToken: string, params: any, corsHeaders: any) {
   try {
-    const { title, sheets = [{ title: 'Sheet1' ]}, content = null } = params
+    const { title, sheets = [{ title: 'Sheet1' }], content = null } = params
     
     if (!title) {
       return new Response(
@@ -328,14 +329,16 @@ async function createSheetSpreadsheet(accessToken: string, params: any, corsHead
     
     // If content is provided, update the spreadsheet with the content
     if (content) {
-      // In this example: "com 3 nomes aleatórios"
       // Parse the content to determine what kind of data to add
+      console.log(`Content for spreadsheet: ${content}`);
       
       // For the example of "3 nomes aleatórios"
       if (content.includes('nomes aleatórios')) {
         // Determine how many names to generate
         const numberMatch = content.match(/(\d+)\s+nomes\s+aleatórios/i)
         const numberOfNames = numberMatch ? parseInt(numberMatch[1]) : 3
+        
+        console.log(`Generating ${numberOfNames} random names`);
         
         // Generate random names
         const randomNames = generateRandomNames(numberOfNames)
@@ -394,6 +397,8 @@ function generateRandomNames(count: number): string[] {
  */
 async function updateSpreadsheetWithNames(accessToken: string, spreadsheetId: string, names: string[]): Promise<boolean> {
   try {
+    console.log(`Updating spreadsheet ${spreadsheetId} with ${names.length} names`);
+    
     // Create values array
     const values = names.map(name => [name])
     
@@ -417,6 +422,7 @@ async function updateSpreadsheetWithNames(accessToken: string, spreadsheetId: st
       return false
     }
     
+    console.log('Spreadsheet updated successfully with names');
     return true
   } catch (error) {
     console.error('Error updating spreadsheet with names:', error)

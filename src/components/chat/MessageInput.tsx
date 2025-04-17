@@ -4,6 +4,7 @@ import { Send, Paperclip, AtSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
 import GoogleServicesAutocomplete from './GoogleServicesAutocomplete';
+import { identifyGoogleAgent } from '@/agents/GoogleAgents';
 
 interface MessageInputProps {
   message: string;
@@ -29,6 +30,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showGoogleServices, setShowGoogleServices] = useState(false);
+  const [isGoogleCommand, setIsGoogleCommand] = useState(false);
+  
+  // Detectar o comando Google ativo
+  useEffect(() => {
+    const isCommand = !!identifyGoogleAgent(message);
+    setIsGoogleCommand(isCommand);
+  }, [message]);
   
   // Check if @ was just typed to show autocomplete
   useEffect(() => {
@@ -78,8 +86,26 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }, 0);
   };
 
+  // Extrair qual serviço está sendo usado
+  const getGoogleServiceType = () => {
+    if (message.trim().startsWith('@drive')) return 'Google Drive';
+    if (message.trim().startsWith('@sheet')) return 'Google Sheets';
+    if (message.trim().startsWith('@calendar')) return 'Google Calendar';
+    return '';
+  };
+
   return (
     <div className="relative rounded-lg border border-inventu-gray/30 bg-inventu-card">
+      {/* Google Command Indicator */}
+      {isGoogleCommand && (
+        <div className="absolute -top-12 left-0 right-0 p-2 bg-blue-500/20 border border-blue-500/30 rounded-md text-sm">
+          <span className="font-semibold">Modo Serviço Google:</span> {getGoogleServiceType()}
+          <p className="text-xs text-inventu-gray mt-1">
+            Forneça detalhes do que deseja criar, como título e conteúdo
+          </p>
+        </div>
+      )}
+      
       {/* Google Services Autocomplete */}
       <GoogleServicesAutocomplete 
         visible={showGoogleServices} 
