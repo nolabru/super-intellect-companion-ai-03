@@ -1,6 +1,6 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { generateText } from "./services/models/openai.ts";
-import { validateRequest } from "./utils/validation.ts";
 import { logError } from "./utils/logging.ts";
 import {
   processUserMessage,
@@ -22,9 +22,9 @@ serve(async (req: Request) => {
   try {
     // Parse request body
     const {
-      messages,
-      model,
+      content,
       mode = 'text',
+      modelId,
       userId,
       conversationId,
       conversationHistory,
@@ -32,21 +32,24 @@ serve(async (req: Request) => {
       params,
     } = await req.json();
 
-    // Validate model choice
-    const chosenModel = model || 'gpt-4o';
+    // Validate inputs - ensuring we don't use validateRequest incorrectly
+    if (!content) {
+      throw new Error("Message content is required");
+    }
 
-    // Validate inputs
-    validateRequest(messages, chosenModel, mode);
+    if (!modelId) {
+      throw new Error("Model ID is required");
+    }
 
     // Get most recent user message
-    const userMessage = messages[messages.length - 1];
+    const userMessage = content;
     
     // Process user message through orchestrator
     const orchestratorResponse = await processUserMessage(
-      userMessage.content,
+      userMessage,
       userId,
       mode,
-      chosenModel,
+      modelId,
       conversationHistory
     );
     
@@ -54,13 +57,13 @@ serve(async (req: Request) => {
     
     // Check if orchestrator detected a different mode
     const modeSwitch = mode !== orchestratorResponse.detectedMode ? {
-      fromMode: mode,
-      newMode: orchestratorResponse.detectedMode
+      newMode: orchestratorResponse.detectedMode,
+      newModel: orchestratorResponse.recommendedModel
     } : null;
     
     // Handle memory extraction if needed
     if (userId && orchestratorResponse.memoryExtracted) {
-      await extractAndSaveMemory(userId, userMessage.content, orchestratorResponse);
+      await extractAndSaveMemory(userId, userMessage, orchestratorResponse);
     }
     
     // Handle Google integration actions if detected
@@ -79,7 +82,7 @@ serve(async (req: Request) => {
           JSON.stringify({
             content: googleActionsResult.followupPrompt,
             mode: orchestratorResponse.detectedMode,
-            model: chosenModel,
+            model: modelId,
             modeSwitch: modeSwitch
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -112,7 +115,7 @@ serve(async (req: Request) => {
           JSON.stringify({
             content: responseContent,
             mode: orchestratorResponse.detectedMode,
-            model: chosenModel,
+            model: modelId,
             modeSwitch: modeSwitch
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -130,7 +133,7 @@ serve(async (req: Request) => {
         JSON.stringify({
           content: enhancedPrompt,
           mode: orchestratorResponse.detectedMode,
-          model: chosenModel,
+          model: modelId,
           modeSwitch: modeSwitch
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -140,23 +143,23 @@ serve(async (req: Request) => {
     // If no special mode was detected, continue with normal processing
     let aiResponse: { content: string; } | null = null;
 
-    if (chosenModel.startsWith("gpt-4o")) {
+    if (modelId.startsWith("gpt-4o")) {
       aiResponse = await generateText(
         orchestratorResponse.enhancedPrompt,
-        chosenModel
+        modelId
       );
-    } else if (chosenModel.startsWith("claude-3")) {
+    } else if (modelId.startsWith("claude-3")) {
       aiResponse = await generateText(
         orchestratorResponse.enhancedPrompt,
-        chosenModel
+        modelId
       );
     } else {
-      console.error(`Unsupported model: ${chosenModel}`);
+      console.error(`Unsupported model: ${modelId}`);
       return new Response(
         JSON.stringify({
           content: "Modelo não suportado no momento.",
           mode: mode,
-          model: chosenModel,
+          model: modelId,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -166,7 +169,7 @@ serve(async (req: Request) => {
     const data = {
       content: aiResponse.content,
       mode: mode,
-      model: chosenModel,
+      model: modelId,
       modeSwitch: modeSwitch
     };
 
