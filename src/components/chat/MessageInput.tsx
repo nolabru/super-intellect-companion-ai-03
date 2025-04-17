@@ -1,8 +1,9 @@
 
-import React, { useRef, useEffect } from 'react';
-import { Send, Paperclip } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Send, Paperclip, AtSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
+import GoogleServicesAutocomplete from './GoogleServicesAutocomplete';
 
 interface MessageInputProps {
   message: string;
@@ -27,6 +28,20 @@ const MessageInput: React.FC<MessageInputProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showGoogleServices, setShowGoogleServices] = useState(false);
+  
+  // Check if @ was just typed to show autocomplete
+  useEffect(() => {
+    // Get the last word being typed
+    const words = message.split(/\s/);
+    const lastWord = words[words.length - 1];
+    
+    if (lastWord === '@') {
+      setShowGoogleServices(true);
+    } else if (lastWord && !lastWord.startsWith('@')) {
+      setShowGoogleServices(false);
+    }
+  }, [message]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -43,13 +58,34 @@ const MessageInput: React.FC<MessageInputProps> = ({
       return "Digite o texto para converter em áudio...";
     }
     if (model) {
-      return `Pergunte ao ${model}...`;
+      return `Pergunte ao ${model}... ou use @drive, @sheet, @calendar`;
     }
-    return "Digite sua mensagem...";
+    return "Digite sua mensagem... ou use @drive, @sheet, @calendar";
+  };
+
+  const handleSelectGoogleService = (service: string) => {
+    // Replace the @ with the selected service
+    const words = message.split(/\s/);
+    words[words.length - 1] = `${service} `;
+    setMessage(words.join(' '));
+    setShowGoogleServices(false);
+    
+    // Focus the textarea
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 0);
   };
 
   return (
     <div className="relative rounded-lg border border-inventu-gray/30 bg-inventu-card">
+      {/* Google Services Autocomplete */}
+      <GoogleServicesAutocomplete 
+        visible={showGoogleServices} 
+        onSelect={handleSelectGoogleService} 
+      />
+      
       <textarea
         ref={textareaRef}
         value={message}
@@ -66,6 +102,21 @@ const MessageInput: React.FC<MessageInputProps> = ({
         disabled={isSending}
       />
       <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
+        {/* Add Google services button */}
+        <Button 
+          onClick={() => {
+            setMessage(prev => prev + '@');
+            setShowGoogleServices(true);
+          }}
+          variant="ghost" 
+          size="icon"
+          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+          title="Serviços Google"
+          disabled={isSending}
+        >
+          <AtSign className="h-5 w-5" />
+        </Button>
+        
         {mode !== 'text' && (
           <Button 
             onClick={onAttachment}

@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -54,6 +55,12 @@ export function useMessageHandler(
     }
   }, [isGoogleConnected, checkGooglePermissions]);
 
+  // Detectar se mensagem é um comando de serviço Google
+  const detectGoogleServiceCommand = useCallback((content: string): boolean => {
+    const googleServiceCommands = ['@drive', '@sheet', '@calendar'];
+    return googleServiceCommands.some(cmd => content.trim().startsWith(cmd));
+  }, []);
+
   /**
    * Função principal para enviar mensagens aos modelos
    */
@@ -82,9 +89,14 @@ export function useMessageHandler(
       console.log(`[useMessageHandler] Enviando mensagem "${content}" para ${comparing ? 'modelos' : 'modelo'} ${leftModel || modelId}${rightModel ? ` e ${rightModel}` : ''}`);
       setIsSending(true);
       
+      // Verificar se é um comando de serviço Google
+      const isGoogleServiceCommand = detectGoogleServiceCommand(content);
+      
       // Verificar permissões do Google caso seja identificada uma solicitação relacionada
       const googleActionPattern = /cri[ea]r? (uma? )?(evento|reuni[aã]o|compromisso|documento|planilha|spreadsheet|doc)/i;
-      if (user && user.id && googleActionPattern.test(content)) {
+      const needsGooglePermissions = isGoogleServiceCommand || googleActionPattern.test(content);
+      
+      if (user && user.id && needsGooglePermissions) {
         const hasGooglePermissions = await verifyGooglePermissions();
         if (!hasGooglePermissions && isGoogleConnected) {
           console.log('[useMessageHandler] Usuário não tem permissões adequadas para o Google');
@@ -202,12 +214,14 @@ export function useMessageHandler(
     user,
     messageProcessing,
     isGoogleConnected,
-    verifyGooglePermissions
+    verifyGooglePermissions,
+    detectGoogleServiceCommand
   ]);
 
   return {
     sendMessage,
     isSending,
-    detectContentType: messageProcessing.detectContentType
+    detectContentType: messageProcessing.detectContentType,
+    detectGoogleServiceCommand
   };
 }

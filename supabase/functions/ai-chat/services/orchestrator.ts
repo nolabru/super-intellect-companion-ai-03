@@ -1,15 +1,12 @@
-
 import { generateText as openaiGenerateText } from "./models/openai.ts";
 import { logError } from "../utils/logging.ts";
 import { validateApiKey } from "../utils/validation.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0";
 
-// Inicializa o cliente Supabase
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Define response type for orchestrator
 export interface OrchestratorResponse {
   enhancedPrompt: string;
   detectedMode: string;
@@ -19,17 +16,15 @@ export interface OrchestratorResponse {
   googleIntegrationActions?: GoogleIntegrationAction[];
 }
 
-// Define tipos para ações de integração com o Google
 export interface GoogleIntegrationAction {
   type: 'calendar' | 'drive' | 'sheets' | 'gmail';
   action: string;
   parameters: Record<string, any>;
   description: string;
-  needsMoreInfo?: boolean; // Adicionado para indicar se precisamos de mais informações
-  missingFields?: string[]; // Campos que estão faltando
+  needsMoreInfo?: boolean;
+  missingFields?: string[];
 }
 
-// Verifica se a chave API do orquestrador está configurada
 export function verifyApiKey(): string {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) {
@@ -38,7 +33,6 @@ export function verifyApiKey(): string {
   return apiKey;
 }
 
-// Função principal do orquestrador
 export async function processUserMessage(
   userMessage: string,
   userId?: string,
@@ -47,13 +41,26 @@ export async function processUserMessage(
   conversationHistory?: string
 ): Promise<OrchestratorResponse> {
   try {
-    // Validar chave de API
     const apiKey = verifyApiKey();
     validateApiKey("OPENAI_API_KEY", apiKey);
     
     console.log(`[Orquestrador] Processando mensagem do usuário: "${userMessage.substring(0, 50)}..."`);
     
-    // Verificar se o usuário tem integração com o Google
+    const googleServiceCommands = ['@drive', '@sheet', '@calendar'];
+    const serviceCommand = googleServiceCommands.find(cmd => userMessage.trim().startsWith(cmd));
+    
+    let detectedMode = currentMode;
+    let specialServiceType: 'calendar' | 'drive' | 'sheets' | null = null;
+    
+    if (serviceCommand) {
+      console.log(`[Orquestrador] Detectado comando de serviço Google: ${serviceCommand}`);
+      detectedMode = "google-service";
+      
+      if (serviceCommand === '@calendar') specialServiceType = 'calendar';
+      else if (serviceCommand === '@drive') specialServiceType = 'drive';
+      else if (serviceCommand === '@sheet') specialServiceType = 'sheets';
+    }
+    
     let userHasGoogleIntegration = false;
     let googleIntegrationContext = "";
     
@@ -99,20 +106,54 @@ export async function processUserMessage(
             os campos faltantes em "missingFields: []". Dessa forma, o sistema saberá que precisa solicitar
             mais informações ao usuário antes de executar a ação.
           `;
+          
+          if (specialServiceType) {
+            switch (specialServiceType) {
+              case 'calendar':
+                googleIntegrationContext += `
+                  ATENÇÃO: O usuário está usando o comando @calendar. Você deve atuar como um agente do Google Calendar
+                  e focar exclusivamente em coletar informações para criar um evento. Pergunte sobre:
+                  - Título do evento
+                  - Data e hora de início
+                  - Data e hora de término
+                  - Descrição (opcional)
+                  - Participantes (opcional)
+                  
+                  Quando tiver coletado todas as informações obrigatórias, inclua-as no formato JSON para serem processadas.
+                `;
+                break;
+              case 'drive':
+                googleIntegrationContext += `
+                  ATENÇÃO: O usuário está usando o comando @drive. Você deve atuar como um agente do Google Drive
+                  e focar exclusivamente em coletar informações para criar um documento. Pergunte sobre:
+                  - Nome do documento
+                  - Conteúdo inicial (opcional)
+                  
+                  Quando tiver coletado todas as informações obrigatórias, inclua-as no formato JSON para serem processadas.
+                `;
+                break;
+              case 'sheets':
+                googleIntegrationContext += `
+                  ATENÇÃO: O usuário está usando o comando @sheet. Você deve atuar como um agente do Google Sheets
+                  e focar exclusivamente em coletar informações para criar uma planilha. Pergunte sobre:
+                  - Título da planilha
+                  - Nomes das abas (opcional)
+                  
+                  Quando tiver coletado todas as informações obrigatórias, inclua-as no formato JSON para serem processadas.
+                `;
+                break;
+            }
+          }
         }
       } catch (error) {
         console.error("[Orquestrador] Erro ao verificar integração com Google:", error);
-        // Continuar sem o contexto de integração
       }
     }
     
-    // Verificar se a mensagem do usuário é uma resposta para uma solicitação anterior
-    // do orquestrador para obter mais informações
     let isFollowUpResponse = false;
     let previousActionType: string | null = null;
     
     if (conversationHistory) {
-      // Verifica se há uma mensagem do sistema pedindo mais informações
       const infoRequestPattern = /(Precisamos de mais informações para|Para criar um)/i;
       const botMessages = conversationHistory.split('\n').filter(line => 
         line.startsWith('assistant:') && infoRequestPattern.test(line)
@@ -122,7 +163,6 @@ export async function processUserMessage(
         const lastBotMessage = botMessages[botMessages.length - 1];
         isFollowUpResponse = true;
         
-        // Tenta identificar que tipo de ação estava sendo processada
         if (lastBotMessage.includes('evento') || lastBotMessage.includes('reunião') || 
             lastBotMessage.includes('calendário') || lastBotMessage.includes('agenda')) {
           previousActionType = 'calendar';
@@ -136,10 +176,9 @@ export async function processUserMessage(
       }
     }
     
-    // Construir um prompt para o orquestrador
     const orchestratorPrompt = buildOrchestratorPrompt(
       userMessage,
-      currentMode,
+      detectedMode,
       currentModel,
       conversationHistory,
       googleIntegrationContext,
@@ -147,15 +186,12 @@ export async function processUserMessage(
       previousActionType
     );
     
-    // Usar um modelo pequeno e rápido para o orquestrador
     const orchestratorModel = "gpt-4o-mini";
     
     console.log(`[Orquestrador] Chamando modelo ${orchestratorModel} para processamento`);
     
-    // Chamar o modelo de orquestração
     const response = await openaiGenerateText(orchestratorPrompt, orchestratorModel);
     
-    // Processar a resposta do orquestrador
     return parseOrchestratorResponse(response.content, userHasGoogleIntegration);
     
   } catch (error) {
@@ -163,7 +199,6 @@ export async function processUserMessage(
     console.error("[Orquestrador] Erro ao processar mensagem:", error);
     logError("ORCHESTRATOR_ERROR", { error: errorMessage });
     
-    // Em caso de falha, retorna valores padrão
     return {
       enhancedPrompt: userMessage,
       detectedMode: currentMode,
@@ -173,7 +208,6 @@ export async function processUserMessage(
   }
 }
 
-// Construir o prompt para o orquestrador
 function buildOrchestratorPrompt(
   userMessage: string,
   currentMode: string,
@@ -195,7 +229,7 @@ ${googleIntegrationContext || ''}
 
 Sua tarefa é:
 1. Analisar a intenção do usuário
-2. Decidir o modo mais adequado (text, image, video, audio)
+2. Decidir o modo mais adequado (text, image, video, audio, google-service)
 3. Recomendar o modelo mais adequado para essa tarefa
 4. Extrair informações que devem ser armazenadas para memória futura
 5. Melhorar o prompt original do usuário para obter a melhor resposta possível`;
@@ -207,12 +241,17 @@ Sua tarefa é:
       prompt += `\n\nIMPORTANTE: A mensagem do usuário parece ser uma resposta a uma solicitação anterior de informações adicionais para uma ação do tipo "${previousActionType}". 
       Combine estas novas informações com o contexto da conversa para completar os parâmetros necessários para a ação.`;
     }
+    
+    if (currentMode === "google-service") {
+      prompt += `\n\nMODO ESPECIAL: O usuário está utilizando um comando especial para serviços Google (${userMessage.split(' ')[0]}). 
+      Sua resposta deve estar no formato correto para executar essa integração, e você deve coletar todas as informações necessárias.`;
+    }
   }
 
   prompt += `\n\nResponda no seguinte formato JSON:
 {
   "enhancedPrompt": "Versão melhorada do prompt do usuário",
-  "detectedMode": "O modo que melhor atende a solicitação (text, image, video, audio)",
+  "detectedMode": "O modo que melhor atende a solicitação (text, image, video, audio, google-service)",
   "recommendedModel": "Modelo recomendado para essa tarefa",
   "memoryExtracted": true/false,
   "memoryItems": [
@@ -241,13 +280,11 @@ Sua tarefa é:
   return prompt;
 }
 
-// Analisar a resposta do orquestrador
 function parseOrchestratorResponse(
   responseContent: string, 
   userHasGoogleIntegration: boolean
 ): OrchestratorResponse {
   try {
-    // Extrair o JSON da resposta
     const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.warn("[Orquestrador] Não foi possível extrair JSON da resposta");
@@ -261,7 +298,6 @@ function parseOrchestratorResponse(
     
     const responseJson = JSON.parse(jsonMatch[0]);
     
-    // Verificar se todos os campos necessários estão presentes
     if (!responseJson.enhancedPrompt) {
       console.warn("[Orquestrador] Campo 'enhancedPrompt' não encontrado na resposta");
       responseJson.enhancedPrompt = responseContent;
@@ -277,7 +313,6 @@ function parseOrchestratorResponse(
       responseJson.recommendedModel = "gpt-4o";
     }
     
-    // Verificar se há ações de integração com o Google
     let googleIntegrationActions: GoogleIntegrationAction[] | undefined;
     
     if (userHasGoogleIntegration && responseJson.googleIntegrationActions) {
@@ -305,7 +340,6 @@ function parseOrchestratorResponse(
   }
 }
 
-// Função para extrair e salvar itens de memória
 export async function extractAndSaveMemory(
   userId: string,
   userMessage: string,
@@ -319,9 +353,6 @@ export async function extractAndSaveMemory(
   try {
     console.log(`[Orquestrador] Extraindo ${orchestratorResponse.memoryItems.length} itens de memória para usuário ${userId}`);
     
-    // Aqui seria a lógica para salvar os itens na base de dados
-    // Implementação em uma atualização futura ou encaminhamento para outro endpoint
-    
     return true;
   } catch (error) {
     console.error("[Orquestrador] Erro ao salvar itens de memória:", error);
@@ -329,13 +360,9 @@ export async function extractAndSaveMemory(
   }
 }
 
-// Função para recuperar contexto de memória do usuário
 export async function getUserMemoryContext(userId: string): Promise<string> {
   try {
     console.log(`[Orquestrador] Recuperando contexto de memória para usuário ${userId}`);
-    
-    // Aqui seria a lógica para recuperar a memória do usuário
-    // Implementação em uma atualização futura ou consulta à base de dados
     
     return "";
   } catch (error) {
@@ -344,7 +371,6 @@ export async function getUserMemoryContext(userId: string): Promise<string> {
   }
 }
 
-// Função para enriquecer o prompt com contexto de memória
 export function enrichPromptWithMemory(prompt: string, memoryContext: string): string {
   if (!memoryContext) {
     return prompt;
@@ -353,7 +379,6 @@ export function enrichPromptWithMemory(prompt: string, memoryContext: string): s
   return `${memoryContext}\n\n${prompt}`;
 }
 
-// Função para processar ações de integração com o Google
 export async function processGoogleIntegrationActions(
   userId: string, 
   actions: GoogleIntegrationAction[]
@@ -365,7 +390,6 @@ export async function processGoogleIntegrationActions(
   try {
     console.log(`[Orquestrador] Processando ${actions.length} ações de integração com Google para usuário ${userId}`);
     
-    // Verificar se alguma ação precisa de mais informações
     const actionNeedingMoreInfo = actions.find(a => a.needsMoreInfo === true);
     
     if (actionNeedingMoreInfo) {
@@ -423,24 +447,19 @@ export async function processGoogleIntegrationActions(
       };
     }
     
-    // Mapear cada ação para uma chamada à função google-actions
     const results = await Promise.all(actions.map(async (action) => {
       try {
         let actionName = "";
         let actionParams = {};
         
-        // Mapear tipo e ação para o formato esperado pela função google-actions
         switch (action.type) {
           case 'calendar':
             if (action.action === 'createEvent') {
               actionName = 'createCalendarEvent';
               actionParams = action.parameters;
               
-              // Se as datas estiverem em formato humanizado, converter para ISO
               if (typeof actionParams.startDateTime === 'string' && 
                   !actionParams.startDateTime.match(/^\d{4}-\d{2}-\d{2}T/)) {
-                  
-                // Tentar converter data em formato brasileiro/português para ISO
                 try {
                   const startDate = parseHumanDate(actionParams.startDateTime);
                   if (startDate) {
@@ -453,7 +472,6 @@ export async function processGoogleIntegrationActions(
               
               if (typeof actionParams.endDateTime === 'string' && 
                   !actionParams.endDateTime.match(/^\d{4}-\d{2}-\d{2}T/)) {
-                  
                 try {
                   const endDate = parseHumanDate(actionParams.endDateTime);
                   if (endDate) {
@@ -462,7 +480,6 @@ export async function processGoogleIntegrationActions(
                 } catch (e) {
                   console.warn(`Não foi possível converter data de término: ${actionParams.endDateTime}`);
                   
-                  // Se só temos hora de início, definir término para 1 hora depois
                   if (actionParams.startDateTime && actionParams.startDateTime.match(/^\d{4}-\d{2}-\d{2}T/)) {
                     const start = new Date(actionParams.startDateTime);
                     const end = new Date(start);
@@ -510,7 +527,6 @@ export async function processGoogleIntegrationActions(
           };
         }
         
-        // Chamar a função google-actions
         const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-actions`, {
           method: 'POST',
           headers: {
@@ -565,11 +581,7 @@ export async function processGoogleIntegrationActions(
   }
 }
 
-// Função auxiliar para converter datas em formato humanizado para Date
 function parseHumanDate(dateStr: string): Date | null {
-  // Tenta vários formatos comuns em português/brasileiro
-  
-  // Formato: dd/mm/yyyy às hh:mm
   const brFormat = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[\sàs]+(\d{1,2}):(\d{1,2}))?/i;
   const brMatch = dateStr.match(brFormat);
   
@@ -584,7 +596,6 @@ function parseHumanDate(dateStr: string): Date | null {
     );
   }
   
-  // Formato em texto: "hoje/amanhã às 15h"
   const relativeFormat = /(hoje|amanhã|amanha)(?:[\sàs]+(\d{1,2})(?::(\d{1,2}))?h?)?/i;
   const relativeMatch = dateStr.match(relativeFormat);
   
@@ -602,7 +613,6 @@ function parseHumanDate(dateStr: string): Date | null {
     return result;
   }
   
-  // Hora específica hoje (ex: "13:30", "às 14h")
   const timeOnlyFormat = /(?:às\s+)?(\d{1,2})(?::(\d{1,2}))?(?:h|hrs)?/i;
   const timeOnlyMatch = dateStr.match(timeOnlyFormat);
   

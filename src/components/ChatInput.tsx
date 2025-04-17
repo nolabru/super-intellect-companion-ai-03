@@ -146,8 +146,20 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setLumaParams(params);
   };
 
+  // Check if message starts with a Google service command
+  const isGoogleServiceCommand = message.trim().startsWith('@drive') || 
+                               message.trim().startsWith('@sheet') || 
+                               message.trim().startsWith('@calendar');
+
   return (
     <div className="relative mt-3">
+      {/* Google Service Command Alert */}
+      {isGoogleServiceCommand && (
+        <div className="mb-2 p-2 bg-blue-500/20 border border-blue-500/30 rounded-md text-sm">
+          <span className="font-semibold">Modo Serviço Google:</span> {message.trim().startsWith('@drive') ? 'Google Drive' : message.trim().startsWith('@sheet') ? 'Google Sheets' : 'Google Calendar'}
+        </div>
+      )}
+      
       {/* Luma AI Parameters Button */}
       {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
         <div className="flex justify-end mb-2">
