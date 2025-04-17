@@ -21,13 +21,17 @@ export function validateApiKey(apiKeyName: string, apiKey: string | undefined): 
   }
   
   // Verificação específica para Kligin
-  if (apiKeyName === 'KLIGIN_API_KEY' && apiKey.length !== 32) {
-    console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Chaves Kligin geralmente têm 32 caracteres.`);
+  if (apiKeyName === 'KLIGIN_API_KEY' && apiKey.length < 20) {
+    console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Chaves Kligin geralmente têm pelo menos 20 caracteres. Valor fornecido: ${apiKey.substring(0, 5)}...`);
+  } else if (apiKeyName === 'KLIGIN_API_KEY') {
+    console.log(`${apiKeyName} parece estar no formato correto.`);
   }
   
   // Verificação específica para Kligin Secret
-  if (apiKeyName === 'KLIGIN_API_SECRET' && apiKey.length !== 32) {
-    console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Segredos Kligin geralmente têm 32 caracteres.`);
+  if (apiKeyName === 'KLIGIN_API_SECRET' && apiKey.length < 20) {
+    console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Segredos Kligin geralmente têm pelo menos 20 caracteres. Valor fornecido: ${apiKey.substring(0, 5)}...`);
+  } else if (apiKeyName === 'KLIGIN_API_SECRET') {
+    console.log(`${apiKeyName} parece estar no formato correto.`);
   }
   
   // Log seguro para confirmar que a chave foi encontrada (sem expor a chave completa)

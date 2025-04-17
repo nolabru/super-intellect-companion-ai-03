@@ -21,6 +21,14 @@ export function setApiCredentials(apiKey: string, apiSecret: string) {
 // Generate JWT token for Kligin API authentication
 async function generateJwtToken(): Promise<string> {
   try {
+    // Check if we should use the provided fixed token for debugging
+    const useFixedToken = Deno.env.get("USE_FIXED_KLIGIN_TOKEN") === "true";
+    
+    if (useFixedToken) {
+      console.log("[Kligin] Using fixed JWT token for debugging");
+      return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlZDcyOTlhMjA5OGE0YjA2YTVjYjMxYTUwYTk2ZGVjNCIsImV4cCI6MTc0NDg1MjM4MiwibmJmIjoxNzQ0ODUwNTc3fQ.oUuLkHvOW9xcl5w8cwh8KhQxZHdNoPejdMZKlZf8gk4";
+    }
+    
     const now = Math.floor(Date.now() / 1000);
     
     const header = {
@@ -109,17 +117,28 @@ export async function generateVideo(
   imageUrl?: string
 ): Promise<{ content: string; files?: string[] }> {
   try {
-    const credentials = verifyApiCredentials();
+    // For debugging, check if we should use fixed credentials
+    const useFixedCredentials = Deno.env.get("USE_FIXED_KLIGIN_CREDENTIALS") === "true";
     
-    // Set credentials if they're different
-    if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
-      setApiCredentials(credentials.apiKey, credentials.apiSecret);
+    if (useFixedCredentials) {
+      console.log("[Kligin] Using fixed credentials for debugging");
+      const fixedApiKey = Deno.env.get("FIXED_KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
+      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "f2cd56e7a4af4fdca8d27291bad9efde";
+      setApiCredentials(fixedApiKey, fixedApiSecret);
+    } else {
+      const credentials = verifyApiCredentials();
+      
+      // Set credentials if they're different
+      if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
+        setApiCredentials(credentials.apiKey, credentials.apiSecret);
+      }
     }
     
     console.log(`[Kligin] Generating video with prompt: "${prompt.substring(0, 50)}..."`);
     
     // Generate JWT token for authentication
     const token = await generateJwtToken();
+    console.log(`[Kligin] Using JWT token: ${token.substring(0, 20)}...`);
     
     // Default video parameters
     const videoParams = {
@@ -232,17 +251,28 @@ export async function generateImage(
   params: any = {},
 ): Promise<{ content: string; files?: string[] }> {
   try {
-    const credentials = verifyApiCredentials();
+    // For debugging, check if we should use fixed credentials
+    const useFixedCredentials = Deno.env.get("USE_FIXED_KLIGIN_CREDENTIALS") === "true";
     
-    // Set credentials if they're different
-    if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
-      setApiCredentials(credentials.apiKey, credentials.apiSecret);
+    if (useFixedCredentials) {
+      console.log("[Kligin] Using fixed credentials for debugging");
+      const fixedApiKey = Deno.env.get("FIXED_KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
+      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "f2cd56e7a4af4fdca8d27291bad9efde";
+      setApiCredentials(fixedApiKey, fixedApiSecret);
+    } else {
+      const credentials = verifyApiCredentials();
+      
+      // Set credentials if they're different
+      if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
+        setApiCredentials(credentials.apiKey, credentials.apiSecret);
+      }
     }
     
     console.log(`[Kligin] Generating image with prompt: "${prompt.substring(0, 50)}..."`);
     
     // Generate JWT token for authentication
     const token = await generateJwtToken();
+    console.log(`[Kligin] Using JWT token: ${token.substring(0, 20)}...`);
     
     // Default image parameters
     const imageParams = {
