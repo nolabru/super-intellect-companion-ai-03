@@ -255,7 +255,7 @@ export function useMessageHandler(
           currentConversationId,
           files,
           params,
-          prepareConversationHistory(messages),
+          JSON.stringify(prepareConversationHistory(messages)),
           user?.id
         );
         
@@ -271,7 +271,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          prepareConversationHistory(messages),
+          JSON.stringify(prepareConversationHistory(messages)),
           user?.id
         );
         
