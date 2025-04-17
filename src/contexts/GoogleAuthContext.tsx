@@ -49,18 +49,19 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     try {
-      // Use raw SQL query via RPC to avoid TypeScript issues
+      // Use direct query instead of RPC to avoid TypeScript issues
       const { data, error } = await supabase
-        .rpc('get_google_tokens_for_user', {
-          user_id_param: session.user.id
-        });
+        .from('user_google_tokens')
+        .select('*')
+        .eq('user_id', session.user.id);
 
       if (error) {
         console.error('Erro ao buscar tokens do Google:', error);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
-      } else if (data && Array.isArray(data) && data.length > 0) {
-        const tokenData = data[0] as UserGoogleToken;
+      } else if (data && data.length > 0) {
+        // Force type casting since TypeScript doesn't know about this table
+        const tokenData = data[0] as unknown as UserGoogleToken;
         setGoogleTokens({
           accessToken: tokenData.access_token,
           refreshToken: tokenData.refresh_token,
@@ -185,10 +186,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!user) return;
 
     try {
-      // Use RPCs to avoid TypeScript issues
-      const { error } = await supabase.rpc('delete_google_tokens_for_user', {
-        user_id_param: user.id
-      });
+      // Use direct query instead of RPC to avoid TypeScript issues
+      const { error } = await supabase
+        .from('user_google_tokens')
+        .delete()
+        .eq('user_id', user.id);
 
       if (error) {
         throw error;
