@@ -1,10 +1,7 @@
 
-import { GoogleAuthProvider, useGoogleAuth } from './GoogleAuthContext';
-import { GoogleTokens, GoogleAuthContextType } from './types';
+import { GoogleAuthProvider, useGoogleAuth } from '../GoogleAuthContext';
 
 export { 
   GoogleAuthProvider, 
-  useGoogleAuth,
-  type GoogleTokens,
-  type GoogleAuthContextType
+  useGoogleAuth
 };

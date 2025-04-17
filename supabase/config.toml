@@ -65,12 +65,12 @@ serve_port = 54900
 # Enables the "vectors" extension
 vectors = true
 
-# Configuring individual functions
+# Mark all functions as not requiring JWT verification
 [functions.google-token-refresh]
-verify_jwt = true
+verify_jwt = false
 
 [functions.google-verify-permissions]
-verify_jwt = true
+verify_jwt = false
 
 [functions.google-oauth-callback]
 verify_jwt = false

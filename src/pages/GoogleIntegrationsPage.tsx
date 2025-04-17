@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle, XCircle, RefreshCw, LogOut } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -38,68 +38,23 @@ const GOOGLE_SCOPES = [
   }
 ];
 
-interface ServicePermission {
-  service: string;
-  hasPermission: boolean;
-  scope: string;
-  error?: string;
-}
-
 const GoogleIntegrationsPage: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
-  const { 
-    isGoogleConnected, 
-    loading: googleLoading, 
-    refreshGoogleTokens,
-    disconnectGoogle 
-  } = useGoogleAuth();
-  const [servicePermissions, setServicePermissions] = useState<ServicePermission[]>([]);
-  const [checkingPermissions, setCheckingPermissions] = useState(false);
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { isGoogleConnected, loading: googleLoading } = useGoogleAuth();
   const navigate = useNavigate();
 
-  // Verificar autenticação
-  useEffect(() => {
+  // Check authentication
+  React.useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
   }, [authLoading, user, navigate]);
 
-  // Verificar permissões do Google ao carregar a página
-  useEffect(() => {
-    checkGooglePermissions();
-  }, [isGoogleConnected]);
-
-  const checkGooglePermissions = async () => {
-    if (!isGoogleConnected) {
-      setServicePermissions([]);
-      return;
-    }
-
-    setCheckingPermissions(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('google-verify-permissions', {
-        body: {}  // O token será obtido do contexto de autenticação na Edge Function
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data?.services) {
-        setServicePermissions(data.services);
-      }
-    } catch (error) {
-      console.error('Erro ao verificar permissões:', error);
-      toast.error('Erro ao verificar permissões', { 
-        description: 'Não foi possível verificar o status das suas permissões do Google.'
-      });
-    } finally {
-      setCheckingPermissions(false);
-    }
-  };
-
   const handleConnectGoogle = async () => {
     try {
+      // Set redirect URL to come back to this page
+      const redirectTo = `${window.location.origin}/google-integrations`;
+      
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -108,7 +63,7 @@ const GoogleIntegrationsPage: React.FC = () => {
             access_type: 'offline',
             prompt: 'consent'
           },
-          redirectTo: `${window.location.origin}/google-integrations`
+          redirectTo
         }
       });
     } catch (error) {
@@ -119,23 +74,18 @@ const GoogleIntegrationsPage: React.FC = () => {
     }
   };
 
-  const handleRefreshTokens = async () => {
+  const handleDisconnectGoogle = async () => {
     try {
-      const success = await refreshGoogleTokens();
-      if (success) {
-        toast.success('Tokens atualizados', { 
-          description: 'Os tokens de acesso do Google foram atualizados com sucesso.'
-        });
-        await checkGooglePermissions();
-      } else {
-        toast.error('Falha na atualização', { 
-          description: 'Não foi possível atualizar os tokens. Tente reconectar sua conta.'
-        });
-      }
+      // Since we're using Supabase native auth, we'll sign out and redirect to auth
+      await signOut();
+      toast.success('Conta Google desconectada', { 
+        description: 'Sua conta Google foi desconectada com sucesso.'
+      });
+      navigate('/auth');
     } catch (error) {
-      console.error('Erro ao atualizar tokens:', error);
-      toast.error('Erro na atualização', { 
-        description: 'Ocorreu um erro ao tentar atualizar os tokens.'
+      console.error('Erro ao desconectar Google:', error);
+      toast.error('Erro ao desconectar', { 
+        description: 'Não foi possível desconectar sua conta Google.'
       });
     }
   };
@@ -203,25 +153,14 @@ const GoogleIntegrationsPage: React.FC = () => {
           
           <CardFooter className="flex flex-wrap gap-2">
             {isGoogleConnected ? (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={handleRefreshTokens}
-                  className="border-inventu-gray/30 text-white"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Atualizar Tokens
-                </Button>
-                
-                <Button
-                  variant="destructive"
-                  onClick={disconnectGoogle}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Desconectar Google
-                </Button>
-              </>
+              <Button
+                variant="destructive"
+                onClick={handleDisconnectGoogle}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Desconectar Google
+              </Button>
             ) : (
               <Button onClick={handleConnectGoogle} className="bg-inventu-blue hover:bg-inventu-blue/80">
                 Conectar com Google
@@ -233,38 +172,28 @@ const GoogleIntegrationsPage: React.FC = () => {
         <h2 className="text-xl font-bold text-white mb-4">Permissões dos Serviços</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          {GOOGLE_SCOPES.map((service) => {
-            const permissionStatus = servicePermissions.find(
-              p => p.scope === service.scope
-            );
-            
-            return (
-              <Card key={service.scope} className="bg-inventu-dark border-inventu-gray/30 text-white">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <span className="text-2xl">{service.icon}</span>
-                    {service.name}
-                    {checkingPermissions ? (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    ) : permissionStatus ? (
-                      permissionStatus.hasPermission ? (
-                        <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-red-500 ml-auto" />
-                      )
-                    ) : isGoogleConnected ? (
-                      <Loader2 className="h-4 w-4 animate-spin ml-auto" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-gray-500 ml-auto" />
-                    )}
-                  </CardTitle>
-                  <CardDescription className="text-inventu-gray">
-                    {service.description}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            );
-          })}
+          {GOOGLE_SCOPES.map((service) => (
+            <Card key={service.scope} className="bg-inventu-dark border-inventu-gray/30 text-white">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-2xl">{service.icon}</span>
+                  {service.name}
+                  {isGoogleConnected ? (
+                    <Badge variant="outline" className="bg-green-500/20 text-green-400 ml-auto">
+                      Autorizado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-gray-500/20 text-gray-400 ml-auto">
+                      Não autorizado
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="text-inventu-gray">
+                  {service.description}
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
         </div>
         
         <div className="bg-inventu-dark border border-inventu-gray/30 rounded-lg p-4 mb-8">
