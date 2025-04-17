@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -85,7 +84,7 @@ async function handleAIChat(req: Request): Promise<Response> {
           modeSwitchDetected = true;
         }
         
-        // Verificar se o orquestrador sugeriu trocar o modelo
+        // Verificar se o orquestrador sugeriu troca de modelo
         if (orchestratorResult.recommendedModel !== modelId) {
           console.log(`[AI-Chat] Orquestrador recomendou troca de modelo: ${modelId} -> ${orchestratorResult.recommendedModel}`);
           processedModelId = orchestratorResult.recommendedModel;
@@ -176,24 +175,26 @@ async function handleAIChat(req: Request): Promise<Response> {
         // Usando token configurado para Kligin
         console.log("[AI-Chat] Modelo Kligin selecionado, verificando configuração do token");
         
-        // Set the Kligin API key from env var or use the provided key
+        // Set the Kligin API credentials from env vars
         const kliginApiKey = Deno.env.get("KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
+        const kliginApiSecret = Deno.env.get("KLIGIN_API_SECRET") || "3dd57f873a1745c3a21f972a8024b456";
         
-        if (kliginApiKey) {
-          kliginService.setMockedToken(kliginApiKey);
-          console.log("[AI-Chat] Token Kligin configurado com sucesso");
+        if (kliginApiKey && kliginApiSecret) {
+          kliginService.setApiCredentials(kliginApiKey, kliginApiSecret);
+          console.log("[AI-Chat] Credenciais Kligin configuradas com sucesso");
           
-          // Validação opcional para ver se o token funciona
+          // Validação opcional para ver se as credenciais funcionam
           try {
-            const isValid = await kliginService.testApiKey(kliginApiKey);
+            const isValid = await kliginService.testApiCredentials(kliginApiKey, kliginApiSecret);
             if (!isValid) {
-              console.warn("[AI-Chat] O token do Kligin pode não estar funcionando corretamente");
+              console.warn("[AI-Chat] As credenciais do Kligin podem não estar funcionando corretamente");
             }
-          } catch (error) {
-            console.error("[AI-Chat] Erro ao testar token do Kligin:", error);
+          } catch (err) {
+            console.error("[AI-Chat] Erro ao testar credenciais do Kligin:", err);
           }
         } else {
-          console.warn("[AI-Chat] KLIGIN_API_KEY não configurada, verificando em verifyApiKey");
+          console.error("[AI-Chat] Credenciais do Kligin não configuradas corretamente");
+          throw new Error("Credenciais do Kligin não configuradas. Verifique as variáveis de ambiente KLIGIN_API_KEY e KLIGIN_API_SECRET.");
         }
       }
       

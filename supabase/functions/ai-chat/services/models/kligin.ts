@@ -1,45 +1,90 @@
 
 import { fetchWithRetry, logError } from "../../utils/logging.ts";
 import { validateApiKey } from "../../utils/validation.ts";
+import * as jwt from "jsonwebtoken";
 
 // Kligin API base URL
 const KLIGIN_API_BASE_URL = "https://api.klingai.com";
 
-// Token for authentication (will be set from environment variable)
+// API credentials
 let KLIGIN_API_KEY = "";
+let KLIGIN_API_SECRET = "";
 
-// Set a mocked token for testing (if needed)
-export function setMockedToken(token: string) {
-  console.log("[Kligin] Setting token");
-  KLIGIN_API_KEY = token;
+// Set API credentials for authentication
+export function setApiCredentials(apiKey: string, apiSecret: string) {
+  console.log("[Kligin] Setting API credentials");
+  KLIGIN_API_KEY = apiKey;
+  KLIGIN_API_SECRET = apiSecret;
 }
 
-// Verify API key
-export function verifyApiKey(): string {
+// Generate JWT token for Kligin API authentication
+function generateJwtToken(): string {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    
+    const headers = {
+      alg: "HS256",
+      typ: "JWT"
+    };
+    
+    const payload = {
+      iss: KLIGIN_API_KEY,
+      exp: now + 1800, // Valid for 30 minutes
+      nbf: now - 5     // Valid from 5 seconds ago
+    };
+    
+    return jwt.sign(payload, KLIGIN_API_SECRET, { header: headers });
+  } catch (error) {
+    console.error("[Kligin] Error generating JWT token:", error);
+    throw new Error("Falha ao gerar token JWT para autenticação Kligin");
+  }
+}
+
+// Verify API credentials are set
+export function verifyApiCredentials(): { apiKey: string, apiSecret: string } {
   const apiKey = Deno.env.get("KLIGIN_API_KEY") || KLIGIN_API_KEY;
+  const apiSecret = Deno.env.get("KLIGIN_API_SECRET") || KLIGIN_API_SECRET;
   
   if (!apiKey) {
     throw new Error("KLIGIN_API_KEY não configurada nas variáveis de ambiente");
   }
   
-  return apiKey;
+  if (!apiSecret) {
+    throw new Error("KLIGIN_API_SECRET não configurada nas variáveis de ambiente");
+  }
+  
+  return { apiKey, apiSecret };
 }
 
 // Test API key validity
-export async function testApiKey(apiKey: string): Promise<boolean> {
+export async function testApiCredentials(apiKey: string, apiSecret: string): Promise<boolean> {
   try {
-    // Make a lightweight request to check if the API key is valid
+    // Set credentials temporarily for the test
+    const originalKey = KLIGIN_API_KEY;
+    const originalSecret = KLIGIN_API_SECRET;
+    
+    KLIGIN_API_KEY = apiKey;
+    KLIGIN_API_SECRET = apiSecret;
+    
+    // Generate a token for authentication
+    const token = generateJwtToken();
+    
+    // Make a lightweight request to check if the credentials are valid
     const response = await fetch(`${KLIGIN_API_BASE_URL}/v1/videos/text2video?pageNum=1&pageSize=1`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        "Authorization": `Bearer ${token}`
       }
     });
     
+    // Restore original credentials
+    KLIGIN_API_KEY = originalKey;
+    KLIGIN_API_SECRET = originalSecret;
+    
     return response.status < 400;
   } catch (error) {
-    console.error("[Kligin] Error testing API key:", error);
+    console.error("[Kligin] Error testing API credentials:", error);
     return false;
   }
 }
@@ -51,8 +96,17 @@ export async function generateVideo(
   imageUrl?: string
 ): Promise<{ content: string; files?: string[] }> {
   try {
-    const apiKey = verifyApiKey();
+    const credentials = verifyApiCredentials();
+    
+    // Set credentials if they're different
+    if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
+      setApiCredentials(credentials.apiKey, credentials.apiSecret);
+    }
+    
     console.log(`[Kligin] Generating video with prompt: "${prompt.substring(0, 50)}..."`);
+    
+    // Generate JWT token for authentication
+    const token = generateJwtToken();
     
     // Default video parameters
     const videoParams = {
@@ -73,7 +127,7 @@ export async function generateVideo(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify(videoParams)
     }, 3, 2000);
@@ -104,12 +158,15 @@ export async function generateVideo(
       // Wait between polls
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
       
+      // Generate a fresh token for each poll to avoid expiration
+      const freshToken = generateJwtToken();
+      
       // Check task status
       const taskCheckResponse = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/videos/text2video/${taskId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
+          "Authorization": `Bearer ${freshToken}`
         }
       }, 3, 2000);
       
@@ -159,11 +216,20 @@ export async function generateVideo(
 // Generate image using Kligin API
 export async function generateImage(
   prompt: string,
-  params: any = {}
+  params: any = {},
 ): Promise<{ content: string; files?: string[] }> {
   try {
-    const apiKey = verifyApiKey();
+    const credentials = verifyApiCredentials();
+    
+    // Set credentials if they're different
+    if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
+      setApiCredentials(credentials.apiKey, credentials.apiSecret);
+    }
+    
     console.log(`[Kligin] Generating image with prompt: "${prompt.substring(0, 50)}..."`);
+    
+    // Generate JWT token for authentication
+    const token = generateJwtToken();
     
     // Default image parameters
     const imageParams = {
@@ -181,7 +247,7 @@ export async function generateImage(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
+        "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify(imageParams)
     }, 3, 2000);
@@ -212,12 +278,15 @@ export async function generateImage(
       // Wait between polls
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
       
+      // Generate a fresh token for each poll to avoid expiration
+      const freshToken = generateJwtToken();
+      
       // Check task status
       const taskCheckResponse = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/images/text2image/${taskId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
+          "Authorization": `Bearer ${freshToken}`
         }
       }, 3, 2000);
       
