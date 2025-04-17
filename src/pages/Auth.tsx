@@ -58,31 +58,47 @@ const Auth: React.FC = () => {
         try {
           setLoading(true);
           
-          // Wait for session to be established
+          // Wait for session to be established - increased timeout from 1000ms to 2000ms
           setTimeout(async () => {
-            const { data } = await supabase.auth.getSession();
+            // Explicitly get the session directly
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error('Session error:', error);
+              toast.error('Login failed', {
+                description: error.message || 'Could not establish session. Please try again.'
+              });
+              setLoading(false);
+              return;
+            }
+            
             if (data.session) {
+              console.log('Session established successfully:', data.session.user?.id);
               toast.success('Login successful', { 
                 description: 'You will be redirected...'
               });
+              
+              // Clear URL and navigate to home
+              window.history.replaceState({}, document.title, window.location.pathname);
               navigate('/');
             } else {
+              console.error('No session found after login');
               toast.error('Login failed', {
                 description: 'Could not establish session. Please try again.'
               });
+              setLoading(false);
             }
-            setLoading(false);
-          }, 1000);
-        } catch (error) {
+          }, 2000); // Increased timeout for session establishment
+        } catch (error: any) {
           console.error('Error processing login:', error);
           toast.error('Login error', { 
-            description: 'Please try again.'
+            description: error.message || 'Please try again.'
           });
           setLoading(false);
+          
+          // Clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
-        
-        // Clean URL
-        window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
 
