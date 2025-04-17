@@ -28,9 +28,9 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
-  const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
+  const { isGoogleConnected, loading: googleAuthLoading, refreshTokensState } = useGoogleAuth();
   
-  // Monitorar e debugar o estado da conexão Google
+  // Monitor and debug Google auth state
   useEffect(() => {
     console.log('[useMessageHandler] Google Auth State:', { 
       isGoogleConnected, 
@@ -38,7 +38,7 @@ export function useMessageHandler(
     });
   }, [isGoogleConnected, googleAuthLoading]);
   
-  // Criar serviço de mensagens e processamento
+  // Create message service and processing
   const messageService = createMessageService(
     apiService,
     mediaGallery,
@@ -49,7 +49,7 @@ export function useMessageHandler(
   const messageProcessing = useMessageProcessing(user?.id);
 
   /**
-   * Função principal para enviar mensagens aos modelos
+   * Main function to send messages to models
    */
   const sendMessage = useCallback(async (
     content: string,
@@ -62,21 +62,21 @@ export function useMessageHandler(
     params?: LumaParams
   ) => {
     if (!currentConversationId) {
-      console.error('[useMessageHandler] Não é possível enviar mensagem: Nenhuma conversa selecionada');
-      setError('Nenhuma conversa selecionada. Por favor, inicie uma nova conversa.');
+      console.error('[useMessageHandler] Cannot send message: No conversation selected');
+      setError('No conversation selected. Please start a new conversation.');
       return false;
     }
     
     if (isSending) {
-      console.log('[useMessageHandler] Já está enviando uma mensagem, ignorando solicitação');
+      console.log('[useMessageHandler] Already sending a message, ignoring request');
       return false;
     }
     
     try {
-      console.log(`[useMessageHandler] Enviando mensagem "${content}" para ${comparing ? 'modelos' : 'modelo'} ${leftModel || modelId}${rightModel ? ` e ${rightModel}` : ''}`);
+      console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Verificar se é um comando do Google e se o usuário está conectado
+      // Check if it's a Google command
       const isGoogleCommand = content.match(/@(calendar|sheet|doc|drive|email)\s/i);
       
       console.log('[useMessageHandler] Google command check:', { 
@@ -85,43 +85,50 @@ export function useMessageHandler(
         googleAuthLoading
       });
       
-      // Verificação de comandos Google melhorada
+      // Enhanced Google command checking
       if (isGoogleCommand) {
-        // Aguarde a conclusão do carregamento da autenticação Google antes de verificar
+        // Force a token state refresh before checking
         if (googleAuthLoading) {
-          console.log('[useMessageHandler] Aguardando carregamento da autenticação Google...');
-          // Aguardar breve tempo para carregar a autenticação
+          console.log('[useMessageHandler] Waiting for Google auth to load...');
           await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-        console.log('[useMessageHandler] Estado final da conexão Google:', { isGoogleConnected });
-        
-        // Verificação final após aguardar
-        if (!isGoogleConnected) {
+          
+          // Force a refresh of token state
+          await refreshTokensState();
+          
+          // Check again after refresh
+          if (!isGoogleConnected) {
+            toast.error(
+              'Google account not connected',
+              { description: 'To use Google commands, you need to log in with your Google account.' }
+            );
+            setIsSending(false);
+            return false;
+          }
+        } else if (!isGoogleConnected) {
           toast.error(
-            'Conta Google não conectada',
-            { description: 'Para usar comandos do Google, você precisa fazer login com sua conta Google.' }
+            'Google account not connected',
+            { description: 'To use Google commands, you need to log in with your Google account.' }
           );
           setIsSending(false);
           return false;
         }
       }
       
-      // Processar mensagem para extração de memória
+      // Process message for memory extraction
       if (user && user.id) {
         messageProcessing.processUserMessageForMemory(content);
       }
       
-      // Preparar histórico da conversa para o orquestrador
+      // Prepare conversation history for orchestrator
       const conversationHistory = messageProcessing.prepareConversationHistory(
         messages.map(msg => ({ sender: msg.sender, content: msg.content }))
       );
       
-      // Criar mensagem do usuário
+      // Create user message
       const userMessageId = uuidv4();
       let targetModel: string | undefined;
       
-      // Determinar qual modelo receberá a mensagem
+      // Determine which model will receive the message
       if (comparing) {
         if (!leftModel && rightModel) {
           targetModel = rightModel;
@@ -134,7 +141,7 @@ export function useMessageHandler(
         targetModel = modelId;
       }
       
-      // Criar mensagem do usuário com o modelo de destino explicitamente definido
+      // Create user message with target model explicitly defined
       const userMessage: MessageType = {
         id: userMessageId,
         content,
@@ -158,11 +165,11 @@ export function useMessageHandler(
       // Enhance content with memory context if needed
       const enhancedContent = await messageProcessing.enhanceWithMemoryContext(content, messages.length);
       
-      // Processar a mensagem
+      // Process the message
       let modeSwitch = null;
       
       if (comparing && leftModel && rightModel) {
-        // Modo de comparação - ambos os modelos
+        // Comparison mode - both models
         const result = await messageService.handleCompareModels(
           enhancedContent,
           mode,
@@ -177,7 +184,7 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && leftModel && !rightModel) {
-        // Modo desvinculado - apenas modelo esquerdo
+        // Detached mode - left model only
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -193,7 +200,7 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && !leftModel && rightModel) {
-        // Modo desvinculado - apenas modelo direito
+        // Detached mode - right model only
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -209,7 +216,7 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else {
-        // Modo padrão - apenas um modelo
+        // Default mode - single model
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -231,7 +238,7 @@ export function useMessageHandler(
         modeSwitch: modeSwitch ? modeSwitch.newMode : null 
       };
     } catch (err) {
-      console.error('[useMessageHandler] Erro ao enviar mensagem:', err);
+      console.error('[useMessageHandler] Error sending message:', err);
       return { success: false, modeSwitch: null };
     } finally {
       setIsSending(false);
@@ -249,7 +256,8 @@ export function useMessageHandler(
     user,
     messageProcessing,
     isGoogleConnected,
-    googleAuthLoading
+    googleAuthLoading,
+    refreshTokensState
   ]);
 
   return {

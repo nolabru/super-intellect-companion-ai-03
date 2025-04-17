@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,9 +9,6 @@ import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup';
-
-// Use the correct production URL
-const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
 // Google scopes necessários para a aplicação
 const GOOGLE_SCOPES = [
@@ -57,41 +53,52 @@ const Auth: React.FC = () => {
 
       // Verifique se há sinais de autenticação OAuth bem-sucedida
       if (hashParams.has('access_token') || params.has('provider')) {
-        console.log("Detectada autenticação OAuth bem-sucedida");
+        console.log("[Auth] Detectada autenticação OAuth bem-sucedida");
         
         try {
           // Aguardar a sessão ser estabelecida
           setLoading(true);
           
-          // Delay para garantir que os tokens do Google sejam armazenados
+          // Wait a bit to ensure authentication is processed properly
           setTimeout(async () => {
             const { data } = await supabase.auth.getSession();
             
             if (data.session) {
-              // Autenticação bem-sucedida, verificar se é um login do Google
+              // Log session details (without sensitive info) for debugging
+              console.log("[Auth] Login successful, session established:", {
+                userId: data.session.user?.id,
+                hasUser: !!data.session.user,
+                hasAccessToken: !!data.session.access_token,
+                expiresAt: data.session.expires_at
+              });
+              
+              // Check if it's a Google login
               if (params.has('provider') && params.get('provider') === 'google') {
-                console.log('Login com Google bem-sucedido, redirecionando para página inicial');
+                console.log('[Auth] Google login detected, checking tokens...');
                 
-                toast.success('Login successful', { 
-                  description: 'Google account successfully connected!'
-                });
-                
-                navigate('/');
+                // Wait a bit longer for Google tokens to be processed by database triggers
+                setTimeout(() => {
+                  toast.success('Login successful', { 
+                    description: 'Google account connected! You can now use Google commands.'
+                  });
+                  navigate('/');
+                }, 3000);
               } else {
                 toast.success('Login successful');
                 navigate('/');
               }
             } else {
+              console.error("[Auth] Failed to establish session after OAuth redirect");
               toast.error('Failed to establish session', {
                 description: 'Please try logging in again'
               });
             }
             
             setLoading(false);
-          }, 2000); // Aumento do tempo de espera para 2 segundos
+          }, 2500);
           
         } catch (error) {
-          console.error('Erro ao processar autenticação:', error);
+          console.error('[Auth] Erro ao processar autenticação:', error);
           toast.error('Error processing login', { 
             description: 'Please try again.'
           });
@@ -143,9 +150,9 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Para login OAuth, especificamos a URL de callback completa
+      // Use correct redirect URL
       const redirectTo = window.location.origin + '/auth';
-      console.log(`Login com Google - URL de redirecionamento: ${redirectTo}`);
+      console.log(`[Auth] Google login - Redirect URL: ${redirectTo}`);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -161,7 +168,7 @@ const Auth: React.FC = () => {
 
       if (error) throw error;
     } catch (error: any) {
-      console.error('Erro no login com Google:', error);
+      console.error('[Auth] Google login error:', error);
       toast.error(
         "Error signing in with Google", 
         { description: error.message }

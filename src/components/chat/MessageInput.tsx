@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -72,8 +71,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
 
-  // Track cursor position to show @ menu
   const [cursorPosition, setCursorPosition] = useState(0);
+  
+  useEffect(() => {
+    console.log('[MessageInput] Google connection status:', { 
+      isGoogleConnected, 
+      googleAuthLoading 
+    });
+  }, [isGoogleConnected, googleAuthLoading]);
   
   useEffect(() => {
     if (textareaRef.current) {
@@ -82,29 +87,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [message]);
 
-  // Handle @ command detection
   useEffect(() => {
-    // Check if the character at cursor position - 1 is @
     if (message.length > 0 && cursorPosition > 0) {
-      // Get text from the start of the line up to the cursor
       const textBeforeCursor = message.substring(0, cursorPosition);
       const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
       
-      // Check if there's an @ symbol and it's either at the start of the line or preceded by a space
       if (lastAtSymbol !== -1 && (lastAtSymbol === 0 || message[lastAtSymbol - 1] === ' ')) {
-        // Check if there's anything typed after @
         const textAfterAt = textBeforeCursor.substring(lastAtSymbol + 1);
         
-        // Only show menu if there's nothing after @ or if it's a partial command
         if (textAfterAt.length === 0 || !textAfterAt.includes(' ')) {
           setShowCommandMenu(true);
           
-          // Position the menu above the input near the @ symbol
           if (textareaRef.current && containerRef.current) {
             const containerRect = containerRef.current.getBoundingClientRect();
             setCommandMenuPosition({
-              top: -10, // Position above the textarea
-              left: 10, // A small offset from the left
+              top: -10,
+              left: 10,
             });
           }
           return;
@@ -134,8 +132,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const insertCommand = (command: string) => {
-    // Verificar mais claramente o status da conexão Google
-    console.log('Checking Google connection before inserting command', { 
+    console.log('[MessageInput] Checking Google connection before inserting command', { 
       isGoogleConnected, 
       googleAuthLoading 
     });
@@ -150,12 +147,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
 
     if (textareaRef.current) {
-      // Find the last @ in the text before cursor
       const beforeCursor = message.substring(0, cursorPosition);
       const lastAtIndex = beforeCursor.lastIndexOf('@');
       
       if (lastAtIndex !== -1) {
-        // Replace the @something with the selected command
         const newMessage = 
           message.substring(0, lastAtIndex) + 
           command + 
@@ -163,10 +158,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
         
         setMessage(newMessage);
         
-        // Calculate new cursor position after the inserted command
         const newPosition = lastAtIndex + command.length;
         
-        // Need to wait for the state to update before setting selection
         setTimeout(() => {
           if (textareaRef.current) {
             textareaRef.current.focus();
@@ -221,13 +214,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
           }
         }}
         onClick={(e) => {
-          // Update cursor position on click
           if (textareaRef.current) {
             setCursorPosition(textareaRef.current.selectionStart);
           }
         }}
         onKeyUp={(e) => {
-          // Update cursor position on key press
           if (textareaRef.current) {
             setCursorPosition(textareaRef.current.selectionStart);
           }

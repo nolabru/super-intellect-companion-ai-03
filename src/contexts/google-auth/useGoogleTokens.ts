@@ -13,7 +13,7 @@ export const useGoogleTokens = () => {
   // Fetch Google tokens from Supabase with improved error handling
   const fetchGoogleTokens = useCallback(async (session: Session | null) => {
     if (!session || !session.user) {
-      console.log('No session or user, clearing Google tokens');
+      console.log('[useGoogleTokens] No session or user, clearing Google tokens');
       setGoogleTokens(null);
       setIsGoogleConnected(false);
       setLoading(false);
@@ -22,21 +22,21 @@ export const useGoogleTokens = () => {
 
     setLoading(true);
     try {
-      console.log('Fetching Google tokens for user:', session.user.id);
+      console.log('[useGoogleTokens] Fetching Google tokens for user:', session.user.id);
       
-      // Use a direct table query with proper typing
+      // Use a direct table query
       const { data, error } = await supabase
         .from('user_google_tokens')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
-
+        .maybeSingle(); // Using maybeSingle instead of single to avoid errors when no data
+      
       if (error) {
-        console.error('Error fetching Google tokens:', error);
+        console.error('[useGoogleTokens] Error fetching Google tokens:', error);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
       } else if (data) {
-        console.log('Google tokens found:', { 
+        console.log('[useGoogleTokens] Google tokens found:', { 
           hasAccessToken: !!data.access_token,
           hasRefreshToken: !!data.refresh_token,
           expiresAt: data.expires_at
@@ -49,12 +49,12 @@ export const useGoogleTokens = () => {
         });
         setIsGoogleConnected(true);
       } else {
-        console.log('No Google tokens found for user');
+        console.log('[useGoogleTokens] No Google tokens found for user');
         setGoogleTokens(null);
         setIsGoogleConnected(false);
       }
     } catch (error) {
-      console.error('Error fetching Google tokens:', error);
+      console.error('[useGoogleTokens] Error fetching Google tokens:', error);
       setGoogleTokens(null);
       setIsGoogleConnected(false);
     } finally {
@@ -63,24 +63,25 @@ export const useGoogleTokens = () => {
     }
   }, []);
 
-  // Adicionar uma verificação periódica para atualização dos tokens
+  // Add periodic token check
   useEffect(() => {
     const checkTokensInterval = setInterval(async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        // Se passou mais de 30 segundos desde a última verificação, verificar novamente
+        // Check again if more than 30 seconds passed since last check
         if (Date.now() - lastChecked > 30000) {
-          console.log('Periodicalmente verificando tokens do Google...');
+          console.log('[useGoogleTokens] Periodically checking Google tokens...');
           fetchGoogleTokens(data.session);
         }
       }
-    }, 60000); // Verificar a cada minuto
+    }, 60000); // Check every minute
     
     return () => clearInterval(checkTokensInterval);
   }, [fetchGoogleTokens, lastChecked]);
 
-  // Função para forçar uma nova verificação dos tokens
+  // Function to force a token check
   const refreshTokensState = useCallback(async () => {
+    console.log('[useGoogleTokens] Forcing token state refresh');
     const { data } = await supabase.auth.getSession();
     await fetchGoogleTokens(data.session);
   }, [fetchGoogleTokens]);
