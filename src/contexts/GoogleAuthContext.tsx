@@ -11,6 +11,17 @@ interface GoogleTokens {
   expiresAt: number | null;
 }
 
+// Define a new interface for the user_google_tokens table
+interface UserGoogleToken {
+  id: string;
+  user_id: string;
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  created_at: string;
+  updated_at: string;
+}
+
 type GoogleAuthContextType = {
   googleTokens: GoogleTokens | null;
   isGoogleConnected: boolean;
@@ -39,11 +50,12 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       // Buscar perfil do usuário que contém os tokens do Google
+      // Use a generic type for the query result instead of relying on database types
       const { data, error } = await supabase
         .from('user_google_tokens')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
+        .single<UserGoogleToken>();
 
       if (error) {
         console.error('Erro ao buscar tokens do Google:', error);
@@ -175,6 +187,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     try {
       // Remover os tokens do banco de dados
+      // Use a string literal instead of relying on database types
       const { error } = await supabase
         .from('user_google_tokens')
         .delete()

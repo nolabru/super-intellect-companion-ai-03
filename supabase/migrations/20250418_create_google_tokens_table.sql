@@ -1,4 +1,13 @@
 
+-- Create Function to update updated_at column
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
 -- Tabela para armazenar tokens de acesso do Google
 CREATE TABLE IF NOT EXISTS public.user_google_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -28,7 +37,12 @@ CREATE POLICY "Usuários podem ver apenas seus próprios tokens" ON public.user_
     FOR SELECT
     USING (auth.uid() = user_id);
 
--- Política para permitir que a função Edge possa gerenciar os tokens
+-- Política para permitir que usuários gerenciem seus próprios tokens
+CREATE POLICY "Usuários podem gerenciar seus próprios tokens" ON public.user_google_tokens
+    FOR ALL
+    USING (auth.uid() = user_id);
+
+-- Política para permitir que a função Edge possa gerenciar todos os tokens
 CREATE POLICY "Service role pode gerenciar todos os tokens" ON public.user_google_tokens
-    USING (true)
-    WITH CHECK (true);
+    FOR ALL
+    USING (true);

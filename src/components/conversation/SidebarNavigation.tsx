@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { 
   MessageSquare, 
   Image, 
-  Memory, 
+  Brain as Memory, 
   Coins,
   LogOut,
   LogIn,
@@ -15,9 +15,13 @@ import {
 
 interface SidebarNavigationProps {
   closeMenu?: () => void;
+  onCreateConversation?: () => void;
 }
 
-const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ closeMenu }) => {
+const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ 
+  closeMenu,
+  onCreateConversation
+}) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();

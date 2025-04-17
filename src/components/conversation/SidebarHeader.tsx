@@ -55,7 +55,7 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         </div>
         
         <SidebarNavigation 
-          onCreateConversation={handleNewConversation} 
+          closeMenu={onToggleSidebar}
         />
       </div>
     </div>
