@@ -105,7 +105,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
         {/* Add Google services button */}
         <Button 
           onClick={() => {
-            setMessage(prev => prev + '@');
+            // Fix: Instead of using a function to update state, pass the new string value directly
+            setMessage(message + '@');
             setShowGoogleServices(true);
           }}
           variant="ghost" 
