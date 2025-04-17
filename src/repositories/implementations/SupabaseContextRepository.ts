@@ -2,6 +2,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ContextMessage, ContextParams } from '@/services/context/types/ContextTypes';
 import { ContextRepository } from '../ContextRepository';
+import { ChatMode } from '@/components/ModeSelector';
+import { validateChatMode } from '@/services/message/chatModeUtils';
 
 /**
  * Implementation of the ContextRepository using Supabase
@@ -61,7 +63,7 @@ export class SupabaseContextRepository implements ContextRepository {
         sender: this.normalizeSender(msg.sender),
         timestamp: msg.timestamp,
         model: msg.model,
-        mode: msg.mode,
+        mode: this.normalizeMode(msg.mode),
         files: msg.files,
         mediaUrl: msg.media_url
       }));
@@ -123,7 +125,7 @@ export class SupabaseContextRepository implements ContextRepository {
         sender: this.normalizeSender(msg.sender),
         timestamp: msg.timestamp,
         model: msg.model,
-        mode: msg.mode,
+        mode: this.normalizeMode(msg.mode),
         files: msg.files,
         mediaUrl: msg.media_url
       }));
@@ -208,7 +210,7 @@ export class SupabaseContextRepository implements ContextRepository {
         sender: this.normalizeSender(msg.sender),
         timestamp: msg.timestamp,
         model: msg.model,
-        mode: msg.mode,
+        mode: this.normalizeMode(msg.mode),
         files: msg.files,
         mediaUrl: msg.media_url
       }));
@@ -229,5 +231,14 @@ export class SupabaseContextRepository implements ContextRepository {
   private normalizeSender(sender: string): "user" | "assistant" {
     // Ensure sender is one of the allowed values
     return sender === "user" ? "user" : "assistant";
+  }
+
+  /**
+   * Normalize the mode field to ensure it's a valid ChatMode
+   * @param mode - Original mode value from database
+   * @returns Normalized ChatMode value
+   */
+  private normalizeMode(mode: string): ChatMode {
+    return validateChatMode(mode);
   }
 }
