@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
 import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
-import { prepareFullContext } from '@/utils/contextUtils';
+import { useContextOrchestrator } from './useContextOrchestrator';
 
 /**
  * Hook central para gerenciamento de envio de mensagens e contexto
@@ -33,6 +33,7 @@ export function useMessageHandler(
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
   const { isGoogleConnected, loading: googleAuthLoading, refreshTokensState } = useGoogleAuth();
+  const contextOrchestrator = useContextOrchestrator();
   
   useEffect(() => {
     console.log('[useMessageHandler] Estado de autenticação Google:', { 
@@ -127,16 +128,16 @@ export function useMessageHandler(
         }
       }
       
-      // Obter o contexto de memória do usuário
-      const userMemoryContext = await messageProcessing.getMemoryContext();
-      console.log(`[useMessageHandler] Contexto de memória obtido: ${userMemoryContext ? userMemoryContext.length : 0} caracteres`);
+      // Use the context orchestrator to build context
+      console.log(`[useMessageHandler] Building context for conversation ${currentConversationId}`);
+      const contextResult = await contextOrchestrator.buildContext(
+        currentConversationId,
+        comparing ? (leftModel || modelId) : modelId,
+        mode
+      );
       
-      // Preparar o contexto completo usando a função unificada para garantir consistência
-      const conversationContext = prepareFullContext(messages, userMemoryContext);
-      
-      console.log(`[useMessageHandler] Preparou contexto completo com ${conversationContext.length} caracteres`);
-      console.log(`[useMessageHandler] Primeiras 150 caracteres do contexto: ${conversationContext.substring(0, 150)}...`);
-      console.log(`[useMessageHandler] Últimos 150 caracteres do contexto: ${conversationContext.substring(conversationContext.length - 150)}...`);
+      // Log context details
+      console.log(`[useMessageHandler] Context built: ${contextResult.contextLength} chars, ${contextResult.includedMessages.length} messages`);
       
       let modeSwitch = null;
       
@@ -162,7 +163,7 @@ export function useMessageHandler(
           messages,
           files,
           params,
-          conversationContext,
+          contextResult.formattedContext,
           user?.id
         );
         
@@ -177,7 +178,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          conversationContext,
+          contextResult.formattedContext,
           user?.id
         );
         
@@ -192,7 +193,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          conversationContext,
+          contextResult.formattedContext,
           user?.id
         );
         
@@ -220,7 +221,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          conversationContext,
+          contextResult.formattedContext,
           user?.id,
           true // Skip adding user message as we already did it
         );
@@ -262,7 +263,8 @@ export function useMessageHandler(
     googleAuthLoading,
     refreshTokensState,
     lastMessageSent,
-    lastMessageTimestamp
+    lastMessageTimestamp,
+    contextOrchestrator
   ]);
 
   return {
