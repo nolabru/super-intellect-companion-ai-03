@@ -54,11 +54,11 @@ export class SupabaseContextRepository implements ContextRepository {
         throw error;
       }
       
-      // Transform to ContextMessage format
+      // Transform to ContextMessage format and ensure sender is either "user" or "assistant"
       const messages: ContextMessage[] = data.map(msg => ({
         id: msg.id,
         content: msg.content,
-        sender: msg.sender,
+        sender: this.normalizeSender(msg.sender),
         timestamp: msg.timestamp,
         model: msg.model,
         mode: msg.mode,
@@ -116,11 +116,11 @@ export class SupabaseContextRepository implements ContextRepository {
         throw error;
       }
       
-      // Transform to ContextMessage format
+      // Transform to ContextMessage format with normalized sender
       const messages: ContextMessage[] = data.map(msg => ({
         id: msg.id,
         content: msg.content,
-        sender: msg.sender,
+        sender: this.normalizeSender(msg.sender),
         timestamp: msg.timestamp,
         model: msg.model,
         mode: msg.mode,
@@ -201,11 +201,11 @@ export class SupabaseContextRepository implements ContextRepository {
         filteredData = data.filter(msg => msg.conversations.user_id === params.userId);
       }
       
-      // Transform to ContextMessage format
+      // Transform to ContextMessage format with normalized sender
       const messages: ContextMessage[] = filteredData.map(msg => ({
         id: msg.id,
         content: msg.content,
-        sender: msg.sender,
+        sender: this.normalizeSender(msg.sender),
         timestamp: msg.timestamp,
         model: msg.model,
         mode: msg.mode,
@@ -219,5 +219,15 @@ export class SupabaseContextRepository implements ContextRepository {
       console.error('[SupabaseContextRepository] Error in searchRelevantMessages:', err);
       return [];
     }
+  }
+
+  /**
+   * Normalize the sender field to ensure it's either "user" or "assistant"
+   * @param sender - Original sender value from database
+   * @returns Normalized sender value
+   */
+  private normalizeSender(sender: string): "user" | "assistant" {
+    // Ensure sender is one of the allowed values
+    return sender === "user" ? "user" : "assistant";
   }
 }
