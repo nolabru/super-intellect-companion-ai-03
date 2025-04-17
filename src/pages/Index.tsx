@@ -80,11 +80,11 @@ const Index: React.FC = () => {
     
     if (comparing) {
       if (isLinked) {
-        // Modo vinculado: enviar para ambos os modelos simultaneamente
+        // Modo vinculado: enviar para ambos os modelos
         result = await sendMessage(
           content, 
           activeMode, 
-          leftModel,
+          leftModel, // Pode ser qualquer um dos modelos, pois estamos enviando para ambos
           true,      // Modo de comparação ativo
           leftModel, 
           rightModel,
@@ -98,12 +98,13 @@ const Index: React.FC = () => {
           return;
         }
         
-        // No modo desvinculado, identificamos claramente para qual modelo a mensagem é direcionada
+        // No modo desvinculado, não estamos em modo de comparação verdadeiro
+        // para o modelo específico, então definimos comparing como false
         result = await sendMessage(
           content,
           activeMode,
           targetModel,
-          true, // Mantemos o modo de comparação ativo
+          true, // Mantemos o modo de comparação, mas indicamos qual é o modelo-alvo específico
           targetModel === leftModel ? leftModel : null,
           targetModel === rightModel ? rightModel : null,
           files,
@@ -117,8 +118,8 @@ const Index: React.FC = () => {
         activeMode, 
         leftModel, 
         false,   // Não é comparação
-        null,    // Não especificamos modelo esquerdo no modo único
-        null,    // Não especificamos modelo direito no modo único
+        leftModel, 
+        null,
         files,
         params
       );
@@ -262,7 +263,7 @@ const Index: React.FC = () => {
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
                 )}
-                <TokenDisplay />
+                <TokenDisplay />  {/* Added back in the original location */}
               </div>
             </div>
             

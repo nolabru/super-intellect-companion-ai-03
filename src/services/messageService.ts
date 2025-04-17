@@ -38,7 +38,7 @@ export const createMessageService = (
       timestamp: new Date().toISOString(),
       mode,
       files,
-      model: modelId // Atribuir o modelo específico à mensagem do usuário
+      model: modelId // Set specific model for user message in compare mode
     };
     
     setMessages(prev => [...prev, userMessage]);
@@ -72,19 +72,6 @@ export const createMessageService = (
     conversationHistory?: string,
     userId?: string
   ) => {
-    // Para o modo vinculado, criar uma única mensagem de usuário genérica (sem modelo específico)
-    const userMessage: MessageType = {
-      id: `user-${Date.now()}`,
-      content,
-      sender: 'user',
-      timestamp: new Date().toISOString(),
-      mode,
-      files
-      // Não definimos modelo específico para mensagens vinculadas
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    
     return handleCompareModels(
       content,
       mode,
