@@ -135,6 +135,11 @@ export function useMessageHandler(
     }
   }, [isGoogleConnected, verifyGooglePermissions]);
 
+  // Helper function to prepare conversation history
+  const prepareConversationHistory = (messageList: MessageType[]) => {
+    return messageList.map(msg => ({ sender: msg.sender, content: msg.content }));
+  };
+
   /**
    * Função principal para enviar mensagens aos modelos
    */
@@ -250,7 +255,7 @@ export function useMessageHandler(
           currentConversationId,
           files,
           params,
-          conversationHistory,
+          prepareConversationHistory(messages),
           user?.id
         );
         
@@ -266,7 +271,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          conversationHistory,
+          prepareConversationHistory(messages),
           user?.id
         );
         
@@ -305,9 +310,4 @@ export function useMessageHandler(
     detectContentType: messageProcessing.detectContentType,
     detectGoogleServiceCommand
   };
-}
-
-// Preparar histórico da conversa para o orquestrador
-function conversationHistory(messages: any[]) {
-  return messages.map(msg => ({ sender: msg.sender, content: msg.content }));
 }
