@@ -88,6 +88,22 @@ src/
 └── docs/            # Documentação do projeto
 ```
 
+### 2.4. Camada de Integração Google Workspace
+
+Para desacoplar a lógica específica das APIs Google e escalar independentemente do core da aplicação, adicionamos uma camada dedicada composta por:
+
+- **Google Integration Gateway (Edge Function)** – roteia requisições `@calendar`, `@sheet`, `@doc`, aplica cooldowns e verifica quotas.
+- **Google Worker (Deno/Node)** – processa chamadas REST do Google, gerencia back‑off exponencial e publica resultados via supabase.realtime.
+- **Token Refresh Scheduler** – job `pg_cron` que renova tokens cujo `expires_at` ocorrerá em < 5 min.
+- **Webhook Listener** (futuro) – assina notificações push do Google Calendar/Drive para sincronização bidirecional.
+
+```
+Frontend ⇆ SSE ⇆ BFF ⇆ Google Gateway → Queue → Google Worker → Google APIs
+                                       ↘ (Token Refresh)
+```
+
+Este design evita bloqueio da UI, permite retries robustos e mantém observabilidade separada para chamadas Google.
+
 ## 3. Sistema de Autenticação
 
 ### 3.1. Fluxo de Autenticação
@@ -263,36 +279,149 @@ src/
 - `user_tokens`: Armazena saldo e uso de tokens
 - `token_consumption_rates`: Define taxas de consumo por modelo/modo
 
-## 8. Integração com Google
+## 8. Integração com Google Workspace (Gateway + Workers)
 
-### 8.1. Fluxo de Integração com Google
+A camada Google Workspace foi reforçada para garantir **persistência robusta de tokens** e **verificação de permissões em tempo real**, evitando o problema de "não autorizado" após login.
 
-1. Usuário conecta conta Google através da interface da aplicação
-2. Sistema obtém e armazena tokens OAuth
-3. Tokens são usados para acessar serviços Google em nome do usuário
-4. Sistema gerencia refresh de tokens automaticamente
-5. Usuário pode desconectar a conta Google a qualquer momento
+### 8.1. Fluxo de Autorização End‑to‑End
 
-### 8.2. Componentes e Serviços Principais
+1. **OAuth Sign‑in**  – `supabase.auth.signInWithOAuth('google')` redireciona para a tela de consentimento.
+2. **Edge Function `/google-oauth-callback`**
+   1. Troca o `code` por `access_token`, `refresh_token`, `expires_in`.
+   2. **Decodifica `scope`** retornado pelo Google e grava em coluna **`scopes TEXT[]`**.
+   3. Insere (ou upserta) registro em `user_google_tokens` usando uma *Service Role* para bypassar RLS.
+3. **Persistência / RLS**
+   ```sql
+   ALTER TABLE public.user_google_tokens
+     ADD COLUMN scopes TEXT[] NOT NULL DEFAULT '{}';
 
-- `GoogleAuthContext.tsx`: Gerencia estado de autenticação Google
-- `GoogleIntegrationsPage.tsx`: Página para gerenciar integrações Google
-- `useGoogleTokens.ts`: Hook para gerenciar tokens Google
-- `googleAuthOperations.ts`: Operações relacionadas à autenticação Google
+   -- Cada usuário só enxerga seus tokens
+   CREATE POLICY "Tokens are private" ON public.user_google_tokens
+     USING (user_id = auth.uid());
+   ```
+4. **Token Manager (Gateway)**
+   - Para cada requisição `@calendar/@sheet/@doc`, carrega tokens + scopes.
+   - Se `expires_at < now() + INTERVAL '3 min'` → chama `/google-token-refresh` antes de prosseguir.
+   - Se escopos necessários não estão em `scopes` → retorna erro `MISSING_SCOPE`, o frontend orienta o usuário a reconectar.
+5. **Google Worker** executa a chamada REST já com o `access_token` atualizado.
+6. **Erro 401 ou 403**
+   - Primeiro tenta *refresh* imediato.
+   - Persistindo falha → apaga tokens + emite evento `GOOGLE_RECONNECT_REQUIRED` via `supabase.realtime`.
 
-### 8.3. Edge Functions Relacionadas
+### 8.2. Scheduler de Renovação Proativa
 
-- `google-oauth-callback`: Processa callbacks de autenticação Google
-- `google-token-refresh`: Atualiza tokens Google expirados
-- `google-verify-permissions`: Verifica permissões da conta Google
+Job **`pg_cron`** roda a cada 15 min:
+```sql
+SELECT refresh_google_token(user_id)
+  FROM user_google_tokens
+  WHERE expires_at < extract(epoch FROM now()) + 900;
+```
+Proc `refresh_google_token()` encapsula a chamada HTTP para `/google-token-refresh`.
 
-### 8.4. Tabelas de Banco de Dados Relacionadas
+### 8.3. Verificação de Permissões (Edge Function `/google-verify-permissions`)
 
-- `user_google_tokens`: Armazena tokens OAuth do Google
+```ts
+export default async (req: Request) => {
+  const { user_id, required_scopes } = await req.json();
+  const { data } = await supabase
+    .from('user_google_tokens')
+    .select('scopes')
+    .eq('user_id', user_id)
+    .single();
+  const hasAll = required_scopes.every((s: string) => data.scopes.includes(s));
+  return Response.json({ authorized: hasAll });
+};
+```
+Frontend/Agents chamam antes de cada ação e, em caso negativo, solicitam reconexão Google ao usuário.
 
-## 9. Comunicação com API e Edge Functions
+### 8.4. Checklist de Debug
 
-### 9.1. Fluxo de Comunicação com API
+- **Falha ao salvar tokens?** Confirme que a *Service Role key* está sendo usada na função `google-oauth-callback`.
+- **Não encontra tokens?** Verifique se RLS policy acima está publicada e `auth.uid()` corresponde ao `user_id` salvo.
+- **Erro de escopo insuficiente?** Peça reconexão com scopes adicionais.
+- **Tokens expiram rápido?** Garanta que `refresh_token` é pedido com `access_type=offline` e `prompt=consent`.
+
+## 9. Agentes Google Suite (@calendar, @sheet, @doc)
+
+### 9.1. Preambulo de Atualização (System Prompt Comum)
+
+```txt
+🚀 ATUALIZAÇÃO DE CAPACIDADES (v‑Google‑Suite)
+
+Você acaba de receber três novas funções via Edge Functions que permitem ao usuário interagir com o Google Workspace:
+
+  • @calendar  →  cria eventos no Google Calendar  
+  • @sheet     →  lê ou escreve em planilhas Google Sheets  
+  • @doc       →  cria ou atualiza documentos Google Docs  
+
+Padrão de uso:
+1. Detecte se a mensagem contém um desses comandos.
+2. Adote o papel do agente especializado correspondente.
+3. Conduza um diálogo em português para coletar **apenas** os dados indispensáveis.
+4. Quando tiver tudo, invoque a *tool* apropriada.  
+5. Após a resposta da tool, confirme a ação ao usuário (link + pequeno resumo).
+
+⚠️ Não invente informações, não chame tool sem validar campos e nunca exponha tokens.
+```
+
+### 9.2. Fluxo Mult‑Agente
+
+```
+Usuário ─► Analyzer ─► ( @calendar ) ─► CalendarAgent ─► create_event tool
+                       ( @sheet )    ─► SheetsAgent  ─► sheet_write/read tool
+                       ( @doc )      ─► DocsAgent    ─► doc_create/update tool
+```
+
+### 9.3. CalendarAgent
+
+**System Prompt (após o preâmbulo):**
+```txt
+Você é o CalendarAgent. Seu papel é ajudar o usuário a criar eventos no Google Calendar.
+
+1. Verifique se já possui: título (summary), início (start), fim (end), convidados (attendees opcional), descrição opcional.
+2. Se faltar algo, faça perguntas curtas até completar tudo.
+3. Quando tudo estiver preenchido, chame a tool `create_event`. Aguarde a resposta JSON.
+4. Confirme criação ao usuário com link: https://calendar.google.com/calendar/event?eid=<eventId>.
+```
+
+**Tool Definition**
+```jsonc
+{
+  "name": "create_event",
+  "endpoint": "/google/calendar/createEvent",
+  "parameters": {
+    "summary": "string",
+    "description": "string",
+    "start": "date-time",
+    "end": "date-time",
+    "attendees": ["email"]
+  }
+}
+```
+
+### 9.4. SheetsAgent
+
+System Prompt, tool `sheet_write` / `sheet_read` com campos `spreadsheetId`, `range`, `values`.
+
+### 9.5. DocsAgent
+
+System Prompt, tool `doc_create` / `doc_update` com campos `title`, `contentMarkdown`, `docId`.
+
+### 9.6. Edge Functions (Deno) Necessárias
+
+- `/google/calendar/createEvent.ts`
+- `/google/sheets/write.ts`
+- `/google/docs/create.ts`
+
+Cada função:
+1. Recupera tokens do usuário em `user_google_tokens`.
+2. Instancia cliente Google (googleapis.deno.dev).
+3. Executa operação solicitada.
+4. Retorna JSON com ID/link.
+
+## 10. Comunicação com API e Edge Functions
+
+### 10.1. Fluxo de Comunicação com API
 
 1. Frontend faz requisição para Edge Function via `useApiService`
 2. Edge Function recebe e valida a requisição
@@ -300,7 +429,7 @@ src/
 4. Resultado é retornado ao frontend
 5. Frontend atualiza a UI com base na resposta
 
-### 9.2. Principais Edge Functions
+### 10.2. Principais Edge Functions
 
 - `ai-chat`: Função principal para interação com modelos de IA
 - `media-storage`: Gerencia armazenamento de mídia
@@ -308,55 +437,62 @@ src/
 - `user-tokens`: Gerencia consumo de tokens
 - `google-oauth-callback`: Processa callbacks OAuth do Google
 - `google-token-refresh`: Atualiza tokens Google
+- `google/calendar/createEvent`: Cria eventos no Google Calendar
+- `google/sheets/write`: Escreve em planilhas do Google Sheets
+- `google/docs/create`: Cria documentos no Google Docs
 
-### 9.3. Serviços e Hooks Principais
+### 10.3. Serviços e Hooks Principais
 
 - `useApiService.ts`: Hook para comunicação com Edge Functions
 - `apiRequestService.ts`: Serviço para envio de requisições
 - `mediaStorageService.ts`: Serviço para armazenamento de mídia
 - `messageService.ts`: Serviço para processamento de mensagens
 
-## 10. Tratamento de Erros e Sistema de Logging
+## 11. Tratamento de Erros e Sistema de Logging
 
-### 10.1. Estratégia de Tratamento de Erros
+### 11.1. Estratégia de Tratamento de Erros
 
 1. Erros de UI são exibidos como notificações toast
 2. Erros de API são logados e retornados ao cliente em formato estruturado
 3. Erros críticos são capturados por boundary de erro React
 4. Todo o sistema utiliza try-catch para operações assíncronas
 5. Estados de erro e carregamento são gerenciados para feedback visual
+6. Erros específicos das APIs Google têm tratamento especializado:
+   - `MISSING_SCOPE`: Solicita ao usuário reconectar com permissões adicionais
+   - `TOKEN_EXPIRED`: Tenta refresh automático, ou solicita reconexão
+   - `QUOTA_EXCEEDED`: Informa limite de API atingido e sugere tentar mais tarde
 
-### 10.2. Sistema de Logging
+### 11.2. Sistema de Logging
 
 1. Console logging no frontend para desenvolvimento
 2. Logging estruturado nas Edge Functions
 3. Erros de serviços externos são capturados e formatados
 4. Informações sensíveis são filtradas dos logs
 
-## 11. Requisitos do Sistema
+## 12. Requisitos do Sistema
 
-### 11.1. Requisitos de Navegador
+### 12.1. Requisitos de Navegador
 
 - **Chrome**: Versão 80+
 - **Firefox**: Versão 78+
 - **Safari**: Versão 14+
 - **Edge**: Versão 80+
 
-### 11.2. Requisitos de Desempenho
+### 12.2. Requisitos de Desempenho
 
 - **Tempo de Resposta**: Respostas de IA em até 5 segundos
 - **Responsividade da UI**: Atualizações de interface em até 100ms
 - **Usuários Concorrentes**: Suporte para milhares de usuários simultâneos
 
-### 11.3. Requisitos de Confiabilidade
+### 12.3. Requisitos de Confiabilidade
 
 - **Uptime**: Disponibilidade de 99,9%
 - **Persistência de Dados**: Sem perda de dados durante operações normais
 - **Recuperação de Erros**: Tratamento elegante de falhas de API
 
-## 12. Fluxos de Trabalho Detalhados
+## 13. Fluxos de Trabalho Detalhados
 
-### 12.1. Fluxo de Criação de Nova Conversa
+### 13.1. Fluxo de Criação de Nova Conversa
 
 ```mermaid
 sequenceDiagram
@@ -376,7 +512,7 @@ sequenceDiagram
     State-->>UI: Atualiza UI com conversa vazia
 ```
 
-### 12.2. Fluxo de Envio de Mensagem
+### 13.2. Fluxo de Envio de Mensagem
 
 ```mermaid
 sequenceDiagram
@@ -398,7 +534,7 @@ sequenceDiagram
     State-->>UI: Atualiza UI com resposta
 ```
 
-### 12.3. Fluxo de Geração de Mídia
+### 13.3. Fluxo de Geração de Mídia
 
 ```mermaid
 sequenceDiagram
@@ -424,7 +560,7 @@ sequenceDiagram
     State-->>UI: Atualiza UI com mídia
 ```
 
-### 12.4. Fluxo de Operação do Modo de Comparação
+### 13.4. Fluxo de Operação do Modo de Comparação
 
 ```mermaid
 sequenceDiagram
@@ -458,7 +594,7 @@ sequenceDiagram
     State-->>UI: Atualiza UI com comparação
 ```
 
-### 12.5. Fluxo de Integração com Google
+### 13.5. Fluxo de Integração com Google
 
 ```mermaid
 sequenceDiagram
@@ -482,25 +618,55 @@ sequenceDiagram
     DB-->>UI: Confirma conexão estabelecida
 ```
 
-## 13. Considerações Futuras e Melhorias
+### 13.6. Fluxo de Agentes Google Suite
 
-### 13.1. Melhorias Técnicas Potenciais
+```mermaid
+sequenceDiagram
+    participant User as Usuário
+    participant UI as Interface
+    participant Analyzer as Analyzer
+    participant Agent as Agente Google
+    participant EF as Edge Function
+    participant Google as Google API
+    participant DB as Banco de Dados
+
+    User->>UI: Mensagem com @calendar
+    UI->>Analyzer: Detecta comando
+    Analyzer->>Agent: Roteia para CalendarAgent
+    Agent->>User: Pergunta dados faltantes
+    User->>Agent: Fornece dados
+    Agent->>EF: create_event (summary,start,end...)
+    EF->>DB: Busca tokens
+    EF->>Google: Cria evento
+    Google-->>EF: Retorna eventId
+    EF-->>Agent: {"eventId": "abc"}
+    Agent-->>User: Confirma evento (link)
+```
+
+## 14. Considerações Futuras e Melhorias
+
+### 14.1. Melhorias Técnicas Potenciais
 
 - Implementação de caching local para melhor desempenho offline
 - Paginação de mensagens para conversas muito longas
 - Sistema de tags para organização de conversas
 - Análise de sentimento e resumo automático de conversas
 
-### 13.2. Expansões Funcionais Potenciais
+### 14.2. Expansões Funcionais Potenciais
 
 - Suporte a múltiplos idiomas
 - Integração com mais modelos de IA especializados
 - Colaboração em tempo real entre múltiplos usuários
 - Ferramentas de edição para mídia gerada
 - Integração com mais serviços externos (além do Google)
+- Suporte a múltiplas contas Google por usuário
+- Manipulação de arquivos Google Drive (`@drive` futuro)
+- Sincronização bidirecional de eventos
 
-## 14. Conclusão
+## 15. Conclusão
 
 O Super Intellect Companion AI é uma plataforma robusta e versátil para interação com múltiplos modelos de IA através de diferentes modalidades. A arquitetura modular e o uso de tecnologias modernas permitem uma experiência de usuário fluida e extensível. O sistema de autenticação, conversação, memória, e galeria de mídia trabalham em conjunto para fornecer uma solução completa para geração e gerenciamento de conteúdo baseado em IA.
+
+Com os novos agentes Google Suite, o Super Intellect Companion AI agora permite a criação de eventos, edição de planilhas e geração de documentos diretamente no fluxo de conversa, elevando a produtividade do usuário sem sair da plataforma.
 
 A documentação acima fornece uma visão abrangente da arquitetura, funcionalidades, fluxos de trabalho e componentes do sistema, servindo como referência para desenvolvimento, manutenção e expansão futura.
