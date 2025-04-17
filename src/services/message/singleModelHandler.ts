@@ -40,8 +40,26 @@ export const handleSingleModelMessage = async (
     mediaType: string,
     modelId: string,
     params?: LumaParams
-  ) => Promise<any>
+  ) => Promise<any>,
+  skipUserMessage: boolean = false // Novo parâmetro para controlar a criação da mensagem do usuário
 ) => {
+  // Criar mensagem do usuário se não for para pular
+  if (!skipUserMessage) {
+    const userMessageId = uuidv4();
+    const userMessage: MessageType = {
+      id: userMessageId,
+      content,
+      sender: 'user',
+      timestamp: new Date().toISOString(),
+      model: modelId, // Define o modelo específico para a mensagem do usuário
+      mode,
+      files
+    };
+    
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    await saveMessageToDatabase(userMessage, conversationId);
+  }
+
   // Adicionar mensagem de carregamento
   const loadingId = `loading-${modelId}-${uuidv4()}`;
   const loadingMessage = getLoadingMessage(mode, modelId);

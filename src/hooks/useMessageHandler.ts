@@ -190,7 +190,7 @@ export function useMessageHandler(
         modeSwitch = result?.modeSwitch || null;
       } else {
         // Modo padrão - modelo único
-        // Criamos uma mensagem de usuário genérica
+        // Criamos a mensagem de usuário uma única vez aqui
         const userMessageId = uuidv4();
         const userMessage: MessageType = {
           id: userMessageId,
@@ -204,6 +204,7 @@ export function useMessageHandler(
         setMessages(prev => [...prev, userMessage]);
         await saveUserMessage(userMessage, currentConversationId);
         
+        // Modificação: Flag indicando que não deve criar nova mensagem de usuário
         const result = await messageService.handleSingleModelMessage(
           content, // Usar conteúdo original
           mode,
@@ -214,7 +215,9 @@ export function useMessageHandler(
           files,
           params,
           conversationHistory,
-          user?.id
+          user?.id,
+          // Não criar nova mensagem de usuário, pois já foi criada
+          false
         );
         
         modeSwitch = result?.modeSwitch || null;

@@ -28,20 +28,23 @@ export const createMessageService = (
     files?: string[],
     params?: LumaParams,
     conversationHistory?: string,
-    userId?: string
+    userId?: string,
+    skipUserMessage: boolean = false // Novo parâmetro para controlar se deve criar a mensagem do usuário
   ) => {
-    // Create user message with specific model target in compare mode
-    const userMessage: MessageType = {
-      id: `user-${Date.now()}`,
-      content,
-      sender: 'user',
-      timestamp: new Date().toISOString(),
-      mode,
-      files,
-      model: modelId // Set specific model for user message in compare mode
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
+    // Create user message with specific model target in compare mode - only if not skipped
+    if (!skipUserMessage) {
+      const userMessage: MessageType = {
+        id: `user-${Date.now()}`,
+        content,
+        sender: 'user',
+        timestamp: new Date().toISOString(),
+        mode,
+        files,
+        model: modelId // Set specific model for user message in compare mode
+      };
+      
+      setMessages(prev => [...prev, userMessage]);
+    }
 
     return handleSingleModelMessage(
       content,
@@ -56,7 +59,8 @@ export const createMessageService = (
       userId,
       setMessages,
       apiService.sendRequest,
-      mediaGallery.saveMediaToGallery
+      mediaGallery.saveMediaToGallery,
+      skipUserMessage // Passa o parâmetro para o handler
     );
   };
   
