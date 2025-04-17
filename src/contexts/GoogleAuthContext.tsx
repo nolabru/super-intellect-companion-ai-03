@@ -51,7 +51,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       // Use the raw query method to avoid TypeScript issues with database schema types
       const { data, error } = await supabase
-        .rpc('get_google_tokens_for_user', { user_id_param: session.user.id });
+        .from('user_google_tokens')
+        .select('*')
+        .eq('user_id', session.user.id);
 
       if (error) {
         console.error('Erro ao buscar tokens do Google:', error);
@@ -183,9 +185,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!user) return;
 
     try {
-      // Use a custom RPC function to delete the tokens
+      // Delete tokens directly from the table instead of using RPC
       const { error } = await supabase
-        .rpc('delete_google_tokens_for_user', { user_id_param: user.id });
+        .from('user_google_tokens')
+        .delete()
+        .eq('user_id', user.id);
 
       if (error) {
         throw error;
