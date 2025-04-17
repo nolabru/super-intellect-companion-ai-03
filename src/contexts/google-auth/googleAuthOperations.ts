@@ -1,7 +1,7 @@
 
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { GoogleTokens } from "./types";
+import { GoogleTokens, GoogleConnectionState } from "./types";
 import { toast } from "sonner";
 
 /**
@@ -10,15 +10,19 @@ import { toast } from "sonner";
 export const refreshGoogleTokens = async (
   user: User | null,
   googleTokens: GoogleTokens | null,
-  setGoogleTokens: (tokens: GoogleTokens | null) => void
+  setGoogleTokens: (tokens: GoogleTokens | null) => void,
+  setConnectionState?: (state: GoogleConnectionState) => void
 ): Promise<boolean> => {
   if (!user || !googleTokens || !googleTokens.refreshToken) {
-    console.error("Cannot refresh Google tokens: missing user or refresh token");
+    console.error("[googleAuthOperations] Cannot refresh Google tokens: missing user or refresh token");
+    setConnectionState?.(GoogleConnectionState.ERROR);
     return false;
   }
 
   try {
-    console.log("Refreshing Google tokens...");
+    console.log("[googleAuthOperations] Refreshing Google tokens...");
+    setConnectionState?.(GoogleConnectionState.CONNECTING);
+    
     const { data, error } = await supabase.functions.invoke("google-token-refresh", {
       body: {
         userId: user.id,
@@ -27,7 +31,8 @@ export const refreshGoogleTokens = async (
     });
 
     if (error || !data.success) {
-      console.error("Error refreshing Google tokens:", error || data.error);
+      console.error("[googleAuthOperations] Error refreshing Google tokens:", error || data.error);
+      setConnectionState?.(GoogleConnectionState.ERROR);
       return false;
     }
 
@@ -38,10 +43,12 @@ export const refreshGoogleTokens = async (
       expiresAt: data.expiresAt,
     });
 
-    console.log("Google tokens refreshed successfully");
+    setConnectionState?.(GoogleConnectionState.CONNECTED);
+    console.log("[googleAuthOperations] Google tokens refreshed successfully");
     return true;
   } catch (error) {
-    console.error("Error during Google token refresh:", error);
+    console.error("[googleAuthOperations] Error during Google token refresh:", error);
+    setConnectionState?.(GoogleConnectionState.ERROR);
     return false;
   }
 };
@@ -52,28 +59,34 @@ export const refreshGoogleTokens = async (
 export const checkGooglePermissions = async (
   user: User | null,
   googleTokens: GoogleTokens | null,
-  refreshTokens: () => Promise<boolean>
+  refreshTokens: () => Promise<boolean>,
+  setConnectionState?: (state: GoogleConnectionState) => void
 ): Promise<boolean> => {
   if (!user || !googleTokens) {
-    console.error("Cannot check Google permissions: user not logged in or no Google tokens");
+    console.error("[googleAuthOperations] Cannot check Google permissions: user not logged in or no Google tokens");
+    setConnectionState?.(GoogleConnectionState.DISCONNECTED);
     return false;
   }
 
   // Verificar se o token está expirado
   const now = Math.floor(Date.now() / 1000);
   if (googleTokens.expiresAt <= now) {
-    console.log("Google token expired, attempting to refresh");
+    console.log("[googleAuthOperations] Google token expired, attempting to refresh");
+    setConnectionState?.(GoogleConnectionState.CONNECTING);
     const refreshed = await refreshTokens();
     if (!refreshed) {
       toast.error("Falha ao atualizar permissões Google", {
         description: "Por favor, faça login novamente com sua conta Google.",
       });
+      setConnectionState?.(GoogleConnectionState.ERROR);
       return false;
     }
   }
 
   try {
-    console.log("Checking Google permissions...");
+    console.log("[googleAuthOperations] Checking Google permissions...");
+    setConnectionState?.(GoogleConnectionState.CONNECTING);
+    
     const { data, error } = await supabase.functions.invoke("google-verify-permissions", {
       body: {
         userId: user.id,
@@ -81,13 +94,16 @@ export const checkGooglePermissions = async (
     });
 
     if (error || !data.success) {
-      console.error("Error verifying Google permissions:", error || data.error);
+      console.error("[googleAuthOperations] Error verifying Google permissions:", error || data.error);
+      setConnectionState?.(GoogleConnectionState.ERROR);
       return false;
     }
 
+    setConnectionState?.(GoogleConnectionState.CONNECTED);
     return true;
   } catch (error) {
-    console.error("Error during Google permissions check:", error);
+    console.error("[googleAuthOperations] Error during Google permissions check:", error);
+    setConnectionState?.(GoogleConnectionState.ERROR);
     return false;
   }
 };
@@ -98,39 +114,45 @@ export const checkGooglePermissions = async (
 export const disconnectGoogle = async (
   user: User | null,
   setGoogleTokens: (tokens: GoogleTokens | null) => void,
-  setIsGoogleConnected: (connected: boolean) => void
+  setIsGoogleConnected: (connected: boolean) => void,
+  setConnectionState?: (state: GoogleConnectionState) => void
 ): Promise<void> => {
   if (!user) {
-    console.error("Cannot disconnect Google: user not logged in");
+    console.error("[googleAuthOperations] Cannot disconnect Google: user not logged in");
     return;
   }
 
   try {
-    console.log("Disconnecting Google account...");
+    console.log("[googleAuthOperations] Disconnecting Google account...");
+    setConnectionState?.(GoogleConnectionState.CONNECTING);
+    
     const { error } = await supabase
       .from("user_google_tokens")
       .delete()
       .eq("user_id", user.id);
 
     if (error) {
-      console.error("Error disconnecting Google account:", error);
+      console.error("[googleAuthOperations] Error disconnecting Google account:", error);
       toast.error("Erro ao desconectar conta Google", {
         description: "Tente novamente mais tarde.",
       });
+      setConnectionState?.(GoogleConnectionState.ERROR);
       return;
     }
 
     // Limpar tokens locais
     setGoogleTokens(null);
     setIsGoogleConnected(false);
+    setConnectionState?.(GoogleConnectionState.DISCONNECTED);
 
     toast.success("Conta Google desconectada", {
       description: "Sua conta Google foi desconectada com sucesso.",
     });
   } catch (error) {
-    console.error("Error during Google disconnection:", error);
+    console.error("[googleAuthOperations] Error during Google disconnection:", error);
     toast.error("Erro ao desconectar conta Google", {
       description: "Tente novamente mais tarde.",
     });
+    setConnectionState?.(GoogleConnectionState.ERROR);
   }
 };

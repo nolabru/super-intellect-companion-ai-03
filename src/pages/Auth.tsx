@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,18 +7,9 @@ import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
+import { GOOGLE_SCOPES } from '@/contexts/google-auth/types';
 
 type AuthMode = 'login' | 'signup';
-
-// Google scopes necessários para a aplicação
-const GOOGLE_SCOPES = [
-  'https://www.googleapis.com/auth/drive',
-  'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile'
-];
 
 const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -26,6 +17,7 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>('login');
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Verificar se o usuário já está autenticado
   useEffect(() => {
@@ -74,15 +66,17 @@ const Auth: React.FC = () => {
               
               // Check if it's a Google login
               if (params.has('provider') && params.get('provider') === 'google') {
-                console.log('[Auth] Google login detected, checking tokens...');
+                console.log('[Auth] Google login detected, waiting for tokens to be processed...');
                 
-                // Wait a bit longer for Google tokens to be processed by database triggers
+                // Wait longer for Google tokens to be processed by database triggers
+                toast.success('Login successful', { 
+                  description: 'Setting up your Google access...' 
+                });
+                
+                // Redirect to home page - token processing is handled by GoogleAuthContext
                 setTimeout(() => {
-                  toast.success('Login successful', { 
-                    description: 'Google account connected! You can now use Google commands.'
-                  });
                   navigate('/');
-                }, 3000);
+                }, 5000);
               } else {
                 toast.success('Login successful');
                 navigate('/');
@@ -92,9 +86,8 @@ const Auth: React.FC = () => {
               toast.error('Failed to establish session', {
                 description: 'Please try logging in again'
               });
+              setLoading(false);
             }
-            
-            setLoading(false);
           }, 2500);
           
         } catch (error) {
@@ -104,11 +97,14 @@ const Auth: React.FC = () => {
           });
           setLoading(false);
         }
+      } else {
+        // Not an OAuth redirect, just regular page load
+        setLoading(false);
       }
     };
 
     handleAuthRedirect();
-  }, [navigate]);
+  }, [navigate, location]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,6 +163,9 @@ const Auth: React.FC = () => {
       });
 
       if (error) throw error;
+      
+      // Loading state is maintained until redirect happens
+      toast.info('Redirecting to Google login...');
     } catch (error: any) {
       console.error('[Auth] Google login error:', error);
       toast.error(

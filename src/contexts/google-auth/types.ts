@@ -27,13 +27,22 @@ export interface GoogleTokens {
   expiresAt: number;
 }
 
+// Estado de conexão Google
+export enum GoogleConnectionState {
+  DISCONNECTED = 'disconnected',
+  CONNECTING = 'connecting',
+  CONNECTED = 'connected',
+  ERROR = 'error'
+}
+
 // Interface do contexto de autenticação Google
 export interface GoogleAuthContextType {
   googleTokens: GoogleTokens | null;
   isGoogleConnected: boolean;
   loading: boolean;
+  connectionState: GoogleConnectionState;
   refreshGoogleTokens: () => Promise<boolean>;
   checkGooglePermissions: () => Promise<boolean>;
   disconnectGoogle: () => Promise<void>;
-  refreshTokensState: () => Promise<void>; // Added missing property
+  refreshTokensState: () => Promise<void>;
 }
