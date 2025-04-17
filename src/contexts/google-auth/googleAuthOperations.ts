@@ -67,22 +67,22 @@ export const checkGooglePermissions = async (
     return false;
   }
 
-  // Check if token is expired
-  const now = Math.floor(Date.now() / 1000);
-  console.log(`[googleAuthOperations] Current time: ${now}, Token expires at: ${googleTokens.expiresAt}`);
-  
-  if (googleTokens.expiresAt && googleTokens.expiresAt < now) {
-    console.log('[googleAuthOperations] Google token expired, attempting to refresh');
-    // Token expired, try to refresh
-    const refreshed = await refreshTokensFunc();
-    if (!refreshed) {
-      console.log('[googleAuthOperations] Failed to refresh expired token');
-      return false;
-    }
-    console.log('[googleAuthOperations] Token refreshed successfully');
-  }
-
   try {
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000);
+    console.log(`[googleAuthOperations] Current time: ${now}, Token expires at: ${googleTokens.expiresAt}`);
+    
+    if (googleTokens.expiresAt && googleTokens.expiresAt < now) {
+      console.log('[googleAuthOperations] Google token expired, attempting to refresh');
+      // Token expired, try to refresh
+      const refreshed = await refreshTokensFunc();
+      if (!refreshed) {
+        console.log('[googleAuthOperations] Failed to refresh expired token');
+        return false;
+      }
+      console.log('[googleAuthOperations] Token refreshed successfully');
+    }
+
     console.log('[googleAuthOperations] Verifying Google permissions with token');
     // Call a simple Google API to check if the token is working
     const { data, error } = await supabase.functions.invoke('google-verify-permissions', {
@@ -108,10 +108,10 @@ export const checkGooglePermissions = async (
     // If the verification failed due to token expiration (which the Google API may indicate),
     // try to refresh the token and verify again
     if (data && !data.success && data.error === 'invalid_token') {
-      console.log('[googleAuthOperations] Token inválido detectado, tentando atualizar...');
+      console.log('[googleAuthOperations] Invalid token detected, attempting to refresh...');
       const refreshed = await refreshTokensFunc();
       if (!refreshed) {
-        console.log('[googleAuthOperations] Falha ao atualizar token inválido');
+        console.log('[googleAuthOperations] Failed to refresh invalid token');
         return false;
       }
       
@@ -168,5 +168,6 @@ export const disconnectGoogle = async (
       'Erro ao desconectar',
       { description: 'Não foi possível desconectar sua conta Google.' }
     );
+    throw error;
   }
 };

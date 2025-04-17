@@ -20,17 +20,17 @@ export const useGoogleTokens = () => {
       return null;
     }
 
-    // Avoid multiple rapid calls
-    const now = Date.now();
-    if (now - lastFetchTime < 1000) {
-      console.log('[useGoogleTokens] Throttling fetch calls');
-      return googleTokens;
-    }
-    
-    setLastFetchTime(now);
-    setLoading(true);
-
     try {
+      // Avoid multiple rapid calls
+      const now = Date.now();
+      if (now - lastFetchTime < 1000) {
+        console.log('[useGoogleTokens] Throttling fetch calls');
+        return googleTokens;
+      }
+      
+      setLastFetchTime(now);
+      setLoading(true);
+
       console.log(`[useGoogleTokens] Fetching Google tokens for user ${session.user.id}`);
       
       const { data, error } = await supabase
