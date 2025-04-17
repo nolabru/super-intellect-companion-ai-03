@@ -17,14 +17,14 @@ export const useGoogleTokens = () => {
       setGoogleTokens(null);
       setIsGoogleConnected(false);
       setLoading(false);
-      return;
+      return null;
     }
 
     // Avoid multiple rapid calls
     const now = Date.now();
     if (now - lastFetchTime < 1000) {
       console.log('[useGoogleTokens] Throttling fetch calls');
-      return;
+      return googleTokens;
     }
     
     setLastFetchTime(now);
@@ -33,7 +33,6 @@ export const useGoogleTokens = () => {
     try {
       console.log(`[useGoogleTokens] Fetching Google tokens for user ${session.user.id}`);
       
-      // Use the generic Supabase functions to avoid typing issues
       const { data, error } = await supabase
         .from('user_google_tokens')
         .select('*')
@@ -44,7 +43,11 @@ export const useGoogleTokens = () => {
         console.error('[useGoogleTokens] Error fetching Google tokens:', error);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
-      } else if (data) {
+        setLoading(false);
+        return null;
+      } 
+      
+      if (data) {
         console.log('[useGoogleTokens] Google tokens found:', data);
         
         // Force type casting since TypeScript doesn't know about this table
@@ -58,26 +61,31 @@ export const useGoogleTokens = () => {
           console.log('[useGoogleTokens] Token expired, will need refresh');
         }
         
-        setGoogleTokens({
+        const tokens = {
           accessToken: tokenData.access_token,
           refreshToken: tokenData.refresh_token,
           expiresAt: tokenData.expires_at,
-        });
+        };
         
+        setGoogleTokens(tokens);
         setIsGoogleConnected(true);
+        setLoading(false);
+        return tokens;
       } else {
         console.log('[useGoogleTokens] No Google tokens found for user');
         setGoogleTokens(null);
         setIsGoogleConnected(false);
+        setLoading(false);
+        return null;
       }
     } catch (error) {
       console.error('[useGoogleTokens] Exception fetching Google tokens:', error);
       setGoogleTokens(null);
       setIsGoogleConnected(false);
-    } finally {
       setLoading(false);
+      return null;
     }
-  }, [lastFetchTime]);
+  }, [lastFetchTime, googleTokens]);
 
   return {
     googleTokens,

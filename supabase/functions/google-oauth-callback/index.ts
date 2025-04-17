@@ -20,6 +20,12 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
 serve(async (req) => {
+  // Log the full request for debugging
+  console.log("Request received:", {
+    url: req.url,
+    method: req.method,
+  });
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -44,7 +50,7 @@ serve(async (req) => {
 
     // Get authorization code and request information
     const url = new URL(req.url)
-    console.log('Callback URL:', url.toString());
+    console.log('Full callback URL:', url.toString());
     
     const code = url.searchParams.get('code')
     const error = url.searchParams.get('error')
@@ -110,15 +116,25 @@ serve(async (req) => {
       body: params.toString()
     })
 
+    const tokenResponseText = await tokenResponse.text();
+    console.log('Token response status:', tokenResponse.status);
+    console.log('Token response headers:', Object.fromEntries(tokenResponse.headers.entries()));
+    
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.text()
-      console.error('Error obtaining tokens:', errorData)
-      return Response.redirect(`${SITE_URL}/google-integrations?error=token_exchange_failed`)
+      console.error('Error obtaining tokens:', tokenResponseText);
+      return Response.redirect(`${SITE_URL}/google-integrations?error=token_exchange_failed&reason=${encodeURIComponent(tokenResponseText.substring(0, 100))}`)
     }
 
-    const tokenData = await tokenResponse.json()
-    console.log('Token response received, access_token present:', !!tokenData.access_token);
-    console.log('Token response received, refresh_token present:', !!tokenData.refresh_token);
+    // Parse the token response
+    let tokenData;
+    try {
+      tokenData = JSON.parse(tokenResponseText);
+      console.log('Token response received, access_token present:', !!tokenData.access_token);
+      console.log('Token response received, refresh_token present:', !!tokenData.refresh_token);
+    } catch (e) {
+      console.error('Error parsing token response:', e);
+      return Response.redirect(`${SITE_URL}/google-integrations?error=invalid_token_response`)
+    }
     
     // Save tokens in database
     const now = Math.floor(Date.now() / 1000)
@@ -137,7 +153,7 @@ serve(async (req) => {
 
     if (upsertError) {
       console.error('Error saving tokens:', upsertError)
-      return Response.redirect(`${SITE_URL}/google-integrations?error=db_save_failed`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=db_save_failed&reason=${encodeURIComponent(JSON.stringify(upsertError))}`)
     }
 
     console.log('Tokens saved successfully, redirecting back to application');
@@ -147,6 +163,6 @@ serve(async (req) => {
     console.error('Error processing OAuth callback:', error)
     
     // Return to application with error
-    return Response.redirect(`${SITE_URL}/google-integrations?error=server_error`)
+    return Response.redirect(`${SITE_URL}/google-integrations?error=server_error&reason=${encodeURIComponent(error.message || 'Unknown error')}`)
   }
 })

@@ -30,12 +30,21 @@ const Auth: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Log everything for debugging
+  useEffect(() => {
+    console.log('[Auth] Component mounted');
+    console.log('[Auth] Current URL:', window.location.href);
+    console.log('[Auth] URL Search params:', location.search);
+    console.log('[Auth] URL Hash:', location.hash);
+  }, [location]);
+
   // Check if user is already authenticated
   useEffect(() => {
     const checkSession = async () => {
+      console.log('[Auth] Checking existing session');
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        console.log('User already has a session, redirecting...');
+        console.log('[Auth] User already has a session, redirecting...');
         // Check if came from a Google integration request
         const params = new URLSearchParams(location.search);
         if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
@@ -43,6 +52,8 @@ const Auth: React.FC = () => {
         } else {
           navigate('/');
         }
+      } else {
+        console.log('[Auth] No existing session found');
       }
     };
     
@@ -52,12 +63,12 @@ const Auth: React.FC = () => {
   // Process auth redirects
   useEffect(() => {
     const handleAuthRedirect = async () => {
-      console.log('Checking for authentication redirect');
+      console.log('[Auth] Checking for authentication redirect');
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
-      console.log('URL parameters:', Object.fromEntries(params.entries()));
-      console.log('Hash parameters:', Object.fromEntries(hashParams.entries()));
+      console.log('[Auth] URL parameters:', Object.fromEntries(params.entries()));
+      console.log('[Auth] Hash parameters:', Object.fromEntries(hashParams.entries()));
       
       if (params.has('error') || params.has('error_description')) {
         const errorMessage = params.get('error_description') || 'Erro de autenticação';
@@ -68,7 +79,7 @@ const Auth: React.FC = () => {
       if (hashParams.has('access_token') || params.has('provider')) {
         // Successfully authenticated via Google
         try {
-          console.log('Processing successful authentication redirect');
+          console.log('[Auth] Processing successful authentication redirect');
           const { data } = await supabase.auth.getSession();
           if (data.session) {
             toast.success('Login bem-sucedido', { 
@@ -77,14 +88,16 @@ const Auth: React.FC = () => {
             
             // Check if came from a Google integration request
             if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
-              console.log('Redirecting to Google integrations page');
+              console.log('[Auth] Redirecting to Google integrations page');
               navigate('/google-integrations');
             } else {
               navigate('/');
             }
+          } else {
+            console.log('[Auth] No session data found after successful redirect');
           }
         } catch (error) {
-          console.error('Error processing login:', error);
+          console.error('[Auth] Error processing login:', error);
           toast.error('Erro ao processar login', { 
             description: 'Por favor, tente novamente.'
           });
@@ -141,7 +154,7 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      console.log('Starting Google authentication process');
+      console.log('[Auth] Starting Google authentication process');
       
       // Check if came from an integration request
       const params = new URLSearchParams(location.search);
@@ -152,23 +165,38 @@ const Auth: React.FC = () => {
         redirectTo = `${SITE_URL}/auth?redirect=google-integrations`;
       }
       
-      console.log('Using redirectTo:', redirectTo);
+      console.log('[Auth] Using redirectTo:', redirectTo);
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      // Encode state with current timestamp to avoid stale states
+      const state = btoa(JSON.stringify({
+        timestamp: Date.now(),
+        redirectAfterAuth: params.get('redirect') || '',
+      }));
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           scopes: GOOGLE_SCOPES.join(' '),
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent'
+            prompt: 'consent',
+            state
           },
           redirectTo
         }
       });
 
+      console.log('[Auth] SignInWithOAuth response:', { data, error });
+
       if (error) throw error;
+      
+      // This part will only run if there's no redirect
+      if (data?.url) {
+        console.log('[Auth] Redirecting to OAuth URL:', data.url);
+        window.location.href = data.url;
+      }
     } catch (error: any) {
-      console.error('Error during Google authentication:', error);
+      console.error('[Auth] Error during Google authentication:', error);
       toast.error(
         "Erro ao entrar com Google", 
         { description: error.message }
