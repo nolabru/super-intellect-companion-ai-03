@@ -38,21 +38,22 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       try {
-        // Use RPC function to avoid type issues with direct table access
+        // Use a direct table query with proper typing
         const { data, error } = await supabase
-          .rpc('get_google_tokens_for_user', { user_id_param: user.id });
+          .from('user_google_tokens')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
         if (error) {
           console.error('Error fetching Google tokens:', error);
           setGoogleTokens(null);
           setIsGoogleConnected(false);
-        } else if (data && data.length > 0) {
-          // Type assertion since we know the structure
-          const tokenData = data[0] as any;
+        } else if (data) {
           setGoogleTokens({
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token,
-            expiresAt: tokenData.expires_at,
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token,
+            expiresAt: data.expires_at,
           });
           setIsGoogleConnected(true);
         } else {
@@ -104,16 +105,19 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (user) {
             // Refetch tokens after authentication
             try {
-              // Using RPC function instead of direct table access
-              const { data } = await supabase
-                .rpc('get_google_tokens_for_user', { user_id_param: user.id });
+              const { data, error } = await supabase
+                .from('user_google_tokens')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
                 
-              if (data && data.length > 0) {
-                const tokenData = data[0] as any;
+              if (error) {
+                console.error('Error processing auth redirect:', error);
+              } else if (data) {
                 setGoogleTokens({
-                  accessToken: tokenData.access_token,
-                  refreshToken: tokenData.refresh_token,
-                  expiresAt: tokenData.expires_at,
+                  accessToken: data.access_token,
+                  refreshToken: data.refresh_token,
+                  expiresAt: data.expires_at,
                 });
                 setIsGoogleConnected(true);
                 

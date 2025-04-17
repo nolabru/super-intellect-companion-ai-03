@@ -50,8 +50,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Notify user
             if (isGoogleConnected) {
               toast.success(
-                'Google conectado com sucesso!',
-                { description: 'Sua conta Google foi conectada corretamente.' }
+                'Google connected successfully!',
+                { description: 'Your Google account has been connected.' }
               );
             }
           }

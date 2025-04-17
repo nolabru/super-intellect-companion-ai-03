@@ -1,5 +1,5 @@
 
-import { GoogleAuthProvider, useGoogleAuth } from '../GoogleAuthContext';
+import { GoogleAuthProvider, useGoogleAuth } from './GoogleAuthContext';
 
 export { 
   GoogleAuthProvider, 
