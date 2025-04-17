@@ -5,6 +5,9 @@ export interface GoogleTokens {
   expiresAt: number;
 }
 
+// Remove UserGoogleToken or define it if needed
+// Since the error suggests we meant to use GoogleTokens, we'll just remove the undefined type
+
 export interface GoogleAuthContextType {
   googleTokens: GoogleTokens | null;
   isGoogleConnected: boolean;

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { GoogleTokens, UserGoogleToken } from './types';
+import { GoogleTokens } from './types';
 
 export const useGoogleTokens = () => {
   const [googleTokens, setGoogleTokens] = useState<GoogleTokens | null>(null);
@@ -19,23 +19,22 @@ export const useGoogleTokens = () => {
     }
 
     try {
-      // Use the generic Supabase functions to avoid typing issues
+      // Use a direct table query with proper typing
       const { data, error } = await supabase
-        .from('user_google_tokens' as any)
+        .from('user_google_tokens')
         .select('*')
-        .eq('user_id', session.user.id);
+        .eq('user_id', session.user.id)
+        .single();
 
       if (error) {
-        console.error('Erro ao buscar tokens do Google:', error);
+        console.error('Error fetching Google tokens:', error);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
-      } else if (data && data.length > 0) {
-        // Force type casting since TypeScript doesn't know about this table
-        const tokenData = data[0] as unknown as UserGoogleToken;
+      } else if (data) {
         setGoogleTokens({
-          accessToken: tokenData.access_token,
-          refreshToken: tokenData.refresh_token,
-          expiresAt: tokenData.expires_at,
+          accessToken: data.access_token,
+          refreshToken: data.refresh_token,
+          expiresAt: data.expires_at,
         });
         setIsGoogleConnected(true);
       } else {
@@ -43,7 +42,7 @@ export const useGoogleTokens = () => {
         setIsGoogleConnected(false);
       }
     } catch (error) {
-      console.error('Erro ao buscar tokens do Google:', error);
+      console.error('Error fetching Google tokens:', error);
       setGoogleTokens(null);
       setIsGoogleConnected(false);
     } finally {
