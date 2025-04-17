@@ -48,16 +48,40 @@ export async function fetchWithRetry(
         }
       }
       
+      // Add more request details for debugging
+      console.log(`Full request URL: ${url}`);
+      console.log(`Request method: ${options.method}`);
+      
       const response = await fetch(url, options);
       
       // Log response status for debugging
       console.log(`Response received with status: ${response.status}`);
+      
+      // Always log the raw response headers for debugging auth issues
+      const responseHeaders: Record<string, string> = {};
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+      console.log(`Response headers: ${JSON.stringify(responseHeaders, null, 2)}`);
       
       // If we get a 429 (Too Many Requests) or 5xx (Server Error), wait and retry
       if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
         console.log(`Request failed with status ${response.status} (attempt ${attempt + 1}/${maxRetries}), waiting before retry...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)));
         continue;
+      }
+      
+      // If we get a 401 (Unauthorized), log more details but don't retry
+      if (response.status === 401) {
+        console.error(`Authentication failed (status 401). Token might be invalid or expired.`);
+        // Attempt to get more info from the response
+        try {
+          const responseClone = response.clone();
+          const bodyText = await responseClone.text();
+          console.error(`Auth error response: ${bodyText}`);
+        } catch (e) {
+          console.error(`Could not read auth error response body:`, e);
+        }
       }
       
       // Clone response to inspect its body without consuming it

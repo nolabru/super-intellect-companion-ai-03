@@ -1,8 +1,6 @@
 
 import { fetchWithRetry, logError } from "../../utils/logging.ts";
 import { validateApiKey } from "../../utils/validation.ts";
-// Import JWT from a Deno-compatible CDN URL instead of using a bare import
-import * as jwt from "https://deno.land/x/djwt@v2.8/mod.ts";
 
 // Kligin API base URL
 const KLIGIN_API_BASE_URL = "https://api.klingai.com";
@@ -18,39 +16,55 @@ export function setApiCredentials(apiKey: string, apiSecret: string) {
   KLIGIN_API_SECRET = apiSecret;
 }
 
-// Generate JWT token for Kligin API authentication
+// Generate JWT token for Kligin API authentication using direct crypto APIs
 async function generateJwtToken(): Promise<string> {
   try {
     // Check if we should use the provided fixed token for debugging
     const useFixedToken = Deno.env.get("USE_FIXED_KLIGIN_TOKEN") === "true";
     
     if (useFixedToken) {
-      console.log("[Kligin] Using fixed JWT token for debugging");
-      return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlZDcyOTlhMjA5OGE0YjA2YTVjYjMxYTUwYTk2ZGVjNCIsImV4cCI6MTc0NDg1MjM4MiwibmJmIjoxNzQ0ODUwNTc3fQ.oUuLkHvOW9xcl5w8cwh8KhQxZHdNoPejdMZKlZf8gk4";
+      const fixedToken = Deno.env.get("FIXED_KLIGIN_TOKEN") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlZDcyOTlhMjA5OGE0YjA2YTVjYjMxYTUwYTk2ZGVjNCIsImV4cCI6MTc0NDg1MjM4MiwibmJmIjoxNzQ0ODUwNTc3fQ.oUuLkHvOW9xcl5w8cwh8KhQxZHdNoPejdMZKlZf8gk4";
+      console.log(`[Kligin] Using fixed JWT token for debugging: ${fixedToken.substring(0, 20)}...`);
+      return fixedToken;
     }
     
-    // Manual JWT token creation to avoid Deno JWT library issues
+    // Get the current time
     const now = Math.floor(Date.now() / 1000);
     
+    // Create the header
     const header = {
       alg: "HS256",
       typ: "JWT"
     };
     
+    // Create the payload
     const payload = {
       iss: KLIGIN_API_KEY,
       exp: now + 1800, // Valid for 30 minutes
       nbf: now - 5     // Valid from 5 seconds ago
     };
     
-    // Create header and payload strings
-    const encodedHeader = btoa(JSON.stringify(header));
-    const encodedPayload = btoa(JSON.stringify(payload));
+    // Base64Url encode the header and payload
+    const base64UrlEncode = (obj: any): string => {
+      const jsonStr = JSON.stringify(obj);
+      const encoder = new TextEncoder();
+      const data = encoder.encode(jsonStr);
+      
+      // Use btoa for base64 encoding and replace characters for base64url format
+      let base64 = btoa(String.fromCharCode(...data));
+      return base64
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=/g, "");
+    };
     
-    // Combine header and payload
+    const encodedHeader = base64UrlEncode(header);
+    const encodedPayload = base64UrlEncode(payload);
+    
+    // Create the signing input
     const signingInput = `${encodedHeader}.${encodedPayload}`;
     
-    // Create signature using crypto subtle
+    // Create the signature
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey(
       "raw",
@@ -66,11 +80,18 @@ async function generateJwtToken(): Promise<string> {
       encoder.encode(signingInput)
     );
     
-    // Convert signature to base64
-    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    // Convert signature to base64url
+    const signatureArray = new Uint8Array(signature);
+    let signatureBase64 = btoa(String.fromCharCode(...signatureArray));
+    const signatureBase64Url = signatureBase64
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
     
-    // Create JWT
-    const jwt = `${encodedHeader}.${encodedPayload}.${signatureBase64}`;
+    // Create the JWT token
+    const jwt = `${encodedHeader}.${encodedPayload}.${signatureBase64Url}`;
+    
+    console.log(`[Kligin] Generated JWT token (preview): ${jwt.substring(0, 20)}...`);
     
     return jwt;
   } catch (error) {
@@ -116,19 +137,19 @@ export async function testApiCredentials(apiKey: string, apiSecret: string): Pro
     KLIGIN_API_KEY = apiKey;
     KLIGIN_API_SECRET = apiSecret;
     
-    // Always use the fixed token for testing to avoid token generation issues
-    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlZDcyOTlhMjA5OGE0YjA2YTVjYjMxYTUwYTk2ZGVjNCIsImV4cCI6MTc0NDg1MjM4MiwibmJmIjoxNzQ0ODUwNTc3fQ.oUuLkHvOW9xcl5w8cwh8KhQxZHdNoPejdMZKlZf8gk4";
+    // Generate a token for testing
+    const token = await generateJwtToken();
     
     console.log(`[Kligin] Testing credentials with token: ${token.substring(0, 20)}...`);
     
     // Make a lightweight request to check if the credentials are valid
-    const response = await fetch(`${KLIGIN_API_BASE_URL}/v1/videos/text2video?pageNum=1&pageSize=1`, {
+    const response = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/videos/text2video?pageNum=1&pageSize=1`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`
       }
-    });
+    }, 1, 2000); // Use only 1 retry for testing
     
     // Restore original credentials
     KLIGIN_API_KEY = originalKey;
@@ -151,37 +172,19 @@ export async function generateVideo(
   imageUrl?: string
 ): Promise<{ content: string; files?: string[] }> {
   try {
-    // For debugging, check if we should use fixed credentials
-    const useFixedCredentials = Deno.env.get("USE_FIXED_KLIGIN_CREDENTIALS") === "true";
+    // Verificar a disponibilidade das credenciais
+    const credentials = verifyApiCredentials();
     
-    if (useFixedCredentials) {
-      console.log("[Kligin] Using fixed credentials for debugging");
-      const fixedApiKey = Deno.env.get("FIXED_KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
-      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "3dd57f873a1745c3a21f972a8024b456";
-      setApiCredentials(fixedApiKey, fixedApiSecret);
-    } else {
-      const credentials = verifyApiCredentials();
-      
-      // Set credentials if they're different
-      if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
-        setApiCredentials(credentials.apiKey, credentials.apiSecret);
-      }
+    // Set credentials if they're different
+    if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
+      setApiCredentials(credentials.apiKey, credentials.apiSecret);
     }
     
     console.log(`[Kligin] Generating video with prompt: "${prompt.substring(0, 50)}..."`);
     
-    // Use fixed token for requests for reliability
-    const useFixedToken = Deno.env.get("USE_FIXED_KLIGIN_TOKEN") === "true";
-    let token;
-    
-    if (useFixedToken) {
-      token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlZDcyOTlhMjA5OGE0YjA2YTVjYjMxYTUwYTk2ZGVjNCIsImV4cCI6MTc0NDg1MjM4MiwibmJmIjoxNzQ0ODUwNTc3fQ.oUuLkHvOW9xcl5w8cwh8KhQxZHdNoPejdMZKlZf8gk4";
-      console.log(`[Kligin] Using fixed JWT token: ${token.substring(0, 20)}...`);
-    } else {
-      // Generate JWT token for authentication
-      token = await generateJwtToken();
-      console.log(`[Kligin] Using JWT token: ${token.substring(0, 20)}...`);
-    }
+    // Generate JWT token for authentication
+    const token = await generateJwtToken();
+    console.log(`[Kligin] Using JWT token: ${token.substring(0, 20)}...`);
     
     // Default video parameters
     const videoParams = {
@@ -233,8 +236,8 @@ export async function generateVideo(
       // Wait between polls
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
       
-      // Use the same token for all polls to avoid generation issues
-      const pollToken = useFixedToken ? token : await generateJwtToken();
+      // Generate a new token for each poll to ensure freshness
+      const pollToken = await generateJwtToken();
       
       // Check task status
       const taskCheckResponse = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/videos/text2video/${taskId}`, {
@@ -294,37 +297,19 @@ export async function generateImage(
   params: any = {},
 ): Promise<{ content: string; files?: string[] }> {
   try {
-    // For debugging, check if we should use fixed credentials
-    const useFixedCredentials = Deno.env.get("USE_FIXED_KLIGIN_CREDENTIALS") === "true";
+    // Verificar a disponibilidade das credenciais
+    const credentials = verifyApiCredentials();
     
-    if (useFixedCredentials) {
-      console.log("[Kligin] Using fixed credentials for debugging");
-      const fixedApiKey = Deno.env.get("FIXED_KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
-      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "3dd57f873a1745c3a21f972a8024b456";
-      setApiCredentials(fixedApiKey, fixedApiSecret);
-    } else {
-      const credentials = verifyApiCredentials();
-      
-      // Set credentials if they're different
-      if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
-        setApiCredentials(credentials.apiKey, credentials.apiSecret);
-      }
+    // Set credentials if they're different
+    if (KLIGIN_API_KEY !== credentials.apiKey || KLIGIN_API_SECRET !== credentials.apiSecret) {
+      setApiCredentials(credentials.apiKey, credentials.apiSecret);
     }
     
     console.log(`[Kligin] Generating image with prompt: "${prompt.substring(0, 50)}..."`);
     
-    // Use fixed token for requests for reliability
-    const useFixedToken = Deno.env.get("USE_FIXED_KLIGIN_TOKEN") === "true";
-    let token;
-    
-    if (useFixedToken) {
-      token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJlZDcyOTlhMjA5OGE0YjA2YTVjYjMxYTUwYTk2ZGVjNCIsImV4cCI6MTc0NDg1MjM4MiwibmJmIjoxNzQ0ODUwNTc3fQ.oUuLkHvOW9xcl5w8cwh8KhQxZHdNoPejdMZKlZf8gk4";
-      console.log(`[Kligin] Using fixed JWT token: ${token.substring(0, 20)}...`);
-    } else {
-      // Generate JWT token for authentication
-      token = await generateJwtToken();
-      console.log(`[Kligin] Using JWT token: ${token.substring(0, 20)}...`);
-    }
+    // Generate JWT token for authentication
+    const token = await generateJwtToken();
+    console.log(`[Kligin] Using JWT token: ${token.substring(0, 20)}...`);
     
     // Default image parameters
     const imageParams = {
@@ -373,8 +358,8 @@ export async function generateImage(
       // Wait between polls
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
       
-      // Use the same token for all polls to avoid generation issues
-      const pollToken = useFixedToken ? token : await generateJwtToken();
+      // Generate a new token for each poll to ensure freshness
+      const pollToken = await generateJwtToken();
       
       // Check task status
       const taskCheckResponse = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/images/text2image/${taskId}`, {
