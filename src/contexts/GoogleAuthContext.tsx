@@ -49,23 +49,20 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     try {
-      // Buscar perfil do usuário que contém os tokens do Google
-      // Use a generic type for the query result instead of relying on database types
+      // Use the raw query method to avoid TypeScript issues with database schema types
       const { data, error } = await supabase
-        .from('user_google_tokens')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .single<UserGoogleToken>();
+        .rpc('get_google_tokens_for_user', { user_id_param: session.user.id });
 
       if (error) {
         console.error('Erro ao buscar tokens do Google:', error);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
-      } else if (data) {
+      } else if (data && data.length > 0) {
+        const tokenData = data[0] as UserGoogleToken;
         setGoogleTokens({
-          accessToken: data.access_token,
-          refreshToken: data.refresh_token,
-          expiresAt: data.expires_at,
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token,
+          expiresAt: tokenData.expires_at,
         });
         setIsGoogleConnected(true);
       } else {
@@ -186,12 +183,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!user) return;
 
     try {
-      // Remover os tokens do banco de dados
-      // Use a string literal instead of relying on database types
+      // Use a custom RPC function to delete the tokens
       const { error } = await supabase
-        .from('user_google_tokens')
-        .delete()
-        .eq('user_id', user.id);
+        .rpc('delete_google_tokens_for_user', { user_id_param: user.id });
 
       if (error) {
         throw error;
