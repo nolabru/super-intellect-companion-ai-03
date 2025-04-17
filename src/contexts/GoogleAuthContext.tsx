@@ -49,9 +49,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     try {
-      // Use direct query instead of RPC to avoid TypeScript issues
+      // Usar as funções genéricas do Supabase para evitar problemas de tipagem
       const { data, error } = await supabase
-        .from('user_google_tokens')
+        .from('user_google_tokens' as any)
         .select('*')
         .eq('user_id', session.user.id);
 
@@ -186,9 +186,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!user) return;
 
     try {
-      // Use direct query instead of RPC to avoid TypeScript issues
+      // Usar as funções genéricas do Supabase para evitar problemas de tipagem
       const { error } = await supabase
-        .from('user_google_tokens')
+        .from('user_google_tokens' as any)
         .delete()
         .eq('user_id', user.id);
 
