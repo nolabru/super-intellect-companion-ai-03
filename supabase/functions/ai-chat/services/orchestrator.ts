@@ -25,6 +25,8 @@ export interface GoogleIntegrationAction {
   action: string;
   parameters: Record<string, any>;
   description: string;
+  needsMoreInfo?: boolean; // Adicionado para indicar se precisamos de mais informações
+  missingFields?: string[]; // Campos que estão faltando
 }
 
 // Verifica se a chave API do orquestrador está configurada
@@ -74,11 +76,63 @@ export async function processUserMessage(
             - Gmail: Para enviar e-mails
             
             Se o pedido do usuário puder se beneficiar de qualquer uma dessas integrações, sugira ações específicas no formato JSON dentro da sua resposta.
+            
+            IMPORTANTE: Quando o usuário solicitar uma ação direta como "crie um evento", "agende uma reunião", ou
+            "crie um documento/planilha", você DEVE analisar se tem todas as informações necessárias:
+            
+            Para eventos no calendário:
+            - Título (obrigatório)
+            - Data e hora de início (obrigatório - formato ISO)
+            - Data e hora de término (obrigatório - formato ISO)
+            - Descrição (opcional)
+            - Participantes (opcional)
+            
+            Para documentos:
+            - Nome do documento (obrigatório)
+            - Conteúdo inicial (opcional)
+            
+            Para planilhas:
+            - Título da planilha (obrigatório)
+            - Nomes das abas (opcional)
+            
+            Se algum dado obrigatório estiver faltando, indique isso no campo "needsMoreInfo: true" e liste 
+            os campos faltantes em "missingFields: []". Dessa forma, o sistema saberá que precisa solicitar
+            mais informações ao usuário antes de executar a ação.
           `;
         }
       } catch (error) {
         console.error("[Orquestrador] Erro ao verificar integração com Google:", error);
         // Continuar sem o contexto de integração
+      }
+    }
+    
+    // Verificar se a mensagem do usuário é uma resposta para uma solicitação anterior
+    // do orquestrador para obter mais informações
+    let isFollowUpResponse = false;
+    let previousActionType: string | null = null;
+    
+    if (conversationHistory) {
+      // Verifica se há uma mensagem do sistema pedindo mais informações
+      const infoRequestPattern = /(Precisamos de mais informações para|Para criar um)/i;
+      const botMessages = conversationHistory.split('\n').filter(line => 
+        line.startsWith('assistant:') && infoRequestPattern.test(line)
+      );
+      
+      if (botMessages.length > 0) {
+        const lastBotMessage = botMessages[botMessages.length - 1];
+        isFollowUpResponse = true;
+        
+        // Tenta identificar que tipo de ação estava sendo processada
+        if (lastBotMessage.includes('evento') || lastBotMessage.includes('reunião') || 
+            lastBotMessage.includes('calendário') || lastBotMessage.includes('agenda')) {
+          previousActionType = 'calendar';
+        } else if (lastBotMessage.includes('documento') || lastBotMessage.includes('doc')) {
+          previousActionType = 'drive';
+        } else if (lastBotMessage.includes('planilha') || lastBotMessage.includes('spreadsheet')) {
+          previousActionType = 'sheets';
+        }
+        
+        console.log(`[Orquestrador] Detectada resposta de seguimento para ação do tipo: ${previousActionType}`);
       }
     }
     
@@ -88,7 +142,9 @@ export async function processUserMessage(
       currentMode,
       currentModel,
       conversationHistory,
-      googleIntegrationContext
+      googleIntegrationContext,
+      isFollowUpResponse,
+      previousActionType
     );
     
     // Usar um modelo pequeno e rápido para o orquestrador
@@ -123,9 +179,11 @@ function buildOrchestratorPrompt(
   currentMode: string,
   currentModel: string,
   conversationHistory?: string,
-  googleIntegrationContext?: string
+  googleIntegrationContext?: string,
+  isFollowUpResponse?: boolean,
+  previousActionType?: string | null
 ): string {
-  return `Você é um orquestrador de IA que deve analisar a mensagem do usuário e fornecer instruções para melhorar a resposta do modelo principal.
+  let prompt = `Você é um orquestrador de IA que deve analisar a mensagem do usuário e fornecer instruções para melhorar a resposta do modelo principal.
 
 MENSAGEM DO USUÁRIO:
 "${userMessage}"
@@ -140,10 +198,18 @@ Sua tarefa é:
 2. Decidir o modo mais adequado (text, image, video, audio)
 3. Recomendar o modelo mais adequado para essa tarefa
 4. Extrair informações que devem ser armazenadas para memória futura
-5. Melhorar o prompt original do usuário para obter a melhor resposta possível
-${googleIntegrationContext ? `6. Detectar se o pedido do usuário pode ser atendido usando integrações com o Google (Calendar, Drive, Sheets, Gmail) e sugerir ações específicas` : ''}
+5. Melhorar o prompt original do usuário para obter a melhor resposta possível`;
 
-Responda no seguinte formato JSON:
+  if (googleIntegrationContext) {
+    prompt += `\n6. Detectar se o pedido do usuário pode ser atendido usando integrações com o Google (Calendar, Drive, Sheets, Gmail) e sugerir ações específicas`;
+    
+    if (isFollowUpResponse && previousActionType) {
+      prompt += `\n\nIMPORTANTE: A mensagem do usuário parece ser uma resposta a uma solicitação anterior de informações adicionais para uma ação do tipo "${previousActionType}". 
+      Combine estas novas informações com o contexto da conversa para completar os parâmetros necessários para a ação.`;
+    }
+  }
+
+  prompt += `\n\nResponda no seguinte formato JSON:
 {
   "enhancedPrompt": "Versão melhorada do prompt do usuário",
   "detectedMode": "O modo que melhor atende a solicitação (text, image, video, audio)",
@@ -152,7 +218,10 @@ Responda no seguinte formato JSON:
   "memoryItems": [
     {"key": "chave para informação extraída", "value": "valor da informação"},
     ...
-  ]${googleIntegrationContext ? `,
+  ]`;
+
+  if (googleIntegrationContext) {
+    prompt += `,
   "googleIntegrationActions": [
     {
       "type": "calendar|drive|sheets|gmail",
@@ -160,10 +229,16 @@ Responda no seguinte formato JSON:
       "parameters": {
         // parâmetros específicos para a ação
       },
-      "description": "Descrição em linguagem natural do que será feito"
+      "description": "Descrição em linguagem natural do que será feito",
+      "needsMoreInfo": true/false,
+      "missingFields": ["campo1", "campo2"]
     }
-  ]` : ''}
-}`;
+  ]`;
+  }
+
+  prompt += `\n}`;
+  
+  return prompt;
 }
 
 // Analisar a resposta do orquestrador
@@ -282,13 +357,71 @@ export function enrichPromptWithMemory(prompt: string, memoryContext: string): s
 export async function processGoogleIntegrationActions(
   userId: string, 
   actions: GoogleIntegrationAction[]
-): Promise<{success: boolean, results: any[]}> {
+): Promise<{success: boolean, results: any[], needsMoreInfo?: boolean, followupPrompt?: string}> {
   if (!userId || !actions || actions.length === 0) {
     return { success: false, results: [] };
   }
   
   try {
     console.log(`[Orquestrador] Processando ${actions.length} ações de integração com Google para usuário ${userId}`);
+    
+    // Verificar se alguma ação precisa de mais informações
+    const actionNeedingMoreInfo = actions.find(a => a.needsMoreInfo === true);
+    
+    if (actionNeedingMoreInfo) {
+      console.log(`[Orquestrador] Ação '${actionNeedingMoreInfo.action}' precisa de mais informações`);
+      
+      let followupPrompt = `Precisamos de mais informações para executar esta ação. `;
+      
+      if (actionNeedingMoreInfo.type === 'calendar') {
+        followupPrompt += `Para criar um evento no calendário, precisamos dos seguintes detalhes:\n`;
+        
+        if (actionNeedingMoreInfo.missingFields?.includes('summary')) {
+          followupPrompt += `- Qual será o título do evento?\n`;
+        }
+        if (actionNeedingMoreInfo.missingFields?.includes('startDateTime')) {
+          followupPrompt += `- Qual a data e hora de início? (ex: 25/04/2025 às 14:30)\n`;
+        }
+        if (actionNeedingMoreInfo.missingFields?.includes('endDateTime')) {
+          followupPrompt += `- Qual a data e hora de término? (ex: 25/04/2025 às 15:30)\n`;
+        }
+        if (actionNeedingMoreInfo.missingFields?.includes('description')) {
+          followupPrompt += `- Gostaria de adicionar alguma descrição?\n`;
+        }
+        if (actionNeedingMoreInfo.missingFields?.includes('attendees')) {
+          followupPrompt += `- Há alguém que deve participar do evento? (forneça os emails separados por vírgula)\n`;
+        }
+      } 
+      else if (actionNeedingMoreInfo.type === 'drive') {
+        followupPrompt += `Para criar um documento no Google Drive, precisamos dos seguintes detalhes:\n`;
+        
+        if (actionNeedingMoreInfo.missingFields?.includes('name')) {
+          followupPrompt += `- Qual será o nome do documento?\n`;
+        }
+        if (actionNeedingMoreInfo.missingFields?.includes('content')) {
+          followupPrompt += `- Gostaria de adicionar algum conteúdo inicial?\n`;
+        }
+      }
+      else if (actionNeedingMoreInfo.type === 'sheets') {
+        followupPrompt += `Para criar uma planilha no Google Sheets, precisamos dos seguintes detalhes:\n`;
+        
+        if (actionNeedingMoreInfo.missingFields?.includes('title')) {
+          followupPrompt += `- Qual será o título da planilha?\n`;
+        }
+        if (actionNeedingMoreInfo.missingFields?.includes('sheets')) {
+          followupPrompt += `- Quais nomes você gostaria de dar para as abas? (se não especificar, usaremos "Página1")\n`;
+        }
+      }
+      
+      followupPrompt += `\nPor favor, forneça as informações faltantes para que eu possa criar isso para você.`;
+      
+      return {
+        success: false,
+        results: [],
+        needsMoreInfo: true,
+        followupPrompt
+      };
+    }
     
     // Mapear cada ação para uma chamada à função google-actions
     const results = await Promise.all(actions.map(async (action) => {
@@ -302,6 +435,42 @@ export async function processGoogleIntegrationActions(
             if (action.action === 'createEvent') {
               actionName = 'createCalendarEvent';
               actionParams = action.parameters;
+              
+              // Se as datas estiverem em formato humanizado, converter para ISO
+              if (typeof actionParams.startDateTime === 'string' && 
+                  !actionParams.startDateTime.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                  
+                // Tentar converter data em formato brasileiro/português para ISO
+                try {
+                  const startDate = parseHumanDate(actionParams.startDateTime);
+                  if (startDate) {
+                    actionParams.startDateTime = startDate.toISOString();
+                  }
+                } catch (e) {
+                  console.warn(`Não foi possível converter data de início: ${actionParams.startDateTime}`);
+                }
+              }
+              
+              if (typeof actionParams.endDateTime === 'string' && 
+                  !actionParams.endDateTime.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                  
+                try {
+                  const endDate = parseHumanDate(actionParams.endDateTime);
+                  if (endDate) {
+                    actionParams.endDateTime = endDate.toISOString();
+                  }
+                } catch (e) {
+                  console.warn(`Não foi possível converter data de término: ${actionParams.endDateTime}`);
+                  
+                  // Se só temos hora de início, definir término para 1 hora depois
+                  if (actionParams.startDateTime && actionParams.startDateTime.match(/^\d{4}-\d{2}-\d{2}T/)) {
+                    const start = new Date(actionParams.startDateTime);
+                    const end = new Date(start);
+                    end.setHours(end.getHours() + 1);
+                    actionParams.endDateTime = end.toISOString();
+                  }
+                }
+              }
             } else if (action.action === 'listEvents') {
               actionName = 'listCalendarEvents';
               actionParams = action.parameters;
@@ -394,4 +563,57 @@ export async function processGoogleIntegrationActions(
     console.error("[Orquestrador] Erro ao processar ações do Google:", error);
     return { success: false, results: [] };
   }
+}
+
+// Função auxiliar para converter datas em formato humanizado para Date
+function parseHumanDate(dateStr: string): Date | null {
+  // Tenta vários formatos comuns em português/brasileiro
+  
+  // Formato: dd/mm/yyyy às hh:mm
+  const brFormat = /(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[\sàs]+(\d{1,2}):(\d{1,2}))?/i;
+  const brMatch = dateStr.match(brFormat);
+  
+  if (brMatch) {
+    const [_, day, month, year, hours = "0", minutes = "0"] = brMatch;
+    return new Date(
+      parseInt(year), 
+      parseInt(month) - 1, 
+      parseInt(day),
+      parseInt(hours),
+      parseInt(minutes)
+    );
+  }
+  
+  // Formato em texto: "hoje/amanhã às 15h"
+  const relativeFormat = /(hoje|amanhã|amanha)(?:[\sàs]+(\d{1,2})(?::(\d{1,2}))?h?)?/i;
+  const relativeMatch = dateStr.match(relativeFormat);
+  
+  if (relativeMatch) {
+    const now = new Date();
+    const [_, day, hours = "0", minutes = "0"] = relativeMatch;
+    
+    const result = new Date(now);
+    
+    if (day.toLowerCase() === "amanhã" || day.toLowerCase() === "amanha") {
+      result.setDate(result.getDate() + 1);
+    }
+    
+    result.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    return result;
+  }
+  
+  // Hora específica hoje (ex: "13:30", "às 14h")
+  const timeOnlyFormat = /(?:às\s+)?(\d{1,2})(?::(\d{1,2}))?(?:h|hrs)?/i;
+  const timeOnlyMatch = dateStr.match(timeOnlyFormat);
+  
+  if (timeOnlyMatch) {
+    const now = new Date();
+    const [_, hours, minutes = "0"] = timeOnlyMatch;
+    
+    const result = new Date(now);
+    result.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    return result;
+  }
+  
+  return null;
 }

@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -9,6 +8,7 @@ import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useGoogleAuth } from '@/contexts/google-auth';
 import { useMessageProcessing } from './message/useMessageProcessing';
 
 /**
@@ -27,6 +27,7 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
+  const { isGoogleConnected, checkGooglePermissions } = useGoogleAuth();
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
@@ -37,6 +38,21 @@ export function useMessageHandler(
   );
   
   const messageProcessing = useMessageProcessing(user?.id);
+
+  // Verificar permissões do Google quando necessário
+  const verifyGooglePermissions = useCallback(async () => {
+    if (!isGoogleConnected) {
+      return false;
+    }
+    
+    try {
+      const hasPermissions = await checkGooglePermissions();
+      return hasPermissions;
+    } catch (error) {
+      console.error("[useMessageHandler] Erro ao verificar permissões do Google:", error);
+      return false;
+    }
+  }, [isGoogleConnected, checkGooglePermissions]);
 
   /**
    * Função principal para enviar mensagens aos modelos
@@ -65,6 +81,16 @@ export function useMessageHandler(
     try {
       console.log(`[useMessageHandler] Enviando mensagem "${content}" para ${comparing ? 'modelos' : 'modelo'} ${leftModel || modelId}${rightModel ? ` e ${rightModel}` : ''}`);
       setIsSending(true);
+      
+      // Verificar permissões do Google caso seja identificada uma solicitação relacionada
+      const googleActionPattern = /cri[ea]r? (uma? )?(evento|reuni[aã]o|compromisso|documento|planilha|spreadsheet|doc)/i;
+      if (user && user.id && googleActionPattern.test(content)) {
+        const hasGooglePermissions = await verifyGooglePermissions();
+        if (!hasGooglePermissions && isGoogleConnected) {
+          console.log('[useMessageHandler] Usuário não tem permissões adequadas para o Google');
+          // Continuamos mesmo sem permissões, o orquestrador lidará com isso
+        }
+      }
       
       // Processar mensagem para extração de memória
       if (user && user.id) {
@@ -120,7 +146,7 @@ export function useMessageHandler(
       // Processar a mensagem
       let modeSwitch = null;
       
-      if (comparing && leftModel && rightModel) {
+      if (comparing) {
         // Modo de comparação - ambos os modelos
         const result = await messageService.handleCompareModels(
           enhancedContent,
@@ -128,38 +154,6 @@ export function useMessageHandler(
           leftModel,
           rightModel,
           currentConversationId,
-          files,
-          params,
-          conversationHistory,
-          user?.id
-        );
-        
-        modeSwitch = result?.modeSwitch || null;
-      } else if (comparing && leftModel && !rightModel) {
-        // Modo desvinculado - apenas modelo esquerdo
-        const result = await messageService.handleSingleModelMessage(
-          enhancedContent,
-          mode,
-          leftModel,
-          currentConversationId,
-          messages,
-          conversations,
-          files,
-          params,
-          conversationHistory,
-          user?.id
-        );
-        
-        modeSwitch = result?.modeSwitch || null;
-      } else if (comparing && !leftModel && rightModel) {
-        // Modo desvinculado - apenas modelo direito
-        const result = await messageService.handleSingleModelMessage(
-          enhancedContent,
-          mode,
-          rightModel,
-          currentConversationId,
-          messages,
-          conversations,
           files,
           params,
           conversationHistory,
@@ -206,7 +200,9 @@ export function useMessageHandler(
     updateTitle, 
     messageService,
     user,
-    messageProcessing
+    messageProcessing,
+    isGoogleConnected,
+    verifyGooglePermissions
   ]);
 
   return {

@@ -150,6 +150,15 @@ async function createCalendarEvent(accessToken: string, params: any, corsHeaders
       )
     }
 
+    console.log("Creating calendar event with params:", JSON.stringify({
+      summary,
+      description,
+      startDateTime,
+      endDateTime,
+      timeZone,
+      attendeesCount: attendees.length
+    }, null, 2));
+
     // Prepare the event data
     const eventData = {
       summary,
@@ -185,6 +194,8 @@ async function createCalendarEvent(accessToken: string, params: any, corsHeaders
     }
 
     const data = await response.json()
+    console.log("Calendar event created successfully:", data.id);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 

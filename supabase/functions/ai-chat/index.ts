@@ -120,6 +120,24 @@ async function handleAIChat(req: Request): Promise<Response> {
             orchestratorResult.googleIntegrationActions
           );
           
+          // Verificar se precisamos de mais informações do usuário
+          if (googleResult.needsMoreInfo && googleResult.followupPrompt) {
+            console.log(`[AI-Chat] Ação do Google precisa de mais informações do usuário`);
+            
+            // Retornar uma resposta solicitando mais informações ao usuário
+            return new Response(
+              JSON.stringify({
+                content: googleResult.followupPrompt,
+                needsMoreInfo: true,
+                googleIntegrationActions: orchestratorResult.googleIntegrationActions
+              }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200
+              }
+            );
+          }
+          
           if (googleResult.success) {
             googleIntegrationResults = googleResult.results;
             
