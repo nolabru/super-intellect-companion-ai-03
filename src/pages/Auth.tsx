@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +17,9 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/gmail.send'
 ];
+
+// Use the production URL instead of localhost
+const SITE_URL = 'https://seu-site-de-producao.com';
 
 const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -99,8 +101,8 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Set the complete redirect URL
-      const redirectUrl = `${window.location.origin}/auth`;
+      // Set the complete redirect URL to the production URL
+      const redirectUrl = `${SITE_URL}/auth`;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',

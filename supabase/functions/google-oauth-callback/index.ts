@@ -16,6 +16,9 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+// Define production URL
+const SITE_URL = 'https://seu-site-de-producao.com';
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -45,20 +48,20 @@ serve(async (req) => {
     // Verificar se houve algum erro no processo OAuth
     if (error) {
       console.error('Erro durante o fluxo OAuth:', error)
-      return Response.redirect(`${url.origin}/google-integrations?error=${error}`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=${error}`)
     }
 
     // Se não houver código, retornar erro
     if (!code) {
       console.error('Código de autorização ausente')
-      return Response.redirect(`${url.origin}/google-integrations?error=no_code`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=no_code`)
     }
 
     // Decodificar estado para obter ID do usuário
     // O state deve ser definido no cliente ao iniciar o fluxo OAuth
     if (!state) {
       console.error('Estado ausente')
-      return Response.redirect(`${url.origin}/google-integrations?error=no_state`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=no_state`)
     }
 
     let userId
@@ -67,17 +70,17 @@ serve(async (req) => {
       userId = decodedState.userId
     } catch (e) {
       console.error('Erro ao decodificar estado:', e)
-      return Response.redirect(`${url.origin}/google-integrations?error=invalid_state`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=invalid_state`)
     }
 
     if (!userId) {
       console.error('ID do usuário ausente no estado')
-      return Response.redirect(`${url.origin}/google-integrations?error=no_user_id`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=no_user_id`)
     }
 
     // Trocar o código por tokens
     const tokenEndpoint = 'https://oauth2.googleapis.com/token'
-    const redirectUri = `${url.origin}/api/google-oauth-callback`
+    const redirectUri = `${SITE_URL}/api/google-oauth-callback`
     
     const params = new URLSearchParams({
       code,
@@ -98,7 +101,7 @@ serve(async (req) => {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text()
       console.error('Erro ao obter tokens:', errorData)
-      return Response.redirect(`${url.origin}/google-integrations?error=token_exchange_failed`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=token_exchange_failed`)
     }
 
     const tokenData = await tokenResponse.json()
@@ -119,16 +122,15 @@ serve(async (req) => {
 
     if (upsertError) {
       console.error('Erro ao salvar tokens:', upsertError)
-      return Response.redirect(`${url.origin}/google-integrations?error=db_save_failed`)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=db_save_failed`)
     }
 
     // Redirecionar de volta para a aplicação
-    return Response.redirect(`${url.origin}/google-integrations?success=true`)
+    return Response.redirect(`${SITE_URL}/google-integrations?success=true`)
   } catch (error) {
     console.error('Erro ao processar callback OAuth:', error)
     
     // Retornar para a aplicação com erro
-    const url = new URL(req.url)
-    return Response.redirect(`${url.origin}/google-integrations?error=server_error`)
+    return Response.redirect(`${SITE_URL}/google-integrations?error=server_error`)
   }
 })
