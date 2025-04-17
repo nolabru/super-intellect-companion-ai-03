@@ -1,96 +1,75 @@
 
-import { MessageType } from '@/components/ChatMessage';
+import { ChatMode } from '@/components/ModeSelector';
 
 /**
- * Interface for a message in the conversation context
- * Reuses the existing MessageType for consistency
+ * Message object for context processing
  */
-export type ContextMessage = MessageType;
+export interface ContextMessage {
+  id: string;
+  content?: string;
+  sender: 'user' | 'assistant';
+  timestamp: string;
+  model?: string;
+  mode?: ChatMode;
+  loading?: boolean;
+  error?: boolean;
+  files?: string[];
+  mediaUrl?: string;
+  streaming?: boolean;
+}
+
+/**
+ * Memory item for user-specific context
+ */
+export interface UserMemory {
+  id: string;
+  keyName: string;
+  value: string;
+  title?: string;
+  source?: string;
+  userId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 /**
  * Parameters for context building
  */
 export interface ContextParams {
-  // Maximum number of messages to include in context
-  maxMessages?: number;
-  
-  // Whether to include user memory in context
-  includeUserMemory?: boolean;
-  
-  // Model ID to build context for
-  modelId?: string;
-  
-  // Chat mode (text, image, video, etc.)
-  mode?: string;
-  
-  // User ID for retrieving personalized context
+  conversationId: string;
+  modelId: string;
+  mode: string;
   userId?: string;
-  
-  // Conversation ID for retrieving conversation history
-  conversationId?: string;
-  
-  // Whether to include model information in context formatting
-  includeModelInfo?: boolean;
+  includeUserMemory: boolean;
+  includeModelInfo: boolean;
+  maxMessages: number;
+  startTime?: string;
+  endTime?: string;
 }
 
 /**
- * User memory item structure
- */
-export interface UserMemory {
-  // Unique identifier for the memory item
-  id: string;
-  
-  // User ID that owns this memory
-  userId: string;
-  
-  // Key name for the memory (e.g., "favorite_color", "home_address")
-  keyName: string;
-  
-  // Value of the memory
-  value: string;
-  
-  // Optional title for the memory
-  title?: string;
-  
-  // Source of the memory (e.g., "conversation", "user_input")
-  source?: string;
-  
-  // When the memory was created
-  createdAt: string;
-  
-  // When the memory was last updated
-  updatedAt: string;
-}
-
-/**
- * Result of the context processing
+ * Result of context building process
  */
 export interface ContextResult {
-  // Formatted context string ready to be sent to the model
   formattedContext: string;
-  
-  // Length of the context in characters
   contextLength: number;
-  
-  // Messages that were included in the context
   includedMessages: ContextMessage[];
-  
-  // Memory items that were included in the context
   includedMemory: UserMemory[];
-  
-  // Model that the context was formatted for
-  targetModel?: string;
-  
-  // Strategy used to format the context
-  strategyUsed?: string;
-  
-  // Whether memory was included
+  targetModel: string;
+  strategyUsed: string;
   memoryIncluded: boolean;
-  
-  // Metrics about the context (token count, processing time, etc.)
-  metrics?: {
-    processingTimeMs?: number;
-    estimatedTokenCount?: number;
-    [key: string]: any;
+  metrics: {
+    processingTimeMs: number;
+    estimatedTokenCount: number;
   };
+}
+
+/**
+ * Information about processed context
+ */
+export interface ProcessedContextInfo {
+  contextLength: number;
+  includedMessageIds: string[];
+  strategyUsed: string;
+  processingTimeMs: number;
 }

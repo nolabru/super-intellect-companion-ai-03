@@ -9,15 +9,17 @@ export class TextContextProcessor extends BaseContextProcessor {
   /**
    * Check if this processor can handle the message
    * @param message - Message to check
+   * @returns Whether this processor can process the message
    */
   canProcess(message: ContextMessage): boolean {
-    // Can process any text-based message without media
-    return message.mode === 'text' || (!message.files && !message.mediaUrl);
+    // Handle all text messages or messages without a specified mode
+    return !message.mode || message.mode === 'text';
   }
   
   /**
-   * Process the text message content
+   * Process the text message to extract context information
    * @param message - Message to process
+   * @returns Processed data and metadata
    */
   async process(message: ContextMessage): Promise<{
     processedContent: string;
@@ -25,35 +27,38 @@ export class TextContextProcessor extends BaseContextProcessor {
     relevanceScore: number;
     metadata?: Record<string, any>;
   }> {
-    try {
-      // Clean the content
-      const cleanedContent = this.cleanContent(message.content);
-      
-      // Extract entities
-      const entities = this.extractBasicEntities(cleanedContent);
-      
-      // Calculate relevance score
-      const relevanceScore = this.calculateRelevanceScore(cleanedContent);
-      
-      console.log(`[TextContextProcessor] Processed message ${message.id}: ${entities.length} entities, score: ${relevanceScore}`);
-      
+    if (!message.content) {
+      console.log('[TextContextProcessor] Mensagem sem conteúdo para processar');
       return {
-        processedContent: cleanedContent,
-        entities,
-        relevanceScore,
-        metadata: {
-          contentLength: message.content.length,
-          processedLength: cleanedContent.length,
-          messageType: 'text'
-        }
-      };
-    } catch (error) {
-      console.error('[TextContextProcessor] Error processing message:', error);
-      return {
-        processedContent: message.content,
-        relevanceScore: 0.5, // Default medium relevance on error
-        metadata: { error: 'Processing error', messageType: 'text' }
+        processedContent: '',
+        entities: [],
+        relevanceScore: 0,
+        metadata: { empty: true }
       };
     }
+    
+    // Clean the content
+    const cleanedContent = this.cleanContent(message.content);
+    
+    // Extract basic entities (like names, emails, etc.)
+    const entities = this.extractBasicEntities(cleanedContent);
+    
+    // Calculate a relevance score based on content
+    const relevanceScore = this.calculateRelevanceScore(cleanedContent);
+    
+    console.log(`[TextContextProcessor] Mensagem processada: ${cleanedContent.substring(0, 100)}...`);
+    console.log(`[TextContextProcessor] Entidades extraídas: ${entities.length}`);
+    console.log(`[TextContextProcessor] Pontuação de relevância: ${relevanceScore}`);
+    
+    return {
+      processedContent: cleanedContent,
+      entities,
+      relevanceScore,
+      metadata: {
+        processedAt: new Date().toISOString(),
+        length: cleanedContent.length,
+        sender: message.sender
+      }
+    };
   }
 }

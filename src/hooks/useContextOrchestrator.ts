@@ -49,6 +49,8 @@ export function useContextOrchestrator() {
     mode: string = 'text',
     options: Partial<ContextParams> = {}
   ): Promise<ContextResult> => {
+    console.log(`[useContextOrchestrator] Iniciando construção de contexto para conversa ${conversationId}`);
+    
     const params: ContextParams = {
       conversationId,
       modelId,
@@ -60,7 +62,29 @@ export function useContextOrchestrator() {
       ...options
     };
     
-    return orchestrator.buildContextForMessage(params);
+    console.log(`[useContextOrchestrator] Parâmetros de contexto:`, JSON.stringify(params, null, 2));
+    
+    try {
+      const result = await orchestrator.buildContextForMessage(params);
+      console.log(`[useContextOrchestrator] Contexto construído com sucesso: ${result.contextLength} caracteres`);
+      return result;
+    } catch (error) {
+      console.error(`[useContextOrchestrator] Erro ao construir contexto:`, error);
+      // Fallback para um contexto básico em caso de erro
+      return {
+        formattedContext: "Histórico de conversa não disponível devido a um erro no sistema.\n\n",
+        contextLength: 0,
+        includedMessages: [],
+        includedMemory: [],
+        targetModel: modelId,
+        strategyUsed: "FallbackStrategy",
+        memoryIncluded: false,
+        metrics: {
+          processingTimeMs: 0,
+          estimatedTokenCount: 0
+        }
+      };
+    }
   };
   
   return {

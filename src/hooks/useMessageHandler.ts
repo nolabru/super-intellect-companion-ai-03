@@ -90,6 +90,9 @@ export function useMessageHandler(
         return false;
       }
       
+      // Melhorar o log para debugar contexto
+      console.log(`[useMessageHandler] Construindo contexto para conversa ${currentConversationId}, modelo ${comparing ? (leftModel || modelId) : modelId}`);
+      
       // Build message context
       const contextResult = await contextOrchestrator.buildContext(
         currentConversationId,
@@ -97,9 +100,14 @@ export function useMessageHandler(
         mode
       );
       
+      // Adicionar logs para verificar se o contexto está sendo construído corretamente
+      console.log(`[useMessageHandler] Contexto construído: ${contextResult.formattedContext.length} caracteres`);
+      console.log(`[useMessageHandler] Primeiros 150 caracteres: ${contextResult.formattedContext.substring(0, 150)}...`);
+      
       let modeSwitch = null;
       
       if (comparing && leftModel && rightModel) {
+        console.log(`[useMessageHandler] Modo comparação: enviando para modelos ${leftModel} e ${rightModel}`);
         const result = await messageService.handleCompareModels(
           content,
           mode,
@@ -115,6 +123,7 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else {
+        console.log(`[useMessageHandler] Modo único: enviando para modelo ${modelId}`);
         const userMessageId = uuidv4();
         const userMessage: MessageType = {
           id: userMessageId,
@@ -178,7 +187,10 @@ export function useMessageHandler(
     user,
     messageProcessing,
     contextOrchestrator,
-    clearFiles
+    clearFiles,
+    handleGoogleCommand,
+    canSendMessage,
+    updateLastMessage
   ]);
 
   return {

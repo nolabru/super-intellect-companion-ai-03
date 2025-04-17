@@ -4,17 +4,18 @@ import { BaseContextStrategy } from './BaseContextStrategy';
 
 /**
  * Default strategy for formatting context
- * Works for most text-based models
+ * Works with most models including GPT and Claude
  */
 export class DefaultContextStrategy extends BaseContextStrategy {
   /**
    * Check if this strategy can handle the given model and mode
    * @param modelId - Model identifier
    * @param mode - Chat mode
+   * @returns Whether this strategy can handle the combination
    */
   canHandle(modelId: string, mode: string): boolean {
-    // This is the default strategy that handles most text-based models
-    return mode === 'text' || !mode;
+    // This is the default fallback strategy, so it handles everything
+    return true;
   }
   
   /**
@@ -22,37 +23,58 @@ export class DefaultContextStrategy extends BaseContextStrategy {
    * @param messages - Messages to include in context
    * @param userMemory - User memory items to include
    * @param params - Context parameters
+   * @returns Formatted context string
    */
   formatForModel(
     messages: ContextMessage[],
     userMemory: UserMemory[],
     params: ContextParams
   ): string {
-    // Filter messages based on parameters
-    const maxMessages = params.maxMessages || 30;
-    const filteredMessages = this.filterMessagesForContext(messages, maxMessages);
+    console.log(`[DefaultContextStrategy] Formatando contexto com ${messages.length} mensagens e ${userMemory.length} itens de memória`);
     
-    // Format conversation history
-    let context = "Histórico da conversa:\n\n";
+    // Filter messages for context
+    const filteredMessages = this.filterMessagesForContext(
+      messages, 
+      params.maxMessages || 30
+    );
     
-    filteredMessages.forEach((msg, index) => {
-      const role = msg.sender === 'user' ? 'Usuário' : 'Assistente';
-      const modelInfo = params.includeModelInfo && msg.model ? ` (modelo: ${msg.model})` : '';
-      const cleanContent = this.cleanContentForContext(msg.content);
-      
-      context += `${role}${modelInfo}: ${cleanContent}\n\n`;
-    });
+    console.log(`[DefaultContextStrategy] Filtrado para ${filteredMessages.length} mensagens relevantes`);
     
-    // Add user memory if requested
-    if (params.includeUserMemory && userMemory && userMemory.length > 0) {
-      const memoryContext = this.formatMemoryContext(userMemory);
-      context = `${memoryContext}\n\n${context}`;
+    // Build memory context if requested
+    let memoryContext = '';
+    if (params.includeUserMemory && userMemory.length > 0) {
+      memoryContext = this.formatMemoryContext(userMemory, 'concise');
+      console.log(`[DefaultContextStrategy] Contexto de memória: ${memoryContext.length} caracteres`);
     }
     
-    // Add instructions to maintain context
-    context += "Mantenha o contexto da conversa anterior ao responder. Use as informações do histórico e da memória do usuário para personalizar sua resposta.";
+    // Start building the context with memory if available
+    let fullContext = '';
+    if (memoryContext) {
+      fullContext += memoryContext + "\n\n";
+    }
     
-    console.log(`[DefaultContextStrategy] Formatted context with ${filteredMessages.length} messages, context length: ${context.length}`);
-    return context;
+    // Add conversation history
+    fullContext += "Histórico completo da conversa:\n\n";
+    
+    // Format each message in the conversation
+    filteredMessages.forEach((msg, index) => {
+      const modelInfo = params.includeModelInfo && msg.model ? ` (modelo: ${msg.model})` : '';
+      const role = msg.sender === 'user' ? 'Usuário' : `Assistente${modelInfo}`;
+      const cleanContent = this.cleanContentForContext(msg.content || '');
+      
+      fullContext += `${role}: ${cleanContent}\n\n`;
+      
+      // Log the last message for debugging
+      if (index === filteredMessages.length - 1) {
+        console.log(`[DefaultContextStrategy] Última mensagem: ${role}: ${cleanContent.substring(0, 100)}...`);
+      }
+    });
+    
+    // Add instructions to maintain context
+    fullContext += "Importante: Mantenha o contexto e o tom da conversa anterior. Se estiver discutindo tópicos específicos, mantenha o foco nesses tópicos.\n";
+    
+    console.log(`[DefaultContextStrategy] Contexto final: ${fullContext.length} caracteres`);
+    
+    return fullContext;
   }
 }
