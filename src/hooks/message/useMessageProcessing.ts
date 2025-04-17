@@ -67,13 +67,21 @@ export function useMessageProcessing(userId?: string) {
    */
   const prepareConversationHistory = useCallback((messages: MessageType[]): string => {
     if (!messages || messages.length === 0) {
+      console.log('[useMessageProcessing] Sem mensagens para preparar contexto');
       return "";
     }
     
     console.log(`[useMessageProcessing] Preparando histórico com ${messages.length} mensagens`);
     
-    // Usar funções de contexto para manter a consistência
-    return prepareFullContext(messages);
+    // Filtrar mensagens relevantes para o contexto
+    const filteredMessages = filterMessagesForContext(messages);
+    console.log(`[useMessageProcessing] Após filtragem: ${filteredMessages.length} mensagens relevantes`);
+    
+    // Formatar as mensagens para contexto
+    const formattedContext = formatMessagesForContext(filteredMessages);
+    console.log(`[useMessageProcessing] Contexto formatado: ${formattedContext.length} caracteres`);
+    
+    return formattedContext;
   }, []);
   
   /**

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -78,8 +77,18 @@ async function handleAIChat(req: Request): Promise<Response> {
       filesCount: files?.length,
       paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none',
       userIdProvided: !!userId,
-      conversationIdProvided: !!conversationId
+      conversationIdProvided: !!conversationId,
+      conversationHistoryLength: conversationHistory?.length || 0
     });
+
+    // Log do contexto para diagnóstico
+    if (conversationHistory) {
+      console.log(`[AI-Chat] Contexto recebido: ${conversationHistory.length} caracteres`);
+      console.log(`[AI-Chat] Primeiras 150 caracteres do contexto: ${conversationHistory.substring(0, 150)}...`);
+      console.log(`[AI-Chat] Últimos 150 caracteres do contexto: ${conversationHistory.substring(conversationHistory.length - 150)}...`);
+    } else {
+      console.log(`[AI-Chat] ALERTA: Sem contexto de conversa disponível`);
+    }
     
     // Variáveis que podem ser alteradas pelo orquestrador
     let processedContent = content;

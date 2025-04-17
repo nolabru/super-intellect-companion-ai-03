@@ -136,6 +136,7 @@ export function useMessageHandler(
       
       console.log(`[useMessageHandler] Preparou contexto completo com ${conversationContext.length} caracteres`);
       console.log(`[useMessageHandler] Primeiras 150 caracteres do contexto: ${conversationContext.substring(0, 150)}...`);
+      console.log(`[useMessageHandler] Últimos 150 caracteres do contexto: ${conversationContext.substring(conversationContext.length - 150)}...`);
       
       let modeSwitch = null;
       
@@ -221,7 +222,7 @@ export function useMessageHandler(
           params,
           conversationContext,
           user?.id,
-          true
+          true // Skip adding user message as we already did it
         );
         
         modeSwitch = result?.modeSwitch || null;

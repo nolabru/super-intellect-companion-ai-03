@@ -77,12 +77,13 @@ export const handleSingleModelMessage = async (
   setMessages((prevMessages) => [...prevMessages, loadingMsg]);
   
   try {
-    // Log para depuração do contexto
+    // Log mais detalhado para depuração do contexto
     if (conversationHistory) {
       console.log(`[singleModelHandler] Enviando contexto: ${conversationHistory.length} caracteres`);
       console.log(`[singleModelHandler] Primeiros 150 caracteres: ${conversationHistory.substring(0, 150)}...`);
+      console.log(`[singleModelHandler] Últimos 150 caracteres: ${conversationHistory.substring(conversationHistory.length - 150)}...`);
     } else {
-      console.log(`[singleModelHandler] Sem contexto para enviar`);
+      console.log(`[singleModelHandler] ATENÇÃO: Sem contexto para enviar! Isso pode causar perda de contexto.`);
     }
     
     // Verificar se o modelo suporta streaming
@@ -128,7 +129,7 @@ export const handleSingleModelMessage = async (
         params, 
         true, // indicar que queremos streaming
         streamListener,
-        conversationHistory,
+        conversationHistory, // Garantir que o contexto seja enviado
         userId
       );
       
@@ -205,7 +206,7 @@ export const handleSingleModelMessage = async (
         params,
         false,
         undefined,
-        conversationHistory,
+        conversationHistory, // Garantir que o contexto seja enviado
         userId
       );
       const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;

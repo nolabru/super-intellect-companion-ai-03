@@ -37,17 +37,30 @@ export const filterMessagesForContext = (
   messages: MessageType[], 
   maxMessages = 30
 ): MessageType[] => {
-  if (!messages || messages.length === 0) return [];
+  if (!messages || messages.length === 0) {
+    console.log('[contextUtils] Sem mensagens para filtrar');
+    return [];
+  }
   
   // Pegar as últimas X mensagens
   const recentMessages = messages.slice(-maxMessages);
+  console.log(`[contextUtils] Filtrando mensagens: ${messages.length} total, pegando últimas ${maxMessages}`);
   
   // Remover mensagens de loading ou erro, garantir que seja apenas user ou assistant
-  return recentMessages.filter(msg => 
-    (msg.sender === 'user' || msg.sender === 'assistant') && 
-    !msg.loading && 
-    !msg.error
-  );
+  const filteredMessages = recentMessages.filter(msg => {
+    const isUserOrAssistant = msg.sender === 'user' || msg.sender === 'assistant';
+    const isNotLoading = !msg.loading;
+    const isNotError = !msg.error;
+    
+    if (!isUserOrAssistant) {
+      console.log(`[contextUtils] Excluindo mensagem com sender inválido: ${msg.sender}`);
+    }
+    
+    return isUserOrAssistant && isNotLoading && isNotError;
+  });
+  
+  console.log(`[contextUtils] Após filtragem: ${filteredMessages.length} mensagens restantes`);
+  return filteredMessages;
 };
 
 /**
@@ -60,7 +73,12 @@ export const formatMessagesForContext = (
   messages: MessageType[],
   includeModelInfo = true
 ): string => {
-  if (!messages || messages.length === 0) return '';
+  if (!messages || messages.length === 0) {
+    console.log('[contextUtils] Sem mensagens para formatar');
+    return '';
+  }
+  
+  console.log(`[contextUtils] Formatando ${messages.length} mensagens para contexto`);
   
   // Adicionar cabeçalho
   let context = "Histórico de conversa:\n\n";
@@ -87,6 +105,8 @@ export const formatMessagesForContext = (
   // Adicionar instrução explícita para manter contexto
   context += '\n\nLembre-se das mensagens anteriores ao responder. É essencial manter o contexto da conversa.';
   
+  console.log(`[contextUtils] Contexto formatado: ${context.length} caracteres`);
+  
   return context;
 };
 
@@ -102,6 +122,8 @@ export const prepareFullContext = (
   userMemoryContext?: string,
   maxMessages = 30
 ): string => {
+  console.log(`[contextUtils] Preparando contexto completo com ${messages.length} mensagens`);
+  
   // Filtrar mensagens relevantes
   const filteredMessages = filterMessagesForContext(messages, maxMessages);
   
@@ -110,8 +132,11 @@ export const prepareFullContext = (
   
   // Combinar com contexto de memória do usuário, se disponível
   if (userMemoryContext && userMemoryContext.trim()) {
-    return `${userMemoryContext}\n\n${conversationContext}`;
+    const fullContext = `${userMemoryContext}\n\n${conversationContext}`;
+    console.log(`[contextUtils] Contexto completo: ${fullContext.length} caracteres (com memória)`);
+    return fullContext;
   }
   
+  console.log(`[contextUtils] Contexto completo: ${conversationContext.length} caracteres (sem memória)`);
   return conversationContext;
 };

@@ -114,7 +114,13 @@ export const createMessageService = (
     }
     
     console.log(`[messageService] Preparando contexto com ${messages.length} mensagens`);
-    return prepareFullContext(messages, undefined, 30);
+    // Use a função unificada de utils para garantir consistência
+    const context = prepareFullContext(messages, undefined, 30);
+    
+    // Adicionar logs para visualizar o que está sendo enviado
+    console.log(`[messageService] Contexto preparado: ${context.length} caracteres`);
+    
+    return context;
   };
   
   return {
