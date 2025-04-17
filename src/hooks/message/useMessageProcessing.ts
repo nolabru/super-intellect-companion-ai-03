@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { ChatMode } from '@/components/ModeSelector';
 import { memoryService } from '@/services/memoryService';
@@ -73,15 +72,13 @@ export function useMessageProcessing(userId?: string) {
     
     console.log(`[useMessageProcessing] Preparando histórico com ${messages.length} mensagens`);
     
-    // Filtrar mensagens relevantes para o contexto
-    const filteredMessages = filterMessagesForContext(messages);
-    console.log(`[useMessageProcessing] Após filtragem: ${filteredMessages.length} mensagens relevantes`);
+    // Usar a função unificada para garantir consistência
+    const context = prepareFullContext(messages);
     
-    // Formatar as mensagens para contexto
-    const formattedContext = formatMessagesForContext(filteredMessages);
-    console.log(`[useMessageProcessing] Contexto formatado: ${formattedContext.length} caracteres`);
+    console.log(`[useMessageProcessing] Contexto preparado: ${context.length} caracteres`);
+    console.log(`[useMessageProcessing] Primeiros 150 caracteres: ${context.substring(0, 150)}...`);
     
-    return formattedContext;
+    return context;
   }, []);
   
   /**
