@@ -11,7 +11,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Define response type for orchestrator
 export interface OrchestratorResponse {
-  enhancedPrompt: string;
   detectedMode: string;
   recommendedModel: string;
   memoryExtracted: boolean;
@@ -238,7 +237,6 @@ Se o usuário não tiver concedido as permissões necessárias, informe gentilme
     
     // Em caso de falha, retorna valores padrão
     return {
-      enhancedPrompt: userMessage,
       detectedMode: currentMode,
       recommendedModel: currentModel,
       memoryExtracted: false
@@ -270,13 +268,11 @@ Sua tarefa é:
 1. Analisar a intenção do usuário
 2. Decidir o modo mais adequado (text, image, video, audio)
 3. Recomendar o modelo mais adequado para essa tarefa
-4. Extrair informações que devem ser armazenadas para memória futura
-5. Melhorar o prompt original do usuário para obter a melhor resposta possível
-${googleIntegrationContext && !hasGoogleCommand ? `6. Detectar se o pedido do usuário pode ser atendido usando integrações com o Google (Calendar, Drive, Sheets, Docs, Gmail) e sugerir ações específicas` : ''}
+4. Identificar informações que devem ser armazenadas para memória futura
+${googleIntegrationContext && !hasGoogleCommand ? `5. Detectar se o pedido do usuário pode ser atendido usando integrações com o Google (Calendar, Drive, Sheets, Docs, Gmail) e sugerir ações específicas` : ''}
 
 Responda no seguinte formato JSON:
 {
-  "enhancedPrompt": "Versão melhorada do prompt do usuário",
   "detectedMode": "O modo que melhor atende a solicitação (text, image, video, audio)",
   "recommendedModel": "Modelo recomendado para essa tarefa",
   "memoryExtracted": true/false,
@@ -308,7 +304,6 @@ function parseOrchestratorResponse(
     if (!jsonMatch) {
       console.warn("[Orquestrador] Não foi possível extrair JSON da resposta");
       return {
-        enhancedPrompt: responseContent,
         detectedMode: "text",
         recommendedModel: "gpt-4o",
         memoryExtracted: false
@@ -318,11 +313,6 @@ function parseOrchestratorResponse(
     const responseJson = JSON.parse(jsonMatch[0]);
     
     // Verificar se todos os campos necessários estão presentes
-    if (!responseJson.enhancedPrompt) {
-      console.warn("[Orquestrador] Campo 'enhancedPrompt' não encontrado na resposta");
-      responseJson.enhancedPrompt = responseContent;
-    }
-    
     if (!responseJson.detectedMode) {
       console.warn("[Orquestrador] Campo 'detectedMode' não encontrado na resposta");
       responseJson.detectedMode = "text";
@@ -343,7 +333,6 @@ function parseOrchestratorResponse(
     }
     
     return {
-      enhancedPrompt: responseJson.enhancedPrompt,
       detectedMode: responseJson.detectedMode,
       recommendedModel: responseJson.recommendedModel,
       memoryExtracted: responseJson.memoryExtracted || false,
@@ -353,7 +342,6 @@ function parseOrchestratorResponse(
   } catch (error) {
     console.error("[Orquestrador] Erro ao analisar resposta:", error);
     return {
-      enhancedPrompt: responseContent,
       detectedMode: "text",
       recommendedModel: "gpt-4o",
       memoryExtracted: false
@@ -398,15 +386,6 @@ export async function getUserMemoryContext(userId: string): Promise<string> {
     console.error("[Orquestrador] Erro ao recuperar contexto de memória:", error);
     return "";
   }
-}
-
-// Função para enriquecer o prompt com contexto de memória
-export function enrichPromptWithMemory(prompt: string, memoryContext: string): string {
-  if (!memoryContext) {
-    return prompt;
-  }
-  
-  return `${memoryContext}\n\n${prompt}`;
 }
 
 // Função para processar ações de integração com o Google

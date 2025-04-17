@@ -115,22 +115,13 @@ export function useMessageHandler(
         }
       }
       
-      // Processar mensagem para extração de memória
-      if (user && user.id) {
-        messageProcessing.processUserMessageForMemory(content);
-      }
-      
       // Preparar histórico de conversação para o orquestrador
       const conversationHistory = messageProcessing.prepareConversationHistory(
         messages.map(msg => ({ sender: msg.sender, content: msg.content }))
       );
       
-      // No modo de comparação desvinculado, não criamos mensagem de usuário aqui
-      // porque cada handler (handleSingleModelMessage) criará sua própria
-      // mensagem específica para o modelo
-      
-      // Melhorar conteúdo com contexto de memória, se necessário
-      const enhancedContent = await messageProcessing.enhanceWithMemoryContext(content, messages.length);
+      // Processar a mensagem - agora processamos após a resposta do modelo!
+      // Sem melhoria de conteúdo antes de enviar, apenas a mensagem original
       
       // Processar a mensagem
       let modeSwitch = null;
@@ -151,7 +142,7 @@ export function useMessageHandler(
         await saveUserMessage(userMessage, currentConversationId);
         
         const result = await messageService.handleCompareModels(
-          enhancedContent,
+          content, // Usar conteúdo original
           mode,
           leftModel,
           rightModel,
@@ -167,7 +158,7 @@ export function useMessageHandler(
         // Modo destacado - apenas modelo esquerdo
         // Não criamos mensagem de usuário aqui, o handler fará isso
         const result = await messageService.handleSingleModelMessage(
-          enhancedContent,
+          content, // Usar conteúdo original
           mode,
           leftModel,
           currentConversationId,
@@ -184,7 +175,7 @@ export function useMessageHandler(
         // Modo destacado - apenas modelo direito
         // Não criamos mensagem de usuário aqui, o handler fará isso
         const result = await messageService.handleSingleModelMessage(
-          enhancedContent,
+          content, // Usar conteúdo original
           mode,
           rightModel,
           currentConversationId,
@@ -214,7 +205,7 @@ export function useMessageHandler(
         await saveUserMessage(userMessage, currentConversationId);
         
         const result = await messageService.handleSingleModelMessage(
-          enhancedContent,
+          content, // Usar conteúdo original
           mode,
           modelId,
           currentConversationId,
@@ -227,6 +218,11 @@ export function useMessageHandler(
         );
         
         modeSwitch = result?.modeSwitch || null;
+      }
+      
+      // Processar em segundo plano, após a mensagem ser enviada e respondida
+      if (user && user.id) {
+        messageProcessing.processUserMessageForMemory(content);
       }
       
       // Se esta for a primeira mensagem na conversa, atualizar o título

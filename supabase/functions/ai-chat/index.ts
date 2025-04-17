@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -34,6 +35,29 @@ const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1
 // Token mocado para testes com a Kligin API
 const MOCKED_KLIGIN_TOKEN = Deno.env.get("KLIGIN_API_KEY") || "";
 
+// Função para processar memória do usuário de forma assíncrona (após a resposta)
+async function processUserMemory(userId: string, content: string): Promise<void> {
+  if (!userId) return;
+  
+  try {
+    // Chamar o orquestrador apenas para extração de memória em background
+    const orchestratorResult = await orchestratorService.processUserMessage(
+      content,
+      userId,
+      'text',
+      'gpt-4o-mini'
+    );
+    
+    // Extração e salvamento de memória, se necessário
+    if (orchestratorResult.memoryExtracted && orchestratorResult.memoryItems) {
+      await orchestratorService.extractAndSaveMemory(userId, content, orchestratorResult);
+    }
+  } catch (error) {
+    console.error("[AI-Chat] Erro ao processar memória do usuário em background:", error);
+    // Falhas aqui não devem afetar a resposta principal
+  }
+}
+
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {
   try {
@@ -63,12 +87,13 @@ async function handleAIChat(req: Request): Promise<Response> {
     let processedModelId = modelId;
     let modeSwitchDetected = false;
     
-    // Aplicar orquestrador se userId estiver presente e não for solicitação de mídia direta
+    // Aplicar orquestrador apenas para detecção de modo e comando Google
+    // Vamos fazer a parte de memória posteriormente para melhorar desempenho
     if (userId && mode === "text") {
       try {
-        console.log(`[AI-Chat] Iniciando orquestrador para analisar a mensagem`);
+        console.log(`[AI-Chat] Iniciando orquestrador para análise básica da mensagem`);
         
-        // Processar a mensagem com o orquestrador
+        // Processar a mensagem com o orquestrador - apenas para mode switch e detecção de comandos
         const orchestratorResult = await orchestratorService.processUserMessage(
           content,
           userId,
@@ -90,23 +115,9 @@ async function handleAIChat(req: Request): Promise<Response> {
           processedModelId = orchestratorResult.recommendedModel;
         }
         
-        // Usar prompt melhorado do orquestrador
-        processedContent = orchestratorResult.enhancedPrompt;
-        console.log(`[AI-Chat] Prompt melhorado pelo orquestrador: "${processedContent.substring(0, 50)}..."`);
-        
-        // Se existirem itens de memória extraídos, salvá-los
-        if (orchestratorResult.memoryExtracted && orchestratorResult.memoryItems) {
-          // Aqui seria o código para salvar os itens de memória
-          console.log(`[AI-Chat] Itens de memória extraídos pelo orquestrador`);
-        }
-        
-        // Enriquecer o prompt com contexto de memória (se disponível)
-        if (userId) {
-          const memoryContext = await orchestratorService.getUserMemoryContext(userId);
-          if (memoryContext) {
-            processedContent = orchestratorService.enrichPromptWithMemory(processedContent, memoryContext);
-            console.log(`[AI-Chat] Prompt enriquecido com contexto de memória`);
-          }
+        // Se houver comando Google, processar conforme necessário
+        if (orchestratorResult.googleCommand) {
+          console.log(`[AI-Chat] Orquestrador detectou comando Google: ${orchestratorResult.googleCommand.type}`);
         }
         
       } catch (orchestratorError) {
@@ -491,6 +502,21 @@ async function handleAIChat(req: Request): Promise<Response> {
             status: 400,
           }
         );
+      }
+      
+      // Processar memória do usuário em background
+      if (userId && processedMode === 'text') {
+        // Uso de waitUntil do EdgeRuntime (Deno v2+) para processar memória em background
+        if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+          EdgeRuntime.waitUntil(processUserMemory(userId, content));
+          console.log("[AI-Chat] Processamento de memória iniciado em background via waitUntil");
+        } else {
+          // Fallback para processamento em background com Promise sem await
+          processUserMemory(userId, content).catch(err => {
+            console.error("[AI-Chat] Erro no processamento de memória em background:", err);
+          });
+          console.log("[AI-Chat] Processamento de memória iniciado em background via Promise");
+        }
       }
       
       console.log(`[AI-Chat] Resposta do modelo ${processedModelId} no modo ${processedMode} gerada com sucesso:`, {

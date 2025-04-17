@@ -44,21 +44,6 @@ export function useMessageProcessing(userId?: string) {
   }, [userId]);
 
   /**
-   * Melhora o conteúdo com contexto de memória se for uma nova conversa
-   */
-  const enhanceWithMemoryContext = useCallback(async (content: string, messageCount: number) => {
-    // Only add memory context for the first user message in a conversation
-    if (messageCount === 0 || messageCount === 1) {
-      const memoryContext = await getMemoryContext();
-      
-      if (memoryContext) {
-        return `${memoryContext}\n\n${content}`;
-      }
-    }
-    return content;
-  }, [getMemoryContext]);
-
-  /**
    * Prepara o histórico da conversa para o orquestrador
    */
   const prepareConversationHistory = useCallback((messages: { sender: string, content: string }[]): string => {
@@ -87,7 +72,6 @@ export function useMessageProcessing(userId?: string) {
   return {
     processUserMessageForMemory,
     getMemoryContext,
-    enhanceWithMemoryContext,
     prepareConversationHistory,
     detectContentType,
     isProcessing
