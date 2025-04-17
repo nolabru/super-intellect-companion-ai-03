@@ -6,7 +6,7 @@
  * API documentation: https://app.klingai.com/global/dev/document-api/quickStart/productIntroduction/overview
  */
 
-import { logError } from "../../utils/logging.ts";
+import { logError, logInfo } from "../../utils/logging.ts";
 import { fetchWithRetry } from "../../utils/logging.ts";
 
 // Define response types
@@ -30,6 +30,10 @@ export async function generateImage(prompt: string): Promise<KliginResponse> {
     if (!apiKey) {
       throw new Error("KLIGIN_API_KEY is not configured");
     }
+    
+    logInfo("KLIGIN_IMAGE_REQUEST", {
+      prompt: prompt.substring(0, 100) + (prompt.length > 100 ? "..." : "")
+    });
     
     console.log("[Kligin] Generating image with prompt:", prompt.substring(0, 100) + "...");
     
@@ -105,6 +109,10 @@ export async function generateVideo(prompt: string): Promise<KliginResponse> {
     if (!apiKey) {
       throw new Error("KLIGIN_API_KEY is not configured");
     }
+    
+    logInfo("KLIGIN_VIDEO_REQUEST", {
+      prompt: prompt.substring(0, 100) + (prompt.length > 100 ? "..." : "")
+    });
     
     console.log("[Kligin] Generating video with prompt:", prompt.substring(0, 100) + "...");
     

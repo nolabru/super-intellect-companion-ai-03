@@ -37,7 +37,7 @@ export async function fetchWithRetry(
       console.log(`Attempt ${attempt + 1}/${maxRetries} for URL: ${url}`);
       
       // Log request headers (without Authorization for security)
-      const safeHeaders = { ...options.headers };
+      const safeHeaders = { ...options.headers } as Record<string, string>;
       if (safeHeaders['Authorization']) {
         safeHeaders['Authorization'] = 'Bearer [REDACTED]';
       }

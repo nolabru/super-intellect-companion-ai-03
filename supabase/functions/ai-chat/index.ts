@@ -16,8 +16,8 @@ import { generateText as deepseekGenerateText } from "./services/models/deepseek
 import { generateImage as kliginGenerateImage, generateVideo as kliginGenerateVideo } from "./services/models/kligin.ts";
 import { processUserMessage } from "./services/orchestrator.ts";
 
-// Import mock service for testing
-import { mockAiResponse } from "./services/models/mock.ts";
+// Import mock service for testing - fix the import to match the actual export
+import * as mockService from "./services/models/mock.ts";
 
 // Main handler function
 serve(async (req) => {
@@ -34,7 +34,8 @@ serve(async (req) => {
     
     // For development/testing purposes when working with the mock endpoint
     if (modelId === "mock" || Deno.env.get("USE_MOCK_API") === "true") {
-      const mockResponse = await mockAiResponse(content, mode, modelId);
+      // Use the correct mockService function
+      const mockResponse = await mockService.generateMockResponse(content, mode, modelId);
       return new Response(JSON.stringify(mockResponse), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
