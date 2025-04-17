@@ -10,7 +10,7 @@ export const useGoogleTokens = () => {
   const [loading, setLoading] = useState<boolean>(true);
 
   // Fetch Google tokens from Supabase
-  const fetchGoogleTokens = async (session: Session | null) => {
+  const fetchGoogleTokens = async (session: Session | null): Promise<void> => {
     if (!session || !session.user) {
       setGoogleTokens(null);
       setIsGoogleConnected(false);

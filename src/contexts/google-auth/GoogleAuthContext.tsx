@@ -47,16 +47,15 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     if (session?.user) {
       console.log("[GoogleAuthProvider] Sessão detectada, buscando tokens Google");
-      fetchGoogleTokens(session).then(success => {
-        // Se os tokens foram encontrados com sucesso, verificar o status de permissão no localStorage
-        if (success) {
-          const savedPermissionsVerified = localStorage.getItem('google_permissions_verified') === 'true';
-          if (savedPermissionsVerified) {
-            console.log("[GoogleAuthProvider] Permissões já verificadas anteriormente");
-            setPermissionsVerified(true);
-          }
-        }
-      });
+      // Fix: Don't test fetchGoogleTokens for truthiness since it returns void
+      fetchGoogleTokens(session);
+      
+      // Access localStorage directly after the fetch operation
+      const savedPermissionsVerified = localStorage.getItem('google_permissions_verified') === 'true';
+      if (savedPermissionsVerified) {
+        console.log("[GoogleAuthProvider] Permissões já verificadas anteriormente");
+        setPermissionsVerified(true);
+      }
     } else {
       console.log("[GoogleAuthProvider] Sem sessão, resetando tokens Google");
       setGoogleTokens(null);
@@ -139,10 +138,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           // Give Supabase time to process the login
           setTimeout(async () => {
             if (user) {
-              const success = await fetchGoogleTokens(session);
+              // Fix: Don't test fetchGoogleTokens result for truthiness since it returns void
+              await fetchGoogleTokens(session);
               
-              // Notify user and set permission status
-              if (success && isGoogleConnected) {
+              // Notify user based on the current state after fetch
+              if (isGoogleConnected) {
                 toast.success(
                   'Google conectado com sucesso!',
                   { description: 'Sua conta Google foi conectada e as permissões foram salvas.' }
@@ -164,10 +164,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           // Check if session exists
           const { data } = await supabase.auth.getSession();
           if (data.session) {
-            const success = await fetchGoogleTokens(data.session);
+            // Fix: Don't test fetchGoogleTokens result for truthiness since it returns void
+            await fetchGoogleTokens(data.session);
             
-            // Notify user
-            if (success && isGoogleConnected) {
+            // Notify user based on current state after fetch
+            if (isGoogleConnected) {
               toast.success(
                 'Google conectado com sucesso!',
                 { description: 'Sua conta Google foi conectada e as permissões foram salvas.' }
