@@ -1,3 +1,4 @@
+
 // Validate required API key
 export function validateApiKey(apiKeyName: string, apiKey: string | undefined): void {
   console.log(`Validating ${apiKeyName}...`);

@@ -1,7 +1,8 @@
 
 import { fetchWithRetry, logError } from "../../utils/logging.ts";
 import { validateApiKey } from "../../utils/validation.ts";
-import * as jwt from "jsonwebtoken";
+// Import JWT from a Deno-compatible CDN URL instead of using a bare import
+import * as jwt from "https://deno.land/x/djwt@v2.8/mod.ts";
 
 // Kligin API base URL
 const KLIGIN_API_BASE_URL = "https://api.klingai.com";
@@ -18,11 +19,11 @@ export function setApiCredentials(apiKey: string, apiSecret: string) {
 }
 
 // Generate JWT token for Kligin API authentication
-function generateJwtToken(): string {
+async function generateJwtToken(): Promise<string> {
   try {
     const now = Math.floor(Date.now() / 1000);
     
-    const headers = {
+    const header = {
       alg: "HS256",
       typ: "JWT"
     };
@@ -33,7 +34,8 @@ function generateJwtToken(): string {
       nbf: now - 5     // Valid from 5 seconds ago
     };
     
-    return jwt.sign(payload, KLIGIN_API_SECRET, { header: headers });
+    // Create the JWT token using Deno's JWT library
+    return await jwt.create(header, payload, new TextEncoder().encode(KLIGIN_API_SECRET));
   } catch (error) {
     console.error("[Kligin] Error generating JWT token:", error);
     throw new Error("Falha ao gerar token JWT para autenticação Kligin");
@@ -67,7 +69,7 @@ export async function testApiCredentials(apiKey: string, apiSecret: string): Pro
     KLIGIN_API_SECRET = apiSecret;
     
     // Generate a token for authentication
-    const token = generateJwtToken();
+    const token = await generateJwtToken();
     
     // Make a lightweight request to check if the credentials are valid
     const response = await fetch(`${KLIGIN_API_BASE_URL}/v1/videos/text2video?pageNum=1&pageSize=1`, {
@@ -106,7 +108,7 @@ export async function generateVideo(
     console.log(`[Kligin] Generating video with prompt: "${prompt.substring(0, 50)}..."`);
     
     // Generate JWT token for authentication
-    const token = generateJwtToken();
+    const token = await generateJwtToken();
     
     // Default video parameters
     const videoParams = {
@@ -159,7 +161,7 @@ export async function generateVideo(
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
       
       // Generate a fresh token for each poll to avoid expiration
-      const freshToken = generateJwtToken();
+      const freshToken = await generateJwtToken();
       
       // Check task status
       const taskCheckResponse = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/videos/text2video/${taskId}`, {
@@ -229,7 +231,7 @@ export async function generateImage(
     console.log(`[Kligin] Generating image with prompt: "${prompt.substring(0, 50)}..."`);
     
     // Generate JWT token for authentication
-    const token = generateJwtToken();
+    const token = await generateJwtToken();
     
     // Default image parameters
     const imageParams = {
@@ -279,7 +281,7 @@ export async function generateImage(
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
       
       // Generate a fresh token for each poll to avoid expiration
-      const freshToken = generateJwtToken();
+      const freshToken = await generateJwtToken();
       
       // Check task status
       const taskCheckResponse = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/images/text2image/${taskId}`, {
