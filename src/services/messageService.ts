@@ -7,7 +7,7 @@ import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { ConversationType } from '@/types/conversation';
 import { handleSingleModelMessage } from './message/singleModelHandler';
 import { handleCompareModels } from './message/compareModelsHandler';
-import { filterMessagesForContext, formatMessagesForContext } from '@/utils/contextUtils';
+import { prepareFullContext } from '@/utils/contextUtils';
 
 /**
  * Factory function para criar serviço de mensagens
@@ -114,12 +114,7 @@ export const createMessageService = (
     }
     
     console.log(`[messageService] Preparando contexto com ${messages.length} mensagens`);
-    
-    // Filtrar as mensagens com nossa função utilitária
-    const filteredMessages = filterMessagesForContext(messages, 30);
-    
-    // Formatar as mensagens para contexto usando nossa função utilitária
-    return formatMessagesForContext(filteredMessages, true);
+    return prepareFullContext(messages, undefined, 30);
   };
   
   return {

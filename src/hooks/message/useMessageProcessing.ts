@@ -2,7 +2,8 @@
 import { useState, useCallback } from 'react';
 import { ChatMode } from '@/components/ModeSelector';
 import { memoryService } from '@/services/memoryService';
-import { filterMessagesForContext, formatMessagesForContext } from '@/utils/contextUtils';
+import { filterMessagesForContext, formatMessagesForContext, prepareFullContext } from '@/utils/contextUtils';
+import { MessageType } from '@/components/ChatMessage';
 
 /**
  * Hook para processar mensagens de usuário, extrair memória e preparar contexto
@@ -64,7 +65,7 @@ export function useMessageProcessing(userId?: string) {
   /**
    * Prepara o histórico da conversa para o orquestrador
    */
-  const prepareConversationHistory = useCallback((messages: { sender: string, content: string }[]): string => {
+  const prepareConversationHistory = useCallback((messages: MessageType[]): string => {
     if (!messages || messages.length === 0) {
       return "";
     }
@@ -72,23 +73,7 @@ export function useMessageProcessing(userId?: string) {
     console.log(`[useMessageProcessing] Preparando histórico com ${messages.length} mensagens`);
     
     // Usar funções de contexto para manter a consistência
-    const filteredMessages = messages.filter(msg => 
-      msg.sender === 'user' || msg.sender === 'assistant'
-    ).slice(-15);
-    
-    // Formatar mensagens de maneira consistente
-    const formattedHistory = filteredMessages.map(msg => {
-      const role = msg.sender === 'user' ? 'Usuário' : 'Assistente';
-      
-      // Limpar conteúdo muito grande
-      let cleanContent = msg.content;
-      cleanContent = cleanContent.replace(/data:image\/[^;]+;base64,[^\s]{100,}/g, '[IMAGEM]');
-      cleanContent = cleanContent.replace(/(https?:\/\/[^\s]{50,})/g, '[URL]');
-      
-      return `${role}: ${cleanContent}`;
-    }).join('\n\n');
-    
-    return formattedHistory;
+    return prepareFullContext(messages);
   }, []);
   
   /**

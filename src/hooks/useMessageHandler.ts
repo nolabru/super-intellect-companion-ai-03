@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
 import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
+import { prepareFullContext } from '@/utils/contextUtils';
 
 /**
  * Hook central para gerenciamento de envio de mensagens e contexto
@@ -128,17 +129,13 @@ export function useMessageHandler(
       
       // Obter o contexto de memória do usuário
       const userMemoryContext = await messageProcessing.getMemoryContext();
+      console.log(`[useMessageHandler] Contexto de memória obtido: ${userMemoryContext ? userMemoryContext.length : 0} caracteres`);
       
-      // Preparar o histórico da conversa usando o serviço de mensagens
-      // Isso garante que o mesmo processamento seja usado em todos os pontos
-      const conversationHistory = messageService.prepareConversationHistory(messages);
+      // Preparar o contexto completo usando a função unificada para garantir consistência
+      const conversationContext = prepareFullContext(messages, userMemoryContext);
       
-      // Combinar o contexto de memória do usuário com o histórico da conversa
-      const enhancedContext = userMemoryContext 
-        ? `${userMemoryContext}\n\n${conversationHistory}`
-        : conversationHistory;
-      
-      console.log(`[useMessageHandler] Preparou contexto com ${enhancedContext.length} caracteres`);
+      console.log(`[useMessageHandler] Preparou contexto completo com ${conversationContext.length} caracteres`);
+      console.log(`[useMessageHandler] Primeiras 150 caracteres do contexto: ${conversationContext.substring(0, 150)}...`);
       
       let modeSwitch = null;
       
@@ -164,7 +161,7 @@ export function useMessageHandler(
           messages,
           files,
           params,
-          enhancedContext,
+          conversationContext,
           user?.id
         );
         
@@ -179,7 +176,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          enhancedContext,
+          conversationContext,
           user?.id
         );
         
@@ -194,7 +191,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          enhancedContext,
+          conversationContext,
           user?.id
         );
         
@@ -222,7 +219,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          enhancedContext,
+          conversationContext,
           user?.id,
           true
         );

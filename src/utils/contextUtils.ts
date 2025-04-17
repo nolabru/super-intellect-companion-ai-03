@@ -42,9 +42,9 @@ export const filterMessagesForContext = (
   // Pegar as últimas X mensagens
   const recentMessages = messages.slice(-maxMessages);
   
-  // Remover mensagens de sistema, loading ou erro
+  // Remover mensagens de loading ou erro, garantir que seja apenas user ou assistant
   return recentMessages.filter(msg => 
-    msg.sender === 'user' || msg.sender === 'assistant' && 
+    (msg.sender === 'user' || msg.sender === 'assistant') && 
     !msg.loading && 
     !msg.error
   );
@@ -84,7 +84,7 @@ export const formatMessagesForContext = (
   
   context += formattedMessages;
   
-  // Adicionar instrução para manter contexto
+  // Adicionar instrução explícita para manter contexto
   context += '\n\nLembre-se das mensagens anteriores ao responder. É essencial manter o contexto da conversa.';
   
   return context;
