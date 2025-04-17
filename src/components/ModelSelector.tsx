@@ -32,6 +32,14 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     description: 'Gerador de imagens avançado da OpenAI.',
     modes: ['image']
   },
+  {
+    id: 'openai-audio',
+    displayName: 'OpenAI TTS',
+    provider: 'openai',
+    capabilities: ['Conversão de texto em áudio', 'Voz sintética de alta qualidade'],
+    description: 'Serviço de conversão de texto em áudio da OpenAI.',
+    modes: ['audio']
+  },
   // Luma AI Models - image and video
   {
     id: 'luma-video',
