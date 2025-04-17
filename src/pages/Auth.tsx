@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 type AuthMode = 'login' | 'signup';
 
 // Use the correct production URL
-const SITE_URL = window.location.origin;
+const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
 // Google scopes needed for the application
 const GOOGLE_SCOPES = [
@@ -28,85 +28,44 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>('login');
   const navigate = useNavigate();
-  const location = useLocation();
-
-  // Log everything for debugging
-  useEffect(() => {
-    console.log('[Auth] Component mounted');
-    console.log('[Auth] Current URL:', window.location.href);
-    console.log('[Auth] URL Search params:', location.search);
-    console.log('[Auth] URL Hash:', location.hash);
-  }, [location]);
 
   // Check if user is already authenticated
   useEffect(() => {
     const checkSession = async () => {
-      console.log('[Auth] Checking existing session');
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        console.log('[Auth] User already has a session, redirecting...');
-        // Check if came from a Google integration request
-        const params = new URLSearchParams(location.search);
-        if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
-          navigate('/google-integrations');
-        } else {
-          navigate('/');
-        }
-      } else {
-        console.log('[Auth] No existing session found');
+        navigate('/');
       }
     };
     
     checkSession();
-  }, [navigate, location]);
+  }, [navigate]);
 
   // Process auth redirects
   useEffect(() => {
     const handleAuthRedirect = async () => {
-      console.log('[Auth] Checking for authentication redirect');
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
-      console.log('[Auth] URL parameters:', Object.fromEntries(params.entries()));
-      console.log('[Auth] Hash parameters:', Object.fromEntries(hashParams.entries()));
-      
       if (params.has('error') || params.has('error_description')) {
-        const errorMessage = params.get('error_description') || 'Erro de autenticação';
-        toast.error('Erro de autenticação', { description: errorMessage });
+        const errorMessage = params.get('error_description') || 'Authentication error';
+        toast.error('Authentication error', { description: errorMessage });
         return;
       }
 
       if (hashParams.has('access_token') || params.has('provider')) {
         // Successfully authenticated via Google
         try {
-          console.log('[Auth] Processing successful authentication redirect');
           const { data } = await supabase.auth.getSession();
           if (data.session) {
-            toast.success('Login bem-sucedido', { 
-              description: 'Você será redirecionado...'
+            toast.success('Login successful', { 
+              description: 'You will be redirected...'
             });
-            
-            // Store in localStorage that user authenticated with Google
-            // This allows other components to detect the login method
-            localStorage.setItem('auth_method', 'google');
-            
-            // Store last login time for reference
-            localStorage.setItem('last_login_time', Date.now().toString());
-            
-            // Check if came from a Google integration request
-            if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
-              console.log('[Auth] Redirecting to Google integrations page');
-              navigate('/google-integrations');
-            } else {
-              navigate('/');
-            }
-          } else {
-            console.log('[Auth] No session data found after successful redirect');
+            navigate('/');
           }
         } catch (error) {
-          console.error('[Auth] Error processing login:', error);
-          toast.error('Erro ao processar login', { 
-            description: 'Por favor, tente novamente.'
+          toast.error('Error processing login', { 
+            description: 'Please try again.'
           });
         }
       }
@@ -129,8 +88,8 @@ const Auth: React.FC = () => {
         if (error) throw error;
         
         toast.success(
-          "Cadastro concluído!",
-          { description: "Verifique seu email para confirmar sua conta." }
+          "Registration completed!",
+          { description: "Check your email to confirm your account." }
         );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -140,23 +99,11 @@ const Auth: React.FC = () => {
 
         if (error) throw error;
         
-        // Store auth method as 'password'
-        localStorage.setItem('auth_method', 'password');
-        
-        // Store last login time for reference
-        localStorage.setItem('last_login_time', Date.now().toString());
-        
-        // Check if came from a Google integration request
-        const params = new URLSearchParams(location.search);
-        if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
-          navigate('/google-integrations');
-        } else {
-          navigate('/');
-        }
+        navigate('/');
       }
     } catch (error: any) {
       toast.error(
-        "Erro", 
+        "Error", 
         { description: error.message }
       );
     } finally {
@@ -167,62 +114,25 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      console.log('[Auth] Starting Google authentication process');
+      // For OAuth signIn, we specify the full callback URL
+      const redirectTo = `${SITE_URL}/auth`;
       
-      // Check if came from an integration request
-      const params = new URLSearchParams(location.search);
-      let redirectTo = `${SITE_URL}/auth`;
-      let redirectAfterAuth = ''; 
-      
-      if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
-        // Add redirect parameter to auth page
-        redirectTo = `${SITE_URL}/auth?redirect=google-integrations`;
-        redirectAfterAuth = 'google-integrations';
-      }
-      
-      console.log('[Auth] Using redirectTo:', redirectTo);
-      
-      // Get the current session to include in state if available
-      const { data: sessionData } = await supabase.auth.getSession();
-      const sessionToken = sessionData.session?.access_token;
-      
-      // Create state object with all necessary information
-      const stateObj = {
-        redirectAfterAuth,
-        timestamp: Date.now(),
-        session_token: sessionToken || null
-      };
-      
-      const state = JSON.stringify(stateObj);
-      
-      console.log('[Auth] Using state object:', stateObj);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           scopes: GOOGLE_SCOPES.join(' '),
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
-            state
+            prompt: 'consent'
           },
           redirectTo
         }
       });
 
-      console.log('[Auth] SignInWithOAuth response:', { data, error });
-
       if (error) throw error;
-      
-      // This part will only run if there's no redirect
-      if (data?.url) {
-        console.log('[Auth] Redirecting to OAuth URL:', data.url);
-        window.location.href = data.url;
-      }
     } catch (error: any) {
-      console.error('[Auth] Error during Google authentication:', error);
       toast.error(
-        "Erro ao entrar com Google", 
+        "Error signing in with Google", 
         { description: error.message }
       );
       setLoading(false);

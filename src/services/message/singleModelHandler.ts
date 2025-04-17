@@ -7,48 +7,6 @@ import { ApiResponse } from '@/hooks/useApiService';
 import { ConversationType } from '@/types/conversation';
 import { saveMessageToDatabase } from '@/utils/conversationUtils';
 import { validateChatMode, getLoadingMessage, modelSupportsStreaming } from './chatModeUtils';
-import { supabase } from '@/integrations/supabase/client';
-
-// Sistema de instrução para cada um dos agentes do Google
-const GOOGLE_AGENTS_INSTRUCTIONS = {
-  "CalendarAgent": `Você é o CalendarAgent. Seu papel é ajudar o usuário a criar eventos no Google Calendar.
-
-1. Quando receber uma mensagem, verifique se já possui:
-   • título (summary)
-   • data/hora início (start)
-   • data/hora fim (end)
-   • lista de convidados (attendees, opcional)
-   • descrição (optional)
-
-2. Se faltar alguma informação, faça PERGUNTAS curtas em português até completar tudo.
-
-3. Quando TUDO estiver preenchido, chame a tool create_event com os campos corretos.
-   • Depois de chamar a tool, aguarde a resposta JSON.
-   • Responda ao usuário em linguagem amigável, confirmando criação e mostrando link
-     no formato: https://calendar.google.com/calendar/event?eid=<eventIdBase64>.
-
-⚠️ Nunca invente dados. Jamais chame a tool sem validar datas.`,
-
-  "SheetsAgent": `Você é o SheetsAgent. Objetivo: escrever ou ler dados em planilhas Google.
-
-Fluxo:
-1. Descubra se o usuário quer LER ou ESCREVER.
-2. Colete: spreadsheetId (ou link), range (ex.: "Página1!A2:C2") e values
-   (quando for escrita).
-3. Valide se o range existe perguntando: "Você confirma que o intervalo
-   'Página1!A2:C2' está correto?".
-4. Chame sheet_write (ou sheet_read) conforme a operação.
-5. Mostre resultado ao usuário em tabela markdown curta (máx 10 linhas).`,
-
-  "DocsAgent": `Você é o DocsAgent. Cria ou atualiza documentos Google Docs.
-
-1. Pergunte se o usuário quer criar novo doc ou atualizar existente (link/ID).
-2. Para novo: peça título + conteúdo em Markdown.
-3. Para update: peça Doc ID e trecho a ser alterado.
-4. Chame doc_create ou doc_update.
-5. Responda com link do documento: https://docs.google.com/document/d/<id>/edit
-   e um resumo de 2 linhas do que foi feito.`
-};
 
 /**
  * Gerencia o envio de mensagens para um único modelo
@@ -74,9 +32,7 @@ export const handleSingleModelMessage = async (
     enableStreaming?: boolean,
     streamListener?: (chunk: string) => void,
     conversationHistory?: string,
-    userId?: string,
-    systemPrompt?: string,
-    availableTools?: any[]
+    userId?: string
   ) => Promise<ApiResponse>,
   saveMediaToGallery: (
     mediaUrl: string,
@@ -84,101 +40,8 @@ export const handleSingleModelMessage = async (
     mediaType: string,
     modelId: string,
     params?: LumaParams
-  ) => Promise<any>,
-  metadata?: Record<string, string>
+  ) => Promise<any>
 ) => {
-  // Verificar se é um comando Google e obter o agente adequado
-  const googleAgent = metadata?.googleAgent;
-  const googleCommand = metadata?.googleCommand;
-
-  // Instruções do sistema específicas para o agente Google, se aplicável
-  let systemPrompt = undefined;
-  let availableTools = undefined;
-
-  if (googleAgent && GOOGLE_AGENTS_INSTRUCTIONS[googleAgent]) {
-    systemPrompt = GOOGLE_AGENTS_INSTRUCTIONS[googleAgent];
-    
-    // Definir ferramentas disponíveis com base no agente
-    if (googleAgent === "CalendarAgent") {
-      availableTools = [
-        {
-          type: "function",
-          function: {
-            name: "create_event",
-            description: "Cria um evento no Google Calendar do usuário.",
-            parameters: {
-              type: "object",
-              properties: {
-                summary: { type: "string", description: "Título do evento" },
-                description: { type: "string" },
-                start: { type: "string", format: "date-time" },
-                end: { type: "string", format: "date-time" },
-                attendees: {
-                  type: "array",
-                  items: { type: "string", format: "email" }
-                }
-              },
-              required: ["summary", "start", "end"]
-            }
-          },
-          endpoint: "/functions/v1/google/calendar/createEvent"
-        }
-      ];
-    } else if (googleAgent === "SheetsAgent") {
-      availableTools = [
-        {
-          type: "function",
-          function: {
-            name: "sheet_write",
-            description: "Escreve dados em uma planilha Google Sheets.",
-            parameters: {
-              type: "object",
-              properties: {
-                spreadsheetId: { type: "string", description: "ID da planilha Google Sheets" },
-                range: { type: "string", description: "Intervalo onde os dados serão escritos, ex: 'Sheet1!A1:B2'" },
-                values: { 
-                  type: "array", 
-                  items: {
-                    type: "array",
-                    items: { type: "string" }
-                  },
-                  description: "Matriz de valores a serem escritos na planilha"
-                }
-              },
-              required: ["spreadsheetId", "range", "values"]
-            }
-          },
-          endpoint: "/functions/v1/google/sheets/write"
-        }
-      ];
-    } else if (googleAgent === "DocsAgent") {
-      availableTools = [
-        {
-          type: "function",
-          function: {
-            name: "doc_create",
-            description: "Cria um novo documento Google Docs.",
-            parameters: {
-              type: "object",
-              properties: {
-                title: { type: "string", description: "Título do documento" },
-                contentMarkdown: { type: "string", description: "Conteúdo do documento em formato markdown" }
-              },
-              required: ["title", "contentMarkdown"]
-            }
-          },
-          endpoint: "/functions/v1/google/docs/create"
-        }
-      ];
-    }
-    
-    console.log(`[singleModelHandler] Processando comando Google com ${googleAgent}`, {
-      agent: googleAgent,
-      command: googleCommand,
-      hasTools: availableTools ? availableTools.length : 0
-    });
-  }
-
   // Adicionar mensagem de carregamento
   const loadingId = `loading-${modelId}-${uuidv4()}`;
   const loadingMessage = getLoadingMessage(mode, modelId);
@@ -240,9 +103,7 @@ export const handleSingleModelMessage = async (
         true, // indicar que queremos streaming
         streamListener,
         conversationHistory,
-        userId,
-        systemPrompt,
-        availableTools
+        userId
       );
       
       // Atualizar a mensagem final (remover flag de streaming)
@@ -319,9 +180,7 @@ export const handleSingleModelMessage = async (
         false,
         undefined,
         conversationHistory,
-        userId,
-        systemPrompt,
-        availableTools
+        userId
       );
       const response = await Promise.race([responsePromise, timeoutPromise]) as Awaited<typeof responsePromise>;
       
@@ -410,8 +269,6 @@ export const handleSingleModelMessage = async (
       friendlyError = `Erro na geração de vídeo: ${errorMsg}. Verifique se a chave API do Kligin está configurada corretamente.`;
     } else if (mode === 'image' && modelId.includes('kligin')) {
       friendlyError = `Erro na geração de imagem: ${errorMsg}. Verifique se a chave API do Kligin está configurada corretamente.`;
-    } else if (googleCommand) {
-      friendlyError = `Erro ao processar comando do Google ${googleCommand}: ${errorMsg}. Verifique se sua conta Google está conectada e com as permissões adequadas.`;
     }
     
     const errorMessage: MessageType = {

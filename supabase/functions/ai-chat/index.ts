@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, handleCors } from "./utils/cors.ts";
 import { logError } from "./utils/logging.ts";
@@ -35,47 +34,6 @@ const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1
 // Token mocado para testes com a Kligin API
 const MOCKED_KLIGIN_TOKEN = Deno.env.get("KLIGIN_API_KEY") || "";
 
-// Configuração de ferramentas disponíveis
-const createApiTool = (toolConfig: any, userId: string) => {
-  const originalFunction = toolConfig.function;
-  
-  // Criar função intermediária para injetar o user_id
-  const wrappedFunction = async (params: any) => {
-    try {
-      const endpoint = toolConfig.endpoint;
-      if (!endpoint) throw new Error("Endpoint não definido para a ferramenta");
-      
-      // Adicionar user_id ao payload
-      const payload = { ...params, user_id: userId };
-      
-      const response = await fetch(`${Deno.env.get("SUPABASE_URL")}${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Erro da API (${response.status}): ${errorText}`);
-      }
-      
-      return await response.json();
-    } catch (error) {
-      console.error(`[AI-Chat] Erro ao executar ferramenta ${originalFunction.name}:`, error);
-      throw error;
-    }
-  };
-  
-  return {
-    type: "function",
-    function: originalFunction,
-    exec: wrappedFunction
-  };
-};
-
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {
   try {
@@ -88,9 +46,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       params, 
       userId, 
       conversationId,
-      conversationHistory,
-      systemPrompt,
-      tools
+      conversationHistory 
     } = await req.json();
     
     console.log(`[AI-Chat] Recebida solicitação para modelo ${modelId} no modo ${mode}`, {
@@ -98,9 +54,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       filesCount: files?.length,
       paramsPreview: params ? JSON.stringify(params).substring(0, 100) : 'none',
       userIdProvided: !!userId,
-      conversationIdProvided: !!conversationId,
-      hasTools: tools && tools.length > 0,
-      hasSystemPrompt: !!systemPrompt
+      conversationIdProvided: !!conversationId
     });
     
     // Variáveis que podem ser alteradas pelo orquestrador
@@ -109,15 +63,8 @@ async function handleAIChat(req: Request): Promise<Response> {
     let processedModelId = modelId;
     let modeSwitchDetected = false;
     
-    // Processar ferramentas se fornecidas e userId presente
-    let processedTools = undefined;
-    if (tools && tools.length > 0 && userId) {
-      console.log(`[AI-Chat] Processando ${tools.length} ferramentas para o usuário ${userId}`);
-      processedTools = tools.map((tool: any) => createApiTool(tool, userId));
-    }
-    
     // Aplicar orquestrador se userId estiver presente e não for solicitação de mídia direta
-    if (userId && mode === "text" && !systemPrompt) {
+    if (userId && mode === "text") {
       try {
         console.log(`[AI-Chat] Iniciando orquestrador para analisar a mensagem`);
         
@@ -462,19 +409,7 @@ async function handleAIChat(req: Request): Promise<Response> {
             console.log(`[AI-Chat] Usando chave API do OpenAI: ${maskedKey}`);
           }
           
-          // Verificar se temos um sistema prompt e ferramentas
-          if (systemPrompt || processedTools) {
-            console.log("[AI-Chat] Usando sistema prompt e/ou ferramentas com OpenAI");
-            response = await openaiService.generateTextWithToolsSupport(
-              processedContent,
-              processedModelId,
-              systemPrompt,
-              processedTools
-            );
-          } else {
-            response = await openaiService.generateText(processedContent, processedModelId);
-          }
-          
+          response = await openaiService.generateText(processedContent, processedModelId);
           console.log("[AI-Chat] Processamento de texto concluído com sucesso");
         } catch (openaiError) {
           console.error("[AI-Chat] Erro detalhado ao processar texto com OpenAI:", openaiError);

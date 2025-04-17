@@ -10,15 +10,6 @@ import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
-import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
-import { toast } from 'sonner';
-
-// Google Workspace command detection
-const GOOGLE_COMMANDS = {
-  "@calendar": "CalendarAgent",
-  "@sheet": "SheetsAgent",
-  "@doc": "DocsAgent",
-};
 
 /**
  * Hook central para gerenciamento de envio de mensagens
@@ -37,19 +28,6 @@ export function useMessageHandler(
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
   
-  // Safe access to Google Auth context
-  let isGoogleConnected = false;
-  let checkGooglePermissions = async () => false;
-  
-  try {
-    const googleAuth = useGoogleAuth();
-    isGoogleConnected = googleAuth.isGoogleConnected;
-    checkGooglePermissions = googleAuth.checkGooglePermissions;
-  } catch (error) {
-    console.log("[useMessageHandler] GoogleAuth context not available:", error);
-    // Fallback values already set above
-  }
-  
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
     apiService,
@@ -59,42 +37,6 @@ export function useMessageHandler(
   );
   
   const messageProcessing = useMessageProcessing(user?.id);
-
-  /**
-   * Detecta comandos do Google Workspace na mensagem
-   */
-  const detectGoogleCommand = useCallback((content: string): { command: string, agent: string } | null => {
-    for (const [command, agent] of Object.entries(GOOGLE_COMMANDS)) {
-      if (content.includes(command)) {
-        return { command, agent };
-      }
-    }
-    return null;
-  }, []);
-
-  /**
-   * Verifica se o usuário tem conexão com o Google e permissões necessárias
-   */
-  const verifyGoogleAccess = useCallback(async (): Promise<boolean> => {
-    if (!isGoogleConnected) {
-      toast.error(
-        'Conexão com Google necessária',
-        { description: 'Por favor, conecte sua conta Google para usar este recurso.' }
-      );
-      return false;
-    }
-
-    const hasPermissions = await checkGooglePermissions();
-    if (!hasPermissions) {
-      toast.error(
-        'Permissões Google insuficientes',
-        { description: 'É necessário conceder permissões adicionais para esta funcionalidade.' }
-      );
-      return false;
-    }
-
-    return true;
-  }, [isGoogleConnected, checkGooglePermissions]);
 
   /**
    * Função principal para enviar mensagens aos modelos
@@ -121,96 +63,8 @@ export function useMessageHandler(
     }
     
     try {
-      setIsSending(true);
-      
-      // Verificar se a mensagem contém um comando do Google Workspace
-      const googleCommand = detectGoogleCommand(content);
-      if (googleCommand) {
-        console.log(`[useMessageHandler] Comando Google detectado: ${googleCommand.command}, agente: ${googleCommand.agent}`);
-        
-        // Verificar se o usuário tem acesso ao Google Workspace
-        const hasGoogleAccess = await verifyGoogleAccess();
-        if (!hasGoogleAccess) {
-          setIsSending(false);
-          return false;
-        }
-        
-        // Processar mensagem para extração de memória
-        if (user && user.id) {
-          messageProcessing.processUserMessageForMemory(content);
-        }
-        
-        // Criar mensagem do usuário
-        const userMessageId = uuidv4();
-        const userMessage: MessageType = {
-          id: userMessageId,
-          content,
-          sender: 'user',
-          timestamp: new Date().toISOString(),
-          mode,
-          files,
-          model: modelId
-        };
-        
-        setMessages(prev => [...prev, userMessage]);
-        
-        // Salvar mensagem do usuário no banco de dados
-        await saveUserMessage(userMessage, currentConversationId);
-        
-        // Atualizar título se for a primeira mensagem
-        if (messages.length === 0 || (messages.length === 1 && messages[0].sender === 'user')) {
-          updateTitle(currentConversationId, content);
-        }
-        
-        // Preparar histórico da conversa para o agente
-        const conversationHistory = messageProcessing.prepareConversationHistory(
-          messages.map(msg => ({ sender: msg.sender, content: msg.content }))
-        );
-        
-        // Melhorar conteúdo com contexto de memória se necessário
-        const enhancedContent = await messageProcessing.enhanceWithMemoryContext(content, messages.length);
-        
-        // Adicionar loading message para o agente Google
-        const loadingId = `loading-${modelId}-${uuidv4()}`;
-        const loadingMessage: MessageType = {
-          id: loadingId,
-          content: `Processando ${googleCommand.command}...`,
-          sender: 'assistant',
-          timestamp: new Date().toISOString(),
-          model: modelId,
-          mode,
-          loading: true
-        };
-        
-        setMessages(prev => [...prev, loadingMessage]);
-        
-        // Chamar o modelo com instruções específicas para o agente Google
-        const result = await messageService.handleSingleModelMessage(
-          enhancedContent,
-          mode,
-          modelId,
-          currentConversationId,
-          messages,
-          conversations,
-          files,
-          params,
-          conversationHistory,
-          user?.id,
-          // Informar que este é um comando Google para processamento especial
-          { 
-            googleCommand: googleCommand.command, 
-            googleAgent: googleCommand.agent 
-          }
-        );
-        
-        setIsSending(false);
-        return { 
-          success: true, 
-          modeSwitch: result?.modeSwitch || null 
-        };
-      }
-      
       console.log(`[useMessageHandler] Enviando mensagem "${content}" para ${comparing ? 'modelos' : 'modelo'} ${leftModel || modelId}${rightModel ? ` e ${rightModel}` : ''}`);
+      setIsSending(true);
       
       // Processar mensagem para extração de memória
       if (user && user.id) {
@@ -352,9 +206,7 @@ export function useMessageHandler(
     updateTitle, 
     messageService,
     user,
-    messageProcessing,
-    detectGoogleCommand,
-    verifyGoogleAccess
+    messageProcessing
   ]);
 
   return {
