@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -8,10 +9,7 @@ import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGoogleAuth } from '@/contexts/google-auth/GoogleAuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
-import { processGoogleCommand, identifyGoogleAgent } from '@/agents/GoogleAgents';
-import { toast } from 'sonner';
 
 /**
  * Hook central para gerenciamento de envio de mensagens
@@ -29,12 +27,6 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
-  const { 
-    isGoogleConnected, 
-    permissionsVerified, 
-    checkGooglePermissions, 
-    googleTokens 
-  } = useGoogleAuth();
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
@@ -45,118 +37,6 @@ export function useMessageHandler(
   );
   
   const messageProcessing = useMessageProcessing(user?.id);
-
-  // Helper function to prepare conversation history
-  const prepareConversationHistory = (messageList: MessageType[]) => {
-    return messageList.map(msg => ({ sender: msg.sender, content: msg.content }));
-  };
-
-  // Verificar se o Google está realmente disponível
-  const isGoogleServiceAvailable = useCallback(() => {
-    // Verificar se está conectado, se as permissões foram verificadas e se temos tokens
-    if (!isGoogleConnected || !permissionsVerified || !googleTokens?.accessToken) {
-      console.log("[useMessageHandler] Google não está totalmente disponível:", {
-        isGoogleConnected,
-        permissionsVerified,
-        hasAccessToken: !!googleTokens?.accessToken
-      });
-      return false;
-    }
-    
-    return true;
-  }, [isGoogleConnected, permissionsVerified, googleTokens]);
-
-  // Detectar se mensagem é um comando de serviço Google
-  const detectGoogleServiceCommand = useCallback((content: string): boolean => {
-    return !!identifyGoogleAgent(content);
-  }, []);
-
-  /**
-   * Função para processar comandos de serviço Google diretos (@drive, @sheet, @calendar)
-   */
-  const handleGoogleServiceCommand = useCallback(async (
-    content: string,
-    userId: string | undefined
-  ) => {
-    if (!userId) {
-      console.error("[useMessageHandler] Usuário não autenticado");
-      toast.error("Você precisa estar autenticado para usar serviços Google");
-      return null;
-    }
-    
-    // Verificar se o Google está disponível
-    if (!isGoogleServiceAvailable()) {
-      console.error("[useMessageHandler] Serviços Google não estão disponíveis");
-      toast.error("Parece que você ainda não conectou sua conta Google ou não concedeu as permissões necessárias. Acesse as Integrações do Google nas configurações para conectar sua conta.", {
-        action: {
-          label: "Configurar",
-          onClick: () => window.location.href = '/google-integrations'
-        }
-      });
-      return null;
-    }
-    
-    try {
-      // Verificar permissões novamente para ter certeza
-      console.log("[useMessageHandler] Verificando permissões para comando Google...");
-      const hasPermissions = await checkGooglePermissions();
-      if (!hasPermissions) {
-        console.error("[useMessageHandler] Sem permissões do Google");
-        toast.error("Você precisa conceder permissão para acessar os serviços Google nas configurações", {
-          action: {
-            label: "Configurar",
-            onClick: () => window.location.href = '/google-integrations'
-          }
-        });
-        return null;
-      }
-      
-      console.log("[useMessageHandler] Processando comando Google com permissões verificadas");
-      
-      // Processar o comando usando nosso sistema de agentes
-      const result = await processGoogleCommand(userId, content);
-      
-      if (result.needsMoreInfo) {
-        // Retornar mensagem para o usuário solicitando mais informações
-        return {
-          content: result.followupPrompt,
-          success: true,
-          isFollowupPrompt: true
-        };
-      }
-      
-      if (result.success && result.result) {
-        // Formatar uma mensagem de sucesso com base nos dados retornados
-        let responseContent = "Ação do Google concluída com sucesso! ";
-        
-        // Adicionar links para recursos criados, se disponíveis
-        if (result.result.spreadsheetLink) {
-          responseContent += `\n\n[Abrir planilha no Google Sheets](${result.result.spreadsheetLink})`;
-        } else if (result.result.documentLink) {
-          responseContent += `\n\n[Abrir documento no Google Drive](${result.result.documentLink})`;
-        } else if (result.result.eventLink) {
-          responseContent += `\n\n[Abrir evento no Google Calendar](${result.result.eventLink})`;
-        }
-        
-        return {
-          content: responseContent,
-          success: true
-        };
-      }
-      
-      // Falha no processamento
-      return {
-        content: result.message || "Não foi possível processar seu comando Google",
-        success: false
-      };
-    } catch (error) {
-      console.error("[useMessageHandler] Erro ao processar comando Google:", error);
-      return {
-        content: `Erro ao processar comando: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-        success: false
-      };
-    }
-  }, [isGoogleServiceAvailable, checkGooglePermissions]);
 
   /**
    * Função principal para enviar mensagens aos modelos
@@ -186,12 +66,15 @@ export function useMessageHandler(
       console.log(`[useMessageHandler] Enviando mensagem "${content}" para ${comparing ? 'modelos' : 'modelo'} ${leftModel || modelId}${rightModel ? ` e ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Verificar se é um comando de serviço Google
-      const isGoogleServiceCommand = detectGoogleServiceCommand(content);
-      
-      if (isGoogleServiceCommand) {
-        console.log("[useMessageHandler] Comando de serviço Google detectado:", content);
+      // Processar mensagem para extração de memória
+      if (user && user.id) {
+        messageProcessing.processUserMessageForMemory(content);
       }
+      
+      // Preparar histórico da conversa para o orquestrador
+      const conversationHistory = messageProcessing.prepareConversationHistory(
+        messages.map(msg => ({ sender: msg.sender, content: msg.content }))
+      );
       
       // Criar mensagem do usuário
       const userMessageId = uuidv4();
@@ -216,7 +99,7 @@ export function useMessageHandler(
         content,
         sender: 'user',
         timestamp: new Date().toISOString(),
-        mode: isGoogleServiceCommand ? 'google-service' : mode,
+        mode,
         files,
         model: targetModel
       };
@@ -231,43 +114,13 @@ export function useMessageHandler(
         updateTitle(currentConversationId, content);
       }
       
-      // Processar comando Google se for o caso
-      if (isGoogleServiceCommand && user?.id) {
-        console.log("[useMessageHandler] Processando comando Google");
-        
-        // Tratar o comando do serviço Google
-        const googleResponse = await handleGoogleServiceCommand(content, user.id);
-        
-        if (googleResponse) {
-          // Adicionar a resposta do agente Google à conversa
-          const assistantMessage: MessageType = {
-            id: uuidv4(),
-            content: googleResponse.content,
-            sender: 'assistant',
-            timestamp: new Date().toISOString(),
-            mode: 'google-service',
-            model: modelId
-          };
-          
-          setMessages(prev => [...prev, assistantMessage]);
-          
-          // Salvar a resposta no banco de dados
-          await saveUserMessage(assistantMessage, currentConversationId);
-          
-          setIsSending(false);
-          return {success: googleResponse.success, modeSwitch: null};
-        }
-        
-        // Se falhou no processamento Google, continuar com o fluxo normal
-      }
-      
       // Enhance content with memory context if needed
       const enhancedContent = await messageProcessing.enhanceWithMemoryContext(content, messages.length);
       
       // Processar a mensagem
       let modeSwitch = null;
       
-      if (comparing) {
+      if (comparing && leftModel && rightModel) {
         // Modo de comparação - ambos os modelos
         const result = await messageService.handleCompareModels(
           enhancedContent,
@@ -277,7 +130,39 @@ export function useMessageHandler(
           currentConversationId,
           files,
           params,
-          JSON.stringify(prepareConversationHistory(messages)),
+          conversationHistory,
+          user?.id
+        );
+        
+        modeSwitch = result?.modeSwitch || null;
+      } else if (comparing && leftModel && !rightModel) {
+        // Modo desvinculado - apenas modelo esquerdo
+        const result = await messageService.handleSingleModelMessage(
+          enhancedContent,
+          mode,
+          leftModel,
+          currentConversationId,
+          messages,
+          conversations,
+          files,
+          params,
+          conversationHistory,
+          user?.id
+        );
+        
+        modeSwitch = result?.modeSwitch || null;
+      } else if (comparing && !leftModel && rightModel) {
+        // Modo desvinculado - apenas modelo direito
+        const result = await messageService.handleSingleModelMessage(
+          enhancedContent,
+          mode,
+          rightModel,
+          currentConversationId,
+          messages,
+          conversations,
+          files,
+          params,
+          conversationHistory,
           user?.id
         );
         
@@ -293,7 +178,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          JSON.stringify(prepareConversationHistory(messages)),
+          conversationHistory,
           user?.id
         );
         
@@ -321,16 +206,12 @@ export function useMessageHandler(
     updateTitle, 
     messageService,
     user,
-    messageProcessing,
-    detectGoogleServiceCommand,
-    handleGoogleServiceCommand
+    messageProcessing
   ]);
 
   return {
     sendMessage,
     isSending,
-    detectContentType: messageProcessing.detectContentType,
-    detectGoogleServiceCommand,
-    isGoogleServiceAvailable
+    detectContentType: messageProcessing.detectContentType
   };
 }

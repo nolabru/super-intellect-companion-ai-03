@@ -7,7 +7,6 @@ import { canModelGenerateImages } from './ModelSelector';
 import FilePreview from './chat/FilePreview';
 import ImageGenerationTip from './chat/ImageGenerationTip';
 import MessageInput from './chat/MessageInput';
-import { identifyGoogleAgent } from '@/agents/GoogleAgents';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: string[], params?: any) => void;
@@ -28,7 +27,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isImageGenerationModel = mode === 'image' && model && canModelGenerateImages(model);
-  const isGoogleServiceCommand = message.trim() && identifyGoogleAgent(message) !== null;
   
   // Clear files when mode changes
   useEffect(() => {
@@ -146,14 +144,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   const handleLumaParamsChange = (params: LumaParams) => {
     setLumaParams(params);
-  };
-
-  // Get the specific Google service being used
-  const getGoogleServiceType = () => {
-    if (message.trim().startsWith('@drive')) return 'Google Drive';
-    if (message.trim().startsWith('@sheet')) return 'Google Sheets';
-    if (message.trim().startsWith('@calendar')) return 'Google Calendar';
-    return '';
   };
 
   return (

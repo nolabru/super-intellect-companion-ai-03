@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate' | 'deepseek';
-export type ModelMode = 'text' | 'image' | 'audio' | 'video' | 'google-service';
+export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 
 export interface ModelInfo {
   id: string;
@@ -199,10 +200,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
 ];
 
 export const getModelsByMode = (mode: ModelMode): ModelInfo[] => {
-  // Special handling for google-service mode - return text models for this mode
-  if (mode === 'google-service') {
-    return getModelsByMode('text');
-  }
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
 };
 

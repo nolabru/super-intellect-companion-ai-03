@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Text, Image, Video, AudioLines, AtSign } from 'lucide-react';
+import { Text, Image, Video, AudioLines } from 'lucide-react';
 import { ChatMode } from '../ModeSelector';
 import { cn } from '@/lib/utils';
 
@@ -17,8 +17,6 @@ const ModeIcon: React.FC<ModeIconProps> = ({ mode, className }) => {
       return <Video size={14} className={cn("mr-1", className)} />;
     case 'audio':
       return <AudioLines size={14} className={cn("mr-1", className)} />;
-    case 'google-service':
-      return <AtSign size={14} className={cn("mr-1 text-blue-500", className)} />;
     case 'text':
     default:
       return <Text size={14} className={cn("mr-1", className)} />;

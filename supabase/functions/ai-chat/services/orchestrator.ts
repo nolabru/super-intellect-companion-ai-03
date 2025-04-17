@@ -1,416 +1,350 @@
-// Importações e funções existentes...
 
-/**
- * Processa mensagem do usuário para determinar modo e extrair memória se necessário
- */
+import { generateText as openaiGenerateText } from "./models/openai.ts";
+import { logError } from "../utils/logging.ts";
+import { validateApiKey } from "../utils/validation.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0";
+
+// Inicializa o cliente Supabase
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Define response type for orchestrator
+export interface OrchestratorResponse {
+  enhancedPrompt: string;
+  detectedMode: string;
+  recommendedModel: string;
+  memoryExtracted: boolean;
+  memoryContext?: string;
+  googleIntegrationActions?: GoogleIntegrationAction[];
+}
+
+// Define tipos para ações de integração com o Google
+export interface GoogleIntegrationAction {
+  type: 'calendar' | 'drive' | 'sheets' | 'gmail';
+  action: string;
+  parameters: Record<string, any>;
+  description: string;
+}
+
+// Verifica se a chave API do orquestrador está configurada
+export function verifyApiKey(): string {
+  const apiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY não está configurada para o orquestrador.");
+  }
+  return apiKey;
+}
+
+// Função principal do orquestrador
 export async function processUserMessage(
   userMessage: string,
-  userId: string | undefined,
-  mode: string,
-  modelId: string,
-  conversationHistory: any[] | string | undefined
-) {
-  console.log(`[orchestrator] Processando mensagem do usuário: ${userMessage.substring(0, 50)}...`);
-  
-  // Detectar comandos de serviço Google
-  const isGoogleServiceCommand = detectGoogleServiceCommand(userMessage);
-  let googleIntegrationActions = [];
-  
-  // Verifica se é um comando Google explícito (@drive, @sheet, @calendar)
-  if (isGoogleServiceCommand) {
-    console.log("[orchestrator] Comando de serviço Google detectado");
-    
-    // Identificar o tipo específico de serviço Google
-    const serviceType = identifyGoogleService(userMessage);
-    console.log(`[orchestrator] Tipo de serviço Google identificado: ${serviceType}`);
-    
-    // Verificar se a mensagem tem detalhes suficientes para executar a ação
-    const { hasRequiredInfo, missingInfo, actions } = analyzeGoogleServiceRequest(userMessage, serviceType);
-    
-    if (hasRequiredInfo) {
-      console.log("[orchestrator] Mensagem tem detalhes suficientes, preparando ações");
-      googleIntegrationActions = actions;
-    } else {
-      console.log("[orchestrator] Detalhes insuficientes, criando prompt para obter mais informações");
-      
-      // Construir prompt para obter mais informações
-      const enhancedPrompt = buildFollowUpPrompt(userMessage, serviceType, missingInfo);
-      
-      return {
-        detectedMode: "google-service",
-        recommendedModel: modelId,
-        enhancedPrompt,
-        memoryExtracted: false,
-        googleIntegrationActions: []
-      };
-    }
-  }
-  
-  // Processar extração de memória se necessário
-  let memoryExtracted = false;
-  let enhancedPrompt = userMessage;
-  
-  // Verificar se deve extrair memória
-  if (userId && shouldExtractMemory(userMessage)) {
-    console.log("[orchestrator] Extraindo memória da mensagem");
-    // Processamento de memória existente
-    // ...
-    memoryExtracted = true;
-  }
-  
-  // Enriquecer a mensagem com contexto adicional se necessário
-  // Detectar modo com base no conteúdo
-  const detectedMode = detectContentTypeFromMessage(userMessage, mode);
-  
-  // Se não for um comando de serviço Google mas parece uma solicitação de ação Google
-  if (!isGoogleServiceCommand && detectImplicitGoogleAction(userMessage)) {
-    console.log("[orchestrator] Detectada possível ação Google implícita");
-    enhancedPrompt = enhanceWithGoogleActionContext(userMessage);
-  }
-  
-  return {
-    detectedMode,
-    recommendedModel: getRecommendedModel(detectedMode, modelId),
-    enhancedPrompt,
-    memoryExtracted,
-    googleIntegrationActions
-  };
-}
-
-/**
- * Detecta comandos de serviço Google como @drive, @sheet, @calendar
- */
-function detectGoogleServiceCommand(message: string): boolean {
-  const googleServiceCommands = ['@drive', '@sheet', '@calendar'];
-  return googleServiceCommands.some(cmd => message.trim().toLowerCase().startsWith(cmd));
-}
-
-/**
- * Identifica qual serviço Google está sendo solicitado
- */
-function identifyGoogleService(message: string): string {
-  if (message.trim().toLowerCase().startsWith('@drive')) return 'drive';
-  if (message.trim().toLowerCase().startsWith('@sheet')) return 'sheets';
-  if (message.trim().toLowerCase().startsWith('@calendar')) return 'calendar';
-  return 'unknown';
-}
-
-/**
- * Constrói um prompt de acompanhamento para obter mais informações
- */
-function buildFollowUpPrompt(message: string, serviceType: string, missingInfo: string[]): string {
-  if (serviceType === 'sheets') {
-    return `Para criar uma planilha no Google Sheets, preciso das seguintes informações:
-    
-1. Qual deve ser o título da planilha?
-2. Quantas abas/sheets você deseja na planilha?
-3. Você deseja adicionar algum conteúdo inicial? Se sim, descreva o que deve ser incluído.
-
-Por favor, forneça estas informações para que eu possa criar a planilha para você.`;
-  }
-  
-  if (serviceType === 'drive') {
-    return `Para criar um documento no Google Drive, preciso das seguintes informações:
-    
-1. Qual deve ser o título do documento?
-2. Que tipo de documento você deseja criar (documento de texto, apresentação, etc.)?
-3. Você deseja adicionar algum conteúdo inicial? Se sim, descreva o que deve ser incluído.
-
-Por favor, forneça estas informações para que eu possa criar o documento para você.`;
-  }
-  
-  if (serviceType === 'calendar') {
-    return `Para criar um evento no Google Calendar, preciso das seguintes informações:
-    
-1. Qual deve ser o título/assunto do evento?
-2. Qual a data e horário de início do evento?
-3. Qual a duração do evento ou horário de término?
-4. Há alguma descrição adicional para o evento?
-5. Deseja convidar outras pessoas? Se sim, informe os emails.
-
-Por favor, forneça estas informações para que eu possa criar o evento para você.`;
-  }
-  
-  return `Para continuar com sua solicitação relacionada ao Google, preciso de mais detalhes. 
-Por favor, descreva com mais detalhes o que você gostaria de fazer.`;
-}
-
-/**
- * Analisa solicitação de serviço Google para verificar se tem detalhes suficientes
- */
-function analyzeGoogleServiceRequest(message: string, serviceType: string) {
-  // Remover o comando inicial (@sheet, @drive, etc)
-  const contentAfterCommand = message.substring(message.indexOf('@') + serviceType.length + 1).trim();
-  
-  if (serviceType === 'sheets') {
-    // Verificar se há informações sobre título ou conteúdo
-    const hasTitle = contentAfterCommand.includes('planilha') || contentAfterCommand.includes('spreadsheet');
-    const hasContent = contentAfterCommand.includes('com') || contentAfterCommand.includes('contendo');
-    
-    // Verificações específicas para extrair dados sobre planilha
-    // Para o exemplo "@sheet crie uma planilha com 3 nomes aleatórios"
-    const titleMatch = contentAfterCommand.match(/planilha\s+(?:de|sobre|com|para)\s+(.+?)(?:\s+com|\s+e|\s+que|\.|$)/i);
-    const title = titleMatch ? titleMatch[1].trim() : "Planilha sem título";
-    
-    // Verifica se há menção a nomes, dados ou conteúdo específico
-    const contentMatch = contentAfterCommand.match(/com\s+(.+?)(?:\.|$)/i);
-    const content = contentMatch ? contentMatch[1].trim() : "";
-    
-    // Decidir se temos informações suficientes
-    const hasRequiredInfo = contentAfterCommand.length > 10 && (hasTitle || hasContent);
-    
-    const missingInfo = [];
-    if (!hasTitle) missingInfo.push("título da planilha");
-    if (!hasContent) missingInfo.push("conteúdo/dados para incluir");
-    
-    // Se temos informações suficientes, preparar ação
-    const actions = hasRequiredInfo ? [{
-      type: 'createSpreadsheet',
-      parameters: {
-        title: title || "Nova Planilha",
-        content: content,
-        sheets: [{ title: 'Sheet1' }]
-      }
-    }] : [];
-    
-    return { hasRequiredInfo, missingInfo, actions };
-  }
-  
-  // Análise similar para outros serviços (drive, calendar)
-  // ...
-  
-  // Se não temos um analisador específico, retornar que precisamos de mais informações
-  return {
-    hasRequiredInfo: false,
-    missingInfo: ["detalhes específicos sobre o que criar"],
-    actions: []
-  };
-}
-
-/**
- * Detecta se uma mensagem regular contém uma solicitação implícita de ação Google
- */
-function detectImplicitGoogleAction(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  
-  // Padrões para detectar ações implícitas do Google
-  const drivePatterns = [
-    /cri[ae]r?\s+(um|uma)\s+documento/i,
-    /cri[ae]r?\s+(um|uma)\s+apresenta[çc][ãa]o/i,
-    /cri[ae]r?\s+(um|uma)\s+arquivo/i,
-    /salv[ae]r?\s+(no|na)\s+drive/i
-  ];
-  
-  const sheetPatterns = [
-    /cri[ae]r?\s+(um|uma)\s+planilha/i,
-    /cri[ae]r?\s+(um|uma)\s+spreadsheet/i,
-    /organiz[ae]r?\s+dados\s+em\s+planilha/i
-  ];
-  
-  const calendarPatterns = [
-    /cri[ae]r?\s+(um|uma)\s+evento/i,
-    /agendar?\s+(um|uma)\s+reuni[ãa]o/i,
-    /marcar?\s+(um|uma)\s+compromisso/i,
-    /adicionar?\s+ao\s+calend[áa]rio/i
-  ];
-  
-  // Verificar todos os padrões
-  for (const pattern of [...drivePatterns, ...sheetPatterns, ...calendarPatterns]) {
-    if (pattern.test(lowerMessage)) {
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-/**
- * Enriquece a mensagem com contexto para ações Google
- */
-function enhanceWithGoogleActionContext(message: string): string {
-  return `${message}\n\nSe você precisar criar arquivos no Google Drive, planilhas no Google Sheets ou eventos no Calendar, posso ajudar com isso. Apenas me informe claramente o que deseja criar e forneça os detalhes necessários.`;
-}
-
-/**
- * Processa e executa ações de integração com Google
- */
-export async function processGoogleIntegrationActions(
-  userId: string,
-  actions: any[]
-): Promise<{
-  success: boolean;
-  needsMoreInfo: boolean;
-  followupPrompt?: string;
-  results: any[];
-}> {
-  console.log(`[orchestrator] Processando ${actions.length} ações de integração Google`);
-  
-  if (!userId) {
-    console.error("[orchestrator] ID de usuário não fornecido para ações Google");
-    return {
-      success: false,
-      needsMoreInfo: true,
-      followupPrompt: "Você precisa estar conectado com sua conta Google para usar este recurso. Acesse as Integrações do Google nas configurações.",
-      results: []
-    };
-  }
-  
+  userId?: string,
+  currentMode: string = "text",
+  currentModel: string = "gpt-4o",
+  conversationHistory?: string
+): Promise<OrchestratorResponse> {
   try {
-    const results = [];
-    let needsMoreInfo = false;
-    let followupPrompt = '';
+    // Validar chave de API
+    const apiKey = verifyApiKey();
+    validateApiKey("OPENAI_API_KEY", apiKey);
     
-    for (const action of actions) {
-      console.log(`[orchestrator] Processando ação ${action.type}`);
-      
-      // Fazer chamada para a função edge do Google
-      const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-actions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-        },
-        body: JSON.stringify({
-          userId,
-          action: action.type === 'createSpreadsheet' ? 'createSpreadsheet' : 
-                 action.type === 'createDocument' ? 'createDocument' : 
-                 action.type === 'createCalendarEvent' ? 'createCalendarEvent' : 
-                 'unknown',
-          params: action.parameters
-        })
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[orchestrator] Erro ao executar ação Google: ${errorText}`);
+    console.log(`[Orquestrador] Processando mensagem do usuário: "${userMessage.substring(0, 50)}..."`);
+    
+    // Verificar se o usuário tem integração com o Google
+    let userHasGoogleIntegration = false;
+    let googleIntegrationContext = "";
+    
+    if (userId) {
+      try {
+        const { data: googleTokens, error } = await supabase
+          .from('user_google_tokens')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
         
-        // Verifique se o erro é sobre permissões ou configuração
-        if (errorText.includes('not configured') || errorText.includes('tokens not found')) {
-          needsMoreInfo = true;
-          followupPrompt = "Parece que você ainda não conectou sua conta Google ou não concedeu as permissões necessárias. Acesse as Integrações do Google nas configurações para conectar sua conta.";
-          break;
+        userHasGoogleIntegration = !error && !!googleTokens;
+        
+        if (userHasGoogleIntegration) {
+          googleIntegrationContext = `
+            O usuário tem integração com o Google e você pode sugerir ações que utilizem:
+            - Google Calendar: Para criar e gerenciar eventos
+            - Google Drive: Para criar e gerenciar documentos
+            - Google Sheets: Para criar e gerenciar planilhas
+            - Gmail: Para enviar e-mails
+            
+            Se o pedido do usuário puder se beneficiar de qualquer uma dessas integrações, sugira ações específicas no formato JSON dentro da sua resposta.
+          `;
         }
-        
-        results.push({
-          actionType: action.type === 'createSpreadsheet' ? 'sheets' : 
-                      action.type === 'createDocument' ? 'drive' : 
-                      action.type === 'createCalendarEvent' ? 'calendar' : 
-                      'unknown',
-          success: false,
-          error: errorText,
-          description: `Falha ao ${action.type === 'createSpreadsheet' ? 'criar planilha' : 
-                                    action.type === 'createDocument' ? 'criar documento' : 
-                                    action.type === 'createCalendarEvent' ? 'criar evento' : 
-                                    'executar ação'}`
-        });
-        continue;
-      }
-      
-      const data = await response.json();
-      console.log(`[orchestrator] Resultado da ação Google:`, data);
-      
-      if (data.success) {
-        let description = '';
-        
-        if (action.type === 'createSpreadsheet') {
-          description = `Planilha "${action.parameters.title}" criada com sucesso`;
-        } else if (action.type === 'createDocument') {
-          description = `Documento "${action.parameters.name}" criado com sucesso`;
-        } else if (action.type === 'createCalendarEvent') {
-          description = `Evento "${action.parameters.summary}" criado com sucesso`;
-        }
-        
-        results.push({
-          actionType: action.type === 'createSpreadsheet' ? 'sheets' : 
-                      action.type === 'createDocument' ? 'drive' : 
-                      action.type === 'createCalendarEvent' ? 'calendar' : 
-                      'unknown',
-          success: true,
-          result: data,
-          description
-        });
-      } else {
-        results.push({
-          actionType: action.type === 'createSpreadsheet' ? 'sheets' : 
-                      action.type === 'createDocument' ? 'drive' : 
-                      action.type === 'createCalendarEvent' ? 'calendar' : 
-                      'unknown',
-          success: false,
-          error: data.error,
-          description: `Falha ao ${action.type === 'createSpreadsheet' ? 'criar planilha' : 
-                                    action.type === 'createDocument' ? 'criar documento' : 
-                                    action.type === 'createCalendarEvent' ? 'criar evento' : 
-                                    'executar ação'}`
-        });
+      } catch (error) {
+        console.error("[Orquestrador] Erro ao verificar integração com Google:", error);
+        // Continuar sem o contexto de integração
       }
     }
     
-    return {
-      success: results.some(r => r.success),
-      needsMoreInfo,
-      followupPrompt,
-      results
-    };
+    // Construir um prompt para o orquestrador
+    const orchestratorPrompt = buildOrchestratorPrompt(
+      userMessage,
+      currentMode,
+      currentModel,
+      conversationHistory,
+      googleIntegrationContext
+    );
+    
+    // Usar um modelo pequeno e rápido para o orquestrador
+    const orchestratorModel = "gpt-4o-mini";
+    
+    console.log(`[Orquestrador] Chamando modelo ${orchestratorModel} para processamento`);
+    
+    // Chamar o modelo de orquestração
+    const response = await openaiGenerateText(orchestratorPrompt, orchestratorModel);
+    
+    // Processar a resposta do orquestrador
+    return parseOrchestratorResponse(response.content, userHasGoogleIntegration);
     
   } catch (error) {
-    console.error("[orchestrator] Erro ao processar ações Google:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[Orquestrador] Erro ao processar mensagem:", error);
+    logError("ORCHESTRATOR_ERROR", { error: errorMessage });
+    
+    // Em caso de falha, retorna valores padrão
     return {
-      success: false,
-      needsMoreInfo: false,
-      results: [{
-        actionType: 'unknown',
-        success: false,
-        error: error.message,
-        description: 'Erro ao processar ações do Google'
-      }]
+      enhancedPrompt: userMessage,
+      detectedMode: currentMode,
+      recommendedModel: currentModel,
+      memoryExtracted: false
     };
   }
 }
 
-// Funções auxiliares para detecção de conteúdo e recomendação de modelo
-function detectContentTypeFromMessage(message: string, currentMode: string): string {
-  // Se for um comando de serviço Google, usar o modo google-service
-  if (detectGoogleServiceCommand(message)) {
-    return "google-service";
-  }
-  
-  // Outras detecções de modo (texto, imagem, etc.)
-  // ...
-  
-  // Se não detectar outro modo, manter o modo atual
-  return currentMode;
+// Construir o prompt para o orquestrador
+function buildOrchestratorPrompt(
+  userMessage: string,
+  currentMode: string,
+  currentModel: string,
+  conversationHistory?: string,
+  googleIntegrationContext?: string
+): string {
+  return `Você é um orquestrador de IA que deve analisar a mensagem do usuário e fornecer instruções para melhorar a resposta do modelo principal.
+
+MENSAGEM DO USUÁRIO:
+"${userMessage}"
+
+MODO ATUAL: ${currentMode}
+MODELO ATUAL: ${currentModel}
+${conversationHistory ? `HISTÓRICO DA CONVERSA:\n${conversationHistory}` : ''}
+${googleIntegrationContext || ''}
+
+Sua tarefa é:
+1. Analisar a intenção do usuário
+2. Decidir o modo mais adequado (text, image, video, audio)
+3. Recomendar o modelo mais adequado para essa tarefa
+4. Extrair informações que devem ser armazenadas para memória futura
+5. Melhorar o prompt original do usuário para obter a melhor resposta possível
+${googleIntegrationContext ? `6. Detectar se o pedido do usuário pode ser atendido usando integrações com o Google (Calendar, Drive, Sheets, Gmail) e sugerir ações específicas` : ''}
+
+Responda no seguinte formato JSON:
+{
+  "enhancedPrompt": "Versão melhorada do prompt do usuário",
+  "detectedMode": "O modo que melhor atende a solicitação (text, image, video, audio)",
+  "recommendedModel": "Modelo recomendado para essa tarefa",
+  "memoryExtracted": true/false,
+  "memoryItems": [
+    {"key": "chave para informação extraída", "value": "valor da informação"},
+    ...
+  ]${googleIntegrationContext ? `,
+  "googleIntegrationActions": [
+    {
+      "type": "calendar|drive|sheets|gmail",
+      "action": "nome da ação (ex: createEvent, createDocument)",
+      "parameters": {
+        // parâmetros específicos para a ação
+      },
+      "description": "Descrição em linguagem natural do que será feito"
+    }
+  ]` : ''}
+}`;
 }
 
-function getRecommendedModel(detectedMode: string, currentModel: string): string {
-  // Para o modo de serviço Google, podemos manter o modelo atual
-  if (detectedMode === "google-service") {
-    return currentModel;
+// Analisar a resposta do orquestrador
+function parseOrchestratorResponse(
+  responseContent: string, 
+  userHasGoogleIntegration: boolean
+): OrchestratorResponse {
+  try {
+    // Extrair o JSON da resposta
+    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn("[Orquestrador] Não foi possível extrair JSON da resposta");
+      return {
+        enhancedPrompt: responseContent,
+        detectedMode: "text",
+        recommendedModel: "gpt-4o",
+        memoryExtracted: false
+      };
+    }
+    
+    const responseJson = JSON.parse(jsonMatch[0]);
+    
+    // Verificar se todos os campos necessários estão presentes
+    if (!responseJson.enhancedPrompt) {
+      console.warn("[Orquestrador] Campo 'enhancedPrompt' não encontrado na resposta");
+      responseJson.enhancedPrompt = responseContent;
+    }
+    
+    if (!responseJson.detectedMode) {
+      console.warn("[Orquestrador] Campo 'detectedMode' não encontrado na resposta");
+      responseJson.detectedMode = "text";
+    }
+    
+    if (!responseJson.recommendedModel) {
+      console.warn("[Orquestrador] Campo 'recommendedModel' não encontrado na resposta");
+      responseJson.recommendedModel = "gpt-4o";
+    }
+    
+    // Verificar se há ações de integração com o Google
+    let googleIntegrationActions: GoogleIntegrationAction[] | undefined;
+    
+    if (userHasGoogleIntegration && responseJson.googleIntegrationActions) {
+      googleIntegrationActions = responseJson.googleIntegrationActions;
+      console.log("[Orquestrador] Ações de integração com Google detectadas:", 
+        JSON.stringify(googleIntegrationActions));
+    }
+    
+    return {
+      enhancedPrompt: responseJson.enhancedPrompt,
+      detectedMode: responseJson.detectedMode,
+      recommendedModel: responseJson.recommendedModel,
+      memoryExtracted: responseJson.memoryExtracted || false,
+      memoryItems: responseJson.memoryItems || [],
+      googleIntegrationActions
+    };
+  } catch (error) {
+    console.error("[Orquestrador] Erro ao analisar resposta:", error);
+    return {
+      enhancedPrompt: responseContent,
+      detectedMode: "text",
+      recommendedModel: "gpt-4o",
+      memoryExtracted: false
+    };
   }
-  
-  // Lógica para recomendar modelos com base no modo
-  // ...
-  
-  // Se não houver recomendação específica, manter o modelo atual
-  return currentModel;
 }
 
-/**
- * Determina se uma mensagem deve ser processada para extração de memória
- */
-function shouldExtractMemory(message: string): boolean {
-  // Comandos de serviço Google geralmente não precisam extrair memória
-  if (detectGoogleServiceCommand(message)) {
+// Função para extrair e salvar itens de memória
+export async function extractAndSaveMemory(
+  userId: string,
+  userMessage: string,
+  orchestratorResponse: OrchestratorResponse
+): Promise<boolean> {
+  if (!orchestratorResponse.memoryExtracted || !orchestratorResponse.memoryItems || orchestratorResponse.memoryItems.length === 0) {
+    console.log("[Orquestrador] Nenhum item de memória para extrair");
     return false;
   }
   
-  // Outras verificações para determinar se deve extrair memória
-  // ...
+  try {
+    console.log(`[Orquestrador] Extraindo ${orchestratorResponse.memoryItems.length} itens de memória para usuário ${userId}`);
+    
+    // Aqui seria a lógica para salvar os itens na base de dados
+    // Implementação em uma atualização futura ou encaminhamento para outro endpoint
+    
+    return true;
+  } catch (error) {
+    console.error("[Orquestrador] Erro ao salvar itens de memória:", error);
+    return false;
+  }
+}
+
+// Função para recuperar contexto de memória do usuário
+export async function getUserMemoryContext(userId: string): Promise<string> {
+  try {
+    console.log(`[Orquestrador] Recuperando contexto de memória para usuário ${userId}`);
+    
+    // Aqui seria a lógica para recuperar a memória do usuário
+    // Implementação em uma atualização futura ou consulta à base de dados
+    
+    return "";
+  } catch (error) {
+    console.error("[Orquestrador] Erro ao recuperar contexto de memória:", error);
+    return "";
+  }
+}
+
+// Função para enriquecer o prompt com contexto de memória
+export function enrichPromptWithMemory(prompt: string, memoryContext: string): string {
+  if (!memoryContext) {
+    return prompt;
+  }
   
-  return false; // Por padrão, não extrair memória
+  return `${memoryContext}\n\n${prompt}`;
 }
 
-export async function extractAndSaveMemory(userId: string, message: string, orchestratorResponse: any) {
-  // Implementação existente...
+// Função para processar ações de integração com o Google
+export async function processGoogleIntegrationActions(
+  userId: string, 
+  actions: GoogleIntegrationAction[]
+): Promise<{success: boolean, results: any[]}> {
+  if (!userId || !actions || actions.length === 0) {
+    return { success: false, results: [] };
+  }
+  
+  try {
+    console.log(`[Orquestrador] Processando ${actions.length} ações de integração com Google para usuário ${userId}`);
+    
+    // Obter tokens do Google do usuário
+    const { data: googleTokens, error } = await supabase
+      .from('user_google_tokens')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    
+    if (error || !googleTokens) {
+      console.error("[Orquestrador] Usuário não tem tokens do Google:", error);
+      return { success: false, results: [] };
+    }
+    
+    // Verificar se o token está expirado
+    const now = Math.floor(Date.now() / 1000);
+    if (googleTokens.expires_at < now) {
+      console.log("[Orquestrador] Token do Google expirado, tentando renovar");
+      
+      // Renovar token (implementação futura)
+      // Por enquanto, retornar erro
+      return { success: false, results: [] };
+    }
+    
+    // Processar cada ação
+    const results = await Promise.all(actions.map(async (action) => {
+      try {
+        // Aqui seria a implementação para chamar as APIs do Google
+        // Isso seria feito em uma função específica para cada tipo de ação
+        
+        // Exemplo de mock para desenvolvimento:
+        return {
+          actionType: action.type,
+          actionName: action.action,
+          success: true,
+          result: {
+            mockResult: "Ação processada com sucesso (mock)",
+            description: action.description
+          }
+        };
+      } catch (actionError) {
+        console.error(`[Orquestrador] Erro ao processar ação ${action.type}/${action.action}:`, actionError);
+        return {
+          actionType: action.type,
+          actionName: action.action,
+          success: false,
+          error: actionError.message
+        };
+      }
+    }));
+    
+    return { 
+      success: results.some(r => r.success), 
+      results 
+    };
+  } catch (error) {
+    console.error("[Orquestrador] Erro ao processar ações do Google:", error);
+    return { success: false, results: [] };
+  }
 }
-
-// ... outras funções exportadas
