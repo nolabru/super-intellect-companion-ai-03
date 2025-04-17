@@ -14,12 +14,14 @@ type AuthMode = 'login' | 'signup';
 // Use the correct production URL
 const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
-// Google scopes needed for the application
+// Google scopes necessários para a aplicação
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/gmail.send'
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile'
 ];
 
 const Auth: React.FC = () => {
@@ -29,7 +31,7 @@ const Auth: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login');
   const navigate = useNavigate();
 
-  // Check if user is already authenticated
+  // Verificar se o usuário já está autenticado
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -41,7 +43,7 @@ const Auth: React.FC = () => {
     checkSession();
   }, [navigate]);
 
-  // Process auth redirects
+  // Processar redirecionamentos de autenticação
   useEffect(() => {
     const handleAuthRedirect = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -53,31 +55,47 @@ const Auth: React.FC = () => {
         return;
       }
 
+      // Verifique se há sinais de autenticação OAuth bem-sucedida
       if (hashParams.has('access_token') || params.has('provider')) {
-        // Successfully authenticated via Google
+        console.log("Detectada autenticação OAuth bem-sucedida");
+        
         try {
-          const { data } = await supabase.auth.getSession();
-          if (data.session) {
-            // Check if Google tokens are present after Google sign-in
-            if (params.has('provider') && params.get('provider') === 'google') {
-              // Wait a moment to ensure tokens are stored
-              setTimeout(() => {
+          // Aguardar a sessão ser estabelecida
+          setLoading(true);
+          
+          // Delay para garantir que os tokens do Google sejam armazenados
+          setTimeout(async () => {
+            const { data } = await supabase.auth.getSession();
+            
+            if (data.session) {
+              // Autenticação bem-sucedida, verificar se é um login do Google
+              if (params.has('provider') && params.get('provider') === 'google') {
+                console.log('Login com Google bem-sucedido, redirecionando para página inicial');
+                
                 toast.success('Login successful', { 
                   description: 'Google account successfully connected!'
                 });
+                
                 navigate('/');
-              }, 1500);
+              } else {
+                toast.success('Login successful');
+                navigate('/');
+              }
             } else {
-              toast.success('Login successful', { 
-                description: 'You will be redirected...'
+              toast.error('Failed to establish session', {
+                description: 'Please try logging in again'
               });
-              navigate('/');
             }
-          }
+            
+            setLoading(false);
+          }, 2000); // Aumento do tempo de espera para 2 segundos
+          
         } catch (error) {
+          console.error('Erro ao processar autenticação:', error);
           toast.error('Error processing login', { 
             description: 'Please try again.'
           });
+          setLoading(false);
         }
       }
     };
@@ -125,8 +143,9 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // For OAuth signIn, we specify the full callback URL
-      const redirectTo = `${SITE_URL}/auth`;
+      // Para login OAuth, especificamos a URL de callback completa
+      const redirectTo = window.location.origin + '/auth';
+      console.log(`Login com Google - URL de redirecionamento: ${redirectTo}`);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -142,6 +161,7 @@ const Auth: React.FC = () => {
 
       if (error) throw error;
     } catch (error: any) {
+      console.error('Erro no login com Google:', error);
       toast.error(
         "Error signing in with Google", 
         { description: error.message }

@@ -21,7 +21,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isGoogleConnected, 
     setIsGoogleConnected,
     loading, 
-    fetchGoogleTokens 
+    fetchGoogleTokens,
+    refreshTokensState
   } = useGoogleTokens();
 
   // Update tokens when session changes
@@ -30,48 +31,62 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.log('Session changed, fetching Google tokens');
       fetchGoogleTokens(session);
     }
-  }, [session]);
+  }, [session, fetchGoogleTokens]);
 
   // Check after Google OAuth login
   useEffect(() => {
     const checkAuthRedirect = async () => {
-      // Check for URL parameters indicating an authentication redirect
+      // Verificar parâmetros da URL indicando um redirecionamento de autenticação
       const urlParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
-      // Check if this is a redirect after OAuth login
+      // Verificar se este é um redirecionamento após o login OAuth
       if (urlParams.has('provider') || hashParams.has('access_token')) {
-        console.log('Processing OAuth redirect');
+        console.log('Processing OAuth redirect in GoogleAuthContext');
         
-        // Give Supabase time to process the login
+        // Dar tempo ao Supabase para processar o login
         setTimeout(async () => {
-          // Check if session exists
+          // Verificar se a sessão existe
           const { data } = await supabase.auth.getSession();
           if (data.session) {
             await fetchGoogleTokens(data.session);
             
-            // Notify user if Google connected successfully
+            // Notificar o usuário se o Google foi conectado com sucesso
             if (isGoogleConnected) {
+              console.log('Google successfully connected!');
               toast.success(
                 'Google connected successfully!',
                 { description: 'Your Google account has been connected.' }
               );
+            } else {
+              console.log('Google connection status:', isGoogleConnected);
+              // Forçar uma nova tentativa após um pequeno atraso
+              setTimeout(() => {
+                refreshTokensState();
+              }, 3000);
             }
           }
-        }, 1500);
+        }, 2500);
       }
     };
 
     checkAuthRedirect();
-  }, []);
+  }, [fetchGoogleTokens, isGoogleConnected, refreshTokensState]);
 
   // Function to refresh Google tokens (wrap the operation)
   const refreshGoogleTokens = async (): Promise<boolean> => {
-    return await refreshGoogleTokensOperation(
+    const result = await refreshGoogleTokensOperation(
       user, 
       googleTokens, 
       setGoogleTokens
     );
+    
+    // Se os tokens foram atualizados com sucesso, atualizar o estado isGoogleConnected
+    if (result) {
+      setIsGoogleConnected(true);
+    }
+    
+    return result;
   };
 
   // Function to check Google permissions (wrap the operation)
@@ -97,9 +112,10 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     console.log('Google Auth State:', { 
       isConnected: isGoogleConnected, 
       hasTokens: !!googleTokens,
-      loading
+      loading,
+      userLoggedIn: !!user
     });
-  }, [isGoogleConnected, googleTokens, loading]);
+  }, [isGoogleConnected, googleTokens, loading, user]);
 
   return (
     <GoogleAuthContext.Provider 

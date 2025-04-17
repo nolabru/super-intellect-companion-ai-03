@@ -13,7 +13,14 @@ import MediaGallery from "./pages/MediaGallery";
 import UserMemory from "./pages/UserMemory";
 import TokensPlans from "./pages/TokensPlans";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      refetchOnWindowFocus: false
+    }
+  }
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

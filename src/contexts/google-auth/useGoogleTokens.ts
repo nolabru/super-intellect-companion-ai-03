@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { GoogleTokens } from './types';
@@ -8,6 +8,7 @@ export const useGoogleTokens = () => {
   const [googleTokens, setGoogleTokens] = useState<GoogleTokens | null>(null);
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [lastChecked, setLastChecked] = useState<number>(0);
 
   // Fetch Google tokens from Supabase with improved error handling
   const fetchGoogleTokens = useCallback(async (session: Session | null) => {
@@ -58,8 +59,31 @@ export const useGoogleTokens = () => {
       setIsGoogleConnected(false);
     } finally {
       setLoading(false);
+      setLastChecked(Date.now());
     }
   }, []);
+
+  // Adicionar uma verificação periódica para atualização dos tokens
+  useEffect(() => {
+    const checkTokensInterval = setInterval(async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        // Se passou mais de 30 segundos desde a última verificação, verificar novamente
+        if (Date.now() - lastChecked > 30000) {
+          console.log('Periodicalmente verificando tokens do Google...');
+          fetchGoogleTokens(data.session);
+        }
+      }
+    }, 60000); // Verificar a cada minuto
+    
+    return () => clearInterval(checkTokensInterval);
+  }, [fetchGoogleTokens, lastChecked]);
+
+  // Função para forçar uma nova verificação dos tokens
+  const refreshTokensState = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    await fetchGoogleTokens(data.session);
+  }, [fetchGoogleTokens]);
 
   return {
     googleTokens,
@@ -69,5 +93,6 @@ export const useGoogleTokens = () => {
     loading,
     setLoading,
     fetchGoogleTokens,
+    refreshTokensState
   };
 };

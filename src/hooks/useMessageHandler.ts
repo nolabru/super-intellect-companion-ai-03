@@ -1,5 +1,4 @@
-
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
@@ -30,6 +29,14 @@ export function useMessageHandler(
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
   const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
+  
+  // Monitorar e debugar o estado da conexão Google
+  useEffect(() => {
+    console.log('[useMessageHandler] Google Auth State:', { 
+      isGoogleConnected, 
+      googleAuthLoading 
+    });
+  }, [isGoogleConnected, googleAuthLoading]);
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
@@ -78,13 +85,26 @@ export function useMessageHandler(
         googleAuthLoading
       });
       
-      if (isGoogleCommand && !googleAuthLoading && !isGoogleConnected) {
-        toast.error(
-          'Conta Google não conectada',
-          { description: 'Para usar comandos do Google, você precisa fazer login com sua conta Google.' }
-        );
-        setIsSending(false);
-        return false;
+      // Verificação de comandos Google melhorada
+      if (isGoogleCommand) {
+        // Aguarde a conclusão do carregamento da autenticação Google antes de verificar
+        if (googleAuthLoading) {
+          console.log('[useMessageHandler] Aguardando carregamento da autenticação Google...');
+          // Aguardar breve tempo para carregar a autenticação
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        console.log('[useMessageHandler] Estado final da conexão Google:', { isGoogleConnected });
+        
+        // Verificação final após aguardar
+        if (!isGoogleConnected) {
+          toast.error(
+            'Conta Google não conectada',
+            { description: 'Para usar comandos do Google, você precisa fazer login com sua conta Google.' }
+          );
+          setIsSending(false);
+          return false;
+        }
       }
       
       // Processar mensagem para extração de memória

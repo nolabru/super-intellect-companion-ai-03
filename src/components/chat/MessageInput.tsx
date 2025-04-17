@@ -70,7 +70,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [commandMenuPosition, setCommandMenuPosition] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const { isGoogleConnected } = useGoogleAuth();
+  const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
 
   // Track cursor position to show @ menu
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -134,6 +134,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const insertCommand = (command: string) => {
+    // Verificar mais claramente o status da conexão Google
+    console.log('Checking Google connection before inserting command', { 
+      isGoogleConnected, 
+      googleAuthLoading 
+    });
+    
     if (!isGoogleConnected) {
       toast.error(
         "Conta Google não conectada", 
