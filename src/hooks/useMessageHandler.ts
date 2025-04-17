@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -30,15 +31,15 @@ export function useMessageHandler(
   const { user } = useAuth();
   const { isGoogleConnected, loading: googleAuthLoading, refreshTokensState } = useGoogleAuth();
   
-  // Monitor and debug Google auth state
+  // Monitorar e depurar estado de autenticação Google
   useEffect(() => {
-    console.log('[useMessageHandler] Google Auth State:', { 
+    console.log('[useMessageHandler] Estado de autenticação Google:', { 
       isGoogleConnected, 
       googleAuthLoading 
     });
   }, [isGoogleConnected, googleAuthLoading]);
   
-  // Create message service and processing
+  // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
     apiService,
     mediaGallery,
@@ -49,7 +50,7 @@ export function useMessageHandler(
   const messageProcessing = useMessageProcessing(user?.id);
 
   /**
-   * Main function to send messages to models
+   * Função principal para enviar mensagens para modelos
    */
   const sendMessage = useCallback(async (
     content: string,
@@ -76,59 +77,59 @@ export function useMessageHandler(
       console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Check if it's a Google command
+      // Verificar se é um comando Google
       const isGoogleCommand = content.match(/@(calendar|sheet|doc|drive|email)\s/i);
       
-      console.log('[useMessageHandler] Google command check:', { 
+      console.log('[useMessageHandler] Verificação de comando Google:', { 
         isGoogleCommand: !!isGoogleCommand,
         isGoogleConnected,
         googleAuthLoading
       });
       
-      // Enhanced Google command checking
+      // Verificação aprimorada de comando Google
       if (isGoogleCommand) {
-        // Force a token state refresh before checking
+        // Forçar uma atualização do estado do token antes de verificar
         if (googleAuthLoading) {
-          console.log('[useMessageHandler] Waiting for Google auth to load...');
+          console.log('[useMessageHandler] Esperando o carregamento da autenticação Google...');
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          // Force a refresh of token state
+          // Forçar uma atualização do estado do token
           await refreshTokensState();
           
-          // Check again after refresh
+          // Verificar novamente após a atualização
           if (!isGoogleConnected) {
             toast.error(
-              'Google account not connected',
-              { description: 'To use Google commands, you need to log in with your Google account.' }
+              'Conta Google não conectada',
+              { description: 'Para usar comandos Google, você precisa fazer login com sua conta Google.' }
             );
             setIsSending(false);
             return false;
           }
         } else if (!isGoogleConnected) {
           toast.error(
-            'Google account not connected',
-            { description: 'To use Google commands, you need to log in with your Google account.' }
+            'Conta Google não conectada',
+            { description: 'Para usar comandos Google, você precisa fazer login com sua conta Google.' }
           );
           setIsSending(false);
           return false;
         }
       }
       
-      // Process message for memory extraction
+      // Processar mensagem para extração de memória
       if (user && user.id) {
         messageProcessing.processUserMessageForMemory(content);
       }
       
-      // Prepare conversation history for orchestrator
+      // Preparar histórico de conversação para o orquestrador
       const conversationHistory = messageProcessing.prepareConversationHistory(
         messages.map(msg => ({ sender: msg.sender, content: msg.content }))
       );
       
-      // Create user message
+      // Criar mensagem do usuário
       const userMessageId = uuidv4();
       let targetModel: string | undefined;
       
-      // Determine which model will receive the message
+      // Determinar qual modelo receberá a mensagem
       if (comparing) {
         if (!leftModel && rightModel) {
           targetModel = rightModel;
@@ -141,7 +142,7 @@ export function useMessageHandler(
         targetModel = modelId;
       }
       
-      // Create user message with target model explicitly defined
+      // Criar mensagem do usuário com modelo alvo explicitamente definido
       const userMessage: MessageType = {
         id: userMessageId,
         content,
@@ -154,22 +155,22 @@ export function useMessageHandler(
       
       setMessages(prev => [...prev, userMessage]);
       
-      // Save user message to database
+      // Salvar mensagem do usuário no banco de dados
       await saveUserMessage(userMessage, currentConversationId);
       
-      // If this is the first message in the conversation, update the title
+      // Se esta for a primeira mensagem na conversa, atualizar o título
       if (messages.length === 0 || (messages.length === 1 && messages[0].sender === 'user')) {
         updateTitle(currentConversationId, content);
       }
       
-      // Enhance content with memory context if needed
+      // Melhorar conteúdo com contexto de memória, se necessário
       const enhancedContent = await messageProcessing.enhanceWithMemoryContext(content, messages.length);
       
-      // Process the message
+      // Processar a mensagem
       let modeSwitch = null;
       
       if (comparing && leftModel && rightModel) {
-        // Comparison mode - both models
+        // Modo de comparação - ambos os modelos
         const result = await messageService.handleCompareModels(
           enhancedContent,
           mode,
@@ -184,7 +185,7 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && leftModel && !rightModel) {
-        // Detached mode - left model only
+        // Modo destacado - apenas modelo esquerdo
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -200,7 +201,7 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && !leftModel && rightModel) {
-        // Detached mode - right model only
+        // Modo destacado - apenas modelo direito
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -216,7 +217,7 @@ export function useMessageHandler(
         
         modeSwitch = result?.modeSwitch || null;
       } else {
-        // Default mode - single model
+        // Modo padrão - modelo único
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -120,8 +121,8 @@ const Auth: React.FC = () => {
         if (error) throw error;
         
         toast.success(
-          "Registration completed!",
-          { description: "Check your email to confirm your account." }
+          "Cadastro realizado!",
+          { description: "Verifique seu email para confirmar sua conta." }
         );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -135,7 +136,7 @@ const Auth: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(
-        "Error", 
+        "Erro", 
         { description: error.message }
       );
     } finally {
@@ -146,9 +147,9 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Use correct redirect URL
+      // Usar URL de redirecionamento correto
       const redirectTo = window.location.origin + '/auth';
-      console.log(`[Auth] Google login - Redirect URL: ${redirectTo}`);
+      console.log(`[Auth] Login Google - URL de redirecionamento: ${redirectTo}`);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -164,12 +165,12 @@ const Auth: React.FC = () => {
 
       if (error) throw error;
       
-      // Loading state is maintained until redirect happens
-      toast.info('Redirecting to Google login...');
+      // Manter estado de carregamento até que o redirecionamento aconteça
+      toast.info('Redirecionando para login do Google...');
     } catch (error: any) {
-      console.error('[Auth] Google login error:', error);
+      console.error('[Auth] Erro no login Google:', error);
       toast.error(
-        "Error signing in with Google", 
+        "Erro ao fazer login com Google", 
         { description: error.message }
       );
       setLoading(false);
