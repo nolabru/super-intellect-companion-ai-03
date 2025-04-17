@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -9,7 +10,7 @@ import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
-import { useGoogleAuth } from '@/contexts/google-auth'; // Fixed import path
+import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
 
 // Google Workspace command detection
@@ -35,7 +36,19 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
-  const { isGoogleConnected, checkGooglePermissions } = useGoogleAuth();
+  
+  // Safe access to Google Auth context
+  let isGoogleConnected = false;
+  let checkGooglePermissions = async () => false;
+  
+  try {
+    const googleAuth = useGoogleAuth();
+    isGoogleConnected = googleAuth.isGoogleConnected;
+    checkGooglePermissions = googleAuth.checkGooglePermissions;
+  } catch (error) {
+    console.log("[useMessageHandler] GoogleAuth context not available:", error);
+    // Fallback values already set above
+  }
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(

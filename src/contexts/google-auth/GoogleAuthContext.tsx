@@ -12,8 +12,15 @@ import {
 import { GoogleAuthContextType } from './types';
 import { useLocation } from 'react-router-dom';
 
-// Create context with undefined initial value
-const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
+// Create context with a default value
+const GoogleAuthContext = createContext<GoogleAuthContextType>({
+  googleTokens: null,
+  isGoogleConnected: false,
+  loading: true,
+  refreshGoogleTokens: async () => false,
+  checkGooglePermissions: async () => false,
+  disconnectGoogle: async () => {}
+});
 
 export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   try {
@@ -149,7 +156,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     };
 
-    const contextValue = {
+    const contextValue: GoogleAuthContextType = {
       googleTokens, 
       isGoogleConnected, 
       loading, 
@@ -172,7 +179,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
 export const useGoogleAuth = () => {
   const context = useContext(GoogleAuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useGoogleAuth must be used within a GoogleAuthProvider');
   }
   return context;
