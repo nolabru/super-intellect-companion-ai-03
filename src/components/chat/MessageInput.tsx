@@ -99,7 +99,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       />
       
       {showCommands && (
-        <div className="absolute z-50 w-full left-0 top-full mt-1">
+        <div className="absolute z-50 w-full left-0 bottom-full mb-1">
           <CommandMenu
             isOpen={showCommands}
             onClose={() => setShowCommands(false)}
