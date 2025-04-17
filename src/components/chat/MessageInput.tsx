@@ -1,8 +1,9 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
+import GoogleCommandSuggestions from './GoogleCommandSuggestions';
 
 interface MessageInputProps {
   message: string;
@@ -25,6 +26,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   mode,
   model
 }) => {
+  const [showCommands, setShowCommands] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,6 +36,27 @@ const MessageInput: React.FC<MessageInputProps> = ({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [message]);
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setMessage(value);
+    
+    // Show command suggestions when @ is typed
+    const lastChar = value[value.length - 1];
+    if (lastChar === '@') {
+      setShowCommands(true);
+    } else if (!value.includes('@')) {
+      setShowCommands(false);
+    }
+  };
+
+  const handleCommandSelect = (command: string) => {
+    setMessage(command + ' ');
+    setShowCommands(false);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
 
   const getPlaceholder = () => {
     if (isImageGenerationModel) {
@@ -50,10 +73,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   return (
     <div className="relative rounded-lg border border-inventu-gray/30 bg-inventu-card">
+      {showCommands && (
+        <GoogleCommandSuggestions 
+          isVisible={showCommands} 
+          onSelect={handleCommandSelect}
+        />
+      )}
       <textarea
         ref={textareaRef}
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        onChange={handleMessageChange}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
