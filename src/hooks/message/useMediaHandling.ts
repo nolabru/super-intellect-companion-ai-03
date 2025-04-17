@@ -25,7 +25,6 @@ export function useMediaHandling() {
 
     if (mode === 'text') {
       toast({
-        title: "Alerta",
         description: "Envio de arquivos não disponível no modo texto.",
       });
       return false;
@@ -33,7 +32,6 @@ export function useMediaHandling() {
 
     if (!validateFile(file, mode)) {
       toast({
-        title: "Tipo de arquivo inválido",
         description: `Por favor, selecione um arquivo ${mode} válido.`,
         variant: "destructive",
       });
