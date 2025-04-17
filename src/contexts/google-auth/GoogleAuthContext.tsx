@@ -65,10 +65,36 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           // Check if this is a redirect after OAuth login
           const isOAuthRedirect = urlParams.has('provider') || 
                                   hashParams.has('access_token') || 
-                                  urlParams.has('success');
+                                  urlParams.has('success') ||
+                                  (urlParams.has('error') && urlParams.has('error_code'));
                                   
           if (isOAuthRedirect) {
             console.log('[GoogleAuthContext] Processing OAuth redirect');
+            
+            // Check for error
+            if (urlParams.has('error')) {
+              console.error('[GoogleAuthContext] OAuth error:', urlParams.get('error'));
+              console.error('[GoogleAuthContext] Error code:', urlParams.get('error_code'));
+              console.error('[GoogleAuthContext] Error description:', urlParams.get('error_description'));
+              
+              // Handle specific error cases
+              if (urlParams.get('error_code') === 'bad_oauth_state') {
+                toast.error(
+                  'Erro de autenticação',
+                  { description: 'Houve um problema com o estado da autenticação. Por favor, tente novamente.' }
+                );
+                
+                // Force login again
+                setTimeout(() => {
+                  // Redirect to auth page
+                  window.location.href = '/auth';
+                }, 1500);
+                
+                return;
+              }
+              
+              return;
+            }
             
             // Give Supabase time to process the login
             setTimeout(async () => {

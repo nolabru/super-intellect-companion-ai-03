@@ -182,10 +182,15 @@ const Auth: React.FC = () => {
       
       console.log('[Auth] Using redirectTo:', redirectTo);
       
-      // Create a proper state object with userId placeholder (will be filled by Supabase)
+      // Get the current session to include in state if available
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionToken = sessionData.session?.access_token;
+      
+      // Create state object with all necessary information
       const stateObj = {
         redirectAfterAuth,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        session_token: sessionToken || null
       };
       
       const state = JSON.stringify(stateObj);

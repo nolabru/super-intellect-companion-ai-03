@@ -104,16 +104,48 @@ serve(async (req) => {
     try {
       stateData = JSON.parse(state);
       
-      // Get the user ID from the session since it should be available in the state
-      // This is a more reliable way to get the user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      userId = user?.id;
+      // Extract session token from state if available
+      const sessionToken = stateData.session_token;
+      
+      // Try to get user from session token
+      if (sessionToken) {
+        try {
+          const { data: { user }, error: sessionError } = await supabase.auth.getUser(sessionToken);
+          if (!sessionError && user) {
+            userId = user.id;
+            console.log('Extracted user ID from session token:', userId);
+          } else {
+            console.error('Error getting user from session token:', sessionError);
+          }
+        } catch (e) {
+          console.error('Exception getting user from session token:', e);
+        }
+      }
+      
+      // Try to get from access token in cookie if available
+      if (!userId) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            userId = user.id;
+            console.log('Retrieved user ID from auth:', userId);
+          }
+        } catch (e) {
+          console.error('Error getting current user:', e);
+        }
+      }
+      
+      // Fallback to user_id in state if available (backward compatibility)
+      if (!userId && stateData.user_id) {
+        userId = stateData.user_id;
+        console.log('Using user_id from state:', userId);
+      }
       
       // Get redirect info from state
       redirectAfterAuth = stateData.redirectAfterAuth;
       
       console.log('State data:', stateData);
-      console.log('User ID from auth:', userId);
+      console.log('Final user ID:', userId);
       console.log('Redirect after auth:', redirectAfterAuth);
       
     } catch (e) {
