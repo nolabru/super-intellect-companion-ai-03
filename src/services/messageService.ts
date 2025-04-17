@@ -1,4 +1,3 @@
-
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
@@ -30,6 +29,19 @@ export const createMessageService = (
     conversationHistory?: string,
     userId?: string
   ) => {
+    // Create user message with specific model target in compare mode
+    const userMessage: MessageType = {
+      id: `user-${Date.now()}`,
+      content,
+      sender: 'user',
+      timestamp: new Date().toISOString(),
+      mode,
+      files,
+      model: modelId // Set specific model for user message in compare mode
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+
     return handleSingleModelMessage(
       content,
       mode,

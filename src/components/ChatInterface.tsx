@@ -44,44 +44,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [messages]);
 
   const filteredMessages = messages.filter(msg => {
-    console.log(`[ChatInterface:${model}] Avaliando mensagem:`, {
+    console.log(`[ChatInterface:${model}] Filtering message:`, {
       id: msg.id,
       sender: msg.sender,
       model: msg.model,
-      isCompareMode,
-      isLoading: msg.id?.startsWith('loading-')
+      isCompareMode
     });
     
     if (isCompareMode) {
-      if (msg.sender === 'user') {
-        const shouldShow = msg.model === model;
-        console.log(`[ChatInterface:${model}] Mensagem de usuário ${shouldShow ? 'aceita' : 'rejeitada'} para modelo ${model}`);
-        return shouldShow;
-      }
-      
-      if (msg.id?.startsWith('loading-') && msg.model === model) {
-        return true;
-      }
-      
-      if (msg.sender === 'assistant' && msg.model === model) {
-        return true;
-      }
-      
-      return false;
+      // In compare mode, show only messages specifically for this model
+      return msg.model === model || 
+             (msg.sender === 'user' && msg.model === model);
     } else {
-      if (msg.sender === 'user') {
-        return true;
-      }
-      
-      if (msg.id?.startsWith('loading-') && msg.model === model) {
-        return true;
-      }
-      
-      if (msg.sender === 'assistant' && msg.model === model) {
-        return true;
-      }
-      
-      return false;
+      // In single mode, show all user messages and messages for this model
+      return msg.sender === 'user' || 
+             (msg.sender === 'assistant' && msg.model === model);
     }
   });
   
