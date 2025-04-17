@@ -9,8 +9,7 @@ import {
   Brain as Memory, 
   Coins,
   LogOut,
-  LogIn,
-  BrainCircuit
+  LogIn
 } from 'lucide-react';
 
 interface SidebarNavigationProps {
@@ -82,17 +81,6 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
         >
           <Coins className="mr-2 h-4 w-4" />
           Tokens
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/google-integrations' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/google-integrations')}
-        >
-          <BrainCircuit className="mr-2 h-4 w-4" />
-          Integrações Google
         </Button>
       </div>
       

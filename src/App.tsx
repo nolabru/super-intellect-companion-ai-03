@@ -12,7 +12,6 @@ import NotFound from "./pages/NotFound";
 import MediaGallery from "./pages/MediaGallery";
 import UserMemory from "./pages/UserMemory";
 import TokensPlans from "./pages/TokensPlans";
-import GoogleIntegrationsPage from "./pages/GoogleIntegrationsPage";
 
 const queryClient = new QueryClient();
 
@@ -31,7 +30,6 @@ const App = () => (
               <Route path="/gallery" element={<MediaGallery />} />
               <Route path="/memory" element={<UserMemory />} />
               <Route path="/tokens" element={<TokensPlans />} />
-              <Route path="/google-integrations" element={<GoogleIntegrationsPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
