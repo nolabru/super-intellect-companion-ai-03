@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 import { Separator } from '@/components/ui/separator';
 
@@ -49,10 +49,10 @@ const Auth: React.FC = () => {
 
         if (error) throw error;
         
-        toast({
-          title: "Cadastro realizado!",
-          description: "Verifique seu email para confirmar sua conta.",
-        });
+        toast.success(
+          "Cadastro realizado!",
+          { description: "Verifique seu email para confirmar sua conta." }
+        );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -64,11 +64,10 @@ const Auth: React.FC = () => {
         navigate('/');
       }
     } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(
+        "Erro", 
+        { description: error.message }
+      );
     } finally {
       setLoading(false);
     }
@@ -84,7 +83,8 @@ const Auth: React.FC = () => {
           queryParams: {
             access_type: 'offline',
             prompt: 'consent'
-          }
+          },
+          redirectTo: `${window.location.origin}/google-integrations`
         }
       });
 
@@ -92,11 +92,10 @@ const Auth: React.FC = () => {
       
       // O redirecionamento será gerenciado pelo Supabase OAuth
     } catch (error: any) {
-      toast({
-        title: "Erro ao entrar com Google",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast.error(
+        "Erro ao entrar com Google", 
+        { description: error.message }
+      );
       setLoading(false);
     }
   };
