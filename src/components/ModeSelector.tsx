@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Text, Image, Video, AudioLines } from 'lucide-react';
+import { Text, Image, Video, AudioLines, AtSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ChatMode = 'text' | 'image' | 'video' | 'audio';
+export type ChatMode = 'text' | 'image' | 'video' | 'audio' | 'google-service';
 
 interface ModeSelectorProps {
   activeMode: ChatMode;
@@ -63,6 +63,8 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
       >
         <AudioLines size={18} />
       </ToggleGroupItem>
+      
+      {/* Google Service Mode is hidden from selector but available for internal use */}
     </ToggleGroup>
   );
 };

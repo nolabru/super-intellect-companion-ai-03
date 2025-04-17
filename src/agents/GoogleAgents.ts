@@ -174,10 +174,10 @@ Por favor, forneça essas informações.`
     
     // Verificar conteúdo específico para nomes aleatórios
     const randomNamesMatch = sanitizedContent.match(/com\s+(\d+)\s+nomes\s+aleat[óo]rios/i);
-    let content = sanitizedContent;
+    let sheetContent = sanitizedContent;
     
     if (randomNamesMatch && randomNamesMatch[1]) {
-      content = `com ${randomNamesMatch[1]} nomes aleatórios`;
+      sheetContent = `com ${randomNamesMatch[1]} nomes aleatórios`;
     }
     
     // Verificar se temos informações suficientes para criar a planilha
@@ -189,7 +189,7 @@ Por favor, forneça essas informações.`
         type: 'createSpreadsheet',
         parameters: {
           title,
-          content,
+          content: sheetContent,
           sheets: [{ title: 'Página1' }]
         }
       }
