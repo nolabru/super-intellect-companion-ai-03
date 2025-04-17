@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -16,7 +15,7 @@ export interface ModelInfo {
 }
 
 export const AVAILABLE_MODELS: ModelInfo[] = [
-// OpenAI Models - Atualizados conforme documentação mais recente
+// OpenAI Models
 {
   id: 'gpt-4o',
   displayName: 'GPT-4o',
@@ -52,77 +51,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   capabilities: ['Geração de imagens realistas', 'Seguir instruções detalhadas'],
   description: 'Gerador de imagens avançado da OpenAI.',
   modes: ['image']
-}, {
-  id: 'tts-1',
-  displayName: 'TTS-1',
-  provider: 'openai',
-  capabilities: ['Conversão de texto para fala', 'Voz natural'],
-  description: 'Modelo de conversão de texto para fala com qualidade natural.',
-  modes: ['audio']
 },
-// Anthropic Models
-{
-  id: 'claude-3-opus',
-  displayName: 'Claude 3 Opus',
-  provider: 'anthropic',
-  capabilities: ['Pensamento de ponta', 'Conhecimento científico avançado'],
-  description: 'O modelo mais poderoso da Anthropic, com capacidades cognitivas superiores.',
-  modes: ['text']
-}, {
-  id: 'claude-3-sonnet',
-  displayName: 'Claude 3 Sonnet',
-  provider: 'anthropic',
-  capabilities: ['Equilíbrio entre desempenho e velocidade', 'Excelente em redação'],
-  description: 'Equilíbrio entre potência e velocidade para uso geral.',
-  modes: ['text']
-}, {
-  id: 'claude-3-haiku',
-  displayName: 'Claude 3 Haiku',
-  provider: 'anthropic',
-  capabilities: ['Respostas rápidas', 'Eficiente para tarefas simples'],
-  description: 'Modelo mais rápido da Anthropic, ideal para interações frequentes.',
-  modes: ['text']
-},
-// Google Models
-{
-  id: 'gemini-pro',
-  displayName: 'Gemini 1.5 Pro',
-  provider: 'google',
-  capabilities: ['Compreensão multimodal', 'Raciocínio avançado'],
-  description: 'Modelo avançado do Google com excelente entendimento contextual.',
-  modes: ['text']
-}, {
-  id: 'gemini-flash',
-  displayName: 'Gemini 1.5 Flash',
-  provider: 'google',
-  capabilities: ['Respostas rápidas', 'Eficiência'],
-  description: 'Versão mais rápida e leve do Gemini, ideal para uso frequente.',
-  modes: ['text']
-}, {
-  id: 'gemini-vision',
-  displayName: 'Gemini Vision',
-  provider: 'google',
-  capabilities: ['Análise de imagens', 'Compreensão visual'],
-  description: 'Modelo especializado em análise e compreensão de imagens.',
-  modes: ['text']
-}, {
-  id: 'imagen',
-  displayName: 'Imagen',
-  provider: 'google',
-  capabilities: ['Geração de imagens', 'Alta fidelidade'],
-  description: 'Gerador de imagens de alta fidelidade do Google.',
-  modes: ['image']
-},
-// Ideogram Models  
-{
-  id: 'ideogram',
-  displayName: 'Ideogram',
-  provider: 'ideogram',
-  capabilities: ['Geração artística', 'Estilos diversos'],
-  description: 'Gerador de imagens focado em diversos estilos artísticos.',
-  modes: ['image']
-},
-// Luma Models
+// Luma AI Models
 {
   id: 'luma-video',
   displayName: 'Luma Video',
@@ -137,65 +67,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   capabilities: ['Imagens 3D', 'Visualização especial'],
   description: 'Criação de imagens com representação tridimensional.',
   modes: ['image']
-},
-// Kligin Models
-{
-  id: 'kligin-video',
-  displayName: 'Kligin Video',
-  provider: 'kligin',
-  capabilities: ['Geração de vídeos', 'Alta qualidade', 'Controle de câmera'],
-  description: 'Gerador de vídeos com grande controle sobre movimentos de câmera e composição.',
-  modes: ['video']
-}, {
-  id: 'kligin-image',
-  displayName: 'Kligin Image',
-  provider: 'kligin',
-  capabilities: ['Geração de imagens', 'Alta fidelidade'],
-  description: 'Criação de imagens de alta qualidade com tecnologia avançada.',
-  modes: ['image']
-},
-// ElevenLabs Models
-{
-  id: 'elevenlabs-tts',
-  displayName: 'ElevenLabs TTS',
-  provider: 'elevenlabs',
-  capabilities: ['Vozes realistas', 'Múltiplos idiomas'],
-  description: 'Modelo de conversão de texto para fala com qualidade natural.',
-  modes: ['audio']
-},
-// Kligin Models for TTS
-{
-  id: 'kligin-tts',
-  displayName: 'Kligin TTS',
-  provider: 'kligin',
-  capabilities: ['Vozes brasileiras', 'Naturalidade'],
-  description: 'Conversão de texto para fala com vozes brasileiras naturais.',
-  modes: ['audio']
-},
-// Replicate Models
-{
-  id: 'replicate-sdxl',
-  displayName: 'Stable Diffusion XL',
-  provider: 'replicate',
-  capabilities: ['Geração de imagens', 'Código aberto'],
-  description: 'Modelo de código aberto para geração de imagens de alta qualidade.',
-  modes: ['image']
-},
-// DeepSeek models
-{
-  id: 'deepseek-chat',
-  displayName: 'DeepSeek Chat',
-  provider: 'deepseek',
-  capabilities: ['Conversational AI', 'Code Generation'],
-  description: 'Advanced AI model for chat and code generation',
-  modes: ['text']
-}, {
-  id: 'deepseek-coder',
-  displayName: 'DeepSeek Coder',
-  provider: 'deepseek',
-  capabilities: ['Code Generation', 'Programming Support'],
-  description: 'Specialized AI model for coding tasks',
-  modes: ['text']
 }
 ];
 
@@ -236,7 +107,6 @@ const getProviderDisplayName = (provider: ModelProvider): string => {
       return 'Luma AI';
     case 'replicate':
       return 'Replicate';
-    // In the getProviderDisplayName function, add a case for deepseek
     case 'deepseek':
       return 'DeepSeek';
     default:
