@@ -10,6 +10,8 @@ import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
+import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
+import { toast } from 'sonner';
 
 /**
  * Hook central para gerenciamento de envio de mensagens
@@ -27,6 +29,7 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
+  const { isGoogleConnected } = useGoogleAuth();
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
@@ -65,6 +68,17 @@ export function useMessageHandler(
     try {
       console.log(`[useMessageHandler] Enviando mensagem "${content}" para ${comparing ? 'modelos' : 'modelo'} ${leftModel || modelId}${rightModel ? ` e ${rightModel}` : ''}`);
       setIsSending(true);
+      
+      // Verificar se é um comando do Google e se o usuário está conectado
+      const isGoogleCommand = content.match(/@(calendar|sheet|doc|drive|email)\s/i);
+      if (isGoogleCommand && !isGoogleConnected) {
+        toast.error(
+          'Conta Google não conectada',
+          { description: 'Para usar comandos do Google, você precisa conectar sua conta na página de integrações.' }
+        );
+        setIsSending(false);
+        return false;
+      }
       
       // Processar mensagem para extração de memória
       if (user && user.id) {
@@ -206,7 +220,8 @@ export function useMessageHandler(
     updateTitle, 
     messageService,
     user,
-    messageProcessing
+    messageProcessing,
+    isGoogleConnected
   ]);
 
   return {

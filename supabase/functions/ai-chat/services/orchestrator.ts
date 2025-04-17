@@ -17,14 +17,23 @@ export interface OrchestratorResponse {
   memoryExtracted: boolean;
   memoryContext?: string;
   googleIntegrationActions?: GoogleIntegrationAction[];
+  googleCommand?: GoogleCommand;
 }
 
 // Define tipos para ações de integração com o Google
 export interface GoogleIntegrationAction {
-  type: 'calendar' | 'drive' | 'sheets' | 'gmail';
+  type: 'calendar' | 'drive' | 'sheets' | 'gmail' | 'docs';
   action: string;
   parameters: Record<string, any>;
   description: string;
+}
+
+// Define Google command types
+export interface GoogleCommand {
+  type: 'calendar' | 'sheet' | 'doc' | 'drive' | 'email';
+  action: string;
+  query: string;
+  systemPrompt: string;
 }
 
 // Verifica se a chave API do orquestrador está configurada
@@ -71,9 +80,11 @@ export async function processUserMessage(
             - Google Calendar: Para criar e gerenciar eventos
             - Google Drive: Para criar e gerenciar documentos
             - Google Sheets: Para criar e gerenciar planilhas
+            - Google Docs: Para criar documentos
             - Gmail: Para enviar e-mails
             
             Se o pedido do usuário puder se beneficiar de qualquer uma dessas integrações, sugira ações específicas no formato JSON dentro da sua resposta.
+            Você deve detectar quando o usuário usa comandos como @calendar, @sheet, @doc, @drive ou @email e direcionar para o agente especializado.
           `;
         }
       } catch (error) {
@@ -82,13 +93,124 @@ export async function processUserMessage(
       }
     }
     
+    // Verificar se a mensagem contém comandos Google
+    const googleCommandMatch = userMessage.match(/@(calendar|sheet|doc|drive|email)\s+(.*)/i);
+    let googleCommand = null;
+    
+    if (googleCommandMatch && userHasGoogleIntegration) {
+      const commandType = googleCommandMatch[1].toLowerCase();
+      const commandQuery = googleCommandMatch[2].trim();
+      
+      console.log(`[Orquestrador] Detectado comando Google: ${commandType} com consulta: "${commandQuery}"`);
+      
+      // Definir prompts de sistema para cada agente especializado
+      const systemPrompts = {
+        calendar: `Você é um assistente especializado em gerenciar eventos do Google Calendar.
+Comunique-se sempre em português do Brasil de forma formal mas amigável.
+Ajude o usuário a criar eventos no calendário coletando todas as informações necessárias:
+- Título do evento (obrigatório)
+- Descrição (opcional)
+- Data e hora de início (obrigatório)
+- Data e hora de término (obrigatório)
+- Local (opcional)
+- Participantes/convidados (opcional)
+
+Se alguma informação obrigatória estiver faltando, pergunte ao usuário de forma natural.
+Formate as datas conforme o padrão ISO 8601 (YYYY-MM-DDTHH:MM:SS).
+Quando tiver todas as informações, envie os dados para criação do evento.
+Se o usuário não tiver concedido as permissões necessárias, informe gentilmente que ele precisa reconectar sua conta Google com as permissões de Calendário.`,
+        
+        sheet: `Você é um assistente especializado em gerenciar planilhas do Google Sheets.
+Comunique-se sempre em português do Brasil de forma formal mas amigável.
+Ajude o usuário a criar, ler ou atualizar planilhas coletando as informações necessárias.
+
+Para CRIAR uma planilha:
+- Título da planilha (obrigatório)
+- Dados para incluir (obrigatório)
+- Formato dos dados (opcional)
+
+Para LER uma planilha:
+- ID da planilha (obrigatório)
+- Intervalo de células (ex: "A1:D10") (obrigatório)
+
+Para ATUALIZAR uma planilha:
+- ID da planilha (obrigatório)
+- Intervalo de células a atualizar (obrigatório)
+- Novos dados (obrigatório)
+
+Se alguma informação obrigatória estiver faltando, pergunte ao usuário de forma natural.
+Se o usuário não tiver concedido as permissões necessárias, informe gentilmente que ele precisa reconectar sua conta Google com as permissões de Sheets.`,
+        
+        doc: `Você é um assistente especializado em gerenciar documentos do Google Docs.
+Comunique-se sempre em português do Brasil de forma formal mas amigável.
+Ajude o usuário a criar ou atualizar documentos coletando as informações necessárias.
+
+Para CRIAR um documento:
+- Título do documento (obrigatório)
+- Conteúdo (obrigatório)
+- Formatação (opcional)
+
+Para ATUALIZAR um documento:
+- ID do documento (obrigatório)
+- Novo conteúdo (obrigatório)
+- Tipo de atualização (substituir ou adicionar) (opcional, padrão: substituir)
+
+Se alguma informação obrigatória estiver faltando, pergunte ao usuário de forma natural.
+Se o usuário não tiver concedido as permissões necessárias, informe gentilmente que ele precisa reconectar sua conta Google com as permissões de Docs.`,
+        
+        drive: `Você é um assistente especializado em gerenciar arquivos do Google Drive.
+Comunique-se sempre em português do Brasil de forma formal mas amigável.
+Ajude o usuário a fazer upload de arquivos ou criar pastas coletando as informações necessárias.
+
+Para UPLOAD de arquivo:
+- Nome do arquivo (obrigatório)
+- Conteúdo do arquivo (obrigatório)
+- Tipo MIME (opcional, padrão com base na extensão)
+- ID da pasta de destino (opcional)
+
+Para CRIAR pasta:
+- Nome da pasta (obrigatório)
+- ID da pasta pai (opcional)
+
+Se alguma informação obrigatória estiver faltando, pergunte ao usuário de forma natural.
+Se o usuário não tiver concedido as permissões necessárias, informe gentilmente que ele precisa reconectar sua conta Google com as permissões de Drive.`,
+        
+        email: `Você é um assistente especializado em enviar e-mails via Gmail.
+Comunique-se sempre em português do Brasil de forma formal mas amigável.
+Ajude o usuário a compor e enviar e-mails coletando todas as informações necessárias:
+- Destinatário(s) (obrigatório)
+- Assunto (obrigatório)
+- Corpo do e-mail (obrigatório)
+- CC (opcional)
+- BCC (opcional)
+- Anexos (opcional)
+
+Se alguma informação obrigatória estiver faltando, pergunte ao usuário de forma natural.
+Ao redigir e-mails, mantenha um tom profissional e adequado ao contexto descrito pelo usuário.
+Se o usuário não tiver concedido as permissões necessárias, informe gentilmente que ele precisa reconectar sua conta Google com as permissões de Gmail.`
+      };
+      
+      // Create the Google command object
+      googleCommand = {
+        type: commandType as 'calendar' | 'sheet' | 'doc' | 'drive' | 'email',
+        action: 'process', // Default action
+        query: commandQuery,
+        systemPrompt: systemPrompts[commandType as keyof typeof systemPrompts]
+      };
+      
+      // Override default mode and model for Google commands
+      currentMode = "text";
+      currentModel = "gpt-4o";
+    }
+    
     // Construir um prompt para o orquestrador
     const orchestratorPrompt = buildOrchestratorPrompt(
       userMessage,
       currentMode,
       currentModel,
       conversationHistory,
-      googleIntegrationContext
+      googleIntegrationContext,
+      !!googleCommand
     );
     
     // Usar um modelo pequeno e rápido para o orquestrador
@@ -100,7 +222,14 @@ export async function processUserMessage(
     const response = await openaiGenerateText(orchestratorPrompt, orchestratorModel);
     
     // Processar a resposta do orquestrador
-    return parseOrchestratorResponse(response.content, userHasGoogleIntegration);
+    const parsedResponse = parseOrchestratorResponse(response.content, userHasGoogleIntegration);
+    
+    // Se temos um comando Google, adicionar à resposta
+    if (googleCommand) {
+      parsedResponse.googleCommand = googleCommand;
+    }
+    
+    return parsedResponse;
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -123,7 +252,8 @@ function buildOrchestratorPrompt(
   currentMode: string,
   currentModel: string,
   conversationHistory?: string,
-  googleIntegrationContext?: string
+  googleIntegrationContext?: string,
+  hasGoogleCommand?: boolean
 ): string {
   return `Você é um orquestrador de IA que deve analisar a mensagem do usuário e fornecer instruções para melhorar a resposta do modelo principal.
 
@@ -134,6 +264,7 @@ MODO ATUAL: ${currentMode}
 MODELO ATUAL: ${currentModel}
 ${conversationHistory ? `HISTÓRICO DA CONVERSA:\n${conversationHistory}` : ''}
 ${googleIntegrationContext || ''}
+${hasGoogleCommand ? 'IMPORTANTE: A mensagem do usuário contém um comando Google que será tratado por um agente especializado.' : ''}
 
 Sua tarefa é:
 1. Analisar a intenção do usuário
@@ -141,7 +272,7 @@ Sua tarefa é:
 3. Recomendar o modelo mais adequado para essa tarefa
 4. Extrair informações que devem ser armazenadas para memória futura
 5. Melhorar o prompt original do usuário para obter a melhor resposta possível
-${googleIntegrationContext ? `6. Detectar se o pedido do usuário pode ser atendido usando integrações com o Google (Calendar, Drive, Sheets, Gmail) e sugerir ações específicas` : ''}
+${googleIntegrationContext && !hasGoogleCommand ? `6. Detectar se o pedido do usuário pode ser atendido usando integrações com o Google (Calendar, Drive, Sheets, Docs, Gmail) e sugerir ações específicas` : ''}
 
 Responda no seguinte formato JSON:
 {
@@ -152,10 +283,10 @@ Responda no seguinte formato JSON:
   "memoryItems": [
     {"key": "chave para informação extraída", "value": "valor da informação"},
     ...
-  ]${googleIntegrationContext ? `,
+  ]${googleIntegrationContext && !hasGoogleCommand ? `,
   "googleIntegrationActions": [
     {
-      "type": "calendar|drive|sheets|gmail",
+      "type": "calendar|drive|sheets|gmail|docs",
       "action": "nome da ação (ex: createEvent, createDocument)",
       "parameters": {
         // parâmetros específicos para a ação

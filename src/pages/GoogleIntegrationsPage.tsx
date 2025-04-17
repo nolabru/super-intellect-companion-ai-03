@@ -10,33 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-const GOOGLE_SCOPES = [
-  { 
-    name: 'Google Drive', 
-    description: 'Criar e gerenciar arquivos',
-    scope: 'https://www.googleapis.com/auth/drive',
-    icon: '📄'
-  },
-  { 
-    name: 'Google Calendar', 
-    description: 'Criar e gerenciar eventos',
-    scope: 'https://www.googleapis.com/auth/calendar',
-    icon: '📅'
-  },
-  { 
-    name: 'Google Sheets', 
-    description: 'Criar e editar planilhas',
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
-    icon: '📊'
-  },
-  { 
-    name: 'Gmail', 
-    description: 'Enviar emails automatizados',
-    scope: 'https://www.googleapis.com/auth/gmail.send',
-    icon: '📧'
-  }
-];
+import { GOOGLE_SCOPES } from '@/contexts/google-auth/types';
 
 const GoogleIntegrationsPage: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -176,7 +150,6 @@ const GoogleIntegrationsPage: React.FC = () => {
             <Card key={service.scope} className="bg-inventu-dark border-inventu-gray/30 text-white">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <span className="text-2xl">{service.icon}</span>
                   {service.name}
                   {isGoogleConnected ? (
                     <Badge variant="outline" className="bg-green-500/20 text-green-400 ml-auto">
@@ -197,19 +170,20 @@ const GoogleIntegrationsPage: React.FC = () => {
         </div>
         
         <div className="bg-inventu-dark border border-inventu-gray/30 rounded-lg p-4 mb-8">
-          <h3 className="text-lg font-semibold text-white mb-2">Sobre as permissões do Google</h3>
+          <h3 className="text-lg font-semibold text-white mb-2">Usando comandos @</h3>
           <div className="text-sm text-inventu-gray space-y-2">
             <p>
-              O orquestrador do sistema utiliza as integrações com o Google para
-              automatizar tarefas com base no contexto da conversa. Por exemplo:
+              Você pode utilizar comandos no chat para acessar rapidamente os serviços do Google:
             </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Quando você pede no chat para "agendar uma reunião", o orquestrador pode criar um evento no seu Google Calendar</li>
-              <li>Quando solicita "criar uma planilha de despesas", o sistema pode gerar um Google Sheets automaticamente</li>
-              <li>Solicitações para "criar um documento" resultam em arquivos no seu Google Drive</li>
+              <li><code className="bg-inventu-darker px-1 rounded">@calendar</code> - Criar eventos no Google Calendar</li>
+              <li><code className="bg-inventu-darker px-1 rounded">@sheet</code> - Acessar e editar planilhas do Google Sheets</li>
+              <li><code className="bg-inventu-darker px-1 rounded">@doc</code> - Criar documentos no Google Docs</li>
+              <li><code className="bg-inventu-darker px-1 rounded">@drive</code> - Gerenciar arquivos no Google Drive</li>
+              <li><code className="bg-inventu-darker px-1 rounded">@email</code> - Enviar emails através do Gmail</li>
             </ul>
             <p className="mt-4">
-              Todas as ações são realizadas somente com sua autorização explícita e você pode revogar o acesso a qualquer momento.
+              Digite <code className="bg-inventu-darker px-1 rounded">@</code> no chat para ver todas as opções disponíveis.
             </p>
           </div>
         </div>

@@ -61,3 +61,33 @@ verify_jwt = false
 
 [functions.google-verify-permissions]
 verify_jwt = false
+
+[functions.google-calendar-create-event]
+verify_jwt = false
+
+[functions.google-calendar-list-events]
+verify_jwt = false
+
+[functions.google-sheets-create]
+verify_jwt = false
+
+[functions.google-sheets-read]
+verify_jwt = false
+
+[functions.google-sheets-update]
+verify_jwt = false
+
+[functions.google-docs-create]
+verify_jwt = false
+
+[functions.google-docs-update]
+verify_jwt = false
+
+[functions.google-drive-upload]
+verify_jwt = false
+
+[functions.google-drive-create-folder]
+verify_jwt = false
+
+[functions.google-gmail-send]
+verify_jwt = false
