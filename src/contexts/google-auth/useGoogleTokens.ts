@@ -20,7 +20,7 @@ export const useGoogleTokens = () => {
       return;
     }
 
-    // Evitar múltiplas chamadas em rápida sucessão
+    // Avoid multiple rapid calls
     const now = Date.now();
     if (now - lastFetchTime < 1000) {
       console.log('[useGoogleTokens] Throttling fetch calls');
@@ -37,19 +37,20 @@ export const useGoogleTokens = () => {
       const { data, error } = await supabase
         .from('user_google_tokens')
         .select('*')
-        .eq('user_id', session.user.id);
+        .eq('user_id', session.user.id)
+        .single();
 
       if (error) {
         console.error('[useGoogleTokens] Error fetching Google tokens:', error);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
-      } else if (data && data.length > 0) {
-        console.log('[useGoogleTokens] Google tokens found:', data[0]);
+      } else if (data) {
+        console.log('[useGoogleTokens] Google tokens found:', data);
         
         // Force type casting since TypeScript doesn't know about this table
-        const tokenData = data[0] as unknown as UserGoogleToken;
+        const tokenData = data as unknown as UserGoogleToken;
         
-        // Verificar se o token expirou
+        // Check if token is expired
         const now = Math.floor(Date.now() / 1000);
         const isExpired = tokenData.expires_at && tokenData.expires_at < now;
         

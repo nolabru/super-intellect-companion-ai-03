@@ -41,13 +41,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       
       // Check if this is a redirect after OAuth login
       if (urlParams.has('provider') || hashParams.has('access_token') || urlParams.has('success')) {
-        console.log('Processing OAuth redirect');
+        console.log('Processing OAuth redirect with params:', Object.fromEntries(urlParams.entries()));
         
         // Give Supabase time to process the login
         setTimeout(async () => {
           // Check if session exists
           const { data } = await supabase.auth.getSession();
           if (data.session) {
+            console.log('Session found after redirect, fetching Google tokens');
             await fetchGoogleTokens(data.session);
             
             // Notify user
@@ -57,6 +58,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 { description: 'Sua conta Google foi conectada.' }
               );
             }
+          } else {
+            console.log('No session found after redirect');
           }
         }, 1000);
       }
@@ -67,6 +70,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Function to refresh Google tokens (wrap the operation)
   const refreshGoogleTokens = async (): Promise<boolean> => {
+    console.log('Attempting to refresh Google tokens');
     return await refreshGoogleTokensOperation(
       user, 
       googleTokens, 
@@ -76,6 +80,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Function to check Google permissions (wrap the operation)
   const checkGooglePermissions = async (): Promise<boolean> => {
+    console.log('Checking Google permissions');
     const result = await checkGooglePermissionsOperation(
       user, 
       googleTokens, 
