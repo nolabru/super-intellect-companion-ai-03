@@ -138,30 +138,35 @@ export const handleCompareModels = async (
       }
     };
     
-    // Send to API for both models in parallel
+    // IMPORTANTE: Criar e iniciar as duas requisições simultaneamente
+    const leftRequestPromise = sendApiRequest(
+      content, 
+      mode, 
+      leftModelId, 
+      files, 
+      params, 
+      leftSupportsStreaming, 
+      leftStreamListener,
+      conversationHistory,
+      userId
+    );
+    
+    const rightRequestPromise = sendApiRequest(
+      content, 
+      mode, 
+      rightModelId, 
+      files, 
+      params, 
+      rightSupportsStreaming, 
+      rightStreamListener,
+      conversationHistory,
+      userId
+    );
+    
+    // Send to API for both models in parallel and wait for BOTH to complete
     const [responseLeft, responseRight] = await Promise.all([
-      sendApiRequest(
-        content, 
-        mode, 
-        leftModelId, 
-        files, 
-        params, 
-        leftSupportsStreaming, 
-        leftStreamListener,
-        conversationHistory,
-        userId
-      ),
-      sendApiRequest(
-        content, 
-        mode, 
-        rightModelId, 
-        files, 
-        params, 
-        rightSupportsStreaming, 
-        rightStreamListener,
-        conversationHistory,
-        userId
-      )
+      leftRequestPromise,
+      rightRequestPromise
     ]);
     
     console.log("API responses received for comparison:", {
@@ -306,6 +311,7 @@ export const handleCompareModels = async (
     }
     
     // Determinar se houve troca de modo
+    // Se ambos modelos solicitarem a troca de modo, escolhemos o primeiro que encontramos
     const modeSwitch = responseLeft.modeSwitch || responseRight.modeSwitch;
     
     return { success: true, error: null, modeSwitch };

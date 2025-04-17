@@ -53,12 +53,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     });
     
     if (isCompareMode) {
-      // No modo de comparação, mostrar apenas mensagens especificamente para este modelo
-      // ou mensagens do usuário destinadas a este modelo
-      return msg.model === model || 
-             (msg.sender === 'user' && msg.model === model);
+      // No modo de comparação desvinculado, mostrar:
+      // 1. Mensagens do assistente especificamente para este modelo
+      // 2. Mensagens do usuário especificamente para este modelo
+      return msg.model === model;
     } else {
-      // No modo único, mostrar todas as mensagens do usuário e mensagens para este modelo
+      // No modo único ou vinculado, mostrar:
+      // 1. Todas as mensagens do usuário
+      // 2. Mensagens do assistente para este modelo
       return msg.sender === 'user' || 
              (msg.sender === 'assistant' && msg.model === model);
     }
