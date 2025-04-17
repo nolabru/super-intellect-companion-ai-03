@@ -35,4 +35,5 @@ export interface GoogleAuthContextType {
   refreshGoogleTokens: () => Promise<boolean>;
   checkGooglePermissions: () => Promise<boolean>;
   disconnectGoogle: () => Promise<void>;
+  refreshTokensState: () => Promise<void>; // Added missing property
 }
