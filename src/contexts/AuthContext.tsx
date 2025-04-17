@@ -20,34 +20,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log("[AuthProvider] Initializing auth state");
     
-    // Set up auth state listener FIRST
+    // Get the initial session
+    const getInitialSession = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        console.log(`[AuthProvider] Initial session check: ${data.session ? 'Logged in' : 'Not logged in'}`);
+        
+        // Only set session and user if we actually have a session
+        if (data.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('[AuthProvider] Error getting initial session:', error);
+        setLoading(false);
+      }
+    };
+    
+    getInitialSession();
+    
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         console.log(`[AuthProvider] Auth state changed: ${event}`);
         
-        // Update session and user state synchronously
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-        setLoading(false);
-        
-        // Log additional details for debugging
         if (event === 'SIGNED_IN') {
           console.log(`[AuthProvider] User signed in: ${newSession?.user?.id}`);
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
         } else if (event === 'SIGNED_OUT') {
           console.log(`[AuthProvider] User signed out`);
+          setSession(null);
+          setUser(null);
         } else if (event === 'TOKEN_REFRESHED') {
           console.log(`[AuthProvider] Token refreshed for user: ${newSession?.user?.id}`);
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
+        } else if (event === 'USER_UPDATED') {
+          console.log(`[AuthProvider] User updated: ${newSession?.user?.id}`);
+          setSession(newSession);
+          setUser(newSession?.user ?? null);
         }
+        
+        setLoading(false);
       }
     );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      console.log(`[AuthProvider] Initial session check: ${existingSession ? 'Logged in' : 'Not logged in'}`);
-      setSession(existingSession);
-      setUser(existingSession?.user ?? null);
-      setLoading(false);
-    });
 
     return () => {
       console.log("[AuthProvider] Unsubscribing from auth state changes");
@@ -57,7 +76,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     console.log("[AuthProvider] Signing out");
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("[AuthProvider] Error during sign out:", error);
+    }
   };
 
   return (

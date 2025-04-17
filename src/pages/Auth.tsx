@@ -27,14 +27,20 @@ const Auth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>('login');
+  const [processingOAuth, setProcessingOAuth] = useState(false);
   const navigate = useNavigate();
 
   // Check if user is already authenticated
   useEffect(() => {
     const checkSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        navigate('/');
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session) {
+          console.log("[Auth] Already logged in, redirecting to home");
+          navigate('/');
+        }
+      } catch (error) {
+        console.error("[Auth] Error checking session:", error);
       }
     };
     
@@ -44,12 +50,31 @@ const Auth: React.FC = () => {
   // Process auth redirects
   useEffect(() => {
     const handleAuthRedirect = async () => {
+      // Check if we're already processing an OAuth response to prevent loops
+      if (processingOAuth) {
+        return;
+      }
+      
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
+      // Only process if there are actual auth params
+      if (!(params.has('error') || params.has('error_description') || 
+            hashParams.has('access_token') || params.has('provider'))) {
+        return;
+      }
+      
+      setProcessingOAuth(true);
+      
       if (params.has('error') || params.has('error_description')) {
-        const errorMessage = params.get('error_description') || 'Authentication error';
+        const errorMessage = params.get('error_description') || params.get('error') || 'Authentication error';
+        console.error('[Auth] Auth error from params:', errorMessage);
         toast.error('Authentication error', { description: errorMessage });
+        
+        // Clean URL and reset processing state
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setProcessingOAuth(false);
+        setLoading(false);
         return;
       }
 
@@ -57,79 +82,71 @@ const Auth: React.FC = () => {
       if (hashParams.has('access_token')) {
         try {
           setLoading(true);
-          console.log("Access token detected in hash, establishing session...");
+          console.log("[Auth] Access token detected in hash, waiting for session establishment...");
           
-          // Wait for session to be established with increased timeout
-          setTimeout(async () => {
-            try {
-              // Explicitly get the session directly
-              const { data, error } = await supabase.auth.getSession();
-              
-              if (error) {
-                console.error('Session error:', error);
-                toast.error('Login failed', {
-                  description: error.message || 'Could not establish session. Please try again.'
-                });
-                setLoading(false);
-                return;
+          // Try multiple times to get the session with increasing delays
+          let retryCount = 0;
+          const maxRetries = 3;
+          let sessionData = null;
+          
+          while (retryCount < maxRetries) {
+            // Wait before trying (increasing delay with each retry)
+            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            
+            console.log(`[Auth] Attempt ${retryCount + 1} to get session`);
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error(`[Auth] Session error on attempt ${retryCount + 1}:`, error);
+            } else if (data.session) {
+              console.log(`[Auth] Session established on attempt ${retryCount + 1}`);
+              sessionData = data;
+              break;
+            } else {
+              console.log(`[Auth] No session on attempt ${retryCount + 1}, trying refresh`);
+              // Try to refresh the session
+              const { data: refreshData } = await supabase.auth.refreshSession();
+              if (refreshData.session) {
+                console.log(`[Auth] Session recovered after refresh on attempt ${retryCount + 1}`);
+                sessionData = refreshData;
+                break;
               }
-              
-              if (data.session) {
-                console.log('Session established successfully:', data.session.user?.id);
-                toast.success('Login successful', { 
-                  description: 'You will be redirected...'
-                });
-                
-                // Clear URL and navigate to home
-                window.history.replaceState({}, document.title, window.location.pathname);
-                navigate('/');
-              } else {
-                console.error('No session found after login');
-                
-                // Try to refresh the page to get the session
-                console.log("Attempting session recovery by refreshing auth state...");
-                
-                const { data: refreshData } = await supabase.auth.refreshSession();
-                if (refreshData.session) {
-                  console.log("Session recovered after refresh");
-                  toast.success('Login successful', { 
-                    description: 'You will be redirected...'
-                  });
-                  
-                  // Clear URL and navigate to home
-                  window.history.replaceState({}, document.title, window.location.pathname);
-                  navigate('/');
-                  return;
-                }
-                
-                toast.error('Login failed', {
-                  description: 'Could not establish session. Please try again.'
-                });
-                setLoading(false);
-              }
-            } catch (sessionError: any) {
-              console.error('Error getting session:', sessionError);
-              toast.error('Session error', {
-                description: sessionError.message || 'An unexpected error occurred'
-              });
-              setLoading(false);
             }
-          }, 3000); // Increased timeout for session establishment
+            
+            retryCount++;
+          }
+          
+          if (sessionData?.session) {
+            toast.success('Login successful', { 
+              description: 'Redirecting to home page...'
+            });
+            
+            // Clear URL and navigate to home
+            window.history.replaceState({}, document.title, window.location.pathname);
+            navigate('/');
+          } else {
+            console.error('[Auth] Failed to establish session after multiple attempts');
+            toast.error('Login failed', {
+              description: 'Could not establish session. Please try again later.'
+            });
+          }
         } catch (error: any) {
-          console.error('Error processing login:', error);
+          console.error('[Auth] Error processing OAuth login:', error);
           toast.error('Login error', { 
             description: error.message || 'Please try again.'
           });
+        } finally {
           setLoading(false);
+          setProcessingOAuth(false);
           
-          // Clean URL
+          // Always clean URL
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       }
     };
 
     handleAuthRedirect();
-  }, [navigate]);
+  }, [navigate, processingOAuth]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,14 +166,18 @@ const Auth: React.FC = () => {
           { description: "Check your email to confirm your account." }
         );
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
         if (error) throw error;
         
-        navigate('/');
+        if (data.session) {
+          navigate('/');
+        } else {
+          throw new Error("Login successful but no session was created");
+        }
       }
     } catch (error: any) {
       toast.error(
