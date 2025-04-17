@@ -28,7 +28,8 @@ export const createMessageService = (
     files?: string[],
     params?: LumaParams,
     conversationHistory?: string,
-    userId?: string
+    userId?: string,
+    metadata?: Record<string, string>
   ) => {
     return handleSingleModelMessage(
       content,
@@ -43,7 +44,8 @@ export const createMessageService = (
       userId,
       setMessages,
       apiService.sendRequest,
-      mediaGallery.saveMediaToGallery
+      mediaGallery.saveMediaToGallery,
+      metadata
     );
   };
   

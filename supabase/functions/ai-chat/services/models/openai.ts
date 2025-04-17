@@ -1,192 +1,210 @@
 
-import { logError } from "../../utils/logging.ts";
-import { validateApiKey } from "../../utils/validation.ts";
-import { OpenAI } from "https://esm.sh/openai@4.29.0";
+import { OpenAI } from "https://esm.sh/openai@4.11.0";
 
-// Define response type
-export interface ResponseData {
-  content: string;
-  files?: string[];
-}
+const apiKey = Deno.env.get("OPENAI_API_KEY");
+let openaiClient: OpenAI | null = null;
 
-// Function to verify if OpenAI API key is configured
 export function verifyApiKey(): string {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY não está configurada. Por favor, adicione sua chave API do OpenAI nas configurações.");
+    throw new Error("OPENAI_API_KEY is not configured");
   }
   return apiKey;
 }
 
-// Function to generate text response with OpenAI
-export async function generateText(
-  prompt: string,
-  modelId: string = "gpt-4o"
-): Promise<ResponseData> {
+function getOpenAIClient(): OpenAI {
+  if (!openaiClient) {
+    const key = verifyApiKey();
+    openaiClient = new OpenAI({ apiKey: key });
+  }
+  return openaiClient;
+}
+
+export async function generateText(content: string, modelId = "gpt-4o"): Promise<{ content: string }> {
+  const client = getOpenAIClient();
+  
   try {
-    // Validate OpenAI API key
-    const apiKey = verifyApiKey();
-    validateApiKey("OPENAI_API_KEY", apiKey);
-    
-    console.log(`Iniciando solicitação de texto ao modelo ${modelId} da OpenAI`);
-    
-    // Instantiate OpenAI client with API key
-    const openai = new OpenAI({
-      apiKey: apiKey,
-    });
-    
-    // Determine appropriate model params based on model selection
-    let model = modelId;
-    
-    // Use appropriate model if specified one is deprecated
-    if (modelId === 'gpt-4' || modelId === 'gpt-4-vision-preview') {
-      console.log(`Modelo ${modelId} está depreciado, substituindo por gpt-4o`);
-      model = 'gpt-4o';
-    }
-    
-    // Create chat completion with proper parameters according to OpenAI documentation
-    const response = await openai.chat.completions.create({
-      model: model,
+    const response = await client.chat.completions.create({
+      model: modelId,
       messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
+        { role: "user", content: content }
       ],
       temperature: 0.7,
-      max_tokens: 2000,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
+      max_tokens: 2048,
     });
-    
-    const content = response.choices[0]?.message?.content || "Não foi possível gerar uma resposta.";
-    console.log(`Resposta OpenAI completa recebida (${content.length} caracteres)`);
-    
-    return {
-      content: content
-    };
+
+    return { content: response.choices[0].message.content || "No content generated" };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Erro detalhado ao gerar texto com OpenAI:", error);
-    logError("OPENAI_TEXT_ERROR", { error: errorMessage, model: modelId });
-    throw new Error(`Erro ao gerar texto com OpenAI: ${errorMessage}`);
+    console.error("OpenAI API Error:", error);
+    throw error;
   }
 }
 
-// Function to process image with GPT-4 Vision
-export async function processImage(
-  prompt: string,
-  imageUrl: string,
-  modelId: string = "gpt-4o"
-): Promise<ResponseData> {
+export async function generateTextWithToolsSupport(
+  content: string, 
+  modelId = "gpt-4o", 
+  systemPrompt?: string, 
+  tools?: any[]
+): Promise<{ content: string }> {
+  const client = getOpenAIClient();
+  
   try {
-    // Validate OpenAI API key
-    const apiKey = verifyApiKey();
-    validateApiKey("OPENAI_API_KEY", apiKey);
+    // Preparar mensagens
+    const messages = [];
     
-    console.log(`Iniciando análise de imagem com ${modelId}, URL da imagem: ${imageUrl}`);
-    
-    // Instantiate OpenAI client with API key
-    const openai = new OpenAI({
-      apiKey: apiKey,
-    });
-    
-    // Use appropriate model for vision capabilities
-    let model = modelId;
-    
-    // Use gpt-4o if specified model is deprecated
-    if (modelId === 'gpt-4-vision-preview' || modelId === 'gpt-4') {
-      console.log(`Modelo ${modelId} está depreciado, substituindo por gpt-4o`);
-      model = 'gpt-4o';
+    // Adicionar system prompt se fornecido
+    if (systemPrompt) {
+      messages.push({ role: "system", content: systemPrompt });
     }
     
-    // Create chat completion request with image content
-    const response = await openai.chat.completions.create({
-      model: model,
+    // Adicionar mensagem do usuário
+    messages.push({ role: "user", content: content });
+    
+    // Configurar opções do modelo
+    const options: any = {
+      model: modelId,
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
+    };
+    
+    // Adicionar ferramentas se fornecidas
+    if (tools && tools.length > 0) {
+      // Extrair configurações das ferramentas (sem o exec function)
+      const toolsConfig = tools.map(tool => ({
+        type: tool.type,
+        function: tool.function
+      }));
+      
+      options.tools = toolsConfig;
+      options.tool_choice = "auto";
+    }
+    
+    let response = await client.chat.completions.create(options);
+    
+    // Processar chamadas de ferramentas se necessário
+    if (response.choices[0]?.message?.tool_calls?.length > 0) {
+      const tool_calls = response.choices[0].message.tool_calls;
+      console.log("[OpenAI] Tool calls detected:", tool_calls.length);
+      
+      // Adicionar a resposta do assistente com a chamada da ferramenta
+      messages.push(response.choices[0].message);
+      
+      // Executar cada chamada de ferramenta
+      for (const tool_call of tool_calls) {
+        try {
+          const function_name = tool_call.function.name;
+          const function_args = JSON.parse(tool_call.function.arguments);
+          
+          console.log(`[OpenAI] Executing tool: ${function_name} with args:`, function_args);
+          
+          // Encontrar a função de execução correspondente
+          const tool = tools?.find(t => t.function.name === function_name);
+          let function_response;
+          
+          if (tool?.exec) {
+            // Chamar a função de execução
+            function_response = await tool.exec(function_args);
+          } else {
+            function_response = { error: `Tool executor not found for ${function_name}` };
+          }
+          
+          console.log(`[OpenAI] Tool response:`, function_response);
+          
+          // Adicionar resultado da ferramenta às mensagens
+          messages.push({
+            role: "tool",
+            tool_call_id: tool_call.id,
+            name: function_name,
+            content: JSON.stringify(function_response)
+          });
+        } catch (toolError) {
+          console.error(`[OpenAI] Error executing tool ${tool_call.function.name}:`, toolError);
+          
+          // Adicionar erro da ferramenta às mensagens
+          messages.push({
+            role: "tool",
+            tool_call_id: tool_call.id,
+            name: tool_call.function.name,
+            content: JSON.stringify({ error: toolError.message || "Error executing tool" })
+          });
+        }
+      }
+      
+      // Obter resposta final do assistente com os resultados das ferramentas
+      response = await client.chat.completions.create({
+        model: modelId,
+        messages,
+        temperature: 0.7,
+        max_tokens: 2048,
+      });
+    }
+
+    return { content: response.choices[0].message.content || "No content generated" };
+  } catch (error) {
+    console.error("OpenAI API Error with tools:", error);
+    throw error;
+  }
+}
+
+export async function processImage(content: string, imageUrl: string, modelId = "gpt-4o"): Promise<{ content: string }> {
+  const client = getOpenAIClient();
+  
+  try {
+    // Verificar se o modelo suporta análise de imagem
+    if (modelId !== "gpt-4-vision-preview" && modelId !== "gpt-4o") {
+      modelId = "gpt-4o"; // Fallback para um modelo com suporte a visão
+    }
+    
+    const response = await client.chat.completions.create({
+      model: modelId,
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: imageUrl } }
-          ],
-        },
+            { type: "text", text: content },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageUrl
+              }
+            }
+          ]
+        }
       ],
-      max_tokens: 1000,
+      max_tokens: 1024
     });
-    
-    // Extract response content
-    const content = response.choices[0]?.message?.content || "Não foi possível analisar a imagem.";
-    console.log(`Análise de imagem concluída (${content.length} caracteres)`);
-    
-    return {
-      content: content
-    };
+
+    return { content: response.choices[0].message.content || "No analysis generated" };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Erro detalhado ao analisar imagem com OpenAI:", error);
-    logError("OPENAI_VISION_ERROR", { error: errorMessage, model: modelId, imageUrl });
-    throw new Error(`Erro ao analisar imagem com OpenAI: ${errorMessage}`);
+    console.error("OpenAI Vision API Error:", error);
+    throw error;
   }
 }
 
-// Function to generate image with DALL-E
-export async function generateImage(
-  prompt: string,
-  modelId: string = "dall-e-3",
-  size: string = "1024x1024"
-): Promise<ResponseData> {
+export async function generateImage(prompt: string, modelId = "dall-e-3"): Promise<{ content: string, files: string[] }> {
+  const client = getOpenAIClient();
+  
   try {
-    // Validate OpenAI API key
-    const apiKey = verifyApiKey();
-    validateApiKey("OPENAI_API_KEY", apiKey);
-    
-    console.log(`Iniciando geração de imagem com ${modelId}. Prompt: "${prompt.substring(0, 50)}..."`);
-    
-    // Instantiate OpenAI client with API key
-    const openai = new OpenAI({
-      apiKey: apiKey,
-    });
-    
-    // Ensure we're using a supported model
-    const dalleModel = modelId === "gpt-4o" ? "dall-e-3" : modelId;
-    
-    // Call image generation API
-    const response = await openai.images.generate({
-      model: dalleModel,
+    const response = await client.images.generate({
+      model: modelId,
       prompt: prompt,
       n: 1,
-      size: size as "1024x1024" | "1792x1024" | "1024x1792",
-      quality: "standard",
-      response_format: "b64_json", // Get base64 encoded image data
+      size: "1024x1024",
+      response_format: "url"
     });
+
+    const imageUrl = response.data[0].url;
     
-    // Extract image data
-    if (!response.data || response.data.length === 0) {
-      throw new Error("Não foi possível obter dados da imagem gerada.");
+    if (!imageUrl) {
+      throw new Error("No image URL returned from DALL-E");
     }
-    
-    // Get the base64 encoded image
-    const imageData = response.data[0];
-    if (!imageData.b64_json) {
-      throw new Error("Dados base64 da imagem não encontrados na resposta.");
-    }
-    
-    // Format as data URL
-    const contentType = "image/png"; // DALL-E returns PNG images
-    const base64Image = `data:${contentType};base64,${imageData.b64_json}`;
-    
-    console.log("Imagem gerada com sucesso e codificada em base64");
-    
-    return {
-      content: `Imagem gerada com sucesso.`,
-      files: [base64Image]
+
+    return { 
+      content: `[Imagem gerada]: ${imageUrl}\n\nImagem gerada com base no prompt: "${prompt}"`, 
+      files: [imageUrl] 
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Erro detalhado ao gerar imagem com DALL-E:", error);
-    logError("OPENAI_IMAGE_GENERATION_ERROR", { error: errorMessage, model: modelId });
-    throw new Error(`Erro ao gerar imagem com DALL-E: ${errorMessage}`);
+    console.error("DALL-E API Error:", error);
+    throw error;
   }
 }
