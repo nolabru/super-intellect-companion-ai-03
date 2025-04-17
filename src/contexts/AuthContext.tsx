@@ -26,10 +26,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { data } = await supabase.auth.getSession();
         console.log(`[AuthProvider] Initial session check: ${data.session ? 'Logged in' : 'Not logged in'}`);
         
-        // Only set session and user if we actually have a session
         if (data.session) {
+          console.log(`[AuthProvider] User ID: ${data.session.user.id}`);
           setSession(data.session);
           setUser(data.session.user);
+        } else {
+          console.log('[AuthProvider] No session found initially');
         }
         
         setLoading(false);
@@ -43,11 +45,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
         console.log(`[AuthProvider] Auth state changed: ${event}`);
         
         if (event === 'SIGNED_IN') {
           console.log(`[AuthProvider] User signed in: ${newSession?.user?.id}`);
+          // Small delay to ensure session is fully established
+          await new Promise(resolve => setTimeout(resolve, 500));
           setSession(newSession);
           setUser(newSession?.user ?? null);
         } else if (event === 'SIGNED_OUT') {

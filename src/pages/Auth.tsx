@@ -58,40 +58,71 @@ const Auth: React.FC = () => {
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
-      // Only process if there are actual auth params
-      if (!(params.has('error') || params.has('error_description') || 
-            hashParams.has('access_token') || params.has('provider'))) {
+      // Check for auth-related parameters
+      const hasAuthParams = params.has('error') || 
+                           params.has('error_description') || 
+                           hashParams.has('access_token') || 
+                           params.has('provider') ||
+                           params.has('success');
+                           
+      console.log("[Auth] URL parameters check:", hasAuthParams ? "Auth params found" : "No auth params");
+      
+      if (!hasAuthParams) {
         return;
       }
       
+      // Set processing flag to prevent loops
       setProcessingOAuth(true);
+      setLoading(true);
       
-      if (params.has('error') || params.has('error_description')) {
-        const errorMessage = params.get('error_description') || params.get('error') || 'Authentication error';
-        console.error('[Auth] Auth error from params:', errorMessage);
-        toast.error('Authentication error', { description: errorMessage });
+      try {
+        if (params.has('error') || params.has('error_description')) {
+          const errorMessage = params.get('error_description') || params.get('error') || 'Authentication error';
+          console.error('[Auth] Auth error from params:', errorMessage);
+          toast.error('Authentication error', { description: errorMessage });
+          
+          // Clean URL and reset processing state
+          window.history.replaceState({}, document.title, window.location.pathname);
+          setProcessingOAuth(false);
+          setLoading(false);
+          return;
+        }
         
-        // Clean URL and reset processing state
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setProcessingOAuth(false);
-        setLoading(false);
-        return;
-      }
+        // Check for explicit success parameter
+        if (params.has('success')) {
+          console.log("[Auth] Success parameter found in URL");
+          
+          // Wait to ensure session is established
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            console.log("[Auth] Session found after success parameter");
+            toast.success('Login successful', { 
+              description: 'Redirecting to home page...'
+            });
+            
+            // Clean URL before navigating
+            window.history.replaceState({}, document.title, window.location.pathname);
+            navigate('/');
+            return;
+          }
+        }
 
-      // Check access_token in hash params (for OAuth providers)
-      if (hashParams.has('access_token')) {
-        try {
-          setLoading(true);
-          console.log("[Auth] Access token detected in hash, waiting for session establishment...");
+        // Check for access token in hash (typically from OAuth providers)
+        if (hashParams.has('access_token')) {
+          console.log("[Auth] Access token detected in hash");
           
           // Try multiple times to get the session with increasing delays
           let retryCount = 0;
-          const maxRetries = 3;
+          const maxRetries = 4;
           let sessionData = null;
           
           while (retryCount < maxRetries) {
             // Wait before trying (increasing delay with each retry)
-            await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+            const delay = 1000 * (retryCount + 1);
+            console.log(`[Auth] Waiting ${delay}ms before attempt ${retryCount + 1}`);
+            await new Promise(resolve => setTimeout(resolve, delay));
             
             console.log(`[Auth] Attempt ${retryCount + 1} to get session`);
             const { data, error } = await supabase.auth.getSession();
@@ -104,12 +135,16 @@ const Auth: React.FC = () => {
               break;
             } else {
               console.log(`[Auth] No session on attempt ${retryCount + 1}, trying refresh`);
-              // Try to refresh the session
-              const { data: refreshData } = await supabase.auth.refreshSession();
-              if (refreshData.session) {
-                console.log(`[Auth] Session recovered after refresh on attempt ${retryCount + 1}`);
-                sessionData = refreshData;
-                break;
+              try {
+                // Try to refresh the session
+                const { data: refreshData } = await supabase.auth.refreshSession();
+                if (refreshData.session) {
+                  console.log(`[Auth] Session recovered after refresh on attempt ${retryCount + 1}`);
+                  sessionData = refreshData;
+                  break;
+                }
+              } catch (refreshError) {
+                console.error(`[Auth] Error refreshing session:`, refreshError);
               }
             }
             
@@ -121,7 +156,7 @@ const Auth: React.FC = () => {
               description: 'Redirecting to home page...'
             });
             
-            // Clear URL and navigate to home
+            // Clean URL and navigate to home
             window.history.replaceState({}, document.title, window.location.pathname);
             navigate('/');
           } else {
@@ -130,18 +165,18 @@ const Auth: React.FC = () => {
               description: 'Could not establish session. Please try again later.'
             });
           }
-        } catch (error: any) {
-          console.error('[Auth] Error processing OAuth login:', error);
-          toast.error('Login error', { 
-            description: error.message || 'Please try again.'
-          });
-        } finally {
-          setLoading(false);
-          setProcessingOAuth(false);
-          
-          // Always clean URL
-          window.history.replaceState({}, document.title, window.location.pathname);
         }
+      } catch (error: any) {
+        console.error('[Auth] Error processing OAuth login:', error);
+        toast.error('Login error', { 
+          description: error.message || 'Please try again.'
+        });
+      } finally {
+        setLoading(false);
+        setProcessingOAuth(false);
+        
+        // Always clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
 
@@ -174,6 +209,7 @@ const Auth: React.FC = () => {
         if (error) throw error;
         
         if (data.session) {
+          console.log("[Auth] Email login successful, navigating to home");
           navigate('/');
         } else {
           throw new Error("Login successful but no session was created");
@@ -192,6 +228,7 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      console.log("[Auth] Initiating Google sign-in");
       // For OAuth signIn, we specify the full callback URL
       const redirectTo = `${SITE_URL}/auth`;
       
@@ -208,7 +245,9 @@ const Auth: React.FC = () => {
       });
 
       if (error) throw error;
+      console.log("[Auth] Google sign-in request successful");
     } catch (error: any) {
+      console.error("[Auth] Error initiating Google sign-in:", error);
       toast.error(
         "Error signing in with Google", 
         { description: error.message }
