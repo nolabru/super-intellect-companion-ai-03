@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,9 @@ import { Loader2 } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup';
 
+// Use the production URL for site and redirect
+const SITE_URL = 'https://seu-site-de-producao.com';
+
 // Google scopes needed for the application
 const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive',
@@ -17,9 +21,6 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/gmail.send'
 ];
-
-// Use the production URL instead of localhost
-const SITE_URL = 'https://seu-site-de-producao.com';
 
 const Auth: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -42,23 +43,35 @@ const Auth: React.FC = () => {
 
   // Process auth redirects
   useEffect(() => {
-    // Check URL parameters for OAuth redirects
-    const params = new URLSearchParams(window.location.search);
-    const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
-    
-    if (params.has('error')) {
-      const error = params.get('error');
-      const errorDescription = params.get('error_description');
-      toast.error('Erro de autenticação', { 
-        description: errorDescription || 'Ocorreu um erro durante o processo de login.'
-      });
-    } else if (hashParams.has('access_token') || params.has('provider')) {
-      // Successfully authenticated, process and redirect
-      toast.success('Login realizado com sucesso', { 
-        description: 'Você está sendo redirecionado...'
-      });
-      navigate('/');
-    }
+    const handleAuthRedirect = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+      
+      if (params.has('error') || params.has('error_description')) {
+        const errorMessage = params.get('error_description') || 'Erro de autenticação';
+        toast.error('Erro de autenticação', { description: errorMessage });
+        return;
+      }
+
+      if (hashParams.has('access_token') || params.has('provider')) {
+        // Successfully authenticated via Google
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (data.session) {
+            toast.success('Login realizado com sucesso', { 
+              description: 'Você será redirecionado...'
+            });
+            navigate('/');
+          }
+        } catch (error) {
+          toast.error('Erro ao processar login', { 
+            description: 'Por favor, tente novamente.'
+          });
+        }
+      }
+    };
+
+    handleAuthRedirect();
   }, [navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -101,9 +114,6 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Set the complete redirect URL to the production URL
-      const redirectUrl = `${SITE_URL}/auth`;
-      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -112,12 +122,11 @@ const Auth: React.FC = () => {
             access_type: 'offline',
             prompt: 'consent'
           },
-          redirectTo: redirectUrl
+          redirectTo: SITE_URL  // Use production URL for redirect
         }
       });
 
       if (error) throw error;
-      // Redirect will be handled by Supabase
     } catch (error: any) {
       toast.error(
         "Erro ao entrar com Google", 
@@ -235,3 +244,4 @@ const Auth: React.FC = () => {
 };
 
 export default Auth;
+
