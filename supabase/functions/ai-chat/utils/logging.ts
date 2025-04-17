@@ -11,18 +11,6 @@ export function logError(errorType: string, details: any) {
   console.error(`AI-CHAT ERROR [${errorType}] [${timestamp}]:`, JSON.stringify(errorLog, null, 2));
 }
 
-// Additional logging function for informational messages
-export function logInfo(infoType: string, details: any) {
-  const timestamp = new Date().toISOString();
-  const infoLog = {
-    timestamp,
-    type: infoType,
-    details: details
-  };
-  
-  console.log(`AI-CHAT INFO [${infoType}] [${timestamp}]:`, JSON.stringify(infoLog, null, 2));
-}
-
 // Function to handle requests with retries and exponential backoff
 export async function fetchWithRetry(
   url: string,
@@ -37,7 +25,7 @@ export async function fetchWithRetry(
       console.log(`Attempt ${attempt + 1}/${maxRetries} for URL: ${url}`);
       
       // Log request headers (without Authorization for security)
-      const safeHeaders = { ...options.headers } as Record<string, string>;
+      const safeHeaders = { ...options.headers };
       if (safeHeaders['Authorization']) {
         safeHeaders['Authorization'] = 'Bearer [REDACTED]';
       }
@@ -49,12 +37,11 @@ export async function fetchWithRetry(
           const bodyObj = JSON.parse(options.body);
           // Only log non-sensitive parts
           const safeBody = {
-            prompt: bodyObj.prompt ? bodyObj.prompt.substring(0, 30) + '...' : undefined,
-            n: bodyObj.n,
-            size: bodyObj.size,
-            response_format: bodyObj.response_format,
-            duration: bodyObj.duration,
-            resolution: bodyObj.resolution
+            model: bodyObj.model,
+            messageCount: bodyObj.messages?.length,
+            firstMessageType: bodyObj.messages?.[0]?.role,
+            // Only log first few characters of user message for privacy
+            userMessagePreview: bodyObj.messages?.find(m => m.role === 'user')?.content?.substring(0, 30) + '...'
           };
           console.log(`Request body preview: ${JSON.stringify(safeBody, null, 2)}`);
         } catch (e) {
