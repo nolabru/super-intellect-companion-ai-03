@@ -86,6 +86,13 @@ const Auth: React.FC = () => {
               description: 'Você será redirecionado...'
             });
             
+            // Store in localStorage that user authenticated with Google
+            // This allows other components to detect the login method
+            localStorage.setItem('auth_method', 'google');
+            
+            // Store last login time for reference
+            localStorage.setItem('last_login_time', Date.now().toString());
+            
             // Check if came from a Google integration request
             if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
               console.log('[Auth] Redirecting to Google integrations page');
@@ -133,6 +140,12 @@ const Auth: React.FC = () => {
 
         if (error) throw error;
         
+        // Store auth method as 'password'
+        localStorage.setItem('auth_method', 'password');
+        
+        // Store last login time for reference
+        localStorage.setItem('last_login_time', Date.now().toString());
+        
         // Check if came from a Google integration request
         const params = new URLSearchParams(location.search);
         if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
@@ -159,18 +172,20 @@ const Auth: React.FC = () => {
       // Check if came from an integration request
       const params = new URLSearchParams(location.search);
       let redirectTo = `${SITE_URL}/auth`;
+      let redirectAfterAuth = ''; 
       
       if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
         // Add redirect parameter to auth page
         redirectTo = `${SITE_URL}/auth?redirect=google-integrations`;
+        redirectAfterAuth = 'google-integrations';
       }
       
       console.log('[Auth] Using redirectTo:', redirectTo);
       
-      // Encode state with current timestamp to avoid stale states
+      // Encode state with current timestamp and redirectAfterAuth
       const state = btoa(JSON.stringify({
         timestamp: Date.now(),
-        redirectAfterAuth: params.get('redirect') || '',
+        redirectAfterAuth: redirectAfterAuth,
       }));
       
       const { data, error } = await supabase.auth.signInWithOAuth({

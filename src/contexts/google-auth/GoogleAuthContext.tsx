@@ -16,6 +16,7 @@ import { useLocation } from 'react-router-dom';
 const GoogleAuthContext = createContext<GoogleAuthContextType>({
   googleTokens: null,
   isGoogleConnected: false,
+  permissionsVerified: false,
   loading: true,
   refreshGoogleTokens: async () => false,
   checkGooglePermissions: async () => false,
@@ -31,6 +32,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setGoogleTokens,
       isGoogleConnected, 
       setIsGoogleConnected,
+      permissionsVerified,
+      setPermissionsVerified,
+      setPermissionsStatus,
       loading, 
       fetchGoogleTokens 
     } = useGoogleTokens();
@@ -75,6 +79,12 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   console.log('[GoogleAuthContext] Session found after redirect, fetching Google tokens');
                   const tokens = await fetchGoogleTokens(data.session);
                   
+                  // Check for permissions granted parameter
+                  if (urlParams.has('permissions') && urlParams.get('permissions') === 'granted' && data.session.user) {
+                    console.log('[GoogleAuthContext] Permissions granted parameter found, updating permissions status');
+                    await setPermissionsStatus(data.session.user.id, true);
+                  }
+                  
                   // Notify user if connected
                   if (tokens) {
                     toast.success(
@@ -97,7 +107,17 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                                   
           if (isSuccessRedirect) {
             console.log('[GoogleAuthContext] Processing success redirect on Google Integrations page');
-            // Will be handled by the component-specific effect
+            
+            if (urlParams.has('permissions') && urlParams.get('permissions') === 'granted' && user) {
+              console.log('[GoogleAuthContext] Permissions granted parameter found, updating permissions status');
+              await setPermissionsStatus(user.id, true);
+              
+              // Show success toast
+              toast.success(
+                'Permissões concedidas!',
+                { description: 'Todas as permissões necessárias foram concedidas.' }
+              );
+            }
           }
         } catch (err) {
           console.error('[GoogleAuthContext] Error in checkAuthRedirect:', err);
@@ -107,7 +127,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       checkAuthRedirect().catch(err => {
         console.error('[GoogleAuthContext] Unhandled error in checkAuthRedirect:', err);
       });
-    }, [fetchGoogleTokens, location]);
+    }, [fetchGoogleTokens, location, user, setPermissionsStatus]);
 
     // Function to refresh Google tokens (wrap the operation)
     const refreshGoogleTokens = async (): Promise<boolean> => {
@@ -135,6 +155,13 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         );
         
         console.log('[GoogleAuthContext] Google permissions check result:', result);
+        
+        // Update permissions status in database if user exists
+        if (user && result !== permissionsVerified) {
+          console.log('[GoogleAuthContext] Updating permissions status in database');
+          await setPermissionsStatus(user.id, result);
+        }
+        
         return result;
       } catch (err) {
         console.error('[GoogleAuthContext] Error checking permissions:', err);
@@ -150,6 +177,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           setGoogleTokens, 
           setIsGoogleConnected
         );
+        
+        // Also reset permissions verified status
+        setPermissionsVerified(false);
       } catch (err) {
         console.error('[GoogleAuthContext] Error disconnecting Google:', err);
         toast.error('Erro ao desconectar do Google');
@@ -159,6 +189,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const contextValue: GoogleAuthContextType = {
       googleTokens, 
       isGoogleConnected, 
+      permissionsVerified,
       loading, 
       refreshGoogleTokens,
       checkGooglePermissions,

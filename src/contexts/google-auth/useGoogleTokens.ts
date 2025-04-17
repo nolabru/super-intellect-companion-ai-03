@@ -7,6 +7,7 @@ import { GoogleTokens, UserGoogleToken } from './types';
 export const useGoogleTokens = () => {
   const [googleTokens, setGoogleTokens] = useState<GoogleTokens | null>(null);
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
+  const [permissionsVerified, setPermissionsVerified] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
@@ -16,6 +17,7 @@ export const useGoogleTokens = () => {
       console.log('[useGoogleTokens] No session or user, clearing tokens');
       setGoogleTokens(null);
       setIsGoogleConnected(false);
+      setPermissionsVerified(false);
       setLoading(false);
       return null;
     }
@@ -43,6 +45,7 @@ export const useGoogleTokens = () => {
         console.error('[useGoogleTokens] Error fetching Google tokens:', error);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
+        setPermissionsVerified(false);
         setLoading(false);
         return null;
       } 
@@ -69,12 +72,17 @@ export const useGoogleTokens = () => {
         
         setGoogleTokens(tokens);
         setIsGoogleConnected(true);
+        
+        // Set permissions verified state from database
+        setPermissionsVerified(tokenData.permissions_verified || false);
+        
         setLoading(false);
         return tokens;
       } else {
         console.log('[useGoogleTokens] No Google tokens found for user');
         setGoogleTokens(null);
         setIsGoogleConnected(false);
+        setPermissionsVerified(false);
         setLoading(false);
         return null;
       }
@@ -82,16 +90,47 @@ export const useGoogleTokens = () => {
       console.error('[useGoogleTokens] Exception fetching Google tokens:', error);
       setGoogleTokens(null);
       setIsGoogleConnected(false);
+      setPermissionsVerified(false);
       setLoading(false);
       return null;
     }
   }, [lastFetchTime, googleTokens]);
+
+  const setPermissionsStatus = useCallback(async (userId: string, status: boolean) => {
+    if (!userId) return;
+    
+    try {
+      console.log(`[useGoogleTokens] Updating permissions status to ${status} for user ${userId}`);
+      
+      const { error } = await supabase
+        .from('user_google_tokens')
+        .update({
+          permissions_verified: status,
+          last_verified_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+        
+      if (error) {
+        console.error('[useGoogleTokens] Error updating permissions status:', error);
+        return false;
+      }
+      
+      setPermissionsVerified(status);
+      return true;
+    } catch (error) {
+      console.error('[useGoogleTokens] Exception updating permissions status:', error);
+      return false;
+    }
+  }, []);
 
   return {
     googleTokens,
     setGoogleTokens,
     isGoogleConnected,
     setIsGoogleConnected,
+    permissionsVerified,
+    setPermissionsVerified,
+    setPermissionsStatus,
     loading,
     setLoading,
     fetchGoogleTokens,
