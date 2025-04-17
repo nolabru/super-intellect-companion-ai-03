@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -30,7 +29,7 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
-  const { isGoogleConnected, checkGooglePermissions } = useGoogleAuth();
+  const { isGoogleConnected, checkGooglePermissions, googleTokens } = useGoogleAuth();
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
@@ -45,17 +44,26 @@ export function useMessageHandler(
   // Verificar permissões do Google quando necessário
   const verifyGooglePermissions = useCallback(async () => {
     if (!isGoogleConnected) {
+      console.log("[useMessageHandler] Google não está conectado");
+      return false;
+    }
+    
+    // Verificar se temos tokens do Google antes de tentar verificar permissões
+    if (!googleTokens?.accessToken) {
+      console.log("[useMessageHandler] Tokens do Google ausentes");
       return false;
     }
     
     try {
+      console.log("[useMessageHandler] Verificando permissões do Google...");
       const hasPermissions = await checkGooglePermissions();
+      console.log(`[useMessageHandler] Resultado da verificação de permissões: ${hasPermissions}`);
       return hasPermissions;
     } catch (error) {
       console.error("[useMessageHandler] Erro ao verificar permissões do Google:", error);
       return false;
     }
-  }, [isGoogleConnected, checkGooglePermissions]);
+  }, [isGoogleConnected, checkGooglePermissions, googleTokens]);
 
   // Detectar se mensagem é um comando de serviço Google
   const detectGoogleServiceCommand = useCallback((content: string): boolean => {
@@ -75,20 +83,29 @@ export function useMessageHandler(
       return null;
     }
     
-    if (!isGoogleConnected) {
-      console.error("[useMessageHandler] Google não está conectado");
+    // Verificar rapidamente se o Google está conectado antes de prosseguir
+    if (!isGoogleConnected || !googleTokens?.accessToken) {
+      console.error("[useMessageHandler] Google não está conectado ou tokens ausentes");
       toast.error("Você precisa conectar sua conta Google nas configurações");
       return null;
     }
     
     try {
       // Verificar permissões
+      console.log("[useMessageHandler] Verificando permissões para comando Google...");
       const hasPermissions = await verifyGooglePermissions();
       if (!hasPermissions) {
         console.error("[useMessageHandler] Sem permissões do Google");
-        toast.error("Você precisa conceder permissão para acessar os serviços Google nas configurações");
+        toast.error("Você precisa conceder permissão para acessar os serviços Google nas configurações", {
+          action: {
+            label: "Configurar",
+            onClick: () => window.location.href = '/google-integrations'
+          }
+        });
         return null;
       }
+      
+      console.log("[useMessageHandler] Processando comando Google com permissões verificadas");
       
       // Processar o comando usando nosso sistema de agentes
       const result = await processGoogleCommand(userId, content);
@@ -133,7 +150,7 @@ export function useMessageHandler(
         success: false
       };
     }
-  }, [isGoogleConnected, verifyGooglePermissions]);
+  }, [isGoogleConnected, verifyGooglePermissions, googleTokens]);
 
   // Helper function to prepare conversation history
   const prepareConversationHistory = (messageList: MessageType[]) => {
@@ -170,6 +187,10 @@ export function useMessageHandler(
       
       // Verificar se é um comando de serviço Google
       const isGoogleServiceCommand = detectGoogleServiceCommand(content);
+      
+      if (isGoogleServiceCommand) {
+        console.log("[useMessageHandler] Comando de serviço Google detectado:", content);
+      }
       
       // Criar mensagem do usuário
       const userMessageId = uuidv4();

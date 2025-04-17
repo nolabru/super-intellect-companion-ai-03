@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,10 +24,44 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     fetchGoogleTokens 
   } = useGoogleTokens();
 
+  // Estado para rastrear se as permissões foram verificadas
+  const [permissionsVerified, setPermissionsVerified] = useState<boolean>(false);
+
   // Update tokens when session changes
   useEffect(() => {
-    fetchGoogleTokens(session);
+    if (session?.user) {
+      console.log("[GoogleAuthProvider] Sessão detectada, buscando tokens Google");
+      fetchGoogleTokens(session);
+    } else {
+      console.log("[GoogleAuthProvider] Sem sessão, resetando tokens Google");
+      setGoogleTokens(null);
+      setIsGoogleConnected(false);
+    }
   }, [session]);
+
+  // Verificar permissões quando os tokens são carregados
+  useEffect(() => {
+    const verifyPermissions = async () => {
+      if (isGoogleConnected && googleTokens && !loading && !permissionsVerified) {
+        console.log("[GoogleAuthProvider] Verificando permissões do Google após carregar tokens");
+        const hasPermissions = await checkGooglePermissionsOperation(
+          user, 
+          googleTokens, 
+          refreshGoogleTokens
+        );
+        
+        if (hasPermissions) {
+          console.log("[GoogleAuthProvider] Permissões do Google verificadas com sucesso");
+          setPermissionsVerified(true);
+        } else {
+          console.warn("[GoogleAuthProvider] Falha na verificação das permissões do Google");
+          // Não desconectar automaticamente para não interromper o fluxo do usuário
+        }
+      }
+    };
+    
+    verifyPermissions();
+  }, [isGoogleConnected, googleTokens, loading]);
 
   // Check after Google OAuth login
   useEffect(() => {
@@ -37,10 +71,40 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
       // Check if this is a redirect after OAuth login
-      if (urlParams.has('provider') || hashParams.has('access_token')) {
-        console.log('Processing OAuth redirect');
+      if (urlParams.has('provider') || hashParams.has('access_token') || 
+          urlParams.has('success') || urlParams.has('error')) {
+        console.log('[GoogleAuthProvider] Processando redirecionamento OAuth');
         
-        // Give Supabase time to process the login
+        if (urlParams.has('error')) {
+          const error = urlParams.get('error');
+          toast.error(
+            'Erro na conexão com o Google',
+            { description: `Ocorreu um erro: ${error}` }
+          );
+          return;
+        }
+        
+        if (urlParams.has('success')) {
+          console.log('[GoogleAuthProvider] Conexão com Google bem-sucedida via URL success param');
+          
+          // Give Supabase time to process the login
+          setTimeout(async () => {
+            if (user) {
+              await fetchGoogleTokens(session);
+              
+              // Notify user
+              if (isGoogleConnected) {
+                toast.success(
+                  'Google conectado com sucesso!',
+                  { description: 'Sua conta Google foi conectada.' }
+                );
+              }
+            }
+          }, 1000);
+          return;
+        }
+        
+        // Give Supabase time to process the login (para outros casos de redirecionamento)
         setTimeout(async () => {
           // Check if session exists
           const { data } = await supabase.auth.getSession();
@@ -50,8 +114,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Notify user
             if (isGoogleConnected) {
               toast.success(
-                'Google connected successfully!',
-                { description: 'Your Google account has been connected.' }
+                'Google conectado com sucesso!',
+                { description: 'Sua conta Google foi conectada.' }
               );
             }
           }
@@ -64,29 +128,50 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Function to refresh Google tokens (wrap the operation)
   const refreshGoogleTokens = async (): Promise<boolean> => {
-    return await refreshGoogleTokensOperation(
+    console.log("[GoogleAuthProvider] Tentando atualizar tokens do Google");
+    const success = await refreshGoogleTokensOperation(
       user, 
       googleTokens, 
       setGoogleTokens
     );
+    
+    if (success) {
+      console.log("[GoogleAuthProvider] Tokens do Google atualizados com sucesso");
+    } else {
+      console.error("[GoogleAuthProvider] Falha ao atualizar tokens do Google");
+    }
+    
+    return success;
   };
 
   // Function to check Google permissions (wrap the operation)
   const checkGooglePermissions = async (): Promise<boolean> => {
-    return await checkGooglePermissionsOperation(
+    console.log("[GoogleAuthProvider] Verificando permissões do Google");
+    const hasPermissions = await checkGooglePermissionsOperation(
       user, 
       googleTokens, 
       refreshGoogleTokens
     );
+    
+    if (hasPermissions) {
+      setPermissionsVerified(true);
+      console.log("[GoogleAuthProvider] Permissões do Google verificadas: OK");
+    } else {
+      console.warn("[GoogleAuthProvider] Permissões do Google insuficientes ou ausentes");
+    }
+    
+    return hasPermissions;
   };
 
   // Function to disconnect Google (wrap the operation)
   const disconnectGoogle = async (): Promise<void> => {
+    console.log("[GoogleAuthProvider] Desconectando conta do Google");
     await disconnectGoogleOperation(
       user, 
       setGoogleTokens, 
       setIsGoogleConnected
     );
+    setPermissionsVerified(false);
   };
 
   return (
