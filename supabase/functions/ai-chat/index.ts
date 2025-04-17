@@ -11,6 +11,7 @@ import * as anthropicService from "./services/models/anthropic.ts";
 import * as elevenlabsService from "./services/models/elevenlabs.ts";
 import * as geminiService from "./services/models/gemini.ts";
 import * as deepseekService from "./services/models/deepseek.ts";
+import * as kliginService from "./services/models/kligin.ts";
 
 // Import orchestrator service
 import * as orchestratorService from "./services/orchestrator.ts";
@@ -31,6 +32,8 @@ interface ResponseData {
 
 // Token mocado para testes com a Luma API - usando o token fornecido pelo usuário
 const MOCKED_LUMA_TOKEN = "luma-d0412b33-742d-4c23-bea2-cf7a8e2af184-ef7762ab-c1c6-4e73-b6d4-42078e8c7775";
+// Token mocado para testes com a Kligin API
+const MOCKED_KLIGIN_TOKEN = Deno.env.get("KLIGIN_API_KEY") || "";
 
 // Main handler for all AI chat requests
 async function handleAIChat(req: Request): Promise<Response> {
@@ -169,6 +172,26 @@ async function handleAIChat(req: Request): Promise<Response> {
         if (!isValid) {
           console.warn("[AI-Chat] O token mocado da Luma pode não estar funcionando corretamente");
         }
+      } else if (processedModelId.includes("kligin")) {
+        // Usando token configurado para Kligin
+        console.log("[AI-Chat] Modelo Kligin selecionado, verificando configuração do token");
+        
+        if (MOCKED_KLIGIN_TOKEN) {
+          kliginService.setMockedToken(MOCKED_KLIGIN_TOKEN);
+          console.log("[AI-Chat] Token Kligin configurado com sucesso");
+          
+          // Validação opcional para ver se o token funciona
+          try {
+            const isValid = await kliginService.testApiKey(MOCKED_KLIGIN_TOKEN);
+            if (!isValid) {
+              console.warn("[AI-Chat] O token do Kligin pode não estar funcionando corretamente");
+            }
+          } catch (error) {
+            console.error("[AI-Chat] Erro ao testar token do Kligin:", error);
+          }
+        } else {
+          console.warn("[AI-Chat] KLIGIN_API_KEY não configurada, verificando em verifyApiKey");
+        }
       }
       
       // Validações para diversos modelos
@@ -248,6 +271,22 @@ async function handleAIChat(req: Request): Promise<Response> {
             }
           );
         }
+      } else if (processedModelId.includes("kligin")) {
+        try {
+          kliginService.verifyApiKey();
+        } catch (error) {
+          console.error("[AI-Chat] Erro na verificação do KLIGIN_API_KEY:", error);
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "KLIGIN_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 401,
+            }
+          );
+        }
       }
       
       // Processar solicitação com base no modo e modelo processados pelo orquestrador
@@ -297,6 +336,57 @@ async function handleAIChat(req: Request): Promise<Response> {
         
         response = await lumaService.generateImage(processedContent, imageParams);
         console.log("[AI-Chat] Processamento de imagem concluído com sucesso");
+        
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
+      }
+      // Kligin models
+      else if (processedModelId === "kligin-video" && processedMode === "video") {
+        console.log("[AI-Chat] Iniciando processamento de vídeo com Kligin AI");
+        const imageUrl = files && files.length > 0 ? files[0] : undefined;
+        
+        const videoParams = {
+          ...params,
+          model: params?.model || "kling-v1"
+        };
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log("[AI-Chat] Atingido tempo máximo global para processamento de vídeo (5 minutos)");
+          controller.abort();
+        }, 300000); // 5 minutos
+        
+        try {
+          response = await Promise.race([
+            kliginService.generateVideo(processedContent, videoParams, imageUrl),
+            new Promise<ResponseData>((_, reject) => {
+              controller.signal.addEventListener('abort', () => {
+                reject(new Error("Tempo limite global excedido para processamento de vídeo (5 minutos)"));
+              });
+            })
+          ]);
+          clearTimeout(timeoutId);
+          console.log("[AI-Chat] Processamento de vídeo Kligin concluído com sucesso");
+          
+          if (response.files && response.files.length > 0) {
+            response.files[0] = addTimestampToUrl(response.files[0]);
+          }
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
+      }
+      else if (processedModelId === "kligin-image" && processedMode === "image") {
+        console.log("[AI-Chat] Iniciando processamento de imagem com Kligin AI");
+        
+        const imageParams = {
+          ...params,
+          model: params?.model || "kling-v1"
+        };
+        
+        response = await kliginService.generateImage(processedContent, imageParams);
+        console.log("[AI-Chat] Processamento de imagem Kligin concluído com sucesso");
         
         if (response.files && response.files.length > 0) {
           response.files[0] = addTimestampToUrl(response.files[0]);
@@ -446,6 +536,16 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = `O processamento do ${processedMode === 'video' ? 'vídeo' : 'imagem'} excedeu o tempo limite. A geração pode estar em andamento no servidor do Luma AI, verifique seu painel de controle.`;
         } else {
           friendlyError = `Erro na geração do ${processedMode === 'video' ? 'vídeo' : 'imagem'} com Luma AI: ${errorMessage}`;
+        }
+      } else if (processedModelId.includes("kligin")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("Authorization") || errorMessage.includes("authenticate")) {
+          friendlyError = "Erro de configuração: A chave API do Kligin AI não está configurada corretamente. Por favor, verifique suas configurações.";
+        } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
+          friendlyError = "Erro na API Kligin: Endpoint não encontrado. A API pode ter sido atualizada.";
+        } else if (errorMessage.includes("Tempo limite")) {
+          friendlyError = `O processamento do ${processedMode === 'video' ? 'vídeo' : 'imagem'} excedeu o tempo limite. A geração pode estar em andamento no servidor do Kligin AI.`;
+        } else {
+          friendlyError = `Erro na geração do ${processedMode === 'video' ? 'vídeo' : 'imagem'} com Kligin AI: ${errorMessage}`;
         }
       } else if (processedModelId.includes("eleven")) {
         if (errorMessage.includes("API key") || errorMessage.includes("xi-api-key") || errorMessage.includes("authenticate")) {

@@ -25,7 +25,7 @@ export async function fetchWithRetry(
       console.log(`Attempt ${attempt + 1}/${maxRetries} for URL: ${url}`);
       
       // Log request headers (without Authorization for security)
-      const safeHeaders = { ...options.headers };
+      const safeHeaders = { ...options.headers } as Record<string, string>;
       if (safeHeaders['Authorization']) {
         safeHeaders['Authorization'] = 'Bearer [REDACTED]';
       }
@@ -37,11 +37,10 @@ export async function fetchWithRetry(
           const bodyObj = JSON.parse(options.body);
           // Only log non-sensitive parts
           const safeBody = {
-            model: bodyObj.model,
-            messageCount: bodyObj.messages?.length,
-            firstMessageType: bodyObj.messages?.[0]?.role,
+            model: bodyObj.model || bodyObj.model_name,
+            prompt: bodyObj.prompt?.substring(0, 30) + '...',
             // Only log first few characters of user message for privacy
-            userMessagePreview: bodyObj.messages?.find(m => m.role === 'user')?.content?.substring(0, 30) + '...'
+            userMessagePreview: bodyObj.messages?.find((m: any) => m.role === 'user')?.content?.substring(0, 30) + '...'
           };
           console.log(`Request body preview: ${JSON.stringify(safeBody, null, 2)}`);
         } catch (e) {

@@ -45,7 +45,9 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
             : "Gerando seu vídeo..."}
         </p>
         <p className="text-sm text-inventu-gray mt-2 text-center">
-          {isLumaVideo 
+          {isKliginVideo
+            ? "O processo pode levar entre 30 segundos e 3 minutos dependendo da complexidade. Estamos usando a API oficial da Kligin."
+            : isLumaVideo 
             ? "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando o SDK oficial da Luma."
             : "Isso pode levar um momento. Por favor, aguarde."}
         </p>

@@ -159,9 +159,16 @@ export const handleSingleModelMessage = async (
         modeSwitch: streamResponse.modeSwitch
       };
     } else {
-      // Send request to API with 3 minute timeout for modelos sem streaming
+      // Send request to API with appropriate timeout based on model
+      const timeoutDuration = 
+        (modelId === 'kligin-video' || modelId === 'luma-video') ? 300000 : // 5 minutes for video generation
+        (modelId.includes('kligin') || modelId.includes('luma')) ? 180000 : // 3 minutes for other Kligin/Luma services
+        180000; // 3 minutes default timeout
+      
+      console.log(`[singleModelHandler] Setting timeout of ${timeoutDuration/1000} seconds for ${modelId} request`);
+      
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error("Request timeout exceeded")), 180000);
+        setTimeout(() => reject(new Error("Request timeout exceeded")), timeoutDuration);
       });
       
       const responsePromise = sendApiRequest(
@@ -258,6 +265,10 @@ export const handleSingleModelMessage = async (
       friendlyError = `Erro na geração de vídeo: ${errorMsg}. Verifique se a chave API do Luma está configurada corretamente.`;
     } else if (mode === 'image' && modelId.includes('luma')) {
       friendlyError = `Erro na geração de imagem: ${errorMsg}. Verifique se a chave API do Luma está configurada corretamente.`;
+    } else if (mode === 'video' && modelId.includes('kligin')) {
+      friendlyError = `Erro na geração de vídeo: ${errorMsg}. Verifique se a chave API do Kligin está configurada corretamente.`;
+    } else if (mode === 'image' && modelId.includes('kligin')) {
+      friendlyError = `Erro na geração de imagem: ${errorMsg}. Verifique se a chave API do Kligin está configurada corretamente.`;
     }
     
     const errorMessage: MessageType = {

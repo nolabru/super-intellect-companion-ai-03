@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -137,6 +138,22 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   description: 'Criação de imagens com representação tridimensional.',
   modes: ['image']
 },
+// Kligin Models
+{
+  id: 'kligin-video',
+  displayName: 'Kligin Video',
+  provider: 'kligin',
+  capabilities: ['Geração de vídeos', 'Alta qualidade', 'Controle de câmera'],
+  description: 'Gerador de vídeos com grande controle sobre movimentos de câmera e composição.',
+  modes: ['video']
+}, {
+  id: 'kligin-image',
+  displayName: 'Kligin Image',
+  provider: 'kligin',
+  capabilities: ['Geração de imagens', 'Alta fidelidade'],
+  description: 'Criação de imagens de alta qualidade com tecnologia avançada.',
+  modes: ['image']
+},
 // ElevenLabs Models
 {
   id: 'elevenlabs-tts',
@@ -146,7 +163,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   description: 'Modelo de conversão de texto para fala com qualidade natural.',
   modes: ['audio']
 },
-// Kligin Models
+// Kligin Models for TTS
 {
   id: 'kligin-tts',
   displayName: 'Kligin TTS',
