@@ -27,6 +27,7 @@ interface ResponseData {
     newMode: string;
     newModel: string;
   };
+  googleIntegrationResults?: any[];
 }
 
 // Token mocado para testes com a Luma API - usando o token fornecido pelo usuário
@@ -62,6 +63,7 @@ async function handleAIChat(req: Request): Promise<Response> {
     let processedMode = mode;
     let processedModelId = modelId;
     let modeSwitchDetected = false;
+    let googleIntegrationResults: any[] | undefined;
     
     // Aplicar orquestrador se userId estiver presente e não for solicitação de mídia direta
     if (userId && mode === "text") {
@@ -106,6 +108,65 @@ async function handleAIChat(req: Request): Promise<Response> {
           if (memoryContext) {
             processedContent = orchestratorService.enrichPromptWithMemory(processedContent, memoryContext);
             console.log(`[AI-Chat] Prompt enriquecido com contexto de memória`);
+          }
+        }
+        
+        // Processar ações de integração com o Google, se houver
+        if (orchestratorResult.googleIntegrationActions && orchestratorResult.googleIntegrationActions.length > 0) {
+          console.log(`[AI-Chat] Orquestrador detectou ${orchestratorResult.googleIntegrationActions.length} ações para Google`);
+          
+          const googleResult = await orchestratorService.processGoogleIntegrationActions(
+            userId, 
+            orchestratorResult.googleIntegrationActions
+          );
+          
+          if (googleResult.success) {
+            googleIntegrationResults = googleResult.results;
+            
+            // Adicionar informações sobre as ações do Google ao prompt
+            let googleContext = "\n\n**Ações realizadas nos serviços Google:**\n";
+            
+            googleResult.results.forEach(result => {
+              if (result.success) {
+                // Adicionar informações específicas com base no tipo de ação
+                if (result.actionType === 'calendar' && result.actionName === 'createEvent') {
+                  googleContext += `✅ Evento criado no Google Calendar: "${result.result.data.summary}"\n`;
+                  googleContext += `📅 Link: ${result.result.eventLink}\n\n`;
+                } 
+                else if (result.actionType === 'drive' && result.actionName === 'createDocument') {
+                  googleContext += `✅ Documento criado no Google Drive: "${result.result.data.name}"\n`;
+                  googleContext += `📄 Link: ${result.result.documentLink}\n\n`;
+                }
+                else if (result.actionType === 'sheets' && result.actionName === 'createSpreadsheet') {
+                  googleContext += `✅ Planilha criada no Google Sheets: "${result.result.data.properties.title}"\n`;
+                  googleContext += `📊 Link: ${result.result.spreadsheetLink}\n\n`;
+                }
+                else if (result.actionType === 'calendar' && result.actionName === 'listEvents') {
+                  googleContext += `✅ Consultei sua agenda no Google Calendar\n`;
+                  const events = result.result.events || [];
+                  if (events.length > 0) {
+                    googleContext += `📅 Próximos eventos:\n`;
+                    events.slice(0, 5).forEach((event: any) => {
+                      const start = event.start.dateTime ? new Date(event.start.dateTime).toLocaleString('pt-BR') : event.start.date;
+                      googleContext += `   - ${event.summary} (${start})\n`;
+                    });
+                    googleContext += "\n";
+                  } else {
+                    googleContext += `📅 Não encontrei eventos próximos na sua agenda.\n\n`;
+                  }
+                }
+                else {
+                  googleContext += `✅ ${result.description || `Ação ${result.actionName} concluída com sucesso`}\n\n`;
+                }
+              } else {
+                googleContext += `❌ ${result.description || `Ação ${result.actionName}`} falhou: ${result.error}\n\n`;
+              }
+            });
+            
+            processedContent += googleContext;
+            console.log(`[AI-Chat] Prompt enriquecido com resultados das ações do Google`);
+          } else {
+            console.log(`[AI-Chat] Falha ao processar ações do Google: ${JSON.stringify(googleResult)}`);
           }
         }
         
@@ -498,6 +559,11 @@ async function handleAIChat(req: Request): Promise<Response> {
         fileCount: response.files?.length || 0,
         contentLength: response.content?.length || 0
       });
+      
+      // Adicionar os resultados das ações do Google à resposta, se houver
+      if (googleIntegrationResults) {
+        response.googleIntegrationResults = googleIntegrationResults;
+      }
       
       // If user ID was provided, add token info to response
       if (userId) {

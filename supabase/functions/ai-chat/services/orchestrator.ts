@@ -290,43 +290,90 @@ export async function processGoogleIntegrationActions(
   try {
     console.log(`[Orquestrador] Processando ${actions.length} ações de integração com Google para usuário ${userId}`);
     
-    // Obter tokens do Google do usuário
-    const { data: googleTokens, error } = await supabase
-      .from('user_google_tokens')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-    
-    if (error || !googleTokens) {
-      console.error("[Orquestrador] Usuário não tem tokens do Google:", error);
-      return { success: false, results: [] };
-    }
-    
-    // Verificar se o token está expirado
-    const now = Math.floor(Date.now() / 1000);
-    if (googleTokens.expires_at < now) {
-      console.log("[Orquestrador] Token do Google expirado, tentando renovar");
-      
-      // Renovar token (implementação futura)
-      // Por enquanto, retornar erro
-      return { success: false, results: [] };
-    }
-    
-    // Processar cada ação
+    // Mapear cada ação para uma chamada à função google-actions
     const results = await Promise.all(actions.map(async (action) => {
       try {
-        // Aqui seria a implementação para chamar as APIs do Google
-        // Isso seria feito em uma função específica para cada tipo de ação
+        let actionName = "";
+        let actionParams = {};
         
-        // Exemplo de mock para desenvolvimento:
+        // Mapear tipo e ação para o formato esperado pela função google-actions
+        switch (action.type) {
+          case 'calendar':
+            if (action.action === 'createEvent') {
+              actionName = 'createCalendarEvent';
+              actionParams = action.parameters;
+            } else if (action.action === 'listEvents') {
+              actionName = 'listCalendarEvents';
+              actionParams = action.parameters;
+            }
+            break;
+            
+          case 'drive':
+            if (action.action === 'createDocument') {
+              actionName = 'createDocument';
+              actionParams = action.parameters;
+            }
+            break;
+            
+          case 'sheets':
+            if (action.action === 'createSpreadsheet') {
+              actionName = 'createSpreadsheet';
+              actionParams = action.parameters;
+            }
+            break;
+            
+          default:
+            console.warn(`[Orquestrador] Tipo de ação não suportado: ${action.type}/${action.action}`);
+            return {
+              actionType: action.type,
+              actionName: action.action,
+              success: false,
+              error: 'Tipo de ação não suportado'
+            };
+        }
+        
+        if (!actionName) {
+          return {
+            actionType: action.type,
+            actionName: action.action,
+            success: false,
+            error: 'Ação não implementada'
+          };
+        }
+        
+        // Chamar a função google-actions
+        const response = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-actions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+          },
+          body: JSON.stringify({
+            userId,
+            action: actionName,
+            params: actionParams
+          })
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[Orquestrador] Erro ao executar ação ${action.type}/${action.action}:`, errorText);
+          return {
+            actionType: action.type,
+            actionName: action.action,
+            success: false,
+            error: errorText
+          };
+        }
+        
+        const result = await response.json();
+        
         return {
           actionType: action.type,
           actionName: action.action,
           success: true,
-          result: {
-            mockResult: "Ação processada com sucesso (mock)",
-            description: action.description
-          }
+          result,
+          description: action.description
         };
       } catch (actionError) {
         console.error(`[Orquestrador] Erro ao processar ação ${action.type}/${action.action}:`, actionError);
