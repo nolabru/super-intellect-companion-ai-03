@@ -67,6 +67,17 @@ serve(async (req) => {
     console.log('Code present:', !!code);
     console.log('Error present:', !!error);
     console.log('State present:', !!state);
+    
+    if (state) {
+      console.log('State content:', state);
+      try {
+        // Try to parse it to validate it's proper JSON
+        const parsedState = JSON.parse(state);
+        console.log('Parsed state:', parsedState);
+      } catch (e) {
+        console.error('Error parsing state (not valid JSON):', e);
+      }
+    }
 
     // Check for OAuth flow errors
     if (error) {
@@ -80,28 +91,39 @@ serve(async (req) => {
       return Response.redirect(`${SITE_URL}/google-integrations?error=no_code`)
     }
 
-    // Decode state to get user ID
+    // Validate state parameter
     if (!state) {
       console.error('State missing')
       return Response.redirect(`${SITE_URL}/google-integrations?error=no_state`)
     }
 
-    let userId
-    let redirectAfterAuth
+    let stateData;
+    let userId;
+    let redirectAfterAuth;
+    
     try {
-      const decodedState = JSON.parse(atob(state))
-      userId = decodedState.userId
-      redirectAfterAuth = decodedState.redirectAfterAuth
-      console.log('Decoded user ID:', userId);
+      stateData = JSON.parse(state);
+      
+      // Get the user ID from the session since it should be available in the state
+      // This is a more reliable way to get the user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      userId = user?.id;
+      
+      // Get redirect info from state
+      redirectAfterAuth = stateData.redirectAfterAuth;
+      
+      console.log('State data:', stateData);
+      console.log('User ID from auth:', userId);
       console.log('Redirect after auth:', redirectAfterAuth);
+      
     } catch (e) {
-      console.error('Error decoding state:', e)
-      return Response.redirect(`${SITE_URL}/google-integrations?error=invalid_state`)
+      console.error('Error processing state:', e)
+      return Response.redirect(`${SITE_URL}/google-integrations?error=invalid_state&reason=${encodeURIComponent(e.message)}`)
     }
 
     if (!userId) {
-      console.error('User ID missing in state')
-      return Response.redirect(`${SITE_URL}/google-integrations?error=no_user_id`)
+      console.error('User ID missing - user might not be authenticated')
+      return Response.redirect(`${SITE_URL}/auth?error=user_not_authenticated`)
     }
 
     // Exchange code for tokens
@@ -160,8 +182,8 @@ serve(async (req) => {
         refresh_token: tokenData.refresh_token,
         expires_at: expiresAt,
         updated_at: new Date().toISOString(),
-        permissions_verified: true, // Set permissions verified flag
-        last_verified_at: new Date().toISOString() // Record verification time
+        permissions_verified: true,
+        last_verified_at: new Date().toISOString()
       })
 
     if (upsertError) {

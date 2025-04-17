@@ -182,11 +182,15 @@ const Auth: React.FC = () => {
       
       console.log('[Auth] Using redirectTo:', redirectTo);
       
-      // Encode state with current timestamp and redirectAfterAuth
-      const state = btoa(JSON.stringify({
-        timestamp: Date.now(),
-        redirectAfterAuth: redirectAfterAuth,
-      }));
+      // Create a proper state object with userId placeholder (will be filled by Supabase)
+      const stateObj = {
+        redirectAfterAuth,
+        timestamp: Date.now()
+      };
+      
+      const state = JSON.stringify(stateObj);
+      
+      console.log('[Auth] Using state object:', stateObj);
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
