@@ -31,7 +31,11 @@ port = 54323
 # in emails.
 site_url = "https://super-intellect-companion-ai.lovable.app"
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://super-intellect-companion-ai.lovable.app"]
+additional_redirect_urls = [
+  "https://super-intellect-companion-ai.lovable.app",
+  "https://super-intellect-companion-ai.lovable.app/auth",
+  "https://super-intellect-companion-ai.lovable.app/google-integrations"
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # Allow/disallow new user signups to your project.

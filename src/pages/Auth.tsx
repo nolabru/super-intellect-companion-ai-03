@@ -11,7 +11,7 @@ import { Loader2 } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup';
 
-// Use the correct production URL for site and redirect
+// Use the correct production URL
 const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
 // Google scopes needed for the application
@@ -114,6 +114,9 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      // For OAuth signIn, we specify the full callback URL
+      const redirectTo = `${SITE_URL}/auth`;
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -122,7 +125,7 @@ const Auth: React.FC = () => {
             access_type: 'offline',
             prompt: 'consent'
           },
-          redirectTo: SITE_URL  // Use production URL for redirect
+          redirectTo
         }
       });
 

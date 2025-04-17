@@ -89,7 +89,7 @@ export const disconnectGoogle = async (
   try {
     // Delete tokens from Supabase
     const { error } = await supabase
-      .from('user_google_tokens' as any)
+      .from('user_google_tokens')
       .delete()
       .eq('user_id', user.id);
 

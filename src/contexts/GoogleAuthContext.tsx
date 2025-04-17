@@ -2,12 +2,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-
-interface GoogleTokens {
-  accessToken: string | null;
-  refreshToken: string | null;
-  expiresAt: number | null;
-}
+import { toast } from 'sonner';
+import { GoogleTokens } from './contexts/google-auth/types';
+import { 
+  refreshGoogleTokens as refreshGoogleTokensOperation,
+  checkGooglePermissions as checkGooglePermissionsOperation,
+  disconnectGoogle as disconnectGoogleOperation 
+} from './contexts/google-auth/googleAuthOperations';
 
 type GoogleAuthContextType = {
   googleTokens: GoogleTokens | null;
@@ -39,21 +40,21 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       try {
         // Use the generic Supabase functions to avoid typing issues
         const { data, error } = await supabase
-          .from('user_google_tokens' as any)
+          .from('user_google_tokens')
           .select('*')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id)
+          .single();
 
         if (error) {
           console.error('Error fetching Google tokens:', error);
           setGoogleTokens(null);
           setIsGoogleConnected(false);
-        } else if (data && data.length > 0) {
-          // Force type casting since TypeScript doesn't know about this table
-          const tokenData = data[0];
+        } else if (data) {
+          // Safe type casting after successful query
           setGoogleTokens({
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token,
-            expiresAt: tokenData.expires_at,
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token,
+            expiresAt: data.expires_at,
           });
           setIsGoogleConnected(true);
         } else {
@@ -76,86 +77,66 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Function to refresh Google tokens
   const refreshGoogleTokens = async (): Promise<boolean> => {
-    if (!user || !googleTokens?.refreshToken) {
-      return false;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('google-token-refresh', {
-        body: { 
-          userId: user.id,
-          refreshToken: googleTokens.refreshToken
-        }
-      });
-
-      if (error) {
-        console.error('Error refreshing Google tokens:', error);
-        return false;
-      }
-
-      if (data && data.success) {
-        setGoogleTokens({
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken || googleTokens.refreshToken,
-          expiresAt: data.expiresAt,
-        });
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Error refreshing Google tokens:', error);
-      return false;
-    }
+    return refreshGoogleTokensOperation(user, googleTokens, setGoogleTokens);
   };
 
   // Function to check if Google permissions are active
   const checkGooglePermissions = async (): Promise<boolean> => {
-    if (!user || !googleTokens?.accessToken) {
-      return false;
-    }
-
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (googleTokens.expiresAt && googleTokens.expiresAt < now) {
-      // Token expired, try to refresh
-      const refreshed = await refreshGoogleTokens();
-      if (!refreshed) return false;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('google-verify-permissions', {
-        body: { 
-          accessToken: googleTokens.accessToken
-        }
-      });
-
-      return data?.success || false;
-    } catch (error) {
-      console.error('Error verifying Google permissions:', error);
-      return false;
-    }
+    return checkGooglePermissionsOperation(user, googleTokens, refreshGoogleTokens);
   };
 
   // Function to disconnect Google account
   const disconnectGoogle = async (): Promise<void> => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('user_google_tokens' as any)
-        .delete()
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      setGoogleTokens(null);
-      setIsGoogleConnected(false);
-    } catch (error) {
-      console.error('Error disconnecting Google:', error);
-      throw error;
-    }
+    await disconnectGoogleOperation(user, setGoogleTokens, setIsGoogleConnected);
   };
+
+  // Check after Google OAuth login
+  useEffect(() => {
+    const checkAuthRedirect = async () => {
+      // Check for URL parameters indicating an authentication redirect
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
+      
+      // Check if this is a redirect after OAuth login
+      if (urlParams.has('provider') || hashParams.has('access_token')) {
+        console.log('Processing OAuth redirect');
+        
+        // Give Supabase time to process the login
+        setTimeout(async () => {
+          if (user) {
+            // Refetch tokens after authentication
+            try {
+              const { data } = await supabase
+                .from('user_google_tokens')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+                
+              if (data) {
+                setGoogleTokens({
+                  accessToken: data.access_token,
+                  refreshToken: data.refresh_token,
+                  expiresAt: data.expires_at,
+                });
+                setIsGoogleConnected(true);
+                
+                toast.success(
+                  'Google connected successfully!',
+                  { description: 'Your Google account has been connected.' }
+                );
+              }
+            } catch (error) {
+              console.error('Error processing auth redirect:', error);
+            }
+          }
+        }, 1000);
+      }
+    };
+
+    if (!authLoading && user) {
+      checkAuthRedirect();
+    }
+  }, [user, authLoading]);
 
   return (
     <GoogleAuthContext.Provider 
