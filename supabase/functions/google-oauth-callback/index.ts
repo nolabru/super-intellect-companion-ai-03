@@ -20,6 +20,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
 serve(async (req) => {
+  // Log incoming request
+  console.log(`Google OAuth callback received request: ${req.url}`)
+  
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -27,6 +30,7 @@ serve(async (req) => {
   try {
     // Verify Google credentials are configured
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      console.error('Google credentials not configured on server')
       return new Response(
         JSON.stringify({
           success: false,
@@ -44,6 +48,8 @@ serve(async (req) => {
     const code = url.searchParams.get('code')
     const error = url.searchParams.get('error')
     const state = url.searchParams.get('state')
+
+    console.log(`Received callback with code: ${code ? 'Present' : 'Missing'}, error: ${error || 'None'}, state: ${state ? 'Present' : 'Missing'}`)
 
     // Check for OAuth flow errors
     if (error) {
@@ -67,6 +73,7 @@ serve(async (req) => {
     try {
       const decodedState = JSON.parse(atob(state))
       userId = decodedState.userId
+      console.log(`Decoded state - User ID: ${userId}`)
     } catch (e) {
       console.error('Error decoding state:', e)
       return Response.redirect(`${SITE_URL}/google-integrations?error=invalid_state`)
@@ -81,6 +88,8 @@ serve(async (req) => {
     const tokenEndpoint = 'https://oauth2.googleapis.com/token'
     const redirectUri = `${SITE_URL}/api/google-oauth-callback`
     
+    console.log(`Exchanging code for tokens with redirect URI: ${redirectUri}`)
+    
     const params = new URLSearchParams({
       code,
       client_id: GOOGLE_CLIENT_ID,
@@ -89,6 +98,7 @@ serve(async (req) => {
       grant_type: 'authorization_code'
     })
 
+    console.log('Calling Google token endpoint...')
     const tokenResponse = await fetch(tokenEndpoint, {
       method: 'POST',
       headers: {
@@ -97,6 +107,8 @@ serve(async (req) => {
       body: params.toString()
     })
 
+    console.log(`Token response status: ${tokenResponse.status}`)
+    
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.text()
       console.error('Error obtaining tokens:', errorData)
@@ -104,11 +116,14 @@ serve(async (req) => {
     }
 
     const tokenData = await tokenResponse.json()
+    console.log('Tokens received successfully')
     
     // Save tokens in database
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + tokenData.expires_in
 
+    console.log(`Saving tokens for user ${userId} - expires in ${tokenData.expires_in} seconds`)
+    
     const { error: upsertError } = await supabase
       .from('user_google_tokens')
       .upsert({

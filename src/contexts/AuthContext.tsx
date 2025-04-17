@@ -24,9 +24,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         console.log(`[AuthProvider] Auth state changed: ${event}`);
+        
+        // Update session and user state synchronously
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setLoading(false);
+        
+        // Log additional details for debugging
+        if (event === 'SIGNED_IN') {
+          console.log(`[AuthProvider] User signed in: ${newSession?.user?.id}`);
+        } else if (event === 'SIGNED_OUT') {
+          console.log(`[AuthProvider] User signed out`);
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log(`[AuthProvider] Token refreshed for user: ${newSession?.user?.id}`);
+        }
       }
     );
 

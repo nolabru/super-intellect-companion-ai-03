@@ -57,38 +57,64 @@ const Auth: React.FC = () => {
       if (hashParams.has('access_token')) {
         try {
           setLoading(true);
+          console.log("Access token detected in hash, establishing session...");
           
-          // Wait for session to be established - increased timeout from 1000ms to 2000ms
+          // Wait for session to be established with increased timeout
           setTimeout(async () => {
-            // Explicitly get the session directly
-            const { data, error } = await supabase.auth.getSession();
-            
-            if (error) {
-              console.error('Session error:', error);
-              toast.error('Login failed', {
-                description: error.message || 'Could not establish session. Please try again.'
-              });
-              setLoading(false);
-              return;
-            }
-            
-            if (data.session) {
-              console.log('Session established successfully:', data.session.user?.id);
-              toast.success('Login successful', { 
-                description: 'You will be redirected...'
-              });
+            try {
+              // Explicitly get the session directly
+              const { data, error } = await supabase.auth.getSession();
               
-              // Clear URL and navigate to home
-              window.history.replaceState({}, document.title, window.location.pathname);
-              navigate('/');
-            } else {
-              console.error('No session found after login');
-              toast.error('Login failed', {
-                description: 'Could not establish session. Please try again.'
+              if (error) {
+                console.error('Session error:', error);
+                toast.error('Login failed', {
+                  description: error.message || 'Could not establish session. Please try again.'
+                });
+                setLoading(false);
+                return;
+              }
+              
+              if (data.session) {
+                console.log('Session established successfully:', data.session.user?.id);
+                toast.success('Login successful', { 
+                  description: 'You will be redirected...'
+                });
+                
+                // Clear URL and navigate to home
+                window.history.replaceState({}, document.title, window.location.pathname);
+                navigate('/');
+              } else {
+                console.error('No session found after login');
+                
+                // Try to refresh the page to get the session
+                console.log("Attempting session recovery by refreshing auth state...");
+                
+                const { data: refreshData } = await supabase.auth.refreshSession();
+                if (refreshData.session) {
+                  console.log("Session recovered after refresh");
+                  toast.success('Login successful', { 
+                    description: 'You will be redirected...'
+                  });
+                  
+                  // Clear URL and navigate to home
+                  window.history.replaceState({}, document.title, window.location.pathname);
+                  navigate('/');
+                  return;
+                }
+                
+                toast.error('Login failed', {
+                  description: 'Could not establish session. Please try again.'
+                });
+                setLoading(false);
+              }
+            } catch (sessionError: any) {
+              console.error('Error getting session:', sessionError);
+              toast.error('Session error', {
+                description: sessionError.message || 'An unexpected error occurred'
               });
               setLoading(false);
             }
-          }, 2000); // Increased timeout for session establishment
+          }, 3000); // Increased timeout for session establishment
         } catch (error: any) {
           console.error('Error processing login:', error);
           toast.error('Login error', { 
