@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,22 +28,30 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<AuthMode>('login');
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Check if user is already authenticated
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        navigate('/');
+        // Verificar se veio de uma solicitação de integração do Google
+        const params = new URLSearchParams(location.search);
+        if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
+          navigate('/google-integrations');
+        } else {
+          navigate('/');
+        }
       }
     };
     
     checkSession();
-  }, [navigate]);
+  }, [navigate, location]);
 
   // Process auth redirects
   useEffect(() => {
     const handleAuthRedirect = async () => {
+      console.log('Verificando redirecionamento de autenticação');
       const params = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
@@ -56,15 +64,23 @@ const Auth: React.FC = () => {
       if (hashParams.has('access_token') || params.has('provider')) {
         // Successfully authenticated via Google
         try {
-          console.log('Processing successful auth redirect');
+          console.log('Processando redirecionamento de autenticação bem-sucedido');
           const { data } = await supabase.auth.getSession();
           if (data.session) {
             toast.success('Login bem-sucedido', { 
               description: 'Você será redirecionado...'
             });
-            navigate('/');
+            
+            // Verificar se veio de uma solicitação de integração do Google
+            if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
+              console.log('Redirecionando para página de integrações do Google');
+              navigate('/google-integrations');
+            } else {
+              navigate('/');
+            }
           }
         } catch (error) {
+          console.error('Erro ao processar login:', error);
           toast.error('Erro ao processar login', { 
             description: 'Por favor, tente novamente.'
           });
@@ -100,7 +116,13 @@ const Auth: React.FC = () => {
 
         if (error) throw error;
         
-        navigate('/');
+        // Verificar se veio de uma solicitação de integração do Google
+        const params = new URLSearchParams(location.search);
+        if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
+          navigate('/google-integrations');
+        } else {
+          navigate('/');
+        }
       }
     } catch (error: any) {
       toast.error(
@@ -115,9 +137,16 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      console.log('Starting Google sign in process');
-      // For OAuth signIn, we specify the full callback URL
-      const redirectTo = `${SITE_URL}/auth`;
+      console.log('Iniciando processo de autenticação com Google');
+      
+      // Verificar se veio de uma solicitação de integração
+      const params = new URLSearchParams(location.search);
+      let redirectTo = `${SITE_URL}/auth`;
+      
+      if (params.has('redirect') && params.get('redirect') === 'google-integrations') {
+        // Adicionar parâmetro de redirecionamento para página de autenticação
+        redirectTo = `${SITE_URL}/auth?redirect=google-integrations`;
+      }
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -133,7 +162,7 @@ const Auth: React.FC = () => {
 
       if (error) throw error;
     } catch (error: any) {
-      console.error('Error during Google sign in:', error);
+      console.error('Erro durante autenticação com Google:', error);
       toast.error(
         "Erro ao entrar com Google", 
         { description: error.message }
