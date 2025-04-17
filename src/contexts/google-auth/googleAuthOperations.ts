@@ -24,7 +24,7 @@ export const refreshGoogleTokens = async (
     });
 
     if (error) {
-      console.error('Erro ao renovar tokens do Google:', error);
+      console.error('Error refreshing Google tokens:', error);
       return false;
     }
 
@@ -40,7 +40,7 @@ export const refreshGoogleTokens = async (
 
     return false;
   } catch (error) {
-    console.error('Erro ao renovar tokens do Google:', error);
+    console.error('Error refreshing Google tokens:', error);
     return false;
   }
 };
@@ -73,7 +73,7 @@ export const checkGooglePermissions = async (
 
     return data?.success || false;
   } catch (error) {
-    console.error('Erro ao verificar permissões do Google:', error);
+    console.error('Error verifying Google permissions:', error);
     return false;
   }
 };
@@ -102,14 +102,14 @@ export const disconnectGoogle = async (
     setIsGoogleConnected(false);
 
     toast.success(
-      'Google desconectado',
-      { description: 'Sua conta Google foi desconectada com sucesso.' }
+      'Google disconnected',
+      { description: 'Your Google account was successfully disconnected.' }
     );
   } catch (error) {
-    console.error('Erro ao desconectar Google:', error);
+    console.error('Error disconnecting Google:', error);
     toast.error(
-      'Erro ao desconectar',
-      { description: 'Não foi possível desconectar sua conta Google.' }
+      'Error disconnecting',
+      { description: 'Could not disconnect your Google account.' }
     );
   }
 };

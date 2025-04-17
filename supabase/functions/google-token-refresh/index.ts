@@ -29,12 +29,12 @@ serve(async (req) => {
   }
 
   try {
-    // Verificar se as credenciais do Google estão configuradas
+    // Check if Google credentials are configured
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Credenciais do Google não configuradas no servidor'
+          error: 'Google credentials not configured on server'
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -43,14 +43,14 @@ serve(async (req) => {
       )
     }
 
-    // Obter o token de atualização da solicitação
+    // Get refresh token from request
     const { userId, refreshToken } = await req.json()
 
     if (!userId || !refreshToken) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'UserId e RefreshToken são obrigatórios' 
+          error: 'UserId and RefreshToken are required' 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -59,15 +59,15 @@ serve(async (req) => {
       )
     }
 
-    // Autenticar usuário pelo ID
+    // Authenticate user by ID
     const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId)
     
     if (userError || !userData.user) {
-      console.error('Erro ao verificar usuário:', userError)
+      console.error('Error verifying user:', userError)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Usuário não encontrado ou não autorizado'
+          error: 'User not found or not authorized'
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -76,7 +76,7 @@ serve(async (req) => {
       )
     }
 
-    // Solicitar novo token de acesso ao Google
+    // Request new access token from Google
     const tokenEndpoint = 'https://oauth2.googleapis.com/token'
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
@@ -95,11 +95,11 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.text()
-      console.error('Erro na resposta do Google:', errorData)
+      console.error('Error in Google response:', errorData)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Falha ao renovar o token: ' + errorData
+          error: 'Failed to refresh token: ' + errorData
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -110,27 +110,27 @@ serve(async (req) => {
 
     const tokenData: TokenResponse = await response.json()
     
-    // Calcular a data de expiração
+    // Calculate expiration date
     const now = Math.floor(Date.now() / 1000)
     const expiresAt = now + tokenData.expires_in
     
-    // Atualizar tokens no banco de dados
+    // Update tokens in database
     const { error: updateError } = await supabase
       .from('user_google_tokens')
       .upsert({
         user_id: userId,
         access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token || refreshToken, // manter o refresh token antigo se não receber um novo
+        refresh_token: tokenData.refresh_token || refreshToken, // keep old refresh token if no new one
         expires_at: expiresAt,
         updated_at: new Date().toISOString()
       })
 
     if (updateError) {
-      console.error('Erro ao atualizar tokens:', updateError)
+      console.error('Error updating tokens:', updateError)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Erro ao atualizar tokens no banco de dados' 
+          error: 'Error updating tokens in database' 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -139,12 +139,12 @@ serve(async (req) => {
       )
     }
 
-    // Retornar tokens renovados
+    // Return refreshed tokens
     return new Response(
       JSON.stringify({
         success: true,
         accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token, // pode ser undefined
+        refreshToken: tokenData.refresh_token, // may be undefined
         expiresAt: expiresAt
       }),
       {
@@ -153,11 +153,11 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Erro ao processar solicitação:', error)
+    console.error('Error processing request:', error)
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Erro desconhecido' 
+        error: error.message || 'Unknown error' 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

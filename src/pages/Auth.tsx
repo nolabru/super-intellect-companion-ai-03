@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,8 +48,8 @@ const Auth: React.FC = () => {
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
       if (params.has('error') || params.has('error_description')) {
-        const errorMessage = params.get('error_description') || 'Erro de autenticação';
-        toast.error('Erro de autenticação', { description: errorMessage });
+        const errorMessage = params.get('error_description') || 'Authentication error';
+        toast.error('Authentication error', { description: errorMessage });
         return;
       }
 
@@ -57,14 +58,14 @@ const Auth: React.FC = () => {
         try {
           const { data } = await supabase.auth.getSession();
           if (data.session) {
-            toast.success('Login realizado com sucesso', { 
-              description: 'Você será redirecionado...'
+            toast.success('Login successful', { 
+              description: 'You will be redirected...'
             });
             navigate('/');
           }
         } catch (error) {
-          toast.error('Erro ao processar login', { 
-            description: 'Por favor, tente novamente.'
+          toast.error('Error processing login', { 
+            description: 'Please try again.'
           });
         }
       }
@@ -87,8 +88,8 @@ const Auth: React.FC = () => {
         if (error) throw error;
         
         toast.success(
-          "Cadastro realizado!",
-          { description: "Verifique seu email para confirmar sua conta." }
+          "Registration completed!",
+          { description: "Check your email to confirm your account." }
         );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -102,7 +103,7 @@ const Auth: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(
-        "Erro", 
+        "Error", 
         { description: error.message }
       );
     } finally {
@@ -128,7 +129,7 @@ const Auth: React.FC = () => {
       if (error) throw error;
     } catch (error: any) {
       toast.error(
-        "Erro ao entrar com Google", 
+        "Error signing in with Google", 
         { description: error.message }
       );
       setLoading(false);
