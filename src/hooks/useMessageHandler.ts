@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -13,7 +14,7 @@ import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
 
 /**
- * Hook central para gerenciamento de envio de mensagens
+ * Hook central para gerenciamento de envio de mensagens e contexto
  */
 export function useMessageHandler(
   messages: MessageType[],
@@ -47,6 +48,11 @@ export function useMessageHandler(
   );
   
   const messageProcessing = useMessageProcessing(user?.id);
+
+  // Log do estado atual de mensagens para depuração
+  useEffect(() => {
+    console.log(`[useMessageHandler] Estado de mensagens atualizado, total: ${messages.length}`);
+  }, [messages]);
 
   const sendMessage = useCallback(async (
     content: string,
@@ -86,6 +92,7 @@ export function useMessageHandler(
       console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
       
+      // Verificar comandos Google
       const isGoogleCommand = content.match(/@(calendar|sheet|doc|drive|email)\s/i);
       
       console.log('[useMessageHandler] Verificação de comando Google:', { 
@@ -119,7 +126,19 @@ export function useMessageHandler(
         }
       }
       
+      // Obter o contexto de memória do usuário
+      const userMemoryContext = await messageProcessing.getMemoryContext();
+      
+      // Preparar o histórico da conversa usando o serviço de mensagens
+      // Isso garante que o mesmo processamento seja usado em todos os pontos
       const conversationHistory = messageService.prepareConversationHistory(messages);
+      
+      // Combinar o contexto de memória do usuário com o histórico da conversa
+      const enhancedContext = userMemoryContext 
+        ? `${userMemoryContext}\n\n${conversationHistory}`
+        : conversationHistory;
+      
+      console.log(`[useMessageHandler] Preparou contexto com ${enhancedContext.length} caracteres`);
       
       let modeSwitch = null;
       
@@ -145,7 +164,7 @@ export function useMessageHandler(
           messages,
           files,
           params,
-          conversationHistory,
+          enhancedContext,
           user?.id
         );
         
@@ -160,7 +179,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          conversationHistory,
+          enhancedContext,
           user?.id
         );
         
@@ -175,7 +194,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          conversationHistory,
+          enhancedContext,
           user?.id
         );
         
@@ -203,7 +222,7 @@ export function useMessageHandler(
           conversations,
           files,
           params,
-          conversationHistory,
+          enhancedContext,
           user?.id,
           true
         );

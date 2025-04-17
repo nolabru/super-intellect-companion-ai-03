@@ -77,6 +77,14 @@ export const handleSingleModelMessage = async (
   setMessages((prevMessages) => [...prevMessages, loadingMsg]);
   
   try {
+    // Log para depuração do contexto
+    if (conversationHistory) {
+      console.log(`[singleModelHandler] Enviando contexto: ${conversationHistory.length} caracteres`);
+      console.log(`[singleModelHandler] Primeiros 150 caracteres: ${conversationHistory.substring(0, 150)}...`);
+    } else {
+      console.log(`[singleModelHandler] Sem contexto para enviar`);
+    }
+    
     // Verificar se o modelo suporta streaming
     const supportsStreaming = modelSupportsStreaming(mode, modelId);
     
