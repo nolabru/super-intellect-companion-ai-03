@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -131,9 +132,8 @@ export function useMessageHandler(
       }
       
       // Preparar histórico de conversação para o orquestrador
-      const conversationHistory = messageProcessing.prepareConversationHistory(
-        messages.map(msg => ({ sender: msg.sender, content: msg.content }))
-      );
+      // Usar a função aprimorada do messageService para melhor continuidade do contexto
+      const conversationHistory = messageService.prepareConversationHistory(messages);
       
       // Processar a mensagem
       let modeSwitch = null;

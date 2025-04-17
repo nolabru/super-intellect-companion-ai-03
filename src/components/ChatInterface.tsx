@@ -49,8 +49,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       const prevMsg = array[index - 1];
       const isDuplicate = prevMsg.sender === msg.sender && 
-                          prevMsg.content === msg.content && 
-                          prevMsg.model === msg.model;
+                         prevMsg.content === msg.content && 
+                         prevMsg.model === msg.model &&
+                         (new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime() < 500);
       
       return !isDuplicate;
     })

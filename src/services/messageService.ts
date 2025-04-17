@@ -46,6 +46,11 @@ export const createMessageService = (
       setMessages(prev => [...prev, userMessage]);
     }
 
+    // Melhorar preparação do histórico de conversa para manter contexto
+    // Se não for fornecido externamente, preparar a partir das mensagens atuais
+    const enhancedHistory = conversationHistory || prepareConversationHistory(messages);
+    console.log(`[messageService] Enviando mensagem para ${modelId} com contexto de ${enhancedHistory.length} caracteres`);
+
     return handleSingleModelMessage(
       content,
       mode,
@@ -55,12 +60,12 @@ export const createMessageService = (
       conversations,
       files,
       params,
-      conversationHistory,
+      enhancedHistory, // Usar o histórico aprimorado
       userId,
       setMessages,
       apiService.sendRequest,
       mediaGallery.saveMediaToGallery,
-      skipUserMessage // Passa o parâmetro para o handler
+      skipUserMessage
     );
   };
   
@@ -76,6 +81,11 @@ export const createMessageService = (
     conversationHistory?: string,
     userId?: string
   ) => {
+    // Melhorar preparação do histórico de conversa para manter contexto
+    // Se não for fornecido externamente, preparar a partir das mensagens atuais
+    const enhancedHistory = conversationHistory || prepareConversationHistory(messages);
+    console.log(`[messageService] Enviando mensagem para comparação ${leftModelId} vs ${rightModelId} com contexto de ${enhancedHistory.length} caracteres`);
+
     return handleCompareModels(
       content,
       mode,
@@ -84,7 +94,7 @@ export const createMessageService = (
       conversationId,
       files,
       params,
-      conversationHistory,
+      enhancedHistory, // Usar o histórico aprimorado
       userId,
       setMessages,
       apiService.sendRequest,
@@ -92,8 +102,35 @@ export const createMessageService = (
     );
   };
   
+  // Função auxiliar para preparar o histórico da conversa
+  const prepareConversationHistory = (messages: MessageType[]): string => {
+    // Incluir mais mensagens para manter melhor contexto (25 mensagens)
+    // mas limitar quantidade para não exceder limites de tokens
+    const recentMessages = messages.slice(-25);
+    
+    return recentMessages.map(msg => {
+      // Incluir informação do modelo usado nas respostas para melhor contexto
+      const modelInfo = msg.model ? ` (${msg.model})` : '';
+      const role = msg.sender === 'user' ? 'User' : `Assistant${modelInfo}`;
+      
+      // Incluir apenas conteúdo relevante para o contexto (ignorar mensagens de erro)
+      if (msg.error) return '';
+      
+      // Filtrar URLs de mídia longas no contexto para economizar tokens
+      let cleanContent = msg.content;
+      // Remover URLs e dados base64 grandes para economizar tokens
+      cleanContent = cleanContent.replace(/data:image\/[^;]+;base64,[^\s]{100,}/g, '[IMAGEM]');
+      cleanContent = cleanContent.replace(/(https?:\/\/[^\s]{50,})/g, '[URL]');
+      
+      return `${role}: ${cleanContent}`;
+    })
+    .filter(msg => msg !== '') // Remover mensagens vazias (como erros filtrados)
+    .join('\n\n');
+  };
+  
   return {
     handleSingleModelMessage: handleSingleModel,
-    handleCompareModels: handleCompareModelMessages
+    handleCompareModels: handleCompareModelMessages,
+    prepareConversationHistory // Exportar função auxiliar
   };
 };
