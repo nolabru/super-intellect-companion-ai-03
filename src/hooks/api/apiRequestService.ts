@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
@@ -267,41 +268,5 @@ export const apiRequestService = {
     }
     
     throw lastError || new Error("Falha após tentativas máximas");
-  },
-  
-  /**
-   * Invoca uma Edge Function do Supabase
-   * @param functionName Nome da função a ser invocada
-   * @param payload Dados a serem enviados para a função
-   * @returns Resposta da função
-   */
-  async invokeFunction(
-    functionName: string,
-    payload: any
-  ): Promise<{ data: any, error?: string }> {
-    try {
-      console.log(`[apiRequestService] Invocando Edge Function '${functionName}' com payload:`, payload);
-      
-      const { data, error } = await supabase.functions.invoke(
-        functionName,
-        {
-          body: payload
-        }
-      );
-      
-      if (error) {
-        console.error(`[apiRequestService] Erro ao invocar função '${functionName}':`, error);
-        return { data: null, error: error.message || 'Erro ao chamar a função' };
-      }
-      
-      console.log(`[apiRequestService] Resposta da função '${functionName}':`, data);
-      return { data, error: undefined };
-    } catch (err) {
-      console.error(`[apiRequestService] Exceção ao invocar função '${functionName}':`, err);
-      return { 
-        data: null, 
-        error: err instanceof Error ? err.message : 'Erro desconhecido ao chamar a função'
-      };
-    }
   }
 };

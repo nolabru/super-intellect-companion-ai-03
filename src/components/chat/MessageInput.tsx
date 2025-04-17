@@ -1,8 +1,8 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Send, Paperclip, Calendar, FileSpreadsheet, FileText } from 'lucide-react';
+
+import React, { useRef, useEffect } from 'react';
+import { Send, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
-import { CommandMenu } from './CommandMenu';
 
 interface MessageInputProps {
   message: string;
@@ -27,9 +27,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const commandTriggerRef = useRef<HTMLSpanElement>(null);
-  const [showCommands, setShowCommands] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState<number | null>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -37,32 +34,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
     }
   }, [message]);
-
-  const handleCommandSelect = (command: string) => {
-    if (cursorPosition !== null) {
-      const beforeCommand = message.slice(0, cursorPosition - 1); // Remove the @
-      const afterCommand = message.slice(cursorPosition);
-      setMessage(beforeCommand + command + ' ' + afterCommand);
-      setShowCommands(false);
-    }
-  };
-
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    setMessage(value);
-
-    // Check for @ symbol
-    const curPos = e.target.selectionStart;
-    const textBeforeCursor = value.slice(0, curPos);
-    const lastAtSymbol = textBeforeCursor.lastIndexOf('@');
-    
-    if (lastAtSymbol !== -1 && (lastAtSymbol === 0 || value[lastAtSymbol - 1] === ' ')) {
-      setShowCommands(true);
-      setCursorPosition(curPos);
-    } else {
-      setShowCommands(false);
-    }
-  };
 
   const getPlaceholder = () => {
     if (isImageGenerationModel) {
@@ -82,14 +53,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
       <textarea
         ref={textareaRef}
         value={message}
-        onChange={handleInput}
+        onChange={(e) => setMessage(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             onSendMessage();
-          }
-          if (e.key === 'Escape') {
-            setShowCommands(false);
           }
         }}
         placeholder={getPlaceholder()}
@@ -97,18 +65,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
         rows={1}
         disabled={isSending}
       />
-      
-      {showCommands && (
-        <div className="absolute z-50 w-full left-0 bottom-full mb-1">
-          <CommandMenu
-            isOpen={showCommands}
-            onClose={() => setShowCommands(false)}
-            onSelect={handleCommandSelect}
-            triggerRef={commandTriggerRef}
-          />
-        </div>
-      )}
-
       <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
         {mode !== 'text' && (
           <Button 

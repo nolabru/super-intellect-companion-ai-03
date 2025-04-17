@@ -102,63 +102,7 @@ sequenceDiagram
     GoogleAuthContext-->>AppUI: Update UI with status
 ```
 
-## 5. Google Workspace Agent Workflow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant ChatUI as Chat UI
-    participant Analyzer as Message Analyzer
-    participant Agent as Google Agent (Calendar/Sheets/Docs)
-    participant EdgeFunction as Google API Function
-    participant GServices as Google Services
-
-    User->>ChatUI: Send message with @calendar/@sheet/@doc command
-    ChatUI->>Analyzer: Process message
-    Analyzer->>Agent: Detect command and route to appropriate agent
-    Agent->>User: Ask for missing information
-    User->>Agent: Provide required data
-    Agent->>EdgeFunction: Send command to Google API function
-    EdgeFunction->>Supabase: Retrieve Google tokens
-    EdgeFunction->>GServices: Make API call with tokens
-    GServices-->>EdgeFunction: Return operation result
-    EdgeFunction-->>Agent: Return formatted response
-    Agent-->>User: Confirm operation with link/details
-```
-
-## 6. Token Refresh and Permission Verification
-
-```mermaid
-sequenceDiagram
-    participant GoogleAgent as Google Agent Function
-    participant TokenManager as Token Manager
-    participant EdgeFunction as Token Refresh Function
-    participant Google as Google API
-    participant Database as Supabase DB
-
-    Note over GoogleAgent,Database: Before API Call
-    GoogleAgent->>TokenManager: Check token validity
-    TokenManager->>Database: Get tokens + expiry
-    Database-->>TokenManager: Return token data
-    
-    alt Token expired or expiring soon
-        TokenManager->>EdgeFunction: Request token refresh
-        EdgeFunction->>Google: Refresh token request
-        Google-->>EdgeFunction: New access token + expiry
-        EdgeFunction->>Database: Update stored tokens
-        Database-->>TokenManager: Return updated tokens
-    end
-    
-    alt Required scopes missing
-        TokenManager-->>GoogleAgent: Return MISSING_SCOPE error
-        GoogleAgent-->>User: Request reconnection with additional scopes
-    else All permissions valid
-        TokenManager-->>GoogleAgent: Return valid token
-        GoogleAgent->>Google: Make API request
-    end
-```
-
-## 7. Memory System Workflow
+## 5. Memory System Workflow
 
 ```mermaid
 sequenceDiagram
@@ -183,7 +127,7 @@ sequenceDiagram
     MemoryService-->>MessageHandler: Enhance prompt with context
 ```
 
-## 8. Token Management Workflow
+## 6. Token Management Workflow
 
 ```mermaid
 sequenceDiagram
@@ -209,7 +153,7 @@ sequenceDiagram
     end
 ```
 
-## 9. Media Gallery Workflow
+## 7. Media Gallery Workflow
 
 ```mermaid
 sequenceDiagram
@@ -237,7 +181,7 @@ sequenceDiagram
     GalleryHook-->>GalleryUI: Update UI to remove item
 ```
 
-## 10. Error Handling Workflow
+## 8. Error Handling Workflow
 
 ```mermaid
 sequenceDiagram
@@ -263,7 +207,7 @@ sequenceDiagram
     end
 ```
 
-## 11. Application Initialization Workflow
+## 9. Application Initialization Workflow
 
 ```mermaid
 sequenceDiagram
@@ -293,76 +237,82 @@ sequenceDiagram
     end
 ```
 
-## 12. Google Calendar Agent Workflow
+## 10. Session Refresh Workflow
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant ChatUI as Chat UI
-    participant Analyzer as Message Analyzer
-    participant CalendarAgent as Calendar Agent
-    participant EdgeFunction as Calendar API Function
-    participant GCalendar as Google Calendar
+    participant Browser
+    participant AuthContext
+    participant Supabase
+    participant BackendAuth as Supabase Auth Backend
 
-    User->>ChatUI: Send "@calendar create meeting tomorrow at 2pm"
-    ChatUI->>Analyzer: Process message
-    Analyzer->>CalendarAgent: Detect @calendar command
-    CalendarAgent->>User: Ask for title, duration, guests
-    User->>CalendarAgent: Provide missing information
-    CalendarAgent->>EdgeFunction: Send create_event with all parameters
-    EdgeFunction->>Supabase: Retrieve Google tokens
-    EdgeFunction->>GCalendar: Create calendar event
-    GCalendar-->>EdgeFunction: Return event ID and link
-    EdgeFunction-->>CalendarAgent: Return success with event details
-    CalendarAgent-->>User: Confirm event creation with link
+    note over AuthContext,Supabase: Session approaches expiration
+    Supabase->>BackendAuth: Detect expiring session
+    BackendAuth-->>Supabase: Refresh token automatically
+    Supabase->>AuthContext: Trigger onAuthStateChange
+    AuthContext->>AuthContext: Update session state
+    
+    alt Refresh succeeds
+        AuthContext-->>Browser: Continue normal operation
+    else Refresh fails
+        AuthContext->>AuthContext: Clear session state
+        AuthContext-->>Browser: Redirect to login
+    end
 ```
 
-## 13. Google Sheets Agent Workflow
+## 11. API Request Workflow
 
 ```mermaid
 sequenceDiagram
-    participant User
-    participant ChatUI as Chat UI
-    participant Analyzer as Message Analyzer
-    participant SheetsAgent as Sheets Agent
-    participant EdgeFunction as Sheets API Function
-    participant GSheets as Google Sheets
+    participant AppComponent as App Component
+    participant ApiService as API Service
+    participant Supabase
+    participant EdgeFunction as Edge Function
+    participant ExternalAPI as External API Service
 
-    User->>ChatUI: Send "@sheet create expense tracker"
-    ChatUI->>Analyzer: Process message
-    Analyzer->>SheetsAgent: Detect @sheet command
-    SheetsAgent->>User: Ask for column names, data
-    User->>SheetsAgent: Provide missing information
-    SheetsAgent->>EdgeFunction: Send sheet_create with parameters
-    EdgeFunction->>Supabase: Retrieve Google tokens
-    EdgeFunction->>GSheets: Create/update spreadsheet
-    GSheets-->>EdgeFunction: Return spreadsheet ID and link
-    EdgeFunction-->>SheetsAgent: Return success with details
-    SheetsAgent-->>User: Confirm sheet creation with link
+    AppComponent->>ApiService: Request operation
+    ApiService->>Supabase: Invoke edge function
+    Supabase->>EdgeFunction: Execute function
+    
+    EdgeFunction->>ExternalAPI: Make API request
+    ExternalAPI-->>EdgeFunction: Return response
+    
+    EdgeFunction-->>Supabase: Return processed result
+    Supabase-->>ApiService: Return function result
+    ApiService-->>AppComponent: Return formatted response
 ```
 
-## 14. Google Docs Agent Workflow
+## 12. Multi-Modal AI Routing Workflow
 
 ```mermaid
 sequenceDiagram
     participant User
     participant ChatUI as Chat UI
-    participant Analyzer as Message Analyzer
-    participant DocsAgent as Docs Agent
-    participant EdgeFunction as Docs API Function
-    participant GDocs as Google Docs
+    participant MessageHandler
+    participant Analyzer as Content Analyzer
+    participant Router as Mode Router
+    participant AIServices as AI Services
 
-    User->>ChatUI: Send "@doc create project proposal"
-    ChatUI->>Analyzer: Process message
-    Analyzer->>DocsAgent: Detect @doc command
-    DocsAgent->>User: Ask for document content, sections
-    User->>DocsAgent: Provide missing information
-    DocsAgent->>EdgeFunction: Send doc_create with parameters
-    EdgeFunction->>Supabase: Retrieve Google tokens
-    EdgeFunction->>GDocs: Create/update document
-    GDocs-->>EdgeFunction: Return document ID and link
-    EdgeFunction-->>DocsAgent: Return success with details
-    DocsAgent-->>User: Confirm document creation with link
+    User->>ChatUI: Send message
+    ChatUI->>MessageHandler: Process message
+    MessageHandler->>Analyzer: Analyze content
+    
+    alt Text content detected
+        Analyzer-->>Router: Route to text model
+        Router->>AIServices: Send to text API
+    else Image generation detected
+        Analyzer-->>Router: Route to image model
+        Router->>AIServices: Send to image API
+    else Video generation detected
+        Analyzer-->>Router: Route to video model
+        Router->>AIServices: Send to video API
+    else Audio generation detected
+        Analyzer-->>Router: Route to audio model
+        Router->>AIServices: Send to audio API
+    end
+    
+    AIServices-->>MessageHandler: Return processed response
+    MessageHandler-->>ChatUI: Update UI with response
 ```
 
 This technical workflow documentation provides detailed sequence diagrams for the major processes in the application, making it easier to understand the interaction between different components and services.
