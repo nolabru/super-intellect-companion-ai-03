@@ -29,7 +29,7 @@ export const createMessageService = (
     params?: LumaParams,
     conversationHistory?: string,
     userId?: string,
-    skipUserMessage: boolean = false // Novo parâmetro para controlar se deve criar a mensagem do usuário
+    skipUserMessage: boolean = false // Parâmetro para controlar se deve criar a mensagem do usuário
   ) => {
     // Create user message with specific model target in compare mode - only if not skipped
     if (!skipUserMessage) {

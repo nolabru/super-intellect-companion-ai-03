@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -44,25 +43,33 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages]);
 
-  const filteredMessages = messages.filter(msg => {
-    console.log(`[ChatInterface:${model}] Filtering message:`, {
-      id: msg.id,
-      sender: msg.sender,
-      model: msg.model,
-      isCompareMode
+  const filteredMessages = messages
+    .filter((msg, index, array) => {
+      if (index === 0) return true;
+      
+      const prevMsg = array[index - 1];
+      const isDuplicate = prevMsg.sender === msg.sender && 
+                          prevMsg.content === msg.content && 
+                          prevMsg.model === msg.model;
+      
+      return !isDuplicate;
+    })
+    .filter(msg => {
+      console.log(`[ChatInterface:${model}] Filtering message:`, {
+        id: msg.id,
+        sender: msg.sender,
+        model: msg.model,
+        isCompareMode
+      });
+      
+      if (isCompareMode) {
+        return msg.model === model || 
+               (msg.sender === 'user' && msg.model === model);
+      } else {
+        return msg.sender === 'user' || 
+               (msg.sender === 'assistant' && msg.model === model);
+      }
     });
-    
-    if (isCompareMode) {
-      // No modo de comparação, mostrar apenas mensagens especificamente para este modelo
-      // ou mensagens do usuário destinadas a este modelo
-      return msg.model === model || 
-             (msg.sender === 'user' && msg.model === model);
-    } else {
-      // No modo único, mostrar todas as mensagens do usuário e mensagens para este modelo
-      return msg.sender === 'user' || 
-             (msg.sender === 'assistant' && msg.model === model);
-    }
-  });
   
   const getModelInfo = (modelId: string) => {
     return AVAILABLE_MODELS.find(m => m.id === modelId);

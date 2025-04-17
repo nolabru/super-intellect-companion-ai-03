@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -26,6 +25,8 @@ export function useMessageHandler(
   updateTitle: (conversationId: string, content: string) => Promise<boolean>
 ) {
   const [isSending, setIsSending] = useState(false);
+  const [lastMessageSent, setLastMessageSent] = useState<string | null>(null);
+  const [lastMessageTimestamp, setLastMessageTimestamp] = useState<number>(0);
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
@@ -73,11 +74,26 @@ export function useMessageHandler(
       return false;
     }
     
+    // Prevenir duplicação rápida da mesma mensagem (dentro de 2 segundos)
+    const now = Date.now();
+    if (
+      content === lastMessageSent && 
+      now - lastMessageTimestamp < 2000
+    ) {
+      console.log('[useMessageHandler] Prevented duplicate message submission');
+      toast.info('Aguarde um momento antes de enviar a mesma mensagem novamente');
+      return false;
+    }
+    
+    // Atualizar controle de mensagem enviada
+    setLastMessageSent(content);
+    setLastMessageTimestamp(now);
+    
     try {
       console.log(`[useMessageHandler] Sending message "${content}" to ${comparing ? 'models' : 'model'} ${leftModel || modelId}${rightModel ? ` and ${rightModel}` : ''}`);
       setIsSending(true);
       
-      // Verificar se é um comando Google
+      // Verificação aprimorada de comando Google
       const isGoogleCommand = content.match(/@(calendar|sheet|doc|drive|email)\s/i);
       
       console.log('[useMessageHandler] Verificação de comando Google:', { 
@@ -86,7 +102,6 @@ export function useMessageHandler(
         googleAuthLoading
       });
       
-      // Verificação aprimorada de comando Google
       if (isGoogleCommand) {
         // Forçar uma atualização do estado do token antes de verificar
         if (googleAuthLoading) {
@@ -119,9 +134,6 @@ export function useMessageHandler(
       const conversationHistory = messageProcessing.prepareConversationHistory(
         messages.map(msg => ({ sender: msg.sender, content: msg.content }))
       );
-      
-      // Processar a mensagem - agora processamos após a resposta do modelo!
-      // Sem melhoria de conteúdo antes de enviar, apenas a mensagem original
       
       // Processar a mensagem
       let modeSwitch = null;
@@ -216,8 +228,7 @@ export function useMessageHandler(
           params,
           conversationHistory,
           user?.id,
-          // Não criar nova mensagem de usuário, pois já foi criada
-          false
+          true // Alterado para true para garantir que a flag skipUserMessage seja passada corretamente
         );
         
         modeSwitch = result?.modeSwitch || null;
@@ -257,7 +268,9 @@ export function useMessageHandler(
     messageProcessing,
     isGoogleConnected,
     googleAuthLoading,
-    refreshTokensState
+    refreshTokensState,
+    lastMessageSent,
+    lastMessageTimestamp
   ]);
 
   return {
