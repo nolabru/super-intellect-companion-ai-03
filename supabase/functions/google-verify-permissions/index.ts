@@ -1,10 +1,20 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+// Google OAuth credentials
+const GOOGLE_CLIENT_ID = Deno.env.get('GOOGLE_CLIENT_ID')
+const GOOGLE_CLIENT_SECRET = Deno.env.get('GOOGLE_CLIENT_SECRET')
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,14 +22,28 @@ serve(async (req) => {
   }
 
   try {
-    // Obter o token de acesso da solicitação
-    const { accessToken } = await req.json()
+    // Check if Google credentials are configured
+    if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Google credentials not configured on server'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      )
+    }
 
-    if (!accessToken) {
+    // Get user ID from request
+    const { userId } = await req.json()
+
+    if (!userId) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Token de acesso é obrigatório' 
+          error: 'UserId is required' 
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -28,82 +52,90 @@ serve(async (req) => {
       )
     }
 
-    // Verificar permissões para cada serviço relevante
-    const services = [
-      {
-        name: 'Google Drive',
-        url: 'https://www.googleapis.com/drive/v3/about?fields=user',
-        scope: 'https://www.googleapis.com/auth/drive'
-      },
-      {
-        name: 'Google Calendar',
-        url: 'https://www.googleapis.com/calendar/v3/users/me/calendarList',
-        scope: 'https://www.googleapis.com/auth/calendar'
-      },
-      {
-        name: 'Google Sheets',
-        url: 'https://sheets.googleapis.com/v4/spreadsheets?fields=spreadsheetId',
-        scope: 'https://www.googleapis.com/auth/spreadsheets',
-        method: 'POST',
-        body: JSON.stringify({
-          properties: { title: 'Teste de Permissão' }
-        })
-      }
-    ]
-
-    const results = await Promise.all(
-      services.map(async (service) => {
-        try {
-          const response = await fetch(service.url, {
-            method: service.method || 'GET',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: service.body
-          })
-
-          // Para o Google Sheets, excluir a planilha de teste se foi criada
-          if (service.name === 'Google Sheets' && response.ok) {
-            const data = await response.json()
-            if (data.spreadsheetId) {
-              try {
-                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${data.spreadsheetId}`, {
-                  method: 'DELETE',
-                  headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                  }
-                })
-              } catch (deleteError) {
-                console.error('Erro ao excluir planilha de teste:', deleteError)
-              }
-            }
-          }
-
-          return {
-            service: service.name,
-            hasPermission: response.ok,
-            scope: service.scope
-          }
-        } catch (error) {
-          console.error(`Erro ao verificar permissão para ${service.name}:`, error)
-          return {
-            service: service.name,
-            hasPermission: false,
-            scope: service.scope,
-            error: error.message
-          }
+    // Authenticate user by ID
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId)
+    
+    if (userError || !userData.user) {
+      console.error('Error verifying user:', userError)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'User not found or not authorized'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403
         }
-      })
-    )
+      )
+    }
 
-    // Verificar se o token ainda está válido (qualquer serviço respondeu com sucesso)
-    const isValid = results.some(result => result.hasPermission)
+    // Get user's Google tokens
+    const { data: tokensData, error: tokensError } = await supabase
+      .from('user_google_tokens')
+      .select('*')
+      .eq('user_id', userId)
+      .single()
 
+    if (tokensError || !tokensData) {
+      console.error('Error retrieving Google tokens:', tokensError)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'User has no Google tokens'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404
+        }
+      )
+    }
+
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000)
+    if (tokensData.expires_at <= now) {
+      console.log('Token is expired, needs refresh')
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Token expired',
+          needsRefresh: true
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401
+        }
+      )
+    }
+
+    // Test token by making a simple request to Google API
+    const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        'Authorization': `Bearer ${tokensData.access_token}`
+      }
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Error verifying Google token:', errorText)
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid Google token',
+          details: errorText
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401
+        }
+      )
+    }
+
+    // Token is valid
     return new Response(
       JSON.stringify({
-        success: isValid,
-        services: results
+        success: true,
+        message: 'Google permissions verified'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -111,11 +143,11 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Erro ao processar solicitação:', error)
+    console.error('Error processing request:', error)
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Erro desconhecido' 
+        error: error.message || 'Unknown error' 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

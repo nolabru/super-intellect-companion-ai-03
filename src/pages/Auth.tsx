@@ -58,10 +58,21 @@ const Auth: React.FC = () => {
         try {
           const { data } = await supabase.auth.getSession();
           if (data.session) {
-            toast.success('Login successful', { 
-              description: 'You will be redirected...'
-            });
-            navigate('/');
+            // Check if Google tokens are present after Google sign-in
+            if (params.has('provider') && params.get('provider') === 'google') {
+              // Wait a moment to ensure tokens are stored
+              setTimeout(() => {
+                toast.success('Login successful', { 
+                  description: 'Google account successfully connected!'
+                });
+                navigate('/');
+              }, 1500);
+            } else {
+              toast.success('Login successful', { 
+                description: 'You will be redirected...'
+              });
+              navigate('/');
+            }
           }
         } catch (error) {
           toast.error('Error processing login', { 

@@ -26,8 +26,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Update tokens when session changes
   useEffect(() => {
-    fetchGoogleTokens(session);
-  }, [session, fetchGoogleTokens]);
+    if (session) {
+      console.log('Session changed, fetching Google tokens');
+      fetchGoogleTokens(session);
+    }
+  }, [session]);
 
   // Check after Google OAuth login
   useEffect(() => {
@@ -47,7 +50,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (data.session) {
             await fetchGoogleTokens(data.session);
             
-            // Notify user
+            // Notify user if Google connected successfully
             if (isGoogleConnected) {
               toast.success(
                 'Google connected successfully!',
@@ -55,12 +58,12 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               );
             }
           }
-        }, 1000);
+        }, 1500);
       }
     };
 
     checkAuthRedirect();
-  }, [fetchGoogleTokens, isGoogleConnected]);
+  }, []);
 
   // Function to refresh Google tokens (wrap the operation)
   const refreshGoogleTokens = async (): Promise<boolean> => {
@@ -88,6 +91,15 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setIsGoogleConnected
     );
   };
+
+  // Debug logging to help diagnose issues
+  useEffect(() => {
+    console.log('Google Auth State:', { 
+      isConnected: isGoogleConnected, 
+      hasTokens: !!googleTokens,
+      loading
+    });
+  }, [isGoogleConnected, googleTokens, loading]);
 
   return (
     <GoogleAuthContext.Provider 

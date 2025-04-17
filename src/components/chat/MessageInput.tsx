@@ -3,14 +3,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
-import { 
-  CommandDialog,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from "@/components/ui/command";
+import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
+import { toast } from 'sonner';
 
 interface MessageInputProps {
   message: string;
@@ -76,6 +70,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [commandMenuPosition, setCommandMenuPosition] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const { isGoogleConnected } = useGoogleAuth();
 
   // Track cursor position to show @ menu
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -139,6 +134,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const insertCommand = (command: string) => {
+    if (!isGoogleConnected) {
+      toast.error(
+        "Conta Google não conectada", 
+        { description: "Para usar comandos do Google, você precisa fazer login com sua conta Google." }
+      );
+      setShowCommandMenu(false);
+      return;
+    }
+
     if (textareaRef.current) {
       // Find the last @ in the text before cursor
       const beforeCursor = message.substring(0, cursorPosition);

@@ -29,7 +29,7 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
-  const { isGoogleConnected } = useGoogleAuth();
+  const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
@@ -71,10 +71,17 @@ export function useMessageHandler(
       
       // Verificar se é um comando do Google e se o usuário está conectado
       const isGoogleCommand = content.match(/@(calendar|sheet|doc|drive|email)\s/i);
-      if (isGoogleCommand && !isGoogleConnected) {
+      
+      console.log('[useMessageHandler] Google command check:', { 
+        isGoogleCommand: !!isGoogleCommand,
+        isGoogleConnected,
+        googleAuthLoading
+      });
+      
+      if (isGoogleCommand && !googleAuthLoading && !isGoogleConnected) {
         toast.error(
           'Conta Google não conectada',
-          { description: 'Para usar comandos do Google, você precisa conectar sua conta na página de integrações.' }
+          { description: 'Para usar comandos do Google, você precisa fazer login com sua conta Google.' }
         );
         setIsSending(false);
         return false;
@@ -221,7 +228,8 @@ export function useMessageHandler(
     messageService,
     user,
     messageProcessing,
-    isGoogleConnected
+    isGoogleConnected,
+    googleAuthLoading
   ]);
 
   return {
