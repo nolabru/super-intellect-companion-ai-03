@@ -58,6 +58,17 @@ export function verifyApiCredentials(): { apiKey: string, apiSecret: string } {
   return { apiKey, apiSecret };
 }
 
+// Verify API key is valid
+export function verifyApiKey(): string {
+  const apiKey = Deno.env.get("KLIGIN_API_KEY") || KLIGIN_API_KEY;
+  validateApiKey("KLIGIN_API_KEY", apiKey);
+  
+  const apiSecret = Deno.env.get("KLIGIN_API_SECRET") || KLIGIN_API_SECRET;
+  validateApiKey("KLIGIN_API_SECRET", apiSecret);
+  
+  return apiKey;
+}
+
 // Test API key validity
 export async function testApiCredentials(apiKey: string, apiSecret: string): Promise<boolean> {
   try {
