@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -10,7 +9,7 @@ import { createMessageService } from '@/services/messageService';
 import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
-import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
+import { useGoogleAuth } from '@/contexts/google-auth'; // Fixed import path
 import { toast } from 'sonner';
 
 // Google Workspace command detection
