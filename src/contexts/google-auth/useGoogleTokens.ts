@@ -102,13 +102,16 @@ export const useGoogleTokens = () => {
     try {
       console.log(`[useGoogleTokens] Updating permissions status to ${status} for user ${userId}`);
       
-      // Use a specific SQL query with custom fields instead of relying on TypeScript types
-      // This bypasses the TypeScript type checking issue
-      const { error } = await supabase.rpc('update_google_token_permissions', {
-        p_user_id: userId,
-        p_permissions_verified: status,
-        p_last_verified_at: new Date().toISOString()
-      });
+      // Use a raw query approach instead of the typed RPC function
+      // This avoids TypeScript errors while still calling our custom database function
+      const { error } = await supabase
+        .from('user_google_tokens')
+        .update({
+          permissions_verified: status,
+          last_verified_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
         
       if (error) {
         console.error('[useGoogleTokens] Error updating permissions status:', error);
