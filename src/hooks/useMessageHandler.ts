@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -30,7 +29,12 @@ export function useMessageHandler(
   const apiService = useApiService();
   const mediaGallery = useMediaGallery();
   const { user } = useAuth();
-  const { isGoogleConnected, checkGooglePermissions, googleTokens } = useGoogleAuth();
+  const { 
+    isGoogleConnected, 
+    permissionsVerified, 
+    checkGooglePermissions, 
+    googleTokens 
+  } = useGoogleAuth();
   
   // Criar serviço de mensagens e processamento
   const messageService = createMessageService(
@@ -47,52 +51,20 @@ export function useMessageHandler(
     return messageList.map(msg => ({ sender: msg.sender, content: msg.content }));
   };
 
-  // Verificar permissões do Google quando necessário
-  const verifyGooglePermissions = useCallback(async () => {
-    if (!isGoogleConnected) {
-      console.log("[useMessageHandler] Google não está conectado");
+  // Verificar se o Google está realmente disponível
+  const isGoogleServiceAvailable = useCallback(() => {
+    // Verificar se está conectado, se as permissões foram verificadas e se temos tokens
+    if (!isGoogleConnected || !permissionsVerified || !googleTokens?.accessToken) {
+      console.log("[useMessageHandler] Google não está totalmente disponível:", {
+        isGoogleConnected,
+        permissionsVerified,
+        hasAccessToken: !!googleTokens?.accessToken
+      });
       return false;
     }
     
-    // Verificar se temos tokens do Google antes de tentar verificar permissões
-    if (!googleTokens?.accessToken) {
-      console.log("[useMessageHandler] Tokens do Google ausentes");
-      return false;
-    }
-    
-    // Verificar se as permissões já foram verificadas através do localStorage
-    const permissionsVerified = localStorage.getItem('google_permissions_verified') === 'true';
-    const lastCheckStr = localStorage.getItem('google_last_permission_check');
-    
-    if (permissionsVerified && lastCheckStr) {
-      const lastCheck = parseInt(lastCheckStr, 10);
-      const now = Date.now();
-      const twelveHoursInMs = 12 * 60 * 60 * 1000;
-      
-      // Se verificou nas últimas 12 horas, não precisamos verificar novamente
-      if (now - lastCheck < twelveHoursInMs) {
-        console.log("[useMessageHandler] Usando permissões do Google já verificadas");
-        return true;
-      }
-    }
-    
-    try {
-      console.log("[useMessageHandler] Verificando permissões do Google...");
-      const hasPermissions = await checkGooglePermissions();
-      console.log(`[useMessageHandler] Resultado da verificação de permissões: ${hasPermissions}`);
-      
-      if (hasPermissions) {
-        // Salvar no localStorage para não precisar verificar novamente tão cedo
-        localStorage.setItem('google_permissions_verified', 'true');
-        localStorage.setItem('google_last_permission_check', Date.now().toString());
-      }
-      
-      return hasPermissions;
-    } catch (error) {
-      console.error("[useMessageHandler] Erro ao verificar permissões do Google:", error);
-      return false;
-    }
-  }, [isGoogleConnected, checkGooglePermissions, googleTokens]);
+    return true;
+  }, [isGoogleConnected, permissionsVerified, googleTokens]);
 
   // Detectar se mensagem é um comando de serviço Google
   const detectGoogleServiceCommand = useCallback((content: string): boolean => {
@@ -112,17 +84,22 @@ export function useMessageHandler(
       return null;
     }
     
-    // Verificar rapidamente se o Google está conectado antes de prosseguir
-    if (!isGoogleConnected || !googleTokens?.accessToken) {
-      console.error("[useMessageHandler] Google não está conectado ou tokens ausentes");
-      toast.error("Você precisa conectar sua conta Google nas configurações");
+    // Verificar se o Google está disponível
+    if (!isGoogleServiceAvailable()) {
+      console.error("[useMessageHandler] Serviços Google não estão disponíveis");
+      toast.error("Parece que você ainda não conectou sua conta Google ou não concedeu as permissões necessárias. Acesse as Integrações do Google nas configurações para conectar sua conta.", {
+        action: {
+          label: "Configurar",
+          onClick: () => window.location.href = '/google-integrations'
+        }
+      });
       return null;
     }
     
     try {
-      // Verificar permissões usando a verificação com cache
+      // Verificar permissões novamente para ter certeza
       console.log("[useMessageHandler] Verificando permissões para comando Google...");
-      const hasPermissions = await verifyGooglePermissions();
+      const hasPermissions = await checkGooglePermissions();
       if (!hasPermissions) {
         console.error("[useMessageHandler] Sem permissões do Google");
         toast.error("Você precisa conceder permissão para acessar os serviços Google nas configurações", {
@@ -179,7 +156,7 @@ export function useMessageHandler(
         success: false
       };
     }
-  }, [isGoogleConnected, verifyGooglePermissions, googleTokens]);
+  }, [isGoogleServiceAvailable, checkGooglePermissions]);
 
   /**
    * Função principal para enviar mensagens aos modelos
@@ -353,6 +330,7 @@ export function useMessageHandler(
     sendMessage,
     isSending,
     detectContentType: messageProcessing.detectContentType,
-    detectGoogleServiceCommand
+    detectGoogleServiceCommand,
+    isGoogleServiceAvailable
   };
 }

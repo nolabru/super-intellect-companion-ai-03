@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, LogOut, RefreshCw } from 'lucide-react';
+import { Loader2, LogOut, RefreshCw, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -43,11 +43,11 @@ const GoogleIntegrationsPage: React.FC = () => {
   const { 
     isGoogleConnected, 
     loading: googleLoading,
+    permissionsVerified,
     checkGooglePermissions,
     disconnectGoogle
   } = useGoogleAuth();
   const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
-  const [permissionsVerified, setPermissionsVerified] = useState(false);
   const navigate = useNavigate();
 
   // Check authentication
@@ -57,13 +57,24 @@ const GoogleIntegrationsPage: React.FC = () => {
     }
   }, [authLoading, user, navigate]);
 
-  // Check permissions status from localStorage on component mount
+  // Verificar permissões ao carregar a página
   useEffect(() => {
-    if (isGoogleConnected) {
-      const storedPermissionsVerified = localStorage.getItem('google_permissions_verified') === 'true';
-      setPermissionsVerified(storedPermissionsVerified);
-    }
-  }, [isGoogleConnected]);
+    const verifyIfNeeded = async () => {
+      if (isGoogleConnected && !permissionsVerified && !isCheckingPermissions) {
+        setIsCheckingPermissions(true);
+        try {
+          console.log("[GoogleIntegrationsPage] Verificando permissões automaticamente");
+          await checkGooglePermissions();
+        } catch (error) {
+          console.error("[GoogleIntegrationsPage] Erro ao verificar permissões:", error);
+        } finally {
+          setIsCheckingPermissions(false);
+        }
+      }
+    };
+    
+    verifyIfNeeded();
+  }, [isGoogleConnected, permissionsVerified, isCheckingPermissions, checkGooglePermissions]);
 
   // Handle URL params after OAuth redirection
   useEffect(() => {
@@ -71,9 +82,6 @@ const GoogleIntegrationsPage: React.FC = () => {
     
     // Check if we have a success parameter from the OAuth flow
     if (urlParams.has('success') && urlParams.get('success') === 'true') {
-      // Update UI to reflect successful connection
-      setPermissionsVerified(true);
-      
       // Clean URL to prevent reprocessing
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -106,7 +114,6 @@ const GoogleIntegrationsPage: React.FC = () => {
   const handleDisconnectGoogle = async () => {
     try {
       await disconnectGoogle();
-      setPermissionsVerified(false);
       toast.success('Conta Google desconectada', { 
         description: 'Sua conta Google foi desconectada com sucesso.'
       });
@@ -125,12 +132,10 @@ const GoogleIntegrationsPage: React.FC = () => {
     try {
       const result = await checkGooglePermissions();
       if (result) {
-        setPermissionsVerified(true);
         toast.success('Permissões verificadas', {
           description: 'Suas permissões do Google foram verificadas com sucesso.'
         });
       } else {
-        setPermissionsVerified(false);
         toast.error('Verificação falhou', {
           description: 'Não foi possível verificar suas permissões do Google. Tente reconectar sua conta.',
           action: {
@@ -166,6 +171,20 @@ const GoogleIntegrationsPage: React.FC = () => {
       
       <div className="container p-4 mx-auto mt-8">
         <h1 className="text-3xl font-bold text-white mb-6">Integrações Google</h1>
+        
+        {/* Alerta se conectado mas sem permissões verificadas */}
+        {isGoogleConnected && !permissionsVerified && (
+          <div className="bg-amber-500/20 border border-amber-500/30 rounded-lg p-4 mb-6 text-amber-200 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Permissões pendentes</p>
+              <p className="text-sm mt-1">
+                Sua conta Google está conectada, mas as permissões necessárias não foram verificadas.
+                Clique em "Verificar Permissões" abaixo para completar a configuração.
+              </p>
+            </div>
+          </div>
+        )}
         
         <Card className="bg-inventu-dark border-inventu-gray/30 text-white mb-8">
           <CardHeader>
