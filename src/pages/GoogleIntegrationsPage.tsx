@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleAuth } from '@/contexts/google-auth/GoogleAuthContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +7,7 @@ import AppHeader from '@/components/AppHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, LogOut } from 'lucide-react';
+import { Loader2, LogOut, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -40,15 +40,44 @@ const GOOGLE_SCOPES = [
 
 const GoogleIntegrationsPage: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { isGoogleConnected, loading: googleLoading } = useGoogleAuth();
+  const { 
+    isGoogleConnected, 
+    loading: googleLoading,
+    checkGooglePermissions,
+    disconnectGoogle
+  } = useGoogleAuth();
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(false);
+  const [permissionsVerified, setPermissionsVerified] = useState(false);
   const navigate = useNavigate();
 
   // Check authentication
-  React.useEffect(() => {
+  useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
     }
   }, [authLoading, user, navigate]);
+
+  // Check permissions status from localStorage on component mount
+  useEffect(() => {
+    if (isGoogleConnected) {
+      const storedPermissionsVerified = localStorage.getItem('google_permissions_verified') === 'true';
+      setPermissionsVerified(storedPermissionsVerified);
+    }
+  }, [isGoogleConnected]);
+
+  // Handle URL params after OAuth redirection
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Check if we have a success parameter from the OAuth flow
+    if (urlParams.has('success') && urlParams.get('success') === 'true') {
+      // Update UI to reflect successful connection
+      setPermissionsVerified(true);
+      
+      // Clean URL to prevent reprocessing
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleConnectGoogle = async () => {
     try {
@@ -76,17 +105,47 @@ const GoogleIntegrationsPage: React.FC = () => {
 
   const handleDisconnectGoogle = async () => {
     try {
-      // Since we're using Supabase native auth, we'll sign out and redirect to auth
-      await signOut();
+      await disconnectGoogle();
+      setPermissionsVerified(false);
       toast.success('Conta Google desconectada', { 
         description: 'Sua conta Google foi desconectada com sucesso.'
       });
-      navigate('/auth');
     } catch (error) {
       console.error('Erro ao desconectar Google:', error);
       toast.error('Erro ao desconectar', { 
         description: 'Não foi possível desconectar sua conta Google.'
       });
+    }
+  };
+
+  const handleRefreshPermissions = async () => {
+    if (!isGoogleConnected) return;
+    
+    setIsCheckingPermissions(true);
+    try {
+      const result = await checkGooglePermissions();
+      if (result) {
+        setPermissionsVerified(true);
+        toast.success('Permissões verificadas', {
+          description: 'Suas permissões do Google foram verificadas com sucesso.'
+        });
+      } else {
+        setPermissionsVerified(false);
+        toast.error('Verificação falhou', {
+          description: 'Não foi possível verificar suas permissões do Google. Tente reconectar sua conta.',
+          action: {
+            label: "Reconectar",
+            onClick: handleConnectGoogle
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao verificar permissões:', error);
+      toast.error('Erro na verificação', {
+        description: 'Ocorreu um erro ao verificar suas permissões do Google.'
+      });
+    } finally {
+      setIsCheckingPermissions(false);
     }
   };
 
@@ -113,9 +172,15 @@ const GoogleIntegrationsPage: React.FC = () => {
             <CardTitle className="flex items-center gap-2">
               Status da Conexão
               {isGoogleConnected ? (
-                <Badge variant="outline" className="bg-green-500/20 text-green-400 ml-2">
-                  Conectado
-                </Badge>
+                permissionsVerified ? (
+                  <Badge variant="outline" className="bg-green-500/20 text-green-400 ml-2">
+                    Conectado e Verificado
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 ml-2">
+                    Conectado (Não Verificado)
+                  </Badge>
+                )
               ) : (
                 <Badge variant="outline" className="bg-red-500/20 text-red-400 ml-2">
                   Desconectado
@@ -131,7 +196,9 @@ const GoogleIntegrationsPage: React.FC = () => {
             {isGoogleConnected ? (
               <div className="text-sm text-inventu-gray space-y-1">
                 <p>
-                  Sua conta Google está conectada e o orquestrador pode usar os serviços autorizados.
+                  Sua conta Google está conectada {permissionsVerified ? 
+                    "e todas as permissões foram verificadas. O orquestrador pode usar os serviços autorizados." : 
+                    "mas suas permissões não foram verificadas completamente. Clique em 'Verificar Permissões' abaixo."}
                 </p>
                 <p>
                   O orquestrador utiliza estas permissões para realizar tarefas automatizadas 
@@ -153,14 +220,29 @@ const GoogleIntegrationsPage: React.FC = () => {
           
           <CardFooter className="flex flex-wrap gap-2">
             {isGoogleConnected ? (
-              <Button
-                variant="destructive"
-                onClick={handleDisconnectGoogle}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Desconectar Google
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleRefreshPermissions}
+                  disabled={isCheckingPermissions}
+                  className="bg-inventu-dark border-inventu-gray/50 hover:bg-inventu-gray/20"
+                >
+                  {isCheckingPermissions ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Verificar Permissões
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDisconnectGoogle}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Desconectar Google
+                </Button>
+              </>
             ) : (
               <Button onClick={handleConnectGoogle} className="bg-inventu-blue hover:bg-inventu-blue/80">
                 Conectar com Google
@@ -178,9 +260,13 @@ const GoogleIntegrationsPage: React.FC = () => {
                 <CardTitle className="flex items-center gap-2">
                   <span className="text-2xl">{service.icon}</span>
                   {service.name}
-                  {isGoogleConnected ? (
+                  {isGoogleConnected && permissionsVerified ? (
                     <Badge variant="outline" className="bg-green-500/20 text-green-400 ml-auto">
                       Autorizado
+                    </Badge>
+                  ) : isGoogleConnected ? (
+                    <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 ml-auto">
+                      Pendente
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="bg-gray-500/20 text-gray-400 ml-auto">
