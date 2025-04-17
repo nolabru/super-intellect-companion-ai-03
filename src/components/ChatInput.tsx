@@ -151,12 +151,23 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                message.trim().startsWith('@sheet') || 
                                message.trim().startsWith('@calendar');
 
+  // Get the specific Google service being used
+  const getGoogleServiceType = () => {
+    if (message.trim().startsWith('@drive')) return 'Google Drive';
+    if (message.trim().startsWith('@sheet')) return 'Google Sheets';
+    if (message.trim().startsWith('@calendar')) return 'Google Calendar';
+    return '';
+  };
+
   return (
     <div className="relative mt-3">
       {/* Google Service Command Alert */}
       {isGoogleServiceCommand && (
         <div className="mb-2 p-2 bg-blue-500/20 border border-blue-500/30 rounded-md text-sm">
-          <span className="font-semibold">Modo Serviço Google:</span> {message.trim().startsWith('@drive') ? 'Google Drive' : message.trim().startsWith('@sheet') ? 'Google Sheets' : 'Google Calendar'}
+          <span className="font-semibold">Modo Serviço Google:</span> {getGoogleServiceType()}
+          <p className="text-xs text-inventu-gray mt-1">
+            Forneça detalhes do que deseja criar, como título e conteúdo
+          </p>
         </div>
       )}
       

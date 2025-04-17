@@ -58,7 +58,7 @@ export function useMessageHandler(
   // Detectar se mensagem é um comando de serviço Google
   const detectGoogleServiceCommand = useCallback((content: string): boolean => {
     const googleServiceCommands = ['@drive', '@sheet', '@calendar'];
-    return googleServiceCommands.some(cmd => content.trim().startsWith(cmd));
+    return googleServiceCommands.some(cmd => content.trim().toLowerCase().startsWith(cmd));
   }, []);
 
   /**
@@ -96,8 +96,9 @@ export function useMessageHandler(
       const googleActionPattern = /cri[ea]r? (uma? )?(evento|reuni[aã]o|compromisso|documento|planilha|spreadsheet|doc)/i;
       const needsGooglePermissions = isGoogleServiceCommand || googleActionPattern.test(content);
       
+      let hasGooglePermissions = false;
       if (user && user.id && needsGooglePermissions) {
-        const hasGooglePermissions = await verifyGooglePermissions();
+        hasGooglePermissions = await verifyGooglePermissions();
         if (!hasGooglePermissions && isGoogleConnected) {
           console.log('[useMessageHandler] Usuário não tem permissões adequadas para o Google');
           // Continuamos mesmo sem permissões, o orquestrador lidará com isso
