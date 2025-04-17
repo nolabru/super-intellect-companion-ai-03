@@ -15,59 +15,49 @@ export interface ModelInfo {
 }
 
 export const AVAILABLE_MODELS: ModelInfo[] = [
-// OpenAI Models
-{
-  id: 'gpt-4o',
-  displayName: 'GPT-4o',
-  provider: 'openai',
-  capabilities: ['Raciocínio avançado', 'Análise de imagens', 'Conhecimento atualizado até Apr 2023'],
-  description: 'Modelo mais poderoso da OpenAI, com excelente raciocínio e análise de imagens.',
-  modes: ['text']
-}, {
-  id: 'gpt-4o-mini',
-  displayName: 'GPT-4o Mini',
-  provider: 'openai',
-  capabilities: ['Raciocínio rápido', 'Análise de imagens', 'Bom custo-benefício'],
-  description: 'Versão mais rápida e econômica do GPT-4o, com capacidades multimodais.',
-  modes: ['text']
-}, {
-  id: 'gpt-3.5-turbo',
-  displayName: 'GPT-3.5 Turbo',
-  provider: 'openai',
-  capabilities: ['Respostas rápidas', 'Bom custo-benefício'],
-  description: 'Modelo equilibrado entre custo e capacidade.',
-  modes: ['text']
-}, {
-  id: 'gpt-4.5-preview',
-  displayName: 'GPT-4.5 Preview',
-  provider: 'openai',
-  capabilities: ['Raciocínio superior', 'Compreensão contextual avançada', 'Conhecimento atualizado'],
-  description: 'Versão prévia do GPT-4.5 com raciocínio superior e novas capacidades.',
-  modes: ['text']
-}, {
-  id: 'dall-e-3',
-  displayName: 'DALL-E 3',
-  provider: 'openai',
-  capabilities: ['Geração de imagens realistas', 'Seguir instruções detalhadas'],
-  description: 'Gerador de imagens avançado da OpenAI.',
-  modes: ['image']
-},
-// Luma AI Models
-{
-  id: 'luma-video',
-  displayName: 'Luma Video',
-  provider: 'luma',
-  capabilities: ['Geração de vídeos', 'Movimentos fluidos'],
-  description: 'Gerador de vídeos curtos com movimentos naturais.',
-  modes: ['video']
-}, {
-  id: 'luma-image',
-  displayName: 'Luma Image',
-  provider: 'luma',
-  capabilities: ['Imagens 3D', 'Visualização especial'],
-  description: 'Criação de imagens com representação tridimensional.',
-  modes: ['image']
-}
+  // OpenAI Models - text and image
+  {
+    id: 'gpt-4o',
+    displayName: 'GPT-4o',
+    provider: 'openai',
+    capabilities: ['Raciocínio avançado', 'Análise de imagens', 'Conhecimento atualizado até Apr 2023'],
+    description: 'Modelo mais poderoso da OpenAI, com excelente raciocínio e análise de imagens.',
+    modes: ['text']
+  }, 
+  {
+    id: 'dall-e-3',
+    displayName: 'DALL-E 3',
+    provider: 'openai',
+    capabilities: ['Geração de imagens realistas', 'Seguir instruções detalhadas'],
+    description: 'Gerador de imagens avançado da OpenAI.',
+    modes: ['image']
+  },
+  // Luma AI Models - image and video
+  {
+    id: 'luma-video',
+    displayName: 'Luma Video',
+    provider: 'luma',
+    capabilities: ['Geração de vídeos', 'Movimentos fluidos'],
+    description: 'Gerador de vídeos curtos com movimentos naturais.',
+    modes: ['video']
+  }, 
+  {
+    id: 'luma-image',
+    displayName: 'Luma Image',
+    provider: 'luma',
+    capabilities: ['Imagens 3D', 'Visualização especial'],
+    description: 'Criação de imagens com representação tridimensional.',
+    modes: ['image']
+  },
+  // ElevenLabs Models - audio
+  {
+    id: 'elevenlabs-tts',
+    displayName: 'ElevenLabs Text-to-Speech',
+    provider: 'elevenlabs',
+    capabilities: ['Conversão de texto em áudio', 'Múltiplas vozes', 'Alta qualidade de síntese de voz'],
+    description: 'Serviço de conversão de texto em áudio com vozes naturais e personalizáveis.',
+    modes: ['audio']
+  }
 ];
 
 export const getModelsByMode = (mode: ModelMode): ModelInfo[] => {
