@@ -1,9 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Send, Paperclip } from 'lucide-react';
+import { Send, Paperclip, Calendar, FileSpreadsheet, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
 import { CommandMenu } from './CommandMenu';
-import { calendar, fileSpreadsheet, fileText } from 'lucide-react';
 
 interface MessageInputProps {
   message: string;
