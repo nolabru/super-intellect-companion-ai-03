@@ -20,18 +20,22 @@ export function validateApiKey(apiKeyName: string, apiKey: string | undefined): 
     console.warn(`Aviso: ${apiKeyName} parece não estar no formato esperado (esperado: 'luma_...' ou 'luma-...')`);
   }
   
-  // Verificação específica para Kligin
-  if (apiKeyName === 'KLIGIN_API_KEY' && apiKey.length < 20) {
-    console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Chaves Kligin geralmente têm pelo menos 20 caracteres. Valor fornecido: ${apiKey.substring(0, 5)}...`);
-  } else if (apiKeyName === 'KLIGIN_API_KEY') {
-    console.log(`${apiKeyName} parece estar no formato correto.`);
+  // Verificação específica para Kligin API Key
+  if (apiKeyName === 'KLIGIN_API_KEY') {
+    if (apiKey.length < 20) {
+      console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Chaves Kligin geralmente têm pelo menos 20 caracteres. Valor fornecido: ${apiKey.substring(0, 5)}...`);
+    } else {
+      console.log(`${apiKeyName} parece estar no formato correto.`);
+    }
   }
   
   // Verificação específica para Kligin Secret
-  if (apiKeyName === 'KLIGIN_API_SECRET' && apiKey.length < 20) {
-    console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Segredos Kligin geralmente têm pelo menos 20 caracteres. Valor fornecido: ${apiKey.substring(0, 5)}...`);
-  } else if (apiKeyName === 'KLIGIN_API_SECRET') {
-    console.log(`${apiKeyName} parece estar no formato correto.`);
+  if (apiKeyName === 'KLIGIN_API_SECRET') {
+    if (apiKey.length < 20) {
+      console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Segredos Kligin geralmente têm pelo menos 20 caracteres. Valor fornecido: ${apiKey.substring(0, 5)}...`);
+    } else {
+      console.log(`${apiKeyName} parece estar no formato correto.`);
+    }
   }
   
   // Log seguro para confirmar que a chave foi encontrada (sem expor a chave completa)

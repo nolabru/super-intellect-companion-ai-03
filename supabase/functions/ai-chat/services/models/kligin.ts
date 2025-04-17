@@ -31,11 +31,6 @@ async function generateJwtToken(): Promise<string> {
     
     const now = Math.floor(Date.now() / 1000);
     
-    const header = {
-      alg: "HS256",
-      typ: "JWT"
-    };
-    
     const payload = {
       iss: KLIGIN_API_KEY,
       exp: now + 1800, // Valid for 30 minutes
@@ -43,6 +38,8 @@ async function generateJwtToken(): Promise<string> {
     };
     
     // Create the JWT token using Deno's JWT library
+    const header = { alg: "HS256", typ: "JWT" };
+    
     return await jwt.create(header, payload, new TextEncoder().encode(KLIGIN_API_SECRET));
   } catch (error) {
     console.error("[Kligin] Error generating JWT token:", error);
@@ -123,7 +120,7 @@ export async function generateVideo(
     if (useFixedCredentials) {
       console.log("[Kligin] Using fixed credentials for debugging");
       const fixedApiKey = Deno.env.get("FIXED_KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
-      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "f2cd56e7a4af4fdca8d27291bad9efde";
+      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "3dd57f873a1745c3a21f972a8024b456";
       setApiCredentials(fixedApiKey, fixedApiSecret);
     } else {
       const credentials = verifyApiCredentials();
@@ -257,7 +254,7 @@ export async function generateImage(
     if (useFixedCredentials) {
       console.log("[Kligin] Using fixed credentials for debugging");
       const fixedApiKey = Deno.env.get("FIXED_KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
-      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "f2cd56e7a4af4fdca8d27291bad9efde";
+      const fixedApiSecret = Deno.env.get("FIXED_KLIGIN_API_SECRET") || "3dd57f873a1745c3a21f972a8024b456";
       setApiCredentials(fixedApiKey, fixedApiSecret);
     } else {
       const credentials = verifyApiCredentials();
