@@ -239,7 +239,7 @@ export function useMessageHandler(
         content,
         sender: 'user',
         timestamp: new Date().toISOString(),
-        mode,
+        mode: isGoogleServiceCommand ? 'google-service' : mode,
         files,
         model: targetModel
       };
@@ -268,7 +268,7 @@ export function useMessageHandler(
             content: googleResponse.content,
             sender: 'assistant',
             timestamp: new Date().toISOString(),
-            mode: googleResponse.isFollowupPrompt ? 'google-service' : 'text',
+            mode: 'google-service',
             model: modelId
           };
           
