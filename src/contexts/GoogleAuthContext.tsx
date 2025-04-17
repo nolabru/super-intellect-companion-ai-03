@@ -3,12 +3,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { GoogleTokens } from './contexts/google-auth/types';
+import { GoogleTokens } from '@/contexts/google-auth/types';
 import { 
   refreshGoogleTokens as refreshGoogleTokensOperation,
   checkGooglePermissions as checkGooglePermissionsOperation,
   disconnectGoogle as disconnectGoogleOperation 
-} from './contexts/google-auth/googleAuthOperations';
+} from '@/contexts/google-auth/googleAuthOperations';
 
 type GoogleAuthContextType = {
   googleTokens: GoogleTokens | null;
@@ -38,23 +38,21 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       try {
-        // Use the generic Supabase functions to avoid typing issues
+        // Use RPC function to avoid type issues with direct table access
         const { data, error } = await supabase
-          .from('user_google_tokens')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
+          .rpc('get_google_tokens_for_user', { user_id_param: user.id });
 
         if (error) {
           console.error('Error fetching Google tokens:', error);
           setGoogleTokens(null);
           setIsGoogleConnected(false);
-        } else if (data) {
-          // Safe type casting after successful query
+        } else if (data && data.length > 0) {
+          // Type assertion since we know the structure
+          const tokenData = data[0] as any;
           setGoogleTokens({
-            accessToken: data.access_token,
-            refreshToken: data.refresh_token,
-            expiresAt: data.expires_at,
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: tokenData.expires_at,
           });
           setIsGoogleConnected(true);
         } else {
@@ -106,17 +104,16 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (user) {
             // Refetch tokens after authentication
             try {
+              // Using RPC function instead of direct table access
               const { data } = await supabase
-                .from('user_google_tokens')
-                .select('*')
-                .eq('user_id', user.id)
-                .single();
+                .rpc('get_google_tokens_for_user', { user_id_param: user.id });
                 
-              if (data) {
+              if (data && data.length > 0) {
+                const tokenData = data[0] as any;
                 setGoogleTokens({
-                  accessToken: data.access_token,
-                  refreshToken: data.refresh_token,
-                  expiresAt: data.expires_at,
+                  accessToken: tokenData.access_token,
+                  refreshToken: tokenData.refresh_token,
+                  expiresAt: tokenData.expires_at,
                 });
                 setIsGoogleConnected(true);
                 

@@ -87,11 +87,9 @@ export const disconnectGoogle = async (
   if (!user) return;
 
   try {
-    // Delete tokens from Supabase
+    // Using RPC function to delete tokens
     const { error } = await supabase
-      .from('user_google_tokens')
-      .delete()
-      .eq('user_id', user.id);
+      .rpc('delete_google_tokens_for_user', { user_id_param: user.id });
 
     if (error) {
       throw error;
