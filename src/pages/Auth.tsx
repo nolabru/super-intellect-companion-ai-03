@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,8 +10,8 @@ import { Loader2 } from 'lucide-react';
 
 type AuthMode = 'login' | 'signup';
 
-// Use the production URL for site and redirect
-const SITE_URL = 'https://seu-site-de-producao.com';
+// Use the correct production URL for site and redirect
+const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
 // Google scopes needed for the application
 const GOOGLE_SCOPES = [
@@ -244,4 +243,3 @@ const Auth: React.FC = () => {
 };
 
 export default Auth;
-

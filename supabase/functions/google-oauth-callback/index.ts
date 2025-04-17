@@ -17,7 +17,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Define production URL
-const SITE_URL = 'https://seu-site-de-producao.com';
+const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
