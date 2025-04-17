@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { ChatMode } from '@/components/ModeSelector';
 import { memoryService } from '@/services/memoryService';
+import { filterMessagesForContext, formatMessagesForContext } from '@/utils/contextUtils';
 
 /**
  * Hook para processar mensagens de usuário, extrair memória e preparar contexto
@@ -70,10 +71,13 @@ export function useMessageProcessing(userId?: string) {
     
     console.log(`[useMessageProcessing] Preparando histórico com ${messages.length} mensagens`);
     
-    // Incluir até 15 mensagens recentes para o contexto
-    const recentMessages = messages.slice(-15);
+    // Usar funções de contexto para manter a consistência
+    const filteredMessages = messages.filter(msg => 
+      msg.sender === 'user' || msg.sender === 'assistant'
+    ).slice(-15);
     
-    const formattedHistory = recentMessages.map(msg => {
+    // Formatar mensagens de maneira consistente
+    const formattedHistory = filteredMessages.map(msg => {
       const role = msg.sender === 'user' ? 'Usuário' : 'Assistente';
       
       // Limpar conteúdo muito grande
