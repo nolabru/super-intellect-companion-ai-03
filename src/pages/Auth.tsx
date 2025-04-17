@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 type AuthMode = 'login' | 'signup';
 
 // Use the correct production URL
-const SITE_URL = 'https://super-intellect-companion-ai.lovable.app';
+const SITE_URL = window.location.origin;
 
 // Google scopes needed for the application
 const GOOGLE_SCOPES = [
@@ -48,24 +48,25 @@ const Auth: React.FC = () => {
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
       if (params.has('error') || params.has('error_description')) {
-        const errorMessage = params.get('error_description') || 'Authentication error';
-        toast.error('Authentication error', { description: errorMessage });
+        const errorMessage = params.get('error_description') || 'Erro de autenticação';
+        toast.error('Erro de autenticação', { description: errorMessage });
         return;
       }
 
       if (hashParams.has('access_token') || params.has('provider')) {
         // Successfully authenticated via Google
         try {
+          console.log('Processing successful auth redirect');
           const { data } = await supabase.auth.getSession();
           if (data.session) {
-            toast.success('Login successful', { 
-              description: 'You will be redirected...'
+            toast.success('Login bem-sucedido', { 
+              description: 'Você será redirecionado...'
             });
             navigate('/');
           }
         } catch (error) {
-          toast.error('Error processing login', { 
-            description: 'Please try again.'
+          toast.error('Erro ao processar login', { 
+            description: 'Por favor, tente novamente.'
           });
         }
       }
@@ -88,8 +89,8 @@ const Auth: React.FC = () => {
         if (error) throw error;
         
         toast.success(
-          "Registration completed!",
-          { description: "Check your email to confirm your account." }
+          "Cadastro concluído!",
+          { description: "Verifique seu email para confirmar sua conta." }
         );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -103,7 +104,7 @@ const Auth: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(
-        "Error", 
+        "Erro", 
         { description: error.message }
       );
     } finally {
@@ -114,6 +115,7 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      console.log('Starting Google sign in process');
       // For OAuth signIn, we specify the full callback URL
       const redirectTo = `${SITE_URL}/auth`;
       
@@ -131,8 +133,9 @@ const Auth: React.FC = () => {
 
       if (error) throw error;
     } catch (error: any) {
+      console.error('Error during Google sign in:', error);
       toast.error(
-        "Error signing in with Google", 
+        "Erro ao entrar com Google", 
         { description: error.message }
       );
       setLoading(false);

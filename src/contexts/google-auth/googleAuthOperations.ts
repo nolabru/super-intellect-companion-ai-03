@@ -11,10 +11,12 @@ export const refreshGoogleTokens = async (
   setGoogleTokens: (tokens: GoogleTokens) => void
 ): Promise<boolean> => {
   if (!user || !googleTokens?.refreshToken) {
+    console.log('Cannot refresh tokens: missing user or refresh token');
     return false;
   }
 
   try {
+    console.log('Refreshing Google tokens...');
     // Call to the Edge function that will refresh the token
     const { data, error } = await supabase.functions.invoke('google-token-refresh', {
       body: { 
@@ -29,6 +31,7 @@ export const refreshGoogleTokens = async (
     }
 
     if (data && data.success) {
+      console.log('Google tokens refreshed successfully');
       // Update state with new tokens
       setGoogleTokens({
         accessToken: data.accessToken,
@@ -38,9 +41,10 @@ export const refreshGoogleTokens = async (
       return true;
     }
 
+    console.log('Failed to refresh tokens:', data);
     return false;
   } catch (error) {
-    console.error('Error refreshing Google tokens:', error);
+    console.error('Exception refreshing Google tokens:', error);
     return false;
   }
 };
@@ -51,19 +55,31 @@ export const checkGooglePermissions = async (
   googleTokens: GoogleTokens | null,
   refreshTokensFunc: () => Promise<boolean>
 ): Promise<boolean> => {
-  if (!user || !googleTokens?.accessToken) {
+  if (!user) {
+    console.log('No user found for Google permission check');
+    return false;
+  }
+  
+  if (!googleTokens?.accessToken) {
+    console.log('No Google tokens found for permission check');
     return false;
   }
 
   // Check if token is expired
   const now = Math.floor(Date.now() / 1000);
   if (googleTokens.expiresAt && googleTokens.expiresAt < now) {
+    console.log('Google token expired, attempting to refresh');
     // Token expired, try to refresh
     const refreshed = await refreshTokensFunc();
-    if (!refreshed) return false;
+    if (!refreshed) {
+      console.log('Failed to refresh expired token');
+      return false;
+    }
+    console.log('Token refreshed successfully');
   }
 
   try {
+    console.log('Verifying Google permissions with token');
     // Call a simple Google API to check if the token is working
     const { data, error } = await supabase.functions.invoke('google-verify-permissions', {
       body: { 
@@ -71,9 +87,15 @@ export const checkGooglePermissions = async (
       }
     });
 
+    if (error) {
+      console.error('Error calling permission verification:', error);
+      return false;
+    }
+
+    console.log('Permission verification response:', data);
     return data?.success || false;
   } catch (error) {
-    console.error('Error verifying Google permissions:', error);
+    console.error('Exception verifying Google permissions:', error);
     return false;
   }
 };
@@ -102,14 +124,14 @@ export const disconnectGoogle = async (
     setIsGoogleConnected(false);
 
     toast.success(
-      'Google disconnected',
-      { description: 'Your Google account was successfully disconnected.' }
+      'Google desconectado',
+      { description: 'Sua conta Google foi desconectada com sucesso.' }
     );
   } catch (error) {
     console.error('Error disconnecting Google:', error);
     toast.error(
-      'Error disconnecting',
-      { description: 'Could not disconnect your Google account.' }
+      'Erro ao desconectar',
+      { description: 'Não foi possível desconectar sua conta Google.' }
     );
   }
 };

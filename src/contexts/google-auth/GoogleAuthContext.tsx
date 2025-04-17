@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,8 +26,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Update tokens when session changes
   useEffect(() => {
-    fetchGoogleTokens(session);
-  }, [session]);
+    if (session) {
+      console.log('Session changed, fetching Google tokens');
+      fetchGoogleTokens(session);
+    }
+  }, [session, fetchGoogleTokens]);
 
   // Check after Google OAuth login
   useEffect(() => {
@@ -37,7 +40,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
       // Check if this is a redirect after OAuth login
-      if (urlParams.has('provider') || hashParams.has('access_token')) {
+      if (urlParams.has('provider') || hashParams.has('access_token') || urlParams.has('success')) {
         console.log('Processing OAuth redirect');
         
         // Give Supabase time to process the login
@@ -50,8 +53,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Notify user
             if (isGoogleConnected) {
               toast.success(
-                'Google connected successfully!',
-                { description: 'Your Google account has been connected.' }
+                'Google conectado com sucesso!',
+                { description: 'Sua conta Google foi conectada.' }
               );
             }
           }
@@ -60,7 +63,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     checkAuthRedirect();
-  }, []);
+  }, [fetchGoogleTokens, isGoogleConnected]);
 
   // Function to refresh Google tokens (wrap the operation)
   const refreshGoogleTokens = async (): Promise<boolean> => {
@@ -73,11 +76,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Function to check Google permissions (wrap the operation)
   const checkGooglePermissions = async (): Promise<boolean> => {
-    return await checkGooglePermissionsOperation(
+    const result = await checkGooglePermissionsOperation(
       user, 
       googleTokens, 
       refreshGoogleTokens
     );
+    
+    console.log('Google permissions check result:', result);
+    return result;
   };
 
   // Function to disconnect Google (wrap the operation)
@@ -89,17 +95,17 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     );
   };
 
+  const contextValue = {
+    googleTokens, 
+    isGoogleConnected, 
+    loading, 
+    refreshGoogleTokens,
+    checkGooglePermissions,
+    disconnectGoogle
+  };
+
   return (
-    <GoogleAuthContext.Provider 
-      value={{ 
-        googleTokens, 
-        isGoogleConnected, 
-        loading, 
-        refreshGoogleTokens,
-        checkGooglePermissions,
-        disconnectGoogle
-      }}
-    >
+    <GoogleAuthContext.Provider value={contextValue}>
       {children}
     </GoogleAuthContext.Provider>
   );
