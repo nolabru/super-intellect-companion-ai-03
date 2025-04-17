@@ -125,43 +125,9 @@ export function useMessageHandler(
         messages.map(msg => ({ sender: msg.sender, content: msg.content }))
       );
       
-      // Criar mensagem do usuário
-      const userMessageId = uuidv4();
-      let targetModel: string | undefined;
-      
-      // Determinar qual modelo receberá a mensagem
-      if (comparing) {
-        if (!leftModel && rightModel) {
-          targetModel = rightModel;
-        } else if (leftModel && !rightModel) {
-          targetModel = leftModel;
-        } else if (leftModel && rightModel) {
-          targetModel = undefined;
-        }
-      } else {
-        targetModel = modelId;
-      }
-      
-      // Criar mensagem do usuário com modelo alvo explicitamente definido
-      const userMessage: MessageType = {
-        id: userMessageId,
-        content,
-        sender: 'user',
-        timestamp: new Date().toISOString(),
-        mode,
-        files,
-        model: targetModel
-      };
-      
-      setMessages(prev => [...prev, userMessage]);
-      
-      // Salvar mensagem do usuário no banco de dados
-      await saveUserMessage(userMessage, currentConversationId);
-      
-      // Se esta for a primeira mensagem na conversa, atualizar o título
-      if (messages.length === 0 || (messages.length === 1 && messages[0].sender === 'user')) {
-        updateTitle(currentConversationId, content);
-      }
+      // No modo de comparação desvinculado, não criamos mensagem de usuário aqui
+      // porque cada handler (handleSingleModelMessage) criará sua própria
+      // mensagem específica para o modelo
       
       // Melhorar conteúdo com contexto de memória, se necessário
       const enhancedContent = await messageProcessing.enhanceWithMemoryContext(content, messages.length);
@@ -170,7 +136,20 @@ export function useMessageHandler(
       let modeSwitch = null;
       
       if (comparing && leftModel && rightModel) {
-        // Modo de comparação - ambos os modelos
+        // Modo de comparação - ambos os modelos (vinculado)
+        // Aqui criamos uma única mensagem de usuário sem modelo específico
+        const userMessageId = uuidv4();
+        const userMessage: MessageType = {
+          id: userMessageId,
+          content,
+          sender: 'user',
+          timestamp: new Date().toISOString(),
+          mode
+        };
+        
+        setMessages(prev => [...prev, userMessage]);
+        await saveUserMessage(userMessage, currentConversationId);
+        
         const result = await messageService.handleCompareModels(
           enhancedContent,
           mode,
@@ -186,6 +165,7 @@ export function useMessageHandler(
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && leftModel && !rightModel) {
         // Modo destacado - apenas modelo esquerdo
+        // Não criamos mensagem de usuário aqui, o handler fará isso
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -202,6 +182,7 @@ export function useMessageHandler(
         modeSwitch = result?.modeSwitch || null;
       } else if (comparing && !leftModel && rightModel) {
         // Modo destacado - apenas modelo direito
+        // Não criamos mensagem de usuário aqui, o handler fará isso
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -218,6 +199,20 @@ export function useMessageHandler(
         modeSwitch = result?.modeSwitch || null;
       } else {
         // Modo padrão - modelo único
+        // Criamos uma mensagem de usuário genérica
+        const userMessageId = uuidv4();
+        const userMessage: MessageType = {
+          id: userMessageId,
+          content,
+          sender: 'user',
+          timestamp: new Date().toISOString(),
+          mode,
+          files
+        };
+        
+        setMessages(prev => [...prev, userMessage]);
+        await saveUserMessage(userMessage, currentConversationId);
+        
         const result = await messageService.handleSingleModelMessage(
           enhancedContent,
           mode,
@@ -232,6 +227,11 @@ export function useMessageHandler(
         );
         
         modeSwitch = result?.modeSwitch || null;
+      }
+      
+      // Se esta for a primeira mensagem na conversa, atualizar o título
+      if (messages.length === 0 || (messages.length === 1 && messages[0].sender === 'user')) {
+        updateTitle(currentConversationId, content);
       }
       
       return { 

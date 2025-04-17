@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -52,11 +53,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     });
     
     if (isCompareMode) {
-      // In compare mode, show only messages specifically for this model
+      // No modo de comparação, mostrar apenas mensagens especificamente para este modelo
+      // ou mensagens do usuário destinadas a este modelo
       return msg.model === model || 
              (msg.sender === 'user' && msg.model === model);
     } else {
-      // In single mode, show all user messages and messages for this model
+      // No modo único, mostrar todas as mensagens do usuário e mensagens para este modelo
       return msg.sender === 'user' || 
              (msg.sender === 'assistant' && msg.model === model);
     }

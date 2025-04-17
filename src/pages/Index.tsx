@@ -98,11 +98,13 @@ const Index: React.FC = () => {
           return;
         }
         
+        // No modo desvinculado, não estamos em modo de comparação verdadeiro
+        // para o modelo específico, então definimos comparing como false
         result = await sendMessage(
           content,
           activeMode,
           targetModel,
-          false, // Não é comparação simultânea, é apenas para um modelo
+          true, // Mantemos o modo de comparação, mas indicamos qual é o modelo-alvo específico
           targetModel === leftModel ? leftModel : null,
           targetModel === rightModel ? rightModel : null,
           files,
