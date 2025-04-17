@@ -19,6 +19,7 @@ export const useGoogleTokens = () => {
     }
 
     try {
+      console.log(`[useGoogleTokens] Fetching tokens for user: ${session.user.id}`);
       // Use the generic Supabase functions to avoid typing issues
       const { data, error } = await supabase
         .from('user_google_tokens' as any)
@@ -30,6 +31,7 @@ export const useGoogleTokens = () => {
         setGoogleTokens(null);
         setIsGoogleConnected(false);
       } else if (data && data.length > 0) {
+        console.log('[useGoogleTokens] Tokens found:', data[0]);
         // Force type casting since TypeScript doesn't know about this table
         const tokenData = data[0] as unknown as UserGoogleToken;
         setGoogleTokens({
@@ -39,6 +41,7 @@ export const useGoogleTokens = () => {
         });
         setIsGoogleConnected(true);
       } else {
+        console.log('[useGoogleTokens] No tokens found for user');
         setGoogleTokens(null);
         setIsGoogleConnected(false);
       }

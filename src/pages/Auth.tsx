@@ -53,21 +53,36 @@ const Auth: React.FC = () => {
         return;
       }
 
-      if (hashParams.has('access_token') || params.has('provider')) {
-        // Successfully authenticated via Google
+      // Check access_token in hash params (for OAuth providers)
+      if (hashParams.has('access_token')) {
         try {
-          const { data } = await supabase.auth.getSession();
-          if (data.session) {
-            toast.success('Login successful', { 
-              description: 'You will be redirected...'
-            });
-            navigate('/');
-          }
+          setLoading(true);
+          
+          // Wait for session to be established
+          setTimeout(async () => {
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+              toast.success('Login successful', { 
+                description: 'You will be redirected...'
+              });
+              navigate('/');
+            } else {
+              toast.error('Login failed', {
+                description: 'Could not establish session. Please try again.'
+              });
+            }
+            setLoading(false);
+          }, 1000);
         } catch (error) {
-          toast.error('Error processing login', { 
+          console.error('Error processing login:', error);
+          toast.error('Login error', { 
             description: 'Please try again.'
           });
+          setLoading(false);
         }
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
 

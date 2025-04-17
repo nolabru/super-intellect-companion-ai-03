@@ -124,7 +124,8 @@ serve(async (req) => {
       return Response.redirect(`${SITE_URL}/google-integrations?error=db_save_failed`)
     }
 
-    // Redirect back to application
+    // Redirect back to application with clear success parameter
+    console.log('Google OAuth flow completed successfully, redirecting back to app')
     return Response.redirect(`${SITE_URL}/google-integrations?success=true`)
   } catch (error) {
     console.error('Error processing OAuth callback:', error)
