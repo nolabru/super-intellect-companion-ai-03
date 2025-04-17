@@ -176,13 +176,16 @@ async function handleAIChat(req: Request): Promise<Response> {
         // Usando token configurado para Kligin
         console.log("[AI-Chat] Modelo Kligin selecionado, verificando configuração do token");
         
-        if (MOCKED_KLIGIN_TOKEN) {
-          kliginService.setMockedToken(MOCKED_KLIGIN_TOKEN);
+        // Set the Kligin API key from env var or use the provided key
+        const kliginApiKey = Deno.env.get("KLIGIN_API_KEY") || "ed7299a2098a4b06a5cb31a50a96dec4";
+        
+        if (kliginApiKey) {
+          kliginService.setMockedToken(kliginApiKey);
           console.log("[AI-Chat] Token Kligin configurado com sucesso");
           
           // Validação opcional para ver se o token funciona
           try {
-            const isValid = await kliginService.testApiKey(MOCKED_KLIGIN_TOKEN);
+            const isValid = await kliginService.testApiKey(kliginApiKey);
             if (!isValid) {
               console.warn("[AI-Chat] O token do Kligin pode não estar funcionando corretamente");
             }

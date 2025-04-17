@@ -1,15 +1,16 @@
 
 import { fetchWithRetry, logError } from "../../utils/logging.ts";
+import { validateApiKey } from "../../utils/validation.ts";
 
 // Kligin API base URL
 const KLIGIN_API_BASE_URL = "https://api.klingai.com";
 
-// Token for authentication (should be replaced with environment variable)
+// Token for authentication (will be set from environment variable)
 let KLIGIN_API_KEY = "";
 
 // Set a mocked token for testing (if needed)
 export function setMockedToken(token: string) {
-  console.log("[Kligin] Setting mocked token");
+  console.log("[Kligin] Setting token");
   KLIGIN_API_KEY = token;
 }
 
@@ -164,7 +165,7 @@ export async function generateImage(
     const apiKey = verifyApiKey();
     console.log(`[Kligin] Generating image with prompt: "${prompt.substring(0, 50)}..."`);
     
-    // Default image parameters - Using a similar structure as the video API but for image generation
+    // Default image parameters
     const imageParams = {
       prompt: prompt,
       negative_prompt: params?.negative_prompt || "",
@@ -175,7 +176,7 @@ export async function generateImage(
     
     console.log(`[Kligin] Image generation parameters:`, JSON.stringify(imageParams, null, 2));
     
-    // Submit image generation task - Assuming the endpoint for image generation
+    // Submit image generation task
     const createTaskResponse = await fetchWithRetry(`${KLIGIN_API_BASE_URL}/v1/images/text2image`, {
       method: "POST",
       headers: {

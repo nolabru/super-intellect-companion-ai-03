@@ -20,6 +20,11 @@ export function validateApiKey(apiKeyName: string, apiKey: string | undefined): 
     console.warn(`Aviso: ${apiKeyName} parece não estar no formato esperado (esperado: 'luma_...' ou 'luma-...')`);
   }
   
+  // Verificação específica para Kligin
+  if (apiKeyName === 'KLIGIN_API_KEY' && apiKey.length !== 32) {
+    console.warn(`Aviso: ${apiKeyName} pode não estar no formato esperado. Chaves Kligin geralmente têm 32 caracteres.`);
+  }
+  
   // Log seguro para confirmar que a chave foi encontrada (sem expor a chave completa)
   console.log(`${apiKeyName} encontrada. Primeiros 5 caracteres: ${apiKey.substring(0, 5)}...`);
 }
