@@ -8,11 +8,12 @@ import {
   CommandList,
 } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar, FileSpreadsheet, FileText } from 'lucide-react';
 
 export interface CommandOption {
   command: string;
   description: string;
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
 }
 
 interface CommandMenuProps {
@@ -25,15 +26,18 @@ interface CommandMenuProps {
 const commands: CommandOption[] = [
   {
     command: '@calendar',
-    description: 'Criar ou gerenciar eventos no Google Calendar'
+    description: 'Criar ou gerenciar eventos no Google Calendar',
+    icon: <Calendar className="mr-2 h-5 w-5 text-purple-500" />
   },
   {
     command: '@sheet',
-    description: 'Ler ou escrever em planilhas do Google Sheets'
+    description: 'Ler ou escrever em planilhas do Google Sheets',
+    icon: <FileSpreadsheet className="mr-2 h-5 w-5 text-green-500" />
   },
   {
     command: '@doc',
-    description: 'Criar ou editar documentos no Google Docs'
+    description: 'Criar ou editar documentos no Google Docs',
+    icon: <FileText className="mr-2 h-5 w-5 text-blue-500" />
   }
 ];
 
@@ -49,9 +53,9 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
         <span ref={triggerRef} className="hidden" />
       </PopoverTrigger>
       <PopoverContent 
-        className="p-0" 
+        className="p-0 w-full" 
         align="start"
-        side="top"
+        side="bottom"
         sideOffset={10}
       >
         <Command>
@@ -65,11 +69,11 @@ export const CommandMenu: React.FC<CommandMenuProps> = ({
                     onSelect(cmd.command);
                     onClose();
                   }}
-                  className="flex items-center gap-2 cursor-pointer"
+                  className="flex items-center cursor-pointer hover:bg-inventu-dark/50 transition-colors"
                 >
                   {cmd.icon}
                   <div>
-                    <p className="font-medium">{cmd.command}</p>
+                    <p className="font-medium text-white">{cmd.command}</p>
                     <p className="text-sm text-muted-foreground">{cmd.description}</p>
                   </div>
                 </CommandItem>

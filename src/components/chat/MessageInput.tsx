@@ -3,6 +3,7 @@ import { Send, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
 import { CommandMenu } from './CommandMenu';
+import { calendar, fileSpreadsheet, fileText } from 'lucide-react';
 
 interface MessageInputProps {
   message: string;
@@ -43,6 +44,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       const beforeCommand = message.slice(0, cursorPosition - 1); // Remove the @
       const afterCommand = message.slice(cursorPosition);
       setMessage(beforeCommand + command + ' ' + afterCommand);
+      setShowCommands(false);
     }
   };
 
@@ -97,12 +99,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
         disabled={isSending}
       />
       
-      <CommandMenu
-        isOpen={showCommands}
-        onClose={() => setShowCommands(false)}
-        onSelect={handleCommandSelect}
-        triggerRef={commandTriggerRef}
-      />
+      {showCommands && (
+        <div className="absolute z-50 w-full left-0 top-full mt-1">
+          <CommandMenu
+            isOpen={showCommands}
+            onClose={() => setShowCommands(false)}
+            onSelect={handleCommandSelect}
+            triggerRef={commandTriggerRef}
+          />
+        </div>
+      )}
 
       <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
         {mode !== 'text' && (
