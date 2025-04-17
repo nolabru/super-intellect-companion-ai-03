@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { MediaUploadResult } from '@/types/media';
@@ -24,17 +23,12 @@ export function useMediaHandling() {
     if (!file) return false;
 
     if (mode === 'text') {
-      toast({
-        description: "Envio de arquivos não disponível no modo texto.",
-      });
+      toast.error("Envio de arquivos não disponível no modo texto.");
       return false;
     }
 
     if (!validateFile(file, mode)) {
-      toast({
-        description: `Por favor, selecione um arquivo ${mode} válido.`,
-        variant: "destructive",
-      });
+      toast.error(`Por favor, selecione um arquivo ${mode} válido.`);
       return false;
     }
 
