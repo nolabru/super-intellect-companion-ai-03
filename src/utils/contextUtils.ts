@@ -44,7 +44,7 @@ export const filterMessagesForContext = (
   
   // Remover mensagens de sistema, loading ou erro
   return recentMessages.filter(msg => 
-    msg.sender !== 'system' && 
+    msg.sender === 'user' || msg.sender === 'assistant' && 
     !msg.loading && 
     !msg.error
   );
