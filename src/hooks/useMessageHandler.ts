@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -41,6 +42,11 @@ export function useMessageHandler(
   
   const messageProcessing = useMessageProcessing(user?.id);
 
+  // Helper function to prepare conversation history
+  const prepareConversationHistory = (messageList: MessageType[]) => {
+    return messageList.map(msg => ({ sender: msg.sender, content: msg.content }));
+  };
+
   // Verificar permissões do Google quando necessário
   const verifyGooglePermissions = useCallback(async () => {
     if (!isGoogleConnected) {
@@ -54,10 +60,33 @@ export function useMessageHandler(
       return false;
     }
     
+    // Verificar se as permissões já foram verificadas através do localStorage
+    const permissionsVerified = localStorage.getItem('google_permissions_verified') === 'true';
+    const lastCheckStr = localStorage.getItem('google_last_permission_check');
+    
+    if (permissionsVerified && lastCheckStr) {
+      const lastCheck = parseInt(lastCheckStr, 10);
+      const now = Date.now();
+      const twelveHoursInMs = 12 * 60 * 60 * 1000;
+      
+      // Se verificou nas últimas 12 horas, não precisamos verificar novamente
+      if (now - lastCheck < twelveHoursInMs) {
+        console.log("[useMessageHandler] Usando permissões do Google já verificadas");
+        return true;
+      }
+    }
+    
     try {
       console.log("[useMessageHandler] Verificando permissões do Google...");
       const hasPermissions = await checkGooglePermissions();
       console.log(`[useMessageHandler] Resultado da verificação de permissões: ${hasPermissions}`);
+      
+      if (hasPermissions) {
+        // Salvar no localStorage para não precisar verificar novamente tão cedo
+        localStorage.setItem('google_permissions_verified', 'true');
+        localStorage.setItem('google_last_permission_check', Date.now().toString());
+      }
+      
       return hasPermissions;
     } catch (error) {
       console.error("[useMessageHandler] Erro ao verificar permissões do Google:", error);
@@ -91,7 +120,7 @@ export function useMessageHandler(
     }
     
     try {
-      // Verificar permissões
+      // Verificar permissões usando a verificação com cache
       console.log("[useMessageHandler] Verificando permissões para comando Google...");
       const hasPermissions = await verifyGooglePermissions();
       if (!hasPermissions) {
@@ -151,11 +180,6 @@ export function useMessageHandler(
       };
     }
   }, [isGoogleConnected, verifyGooglePermissions, googleTokens]);
-
-  // Helper function to prepare conversation history
-  const prepareConversationHistory = (messageList: MessageType[]) => {
-    return messageList.map(msg => ({ sender: msg.sender, content: msg.content }));
-  };
 
   /**
    * Função principal para enviar mensagens aos modelos

@@ -26,6 +26,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Estado para rastrear se as permissões foram verificadas
   const [permissionsVerified, setPermissionsVerified] = useState<boolean>(false);
+  // Estado para controlar quando foi a última verificação de permissões
+  const [lastPermissionCheck, setLastPermissionCheck] = useState<number>(0);
 
   // Update tokens when session changes
   useEffect(() => {
@@ -36,13 +38,23 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.log("[GoogleAuthProvider] Sem sessão, resetando tokens Google");
       setGoogleTokens(null);
       setIsGoogleConnected(false);
+      setPermissionsVerified(false);
     }
   }, [session]);
 
   // Verificar permissões quando os tokens são carregados
   useEffect(() => {
     const verifyPermissions = async () => {
-      if (isGoogleConnected && googleTokens && !loading && !permissionsVerified) {
+      if (isGoogleConnected && googleTokens && !loading) {
+        // Verificar se já passaram pelo menos 12 horas desde a última verificação
+        const now = Date.now();
+        const twelveHoursInMs = 12 * 60 * 60 * 1000;
+        
+        if (permissionsVerified && now - lastPermissionCheck < twelveHoursInMs) {
+          console.log("[GoogleAuthProvider] Pulando verificação de permissões, já verificado recentemente");
+          return;
+        }
+        
         console.log("[GoogleAuthProvider] Verificando permissões do Google após carregar tokens");
         const hasPermissions = await checkGooglePermissionsOperation(
           user, 
@@ -53,6 +65,11 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (hasPermissions) {
           console.log("[GoogleAuthProvider] Permissões do Google verificadas com sucesso");
           setPermissionsVerified(true);
+          setLastPermissionCheck(now);
+          
+          // Salvar estado de verificação em localStorage para persistência entre sessões
+          localStorage.setItem('google_permissions_verified', 'true');
+          localStorage.setItem('google_last_permission_check', now.toString());
         } else {
           console.warn("[GoogleAuthProvider] Falha na verificação das permissões do Google");
           // Não desconectar automaticamente para não interromper o fluxo do usuário
@@ -62,6 +79,21 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     verifyPermissions();
   }, [isGoogleConnected, googleTokens, loading]);
+
+  // Restaurar estado de verificação de permissões ao iniciar
+  useEffect(() => {
+    if (isGoogleConnected) {
+      const savedPermissionsVerified = localStorage.getItem('google_permissions_verified') === 'true';
+      const savedLastCheck = localStorage.getItem('google_last_permission_check');
+      
+      if (savedPermissionsVerified) {
+        setPermissionsVerified(true);
+        if (savedLastCheck) {
+          setLastPermissionCheck(parseInt(savedLastCheck, 10));
+        }
+      }
+    }
+  }, [isGoogleConnected]);
 
   // Check after Google OAuth login
   useEffect(() => {
@@ -96,8 +128,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               if (isGoogleConnected) {
                 toast.success(
                   'Google conectado com sucesso!',
-                  { description: 'Sua conta Google foi conectada.' }
+                  { description: 'Sua conta Google foi conectada e as permissões foram salvas.' }
                 );
+                
+                // Marcar como verificado para evitar verificações repetidas
+                setPermissionsVerified(true);
+                setLastPermissionCheck(Date.now());
+                localStorage.setItem('google_permissions_verified', 'true');
+                localStorage.setItem('google_last_permission_check', Date.now().toString());
               }
             }
           }, 1000);
@@ -115,11 +153,20 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (isGoogleConnected) {
               toast.success(
                 'Google conectado com sucesso!',
-                { description: 'Sua conta Google foi conectada.' }
+                { description: 'Sua conta Google foi conectada e as permissões foram salvas.' }
               );
+              
+              // Marcar como verificado para evitar verificações repetidas
+              setPermissionsVerified(true);
+              setLastPermissionCheck(Date.now());
+              localStorage.setItem('google_permissions_verified', 'true');
+              localStorage.setItem('google_last_permission_check', Date.now().toString());
             }
           }
         }, 1000);
+        
+        // Limpar URL após processamento para evitar reprocessamento em atualizações
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
 
@@ -155,6 +202,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     if (hasPermissions) {
       setPermissionsVerified(true);
+      setLastPermissionCheck(Date.now());
+      localStorage.setItem('google_permissions_verified', 'true');
+      localStorage.setItem('google_last_permission_check', Date.now().toString());
       console.log("[GoogleAuthProvider] Permissões do Google verificadas: OK");
     } else {
       console.warn("[GoogleAuthProvider] Permissões do Google insuficientes ou ausentes");
@@ -172,6 +222,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setIsGoogleConnected
     );
     setPermissionsVerified(false);
+    localStorage.removeItem('google_permissions_verified');
+    localStorage.removeItem('google_last_permission_check');
   };
 
   return (
