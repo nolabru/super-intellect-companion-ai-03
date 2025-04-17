@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +34,16 @@ const Auth: React.FC = () => {
     
     checkSession();
   }, [navigate]);
+
+  // Verificar se há um hash de redirecionamento na URL
+  useEffect(() => {
+    // Verificar se este é um redirecionamento de autenticação
+    if (window.location.hash.includes('access_token')) {
+      console.log('Detected auth redirect. Processing...');
+      // Limpar o hash e redirecionar para a página principal
+      window.location.href = window.location.origin + '/google-integrations';
+    }
+  }, []);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +85,10 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
+      // Definir a URL de redirecionamento completa
+      const redirectUrl = `${window.location.origin}/google-integrations`;
+      console.log('Redirect URL:', redirectUrl);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -84,7 +97,7 @@ const Auth: React.FC = () => {
             access_type: 'offline',
             prompt: 'consent'
           },
-          redirectTo: `${window.location.origin}/google-integrations`
+          redirectTo: redirectUrl
         }
       });
 

@@ -89,10 +89,14 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Verificar após login OAuth do Google
   useEffect(() => {
     const checkAuthRedirect = async () => {
-      // Verificar se este é um redirecionamento após um login OAuth
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      // Verificar se há parâmetros na URL que indicam um redirecionamento após autenticação
+      const urlParams = new URLSearchParams(window.location.search);
+      const hashParams = new URLSearchParams(window.location.hash.replace('#', '?'));
       
-      if (hashParams.has('provider') && hashParams.get('provider') === 'google') {
+      // Verificar se é um redirecionamento após um login OAuth
+      if (urlParams.has('provider') || hashParams.has('access_token')) {
+        console.log('Processing OAuth redirect');
+        
         // Dar um tempo para o Supabase processar o login
         setTimeout(async () => {
           // Verificar se a sessão existe
