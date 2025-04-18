@@ -11,6 +11,7 @@ import * as elevenlabsService from "./services/models/elevenlabs.ts";
 import * as geminiService from "./services/models/gemini.ts";
 import * as deepseekService from "./services/models/deepseek.ts";
 import * as kliginService from "./services/models/kligin.ts";
+import * as piapiService from "./services/models/piapi.ts";
 
 // Import orchestrator service
 import * as orchestratorService from "./services/orchestrator.ts";
@@ -313,6 +314,46 @@ async function handleAIChat(req: Request): Promise<Response> {
         }
       }
       
+      // Add PiAPI token verification
+      if (processedModelId.includes("piapi")) {
+        try {
+          const piapiApiKey = Deno.env.get("PIAPI_API_KEY") || "068eaef722343cf9b244cb8729404fd538a9604eb1c5154be76bf129718e90d4";
+          
+          if (piapiApiKey) {
+            console.log("[AI-Chat] PiAPI token configurado");
+            
+            // Set the API key for the PiAPI service
+            Deno.env.set("PIAPI_API_KEY", piapiApiKey);
+            
+            // Validate the token
+            try {
+              const isValid = await piapiService.testApiKey(piapiApiKey);
+              if (!isValid) {
+                console.warn("[AI-Chat] O token da PiAPI pode não estar funcionando corretamente");
+              } else {
+                console.log("[AI-Chat] Token da PiAPI validado com sucesso");
+              }
+            } catch (err) {
+              console.error("[AI-Chat] Erro ao testar o token da PiAPI:", err);
+            }
+          } else {
+            console.error("[AI-Chat] Token da PiAPI não configurado");
+            throw new Error("Token da PiAPI não configurado. Verifique a variável de ambiente PIAPI_API_KEY.");
+          }
+        } catch (error) {
+          return new Response(
+            JSON.stringify({
+              content: error.message,
+              error: "PIAPI_API_KEY não configurada",
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 401,
+            }
+          );
+        }
+      }
+      
       // Processar solicitação com base no modo e modelo processados pelo orquestrador
       // Luma AI models
       if (processedModelId === "luma-video" && processedMode === "video") {
@@ -451,6 +492,69 @@ async function handleAIChat(req: Request): Promise<Response> {
           response.files[0] = addTimestampToUrl(response.files[0]);
         }
       }
+      // PiAPI models
+      else if (processedModelId.includes("piapi") && processedMode === "image") {
+        console.log("[AI-Chat] Iniciando processamento de imagem com PiAPI");
+        response = await piapiService.generateImage(processedContent, processedModelId);
+        console.log("[AI-Chat] Processamento de imagem PiAPI concluído com sucesso");
+        
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
+      }
+      else if (processedModelId.includes("piapi") && processedMode === "video") {
+        console.log("[AI-Chat] Iniciando processamento de vídeo com PiAPI");
+        const imageUrl = files && files.length > 0 ? files[0] : undefined;
+        
+        const videoParams = {
+          ...params,
+          modelId: processedModelId
+        };
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log("[AI-Chat] Atingido tempo máximo global para processamento de vídeo (5 minutos)");
+          controller.abort();
+        }, 300000); // 5 minutos
+        
+        try {
+          response = await Promise.race([
+            piapiService.generateVideo(processedContent, videoParams, imageUrl),
+            new Promise<ResponseData>((_, reject) => {
+              controller.signal.addEventListener('abort', () => {
+                reject(new Error("Tempo limite global excedido para processamento de vídeo (5 minutos)"));
+              });
+            })
+          ]);
+          clearTimeout(timeoutId);
+          console.log("[AI-Chat] Processamento de vídeo PiAPI concluído com sucesso");
+          
+          if (response.files && response.files.length > 0) {
+            response.files[0] = addTimestampToUrl(response.files[0]);
+          }
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
+      }
+      else if (processedModelId.includes("piapi") && processedMode === "audio") {
+        console.log("[AI-Chat] Iniciando geração de áudio com PiAPI");
+        const voiceParams = {
+          modelId: processedModelId,
+          voiceId: params?.voiceId || "EXAVITQu4vr4xnSDxMaL", // Sarah por padrão para ElevenLabs
+          stability: params?.stability || 0.5,
+          similarityBoost: params?.similarityBoost || 0.75,
+          style: params?.style || 0,
+          speakerBoost: params?.speakerBoost || true
+        };
+        
+        response = await piapiService.generateSpeech(processedContent, voiceParams);
+        console.log("[AI-Chat] Geração de áudio PiAPI concluída com sucesso");
+        
+        if (response.files && response.files.length > 0) {
+          response.files[0] = addTimestampToUrl(response.files[0]);
+        }
+      }
       // Outros modelos
       else if (processedModelId.includes("claude") && processedMode === "text") {
         console.log("[AI-Chat] Iniciando processamento de texto com Anthropic");
@@ -515,7 +619,7 @@ async function handleAIChat(req: Request): Promise<Response> {
       
       // Processar memória do usuário em background
       if (userId && processedMode === 'text') {
-        // Uso de waitUntil do EdgeRuntime (Deno v2+) para processar memória em background
+        // Uso de waitUntil do EdgeRuntime (Deno v2+) para processamento de memória em background
         if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
           EdgeRuntime.waitUntil(processUserMemory(userId, content));
           console.log("[AI-Chat] Processamento de memória iniciado em background via waitUntil");
@@ -603,6 +707,16 @@ async function handleAIChat(req: Request): Promise<Response> {
           friendlyError = "Erro de configuração: A chave API do Deepseek não está configurada corretamente. Por favor, verifique suas configurações.";
         } else {
           friendlyError = `Erro na geração de texto com Deepseek: ${errorMessage}`;
+        }
+      } else if (processedModelId.includes("piapi")) {
+        if (errorMessage.includes("API key") || errorMessage.includes("Authorization") || errorMessage.includes("authenticate")) {
+          friendlyError = "Erro de configuração: O token da PiAPI não está configurado corretamente. Por favor, verifique suas configurações.";
+        } else if (errorMessage.includes("404") || errorMessage.includes("Not Found")) {
+          friendlyError = "Erro na API PiAPI: Endpoint não encontrado. A API pode ter sido atualizada.";
+        } else if (errorMessage.includes("Tempo limite")) {
+          friendlyError = `O processamento do ${processedMode === 'video' ? 'vídeo' : (processedMode === 'image' ? 'imagem' : 'áudio')} excedeu o tempo limite. Tente novamente com um prompt mais simples.`;
+        } else {
+          friendlyError = `Erro na geração com PiAPI: ${errorMessage}`;
         }
       }
       

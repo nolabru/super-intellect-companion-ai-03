@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate' | 'deepseek';
+export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate' | 'deepseek' | 'piapi';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 
 export interface ModelInfo {
@@ -15,7 +16,7 @@ export interface ModelInfo {
 }
 
 export const AVAILABLE_MODELS: ModelInfo[] = [
-  // OpenAI Models - text and image
+  // OpenAI Models - text only
   {
     id: 'gpt-4o',
     displayName: 'GPT-4o',
@@ -23,47 +24,67 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     capabilities: ['Raciocínio avançado', 'Análise de imagens', 'Conhecimento atualizado até Apr 2023'],
     description: 'Modelo mais poderoso da OpenAI, com excelente raciocínio e análise de imagens.',
     modes: ['text']
-  }, 
+  },
+  
+  // PiAPI Models - image
   {
-    id: 'dall-e-3',
-    displayName: 'DALL-E 3',
-    provider: 'openai',
+    id: 'piapi-dalle-3',
+    displayName: 'DALL-E 3 (PiAPI)',
+    provider: 'piapi',
     capabilities: ['Geração de imagens realistas', 'Seguir instruções detalhadas'],
-    description: 'Gerador de imagens avançado da OpenAI.',
+    description: 'Gerador de imagens avançado da OpenAI via PiAPI.',
     modes: ['image']
   },
   {
-    id: 'openai-audio',
-    displayName: 'OpenAI TTS',
-    provider: 'openai',
-    capabilities: ['Conversão de texto em áudio', 'Voz sintética de alta qualidade'],
-    description: 'Serviço de conversão de texto em áudio da OpenAI.',
+    id: 'piapi-sdxl',
+    displayName: 'Stable Diffusion XL',
+    provider: 'piapi',
+    capabilities: ['Imagens de alta qualidade', 'Personalização avançada'],
+    description: 'Gerador de imagens Stable Diffusion XL via PiAPI.',
+    modes: ['image']
+  },
+  {
+    id: 'piapi-midjourney',
+    displayName: 'Midjourney',
+    provider: 'piapi',
+    capabilities: ['Imagens artísticas', 'Alta qualidade visual'],
+    description: 'Gerador de imagens Midjourney via PiAPI.',
+    modes: ['image']
+  },
+  
+  // PiAPI Models - video
+  {
+    id: 'piapi-gen2',
+    displayName: 'Runway Gen-2',
+    provider: 'piapi',
+    capabilities: ['Geração de vídeos', 'Animações fluidas'],
+    description: 'Gerador de vídeos Runway Gen-2 via PiAPI.',
+    modes: ['video']
+  },
+  {
+    id: 'piapi-pika',
+    displayName: 'Pika Labs',
+    provider: 'piapi',
+    capabilities: ['Vídeos criativos', 'Efeitos visuais'],
+    description: 'Gerador de vídeos Pika Labs via PiAPI.',
+    modes: ['video']
+  },
+  
+  // PiAPI Models - audio
+  {
+    id: 'piapi-elevenlabs',
+    displayName: 'ElevenLabs (PiAPI)',
+    provider: 'piapi',
+    capabilities: ['Conversão de texto em áudio', 'Múltiplas vozes', 'Alta qualidade'],
+    description: 'Serviço de conversão de texto em áudio ElevenLabs via PiAPI.',
     modes: ['audio']
   },
-  // Luma AI Models - image and video
   {
-    id: 'luma-video',
-    displayName: 'Luma Video',
-    provider: 'luma',
-    capabilities: ['Geração de vídeos', 'Movimentos fluidos'],
-    description: 'Gerador de vídeos curtos com movimentos naturais.',
-    modes: ['video']
-  }, 
-  {
-    id: 'luma-image',
-    displayName: 'Luma Image',
-    provider: 'luma',
-    capabilities: ['Imagens 3D', 'Visualização especial'],
-    description: 'Criação de imagens com representação tridimensional.',
-    modes: ['image']
-  },
-  // ElevenLabs Models - audio
-  {
-    id: 'elevenlabs-tts',
-    displayName: 'ElevenLabs Text-to-Speech',
-    provider: 'elevenlabs',
-    capabilities: ['Conversão de texto em áudio', 'Múltiplas vozes', 'Alta qualidade de síntese de voz'],
-    description: 'Serviço de conversão de texto em áudio com vozes naturais e personalizáveis.',
+    id: 'piapi-openai-tts',
+    displayName: 'OpenAI TTS (PiAPI)',
+    provider: 'piapi',
+    capabilities: ['Conversão de texto em áudio', 'Voz sintética de alta qualidade'],
+    description: 'Serviço de conversão de texto em áudio da OpenAI via PiAPI.',
     modes: ['audio']
   }
 ];
@@ -107,6 +128,8 @@ const getProviderDisplayName = (provider: ModelProvider): string => {
       return 'Replicate';
     case 'deepseek':
       return 'DeepSeek';
+    case 'piapi':
+      return 'PiAPI';
     default:
       return provider;
   }
