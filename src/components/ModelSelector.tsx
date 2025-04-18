@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
@@ -26,13 +25,13 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     modes: ['text']
   },
   
-  // PiAPI Models - image
+  // Image Models
   {
     id: 'piapi-dalle-3',
-    displayName: 'DALL-E 3 (PiAPI)',
+    displayName: 'DALL-E 3',
     provider: 'piapi',
     capabilities: ['Geração de imagens realistas', 'Seguir instruções detalhadas'],
-    description: 'Gerador de imagens avançado da OpenAI via PiAPI.',
+    description: 'Gerador de imagens avançado com excelente compreensão e detalhe.',
     modes: ['image']
   },
   {
@@ -40,7 +39,7 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     displayName: 'Stable Diffusion XL',
     provider: 'piapi',
     capabilities: ['Imagens de alta qualidade', 'Personalização avançada'],
-    description: 'Gerador de imagens Stable Diffusion XL via PiAPI.',
+    description: 'Gerador de imagens de última geração com foco em qualidade e detalhes.',
     modes: ['image']
   },
   {
@@ -48,43 +47,43 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     displayName: 'Midjourney',
     provider: 'piapi',
     capabilities: ['Imagens artísticas', 'Alta qualidade visual'],
-    description: 'Gerador de imagens Midjourney via PiAPI.',
+    description: 'Gerador de imagens especializado em arte e ilustrações de alta qualidade.',
     modes: ['image']
   },
   
-  // PiAPI Models - video
+  // Video Models
   {
     id: 'piapi-gen2',
-    displayName: 'Runway Gen-2',
+    displayName: 'Gen-2',
     provider: 'piapi',
     capabilities: ['Geração de vídeos', 'Animações fluidas'],
-    description: 'Gerador de vídeos Runway Gen-2 via PiAPI.',
+    description: 'Gerador avançado de vídeos com foco em qualidade e fluidez.',
     modes: ['video']
   },
   {
     id: 'piapi-pika',
-    displayName: 'Pika Labs',
+    displayName: 'Pika',
     provider: 'piapi',
     capabilities: ['Vídeos criativos', 'Efeitos visuais'],
-    description: 'Gerador de vídeos Pika Labs via PiAPI.',
+    description: 'Gerador de vídeos com foco em criatividade e efeitos especiais.',
     modes: ['video']
   },
   
-  // PiAPI Models - audio
+  // Audio Models
   {
     id: 'piapi-elevenlabs',
-    displayName: 'ElevenLabs (PiAPI)',
+    displayName: 'ElevenLabs',
     provider: 'piapi',
     capabilities: ['Conversão de texto em áudio', 'Múltiplas vozes', 'Alta qualidade'],
-    description: 'Serviço de conversão de texto em áudio ElevenLabs via PiAPI.',
+    description: 'Serviço avançado de conversão de texto em áudio com vozes naturais.',
     modes: ['audio']
   },
   {
     id: 'piapi-openai-tts',
-    displayName: 'OpenAI TTS (PiAPI)',
+    displayName: 'OpenAI TTS',
     provider: 'piapi',
     capabilities: ['Conversão de texto em áudio', 'Voz sintética de alta qualidade'],
-    description: 'Serviço de conversão de texto em áudio da OpenAI via PiAPI.',
+    description: 'Serviço de conversão de texto em áudio com vozes realistas.',
     modes: ['audio']
   }
 ];
