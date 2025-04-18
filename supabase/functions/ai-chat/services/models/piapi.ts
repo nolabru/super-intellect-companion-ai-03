@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../../utils/cors.ts";
 
 // PiAPI Token
@@ -248,7 +247,7 @@ export async function generateImage(
         },
         "config": { 
           "webhook_config": { 
-            "endpoint": "<YOUR_WEBHOOK>" 
+            "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
           } 
         }
       };
@@ -265,11 +264,29 @@ export async function generateImage(
     
     // Special handling for Midjourney
     if (isMidjourney) {
-      const mjResponse = await createMidjourneyTask(prompt);
+      taskData = {
+        "model": "midjourney",
+        "task_type": "imagine",
+        "input": {
+          "prompt": prompt,
+          "aspect_ratio": "1:1",
+          "process_mode": "fast",
+          "skip_prompt_check": false
+        },
+        "config": { 
+          "webhook_config": { 
+            "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
+          },
+          "service_mode": "public"
+        }
+      };
+      
+      // Create task
+      const taskResponse = await createPiapiTask(taskData);
       
       return {
-        content: `Imagem sendo gerada com Midjourney. ID da tarefa: ${mjResponse.task_id}. ${prompt}`,
-        taskId: mjResponse.task_id,
+        content: `Imagem sendo gerada com Midjourney. ID da tarefa: ${taskResponse.task_id}. ${prompt}`,
+        taskId: taskResponse.task_id,
         status: "pending"
       };
     }
@@ -374,7 +391,7 @@ export async function generateVideo(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };
@@ -392,7 +409,7 @@ export async function generateVideo(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };
@@ -406,7 +423,7 @@ export async function generateVideo(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };
@@ -430,7 +447,7 @@ export async function generateVideo(
             },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };
@@ -553,7 +570,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };
@@ -567,7 +584,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };
@@ -581,7 +598,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };
@@ -596,7 +613,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook` 
             } 
           }
         };

@@ -39,9 +39,25 @@ serve(async (req) => {
       }
     };
 
-    if (model.includes("flux")) {
+    if (model === "piapi-midjourney") {
+      // Midjourney specific configuration
+      taskData = {
+        "model": "midjourney",
+        "task_type": "imagine",
+        "input": {
+          "prompt": prompt,
+          "aspect_ratio": params.aspectRatio || "1:1",
+          "process_mode": params.processMode || "fast",
+          "skip_prompt_check": params.skipPromptCheck || false
+        },
+        "config": {
+          ...webhookConfig,
+          "service_mode": params.serviceMode || "public"
+        }
+      };
+    } else if (model.includes("flux")) {
       // Flux models (image generation)
-      const modelName = model === "flux-schnell" ? "Qubico/flux1-schnell" : "Qubico/flux1-dev";
+      const modelName = model === "piapi-flux-schnell" ? "Qubico/flux1-schnell" : "Qubico/flux1-dev";
       
       taskData = {
         "model": modelName,
