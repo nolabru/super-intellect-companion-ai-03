@@ -66,6 +66,44 @@ export type Database = {
         }
         Relationships: []
       }
+      media_ready_events: {
+        Row: {
+          created_at: string | null
+          id: string
+          media_type: string
+          media_url: string
+          model: string | null
+          prompt: string | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          media_type: string
+          media_url: string
+          model?: string | null
+          prompt?: string | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          media_type?: string
+          media_url?: string
+          model?: string | null
+          prompt?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_ready_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "piapi_tasks"
+            referencedColumns: ["task_id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -109,6 +147,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      piapi_tasks: {
+        Row: {
+          created_at: string | null
+          id: string
+          media_type: string
+          media_url: string | null
+          model: string
+          params: Json | null
+          prompt: string | null
+          result: Json | null
+          status: string
+          task_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          media_type: string
+          media_url?: string | null
+          model: string
+          params?: Json | null
+          prompt?: string | null
+          result?: Json | null
+          status?: string
+          task_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          media_type?: string
+          media_url?: string | null
+          model?: string
+          params?: Json | null
+          prompt?: string | null
+          result?: Json | null
+          status?: string
+          task_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
