@@ -46,24 +46,8 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     id: 'piapi-midjourney',
     displayName: 'Midjourney',
     provider: 'piapi',
-    capabilities: ['Imagens artísticas', 'Alta qualidade visual', 'Grade 2x2 de variações'],
-    description: 'Gerador de imagens que cria 4 variações em uma grade, permitindo escolher e refinar resultados.',
-    modes: ['image']
-  },
-  {
-    id: 'piapi-flux-dev',
-    displayName: 'Flux Dev',
-    provider: 'piapi',
-    capabilities: ['Imagens detalhadas', 'Alta qualidade'],
-    description: 'Modelo Flux de alta qualidade para geração de imagens detalhadas.',
-    modes: ['image']
-  },
-  {
-    id: 'piapi-flux-schnell',
-    displayName: 'Flux Schnell',
-    provider: 'piapi',
-    capabilities: ['Imagens rápidas', 'Boa qualidade'],
-    description: 'Versão otimizada do Flux para geração mais rápida de imagens.',
+    capabilities: ['Imagens artísticas', 'Alta qualidade visual'],
+    description: 'Gerador de imagens especializado em arte e ilustrações de alta qualidade.',
     modes: ['image']
   },
   
