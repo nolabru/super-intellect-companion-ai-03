@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../../utils/cors.ts";
 
 // PiAPI Token
@@ -14,6 +13,23 @@ export function verifyApiKey() {
 
 // Base PiAPI URL
 const PIAPI_BASE_URL = "https://api.piapi.ai/v1";
+
+// Test API Key
+export async function testApiKey(apiKey: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${PIAPI_BASE_URL}/models/list`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`
+      }
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error(`[PiAPI] Error testing API key: ${error.message}`);
+    return false;
+  }
+}
 
 // Generate image using PiAPI
 export async function generateImage(
@@ -218,22 +234,5 @@ export async function generateSpeech(
   } catch (error) {
     console.error(`[PiAPI] Error in generateSpeech: ${error.message}`);
     throw error;
-  }
-}
-
-// Test API Key
-export async function testApiKey(apiKey: string): Promise<boolean> {
-  try {
-    const response = await fetch(`${PIAPI_BASE_URL}/models/list`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`
-      }
-    });
-    
-    return response.ok;
-  } catch (error) {
-    console.error(`[PiAPI] Error testing API key: ${error.message}`);
-    return false;
   }
 }
