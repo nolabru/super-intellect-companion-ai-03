@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from 'react';
 import ChatMessage, { MessageType } from './ChatMessage';
 import { cn } from '@/lib/utils';
@@ -7,8 +6,8 @@ import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import ModelSelector from './ModelSelector';
+import ChatModelSelectorBar from './ChatModelSelectorBar';
 
-// NOVO: Header minimalista inspirado no iMessage (estilo Apple)
 function ChatMinimalHeader({ model, onModelChange, availableModels }) {
   const modelInfo = AVAILABLE_MODELS.find(m => m.id === model);
   return (
@@ -73,7 +72,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   }, [messages]);
 
-  // Lógica de filtro das mensagens permanece igual
   const filteredMessages = messages
     .filter((msg, index, array) => {
       if (index === 0) return true;
@@ -133,14 +131,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     );
   };
 
-  // Começo do layout ultra compacto
   return (
     <div className={cn("flex flex-col h-full bg-background overflow-hidden", className)}>
-      {/* Header apple-like */}
-      <ChatMinimalHeader model={model} onModelChange={onModelChange} availableModels={availableModels} />
-      {/* Fim do header */}
-
-      {/* Área de mensagens - layout mais compacto */}
+      <ChatMinimalHeader 
+        model={model} 
+        onModelChange={undefined}
+        availableModels={undefined}
+      />
+      <ChatModelSelectorBar
+        selectedModel={model}
+        onModelChange={onModelChange}
+        availableModels={availableModels}
+      />
       <div className={cn(
         "flex-1 overflow-y-auto px-2 py-2 space-y-2 relative",
         "bg-background scroll-smooth"
@@ -158,7 +160,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </div>
               ))}
             </div>
-            {/* Informativo: processo de vídeo Luma */}
             {lumaGenId && (
               <div className="p-3 flex items-center gap-2 bg-indigo-900/20 border border-indigo-700/40 rounded-lg my-2">
                 <AlertTriangle className="h-4 w-4 text-indigo-400" />
@@ -176,7 +177,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 </span>
               </div>
             )}
-            {/* Informativo de erro */}
             {hasErrorMessage && errorMessage && (
               <div className="p-3 flex items-center gap-2 bg-red-900/20 border border-red-500/30 rounded-lg my-2">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
