@@ -49,7 +49,6 @@ const ModeAndModelSelectorBar: React.FC<ModeAndModelSelectorBarProps> = ({
               selectedModel={leftModel}
               onChange={onLeftModelChange}
               mode={activeMode}
-              availableModels={availableModels}
               className="min-w-[112px]"
             />
             <SlidersHorizontal className="h-6 w-6 text-inventu-blue/60" />
@@ -57,7 +56,6 @@ const ModeAndModelSelectorBar: React.FC<ModeAndModelSelectorBarProps> = ({
               selectedModel={rightModel}
               onChange={onRightModelChange}
               mode={activeMode}
-              availableModels={availableModels}
               className="min-w-[112px]"
             />
             {isLinked && (
@@ -69,7 +67,6 @@ const ModeAndModelSelectorBar: React.FC<ModeAndModelSelectorBarProps> = ({
             selectedModel={leftModel}
             onChange={onLeftModelChange}
             mode={activeMode}
-            availableModels={availableModels}
             className="min-w-[112px]"
           />
         )}
