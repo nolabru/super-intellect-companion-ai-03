@@ -29,24 +29,23 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
 
   return (
     <div className="
-      flex flex-col gap-3 px-4 pt-6 pb-3
-      border-b border-inventu-gray/10
-      bg-white/5 backdrop-blur-xl
-      dark:bg-inventu-dark/10
-      rounded-tr-2xl md:rounded-tr-3xl
+      flex flex-col gap-2 px-3 pt-4 pb-2
+      border-b border-white/5
+      bg-inventu-dark/60 backdrop-blur-lg
+      dark:bg-inventu-dark/80
     ">
       <div className="flex items-center gap-2 w-full">
         <Button
           onClick={handleNewConversation}
           className="
-            flex-1 h-10 rounded-full text-sm md:text-base
-            bg-inventu-blue/90 hover:bg-inventu-blue 
+            flex-1 h-9 rounded-full text-sm
+            bg-inventu-blue hover:bg-inventu-blue/90
             font-medium shadow-sm transition-all
             active:scale-[0.98]
           "
           disabled={!isUserLoggedIn}
         >
-          <PlusCircle className="mr-2 h-5 w-5" />
+          <PlusCircle className="mr-1.5 h-4 w-4" />
           Nova Conversa
         </Button>
         {onToggleSidebar && !isMobile && (
@@ -54,7 +53,7 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
             onClick={onToggleSidebar}
             size="icon"
             variant="ghost"
-            className="ml-1 text-inventu-gray hover:text-inventu-blue transition-colors rounded-full"
+            className="h-9 w-9 text-white/60 hover:text-white hover:bg-white/5 transition-colors rounded-full"
             title="Minimizar menu"
           >
             <ChevronLeft className="h-5 w-5" />

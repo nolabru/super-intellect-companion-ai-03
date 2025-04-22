@@ -173,42 +173,42 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-inventu-dark/80 to-inventu-darker/90">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-inventu-dark to-inventu-darker">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {sidebarOpen && (
-          <div className={`${isMobile ? 'fixed inset-0 z-40 w-[85%] max-w-[280px]' : 'w-[280px] flex-shrink-0'}`}>
+          <>
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
             {isMobile && (
               <div 
-                className="fixed inset-0 bg-black/40 -z-10 backdrop-blur-sm" 
+                className="fixed inset-0 bg-black/50 -z-10 backdrop-blur-sm" 
                 onClick={toggleSidebar}
               />
             )}
-          </div>
+          </>
         )}
         
         {!sidebarOpen && !isMobile && (
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
         )}
 
-        <div className="flex-1 flex flex-col overflow-hidden items-center justify-center px-2 pb-4">
-          <div className="w-full md:max-w-3xl flex flex-col flex-1 bg-card/80 rounded-2xl md:rounded-3xl shadow-xl border border-white/5 overflow-hidden glass-effect my-3 md:my-6">
-            <div className="border-b border-white/10 px-4 md:px-8 py-3 md:py-4">
-              <h2 className="text-xl md:text-2xl font-semibold text-white text-center tracking-tight">Conversa</h2>
-              <div className="mt-2 flex items-center justify-center gap-1 md:gap-2">
-                <ModeSelector activeMode={activeMode} onChange={handleModeChange} className="scale-100 md:scale-110" />
+        <div className="flex-1 flex flex-col overflow-hidden items-center justify-center px-2 pb-2 md:pb-4 w-full">
+          <div className="w-full md:max-w-3xl flex flex-col flex-1 bg-inventu-card/90 rounded-xl md:rounded-2xl shadow-xl border border-white/5 overflow-hidden backdrop-blur-md my-2 md:my-4">
+            <div className="border-b border-white/5 px-3 md:px-6 py-2 md:py-3">
+              <h2 className="text-lg md:text-xl font-semibold text-white text-center tracking-tight">Conversa</h2>
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-1 md:gap-2">
+                <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
                 )}
                 <TokenDisplay />
               </div>
-              <div className="mt-2 flex items-center justify-center gap-2 md:gap-3">
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1 md:gap-2">
                 {comparing && (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <span className="text-xs text-gray-300 px-2 py-0.5 rounded-xl bg-black/20">Modelo 1: <span className="font-semibold">{leftModel}</span></span>
-                    <span className="text-xs text-gray-300 px-2 py-0.5 rounded-xl bg-black/20">Modelo 2: <span className="font-semibold">{rightModel}</span></span>
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 1: <span className="font-medium">{leftModel}</span></span>
+                    <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 2: <span className="font-medium">{rightModel}</span></span>
                   </div>
                 )}
               </div>
@@ -217,7 +217,7 @@ const Index: React.FC = () => {
             <div className="flex-1 flex flex-col overflow-hidden">
               {comparing ? (
                 <div className="flex flex-col md:flex-row flex-1">
-                  <div className="flex-1 border-r border-white/5">
+                  <div className="flex-1 md:border-r border-white/5">
                     <ChatInterface
                       messages={messages}
                       model={leftModel}
@@ -253,7 +253,7 @@ const Index: React.FC = () => {
               )}
             </div>
 
-            <div className="p-3 md:p-6 border-t border-white/10 bg-card/60 backdrop-blur-md">
+            <div className="p-2 md:p-4 border-t border-white/5 bg-inventu-card/60 backdrop-blur-md">
               {(!comparing || isLinked) ? (
                 <ChatInput
                   onSendMessage={handleSendMessage}
@@ -261,7 +261,7 @@ const Index: React.FC = () => {
                   model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
                 />
               ) : (
-                <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex flex-col md:flex-row gap-2">
                   <div className="flex-1">
                     <ChatInput
                       onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}

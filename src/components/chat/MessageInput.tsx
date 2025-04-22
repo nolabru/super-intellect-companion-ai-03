@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -120,10 +121,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const getPlaceholder = () => {
     if (isImageGenerationModel) {
-      return "Descreva a imagem que você deseja gerar...";
+      return "Descreva a imagem que você deseja...";
     }
     if (mode === 'audio') {
-      return "Digite o texto para converter em áudio...";
+      return "Digite o texto para áudio...";
     }
     if (model) {
       return `Pergunte ao ${model}...`;
@@ -174,28 +175,28 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="relative rounded-lg border border-inventu-gray/30 bg-inventu-card">
+    <div ref={containerRef} className="relative rounded-lg border border-white/10 bg-inventu-dark/60 shadow-sm">
       {showCommandMenu && (
         <div 
-          className="absolute -top-[235px] left-0 z-50 w-[300px] bg-inventu-dark border border-inventu-gray/30 rounded-md overflow-hidden shadow-lg"
+          className="absolute -top-[235px] left-0 z-50 w-full max-w-[300px] bg-inventu-darker border border-white/10 rounded-md overflow-hidden shadow-lg"
           style={{
             transform: `translate(${commandMenuPosition.left}px, 0px)`,
           }}
         >
-          <div className="p-2 bg-inventu-darker border-b border-inventu-gray/30">
-            <p className="text-xs text-inventu-gray">Google Workspace</p>
+          <div className="p-2 bg-inventu-dark/60 border-b border-white/10">
+            <p className="text-xs text-white/70">Google Workspace</p>
           </div>
           <div className="max-h-[200px] overflow-y-auto">
             {GOOGLE_COMMANDS.map((cmd) => (
               <div 
                 key={cmd.id}
-                className="flex items-center p-2 hover:bg-inventu-gray/20 cursor-pointer text-white"
+                className="flex items-center p-2 hover:bg-white/5 cursor-pointer text-white"
                 onClick={() => insertCommand(cmd.command)}
               >
                 {cmd.icon}
                 <div>
                   <p className="text-sm font-medium">{cmd.name}</p>
-                  <p className="text-xs text-inventu-gray">{cmd.description}</p>
+                  <p className="text-xs text-white/60">{cmd.description}</p>
                 </div>
               </div>
             ))}
@@ -224,21 +225,21 @@ const MessageInput: React.FC<MessageInputProps> = ({
           }
         }}
         placeholder={getPlaceholder()}
-        className="w-full pl-4 pr-20 py-2 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none"
+        className="w-full pl-3 pr-16 py-2 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none text-sm"
         rows={1}
         disabled={isSending}
       />
-      <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
+      <div className="absolute top-1/2 right-2 -translate-y-1/2 flex gap-1">
         {mode !== 'text' && (
           <Button 
             onClick={onAttachment}
             variant="ghost" 
             size="icon"
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/5 rounded-full"
             title={`Anexar ${mode}`}
             disabled={isSending}
           >
-            <Paperclip className="h-5 w-5" />
+            <Paperclip className="h-4 w-4" />
           </Button>
         )}
         
@@ -246,10 +247,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
           onClick={onSendMessage}
           variant="ghost" 
           size="icon"
-          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+          className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/5 rounded-full"
           disabled={isSending}
         >
-          <Send className="h-5 w-5" />
+          <Send className="h-4 w-4" />
         </Button>
       </div>
       

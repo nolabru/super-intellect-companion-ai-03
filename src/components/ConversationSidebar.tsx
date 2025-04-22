@@ -27,9 +27,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onToggleSidebar,
   isOpen = true
 }) => {
-  const [folders, setFolders] = useState<FolderType[]>([]);
-  const [conversationFolders, setConversationFolders] = useState<Record<string, string | null>>({});
-  
   const { 
     conversations, 
     currentConversationId, 
@@ -45,6 +42,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [folders, setFolders] = useState<FolderType[]>([]);
+  const [conversationFolders, setConversationFolders] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     if (user) {
@@ -168,10 +167,10 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onClick={onToggleSidebar}
           size="icon"
           variant="outline"
-          className="rounded-r-xl bg-white/80 border-inventu-gray/10 shadow-sm hover:bg-white"
+          className="h-9 w-9 rounded-r-xl bg-inventu-dark/90 border-white/10 shadow-sm hover:bg-inventu-dark"
           title="Abrir menu"
         >
-          <ChevronLeft className="h-5 w-5 rotate-180 text-inventu-blue" />
+          <ChevronLeft className="h-5 w-5 rotate-180 text-white" />
         </Button>
       </div>
     );
@@ -180,13 +179,15 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   return (
     <aside className={`
       h-full flex flex-col
-      bg-white/60 dark:bg-inventu-dark/90
-      border-r border-inventu-gray/5 
-      w-[280px] ${isMobile ? 'max-w-full' : 'max-w-[320px]'}
-      backdrop-blur-xl
-      rounded-r-2xl md:rounded-r-3xl
-      transition-all duration-300
-      shadow-sm
+      bg-inventu-darker
+      border-r border-white/5 
+      w-[260px] md:w-[280px]
+      ${isMobile ? 'max-w-[85vw]' : 'max-w-[280px]'}
+      transition-all duration-200
+      shadow-xl
+      fixed md:static
+      top-0 left-0 bottom-0
+      z-50
     `}>
       <SidebarHeader
         onNewConversation={handleNewConversation}
@@ -194,12 +195,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         isUserLoggedIn={!!user}
       />
 
-      <div className="flex items-center px-5 py-2 gap-2 text-inventu-gray/80 border-b border-inventu-gray/5 bg-transparent">
-        <History className="h-3.5 w-3.5 opacity-70" />
-        <h2 className="font-medium text-inventu-gray select-none tracking-tight text-sm md:text-base">Histórico</h2>
+      <div className="flex items-center px-3 py-2 gap-2 text-white/60 border-b border-white/5 bg-inventu-dark/40">
+        <History className="h-3.5 w-3.5" />
+        <h2 className="font-medium select-none tracking-tight text-sm">Histórico</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-1 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
         <DndProvider backend={HTML5Backend}>
           <ConversationList
             conversations={conversations}

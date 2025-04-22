@@ -22,25 +22,25 @@ const menuItems = [
   {
     path: '/',
     label: 'Chat',
-    icon: <MessageSquare className="h-4 w-4 md:h-5 md:w-5" />,
+    icon: <MessageSquare className="h-4 w-4" />,
     test: (loc: string) => loc === '/' || loc.startsWith('/c/')
   },
   {
     path: '/gallery',
     label: 'Galeria',
-    icon: <Image className="h-4 w-4 md:h-5 md:w-5" />,
+    icon: <Image className="h-4 w-4" />,
     test: (loc: string) => loc === '/gallery'
   },
   {
     path: '/memory',
     label: 'Memória',
-    icon: <Memory className="h-4 w-4 md:h-5 md:w-5" />,
+    icon: <Memory className="h-4 w-4" />,
     test: (loc: string) => loc === '/memory'
   },
   {
     path: '/tokens',
     label: 'Tokens',
-    icon: <Coins className="h-4 w-4 md:h-5 md:w-5" />,
+    icon: <Coins className="h-4 w-4" />,
     test: (loc: string) => loc === '/tokens'
   },
 ];
@@ -65,21 +65,19 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   };
 
   return (
-    <nav className="flex flex-col gap-1 pt-2">
+    <nav className="flex flex-wrap gap-1 py-1">
       {menuItems.map((item) => (
         <Button
           key={item.label}
           variant={item.test(location.pathname) ? "secondary" : "ghost"}
           className={`
-            w-full justify-start px-3 py-2.5
-            gap-3 rounded-xl font-medium text-inventu-gray transition
-            text-sm md:text-base
+            w-full justify-start px-3 py-2
+            gap-2 rounded-lg text-sm
             ${item.test(location.pathname)
-              ? "bg-inventu-blue/15 text-inventu-blue font-medium"
-              : "hover:bg-inventu-blue/10 hover:text-inventu-blue"
+              ? "bg-white/10 text-white font-medium"
+              : "hover:bg-white/5 hover:text-white text-white/60"
             }
-            hover:scale-[1.01] active:scale-95
-            shadow-none
+            transition-colors h-9
           `}
           onClick={() => handleClick(item.path)}
         >
@@ -88,23 +86,23 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
         </Button>
       ))}
 
-      <div className="pt-3 mt-3 border-t border-inventu-gray/10 flex flex-col gap-1">
+      <div className="w-full pt-2 mt-2 border-t border-white/5">
         {user ? (
           <Button
             variant="ghost"
-            className="w-full justify-start rounded-xl px-3 py-2.5 text-sm md:text-base text-inventu-gray/70 hover:bg-inventu-blue/10 hover:text-inventu-blue transition-all"
+            className="w-full justify-start rounded-lg px-3 py-2 h-9 text-sm text-white/60 hover:bg-white/5 hover:text-white"
             onClick={handleSignOut}
           >
-            <LogOut className="mr-3 h-4 w-4 md:h-5 md:w-5" />
+            <LogOut className="mr-2 h-4 w-4" />
             Sair
           </Button>
         ) : (
           <Button
             variant="ghost"
-            className="w-full justify-start rounded-xl px-3 py-2.5 text-sm md:text-base text-inventu-gray/70 hover:bg-inventu-blue/10 hover:text-inventu-blue transition-all"
+            className="w-full justify-start rounded-lg px-3 py-2 h-9 text-sm text-white/60 hover:bg-white/5 hover:text-white"
             onClick={() => handleClick('/auth')}
           >
-            <LogIn className="mr-3 h-4 w-4 md:h-5 md:w-5" />
+            <LogIn className="mr-2 h-4 w-4" />
             Entrar
           </Button>
         )}

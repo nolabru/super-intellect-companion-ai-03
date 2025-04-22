@@ -17,10 +17,10 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
   const isMobile = useIsMobile();
   
   const icons = {
-    text: <Text size={isMobile ? 20 : 24} strokeWidth={2.2} />,
-    image: <Image size={isMobile ? 20 : 24} strokeWidth={2.2} />,
-    video: <Video size={isMobile ? 20 : 24} strokeWidth={2.2} />,
-    audio: <AudioLines size={isMobile ? 20 : 24} strokeWidth={2.2} />
+    text: <Text size={isMobile ? 18 : 20} strokeWidth={2} />,
+    image: <Image size={isMobile ? 18 : 20} strokeWidth={2} />,
+    video: <Video size={isMobile ? 18 : 20} strokeWidth={2} />,
+    audio: <AudioLines size={isMobile ? 18 : 20} strokeWidth={2} />
   };
 
   return (
@@ -28,7 +28,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
       type="single"
       value={activeMode}
       onValueChange={(value) => value && onChange(value as ChatMode)}
-      className={cn("bg-card/80 rounded-xl p-[0.12rem] shadow-inner gap-1", className)}
+      className={cn("bg-inventu-dark/80 rounded-xl p-[0.12rem] shadow-sm gap-1", className)}
     >
       {(["text", "image", "video", "audio"] as ChatMode[]).map(mode => (
         <ToggleGroupItem
@@ -37,11 +37,11 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
           aria-label={mode}
           className={cn(
             "mode-selector-btn",
-            "rounded-xl p-1.5",
-            "transition-colors",
+            "rounded-lg p-1.5",
+            "transition-all",
             activeMode === mode
-              ? "bg-inventu-blue/90 text-white shadow-sm ring-1 ring-inventu-blue"
-              : "text-inventu-gray/80 hover:bg-black/10"
+              ? "bg-inventu-blue text-white shadow-sm"
+              : "text-white/60 hover:bg-white/5 hover:text-white/80"
           )}
           title={mode}
         >
