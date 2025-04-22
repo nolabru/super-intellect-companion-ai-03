@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,6 +14,7 @@ import LinkToggleButton from '@/components/LinkToggleButton';
 import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
 import TokenDisplay from '@/components/TokenDisplay';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ModeAndModelSelectorBar from '@/components/ModeAndModelSelectorBar';
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(false);
@@ -200,22 +200,32 @@ const Index: React.FC = () => {
           `}>
             <div className="border-b border-white/5 px-2.5 md:px-6 py-2 md:py-3">
               <h2 className="text-base md:text-xl font-semibold text-white text-center tracking-tight">Conversa</h2>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-1 md:gap-2">
-                <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
+              <div className="mt-2 flex justify-center">
+                <ModeAndModelSelectorBar
+                  activeMode={activeMode}
+                  onModeChange={handleModeChange}
+                  comparing={comparing}
+                  isLinked={isLinked}
+                  leftModel={leftModel}
+                  rightModel={rightModel}
+                  onLeftModelChange={handleLeftModelChange}
+                  onRightModelChange={handleRightModelChange}
+                  availableModels={availableModels}
+                />
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1 md:gap-2">
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
                 )}
                 <TokenDisplay />
               </div>
-              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1 md:gap-2">
-                {comparing && (
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 1: <span className="font-medium">{leftModel}</span></span>
-                    <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 2: <span className="font-medium">{rightModel}</span></span>
-                  </div>
-                )}
-              </div>
+              {comparing && (
+                <div className="mt-1.5 flex flex-wrap justify-center gap-1.5">
+                  <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 1: <span className="font-medium">{leftModel}</span></span>
+                  <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 2: <span className="font-medium">{rightModel}</span></span>
+                </div>
+              )}
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
               {comparing ? (
