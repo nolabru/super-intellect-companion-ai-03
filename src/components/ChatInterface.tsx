@@ -29,7 +29,7 @@ function ChatMinimalHeader({ model, onModelChange, availableModels }) {
             selectedModel={model}
             onChange={onModelChange}
             disabled={!onModelChange}
-            compact
+            compact={true}
           />
         </div>
       )}
