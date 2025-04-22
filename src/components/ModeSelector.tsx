@@ -15,12 +15,12 @@ interface ModeSelectorProps {
 
 const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, className }) => {
   const isMobile = useIsMobile();
-  
+
   const icons = {
-    text: <Text size={isMobile ? 18 : 20} strokeWidth={2} />,
-    image: <Image size={isMobile ? 18 : 20} strokeWidth={2} />,
-    video: <Video size={isMobile ? 18 : 20} strokeWidth={2} />,
-    audio: <AudioLines size={isMobile ? 18 : 20} strokeWidth={2} />
+    text: <Text size={isMobile ? 20 : 22} strokeWidth={2.1} />,
+    image: <Image size={isMobile ? 20 : 22} strokeWidth={2.1} />,
+    video: <Video size={isMobile ? 20 : 22} strokeWidth={2.1} />,
+    audio: <AudioLines size={isMobile ? 20 : 22} strokeWidth={2.1} />
   };
 
   return (
@@ -28,7 +28,12 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
       type="single"
       value={activeMode}
       onValueChange={(value) => value && onChange(value as ChatMode)}
-      className={cn("bg-inventu-dark/80 rounded-xl p-[0.12rem] shadow-sm gap-1", className)}
+      className={cn(
+        "bg-inventu-dark/90 rounded-2xl p-0.5 shadow ring-1 ring-inventu-blue/10 gap-2 transition-all",
+        "backdrop-blur-xl flex",
+        isMobile ? "min-w-full" : "min-w-[210px]",
+        className
+      )}
     >
       {(["text", "image", "video", "audio"] as ChatMode[]).map(mode => (
         <ToggleGroupItem
@@ -36,12 +41,11 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
           value={mode}
           aria-label={mode}
           className={cn(
-            "mode-selector-btn",
-            "rounded-lg p-1.5",
-            "transition-all",
+            "mode-selector-btn rounded-xl px-3 py-2 flex items-center justify-center min-w-[44px]",
+            "font-medium transition-colors duration-150 select-none outline-none focus:ring-inventu-blue/50",
             activeMode === mode
-              ? "bg-inventu-blue text-white shadow-sm"
-              : "text-white/60 hover:bg-white/5 hover:text-white/80"
+              ? "bg-inventu-blue text-white shadow ring-2 ring-inventu-blue/30 scale-105"
+              : "text-inventu-blue/70 hover:bg-inventu-blue/10 hover:text-inventu-blue active:scale-95"
           )}
           title={mode}
         >

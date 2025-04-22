@@ -18,29 +18,30 @@ interface SidebarNavigationProps {
   onCreateConversation?: () => void;
 }
 
+// Brand menu items with improved contrast and bigger icons
 const menuItems = [
   {
     path: '/',
     label: 'Chat',
-    icon: <MessageSquare className="h-4 w-4" />,
+    icon: <MessageSquare className="h-6 w-6" />,
     test: (loc: string) => loc === '/' || loc.startsWith('/c/')
   },
   {
     path: '/gallery',
     label: 'Galeria',
-    icon: <Image className="h-4 w-4" />,
+    icon: <Image className="h-6 w-6" />,
     test: (loc: string) => loc === '/gallery'
   },
   {
     path: '/memory',
     label: 'Memória',
-    icon: <Memory className="h-4 w-4" />,
+    icon: <Memory className="h-6 w-6" />,
     test: (loc: string) => loc === '/memory'
   },
   {
     path: '/tokens',
     label: 'Tokens',
-    icon: <Coins className="h-4 w-4" />,
+    icon: <Coins className="h-6 w-6" />,
     test: (loc: string) => loc === '/tokens'
   },
 ];
@@ -65,44 +66,46 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   };
 
   return (
-    <nav className="flex flex-wrap gap-1 py-1">
+    <nav className="flex flex-wrap gap-2 py-2 md:py-2 px-1">
       {menuItems.map((item) => (
         <Button
           key={item.label}
           variant={item.test(location.pathname) ? "secondary" : "ghost"}
           className={`
-            w-full justify-start px-3 py-2
-            gap-2 rounded-lg text-sm
+            w-full justify-start px-4 py-3
+            gap-3 rounded-xl text-base md:text-lg font-semibold
             ${item.test(location.pathname)
-              ? "bg-white/10 text-white font-medium"
-              : "hover:bg-white/5 hover:text-white text-white/60"
+              ? "bg-inventu-blue/20 text-inventu-blue shadow-md"
+              : "hover:bg-inventu-blue/10 hover:text-inventu-blue text-inventu-blue/70"
             }
-            transition-colors h-9
+            transition-transform h-12
+            hover:scale-105 active:scale-95 duration-150
           `}
           onClick={() => handleClick(item.path)}
         >
           {item.icon}
-          {item.label}
+          <span className="truncate">{item.label}</span>
         </Button>
       ))}
 
-      <div className="w-full pt-2 mt-2 border-t border-white/5">
+      <div className="w-full pt-3 mt-3 border-t border-inventu-blue/10">
         {user ? (
           <Button
             variant="ghost"
-            className="w-full justify-start rounded-lg px-3 py-2 h-9 text-sm text-white/60 hover:bg-white/5 hover:text-white"
+            className="w-full justify-start rounded-xl px-4 py-3 h-12 text-base text-inventu-blue/70 hover:bg-inventu-blue/10 hover:text-inventu-blue
+              font-medium transition-transform hover:scale-105 active:scale-95 duration-150"
             onClick={handleSignOut}
           >
-            <LogOut className="mr-2 h-4 w-4" />
+            <LogOut className="mr-2 h-6 w-6" />
             Sair
           </Button>
         ) : (
           <Button
             variant="ghost"
-            className="w-full justify-start rounded-lg px-3 py-2 h-9 text-sm text-white/60 hover:bg-white/5 hover:text-white"
+            className="w-full justify-start rounded-xl px-4 py-3 h-12 text-base text-inventu-blue/70 hover:bg-inventu-blue/10 hover:text-inventu-blue font-medium hover:scale-105 transition-transform active:scale-95 duration-150"
             onClick={() => handleClick('/auth')}
           >
-            <LogIn className="mr-2 h-4 w-4" />
+            <LogIn className="mr-2 h-6 w-6" />
             Entrar
           </Button>
         )}

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,10 +28,10 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onToggleSidebar,
   isOpen = true
 }) => {
-  const { 
-    conversations, 
-    currentConversationId, 
-    setCurrentConversationId, 
+  const {
+    conversations,
+    currentConversationId,
+    setCurrentConversationId,
     createNewConversation,
     deleteConversation,
     renameConversation,
@@ -38,7 +39,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     forceReloadMessages,
     loading
   } = useConversation();
-  
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -49,7 +50,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     if (user) {
       const savedFolders = localStorage.getItem(`folders_${user.id}`);
       const savedConversationFolders = localStorage.getItem(`conversation_folders_${user.id}`);
-      
+
       if (savedFolders) {
         try {
           setFolders(JSON.parse(savedFolders));
@@ -57,7 +58,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           console.error('Erro ao carregar pastas:', e);
         }
       }
-      
+
       if (savedConversationFolders) {
         try {
           setConversationFolders(JSON.parse(savedConversationFolders));
@@ -67,13 +68,13 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       }
     }
   }, [user]);
-  
+
   useEffect(() => {
     if (user) {
       localStorage.setItem(`folders_${user.id}`, JSON.stringify(folders));
     }
   }, [folders, user]);
-  
+
   useEffect(() => {
     if (user) {
       localStorage.setItem(`conversation_folders_${user.id}`, JSON.stringify(conversationFolders));
@@ -86,20 +87,20 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       name,
       isOpen: true
     };
-    
+
     setFolders(prev => [newFolder, ...prev]);
     toast.success(`Pasta "${name}" criada com sucesso`);
   };
-  
+
   const handleRenameFolder = (id: string, newName: string) => {
-    setFolders(prev => 
-      prev.map(folder => 
+    setFolders(prev =>
+      prev.map(folder =>
         folder.id === id ? { ...folder, name: newName } : folder
       )
     );
     toast.success(`Pasta renomeada para "${newName}"`);
   };
-  
+
   const handleDeleteFolder = (id: string) => {
     const updatedConversationFolders = { ...conversationFolders };
     Object.keys(updatedConversationFolders).forEach(convId => {
@@ -107,29 +108,29 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         updatedConversationFolders[convId] = null;
       }
     });
-    
+
     setConversationFolders(updatedConversationFolders);
     setFolders(prev => prev.filter(folder => folder.id !== id));
     toast.success('Pasta excluída com sucesso');
   };
-  
+
   const handleMoveConversation = (conversationId: string, folderId: string | null) => {
     setConversationFolders(prev => ({
       ...prev,
       [conversationId]: folderId
     }));
-    
+
     const folderName = folderId ? folders.find(f => f.id === folderId)?.name : 'Sem pasta';
     toast.success(`Conversa movida para ${folderName}`);
   };
 
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Criando nova conversa');
-    
+
     clearMessages();
     setCurrentConversationId(null);
     navigate('/', { replace: true });
-    
+
     try {
       const success = await createNewConversation();
       if (!success) {
@@ -146,11 +147,11 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       console.error('[ConversationSidebar] ID de conversa inválido');
       return;
     }
-    
+
     console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
-    
+
     clearMessages();
-    
+
     if (currentConversationId === conversationId) {
       console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
       forceReloadMessages();
@@ -167,10 +168,10 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onClick={onToggleSidebar}
           size="icon"
           variant="outline"
-          className="h-9 w-9 rounded-r-xl bg-inventu-dark/90 border-white/10 shadow-sm hover:bg-inventu-dark"
+          className="h-10 w-10 rounded-r-xl bg-inventu-dark/95 border-inventu-blue/10 shadow-md hover:bg-inventu-dark hover:scale-105 active:scale-95 transition-transform"
           title="Abrir menu"
         >
-          <ChevronLeft className="h-5 w-5 rotate-180 text-white" />
+          <ChevronLeft className="h-6 w-6 rotate-180 text-inventu-blue" />
         </Button>
       </div>
     );
@@ -179,15 +180,15 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   return (
     <aside className={`
       h-full flex flex-col
-      bg-inventu-darker
-      border-r border-white/5 
-      w-[260px] md:w-[280px]
-      ${isMobile ? 'max-w-[85vw]' : 'max-w-[280px]'}
+      bg-inventu-darker/95
+      border-r border-inventu-blue/20 
+      w-[94vw] max-w-[98vw] md:w-[290px] md:max-w-[340px] lg:max-w-[340px]
       transition-all duration-200
       shadow-xl
       fixed md:static
       top-0 left-0 bottom-0
       z-50
+      animate-fade-in
     `}>
       <SidebarHeader
         onNewConversation={handleNewConversation}
@@ -195,12 +196,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         isUserLoggedIn={!!user}
       />
 
-      <div className="flex items-center px-3 py-2 gap-2 text-white/60 border-b border-white/5 bg-inventu-dark/40">
-        <History className="h-3.5 w-3.5" />
-        <h2 className="font-medium select-none tracking-tight text-sm">Histórico</h2>
+      <div className="flex items-center px-3 md:px-4 py-1 gap-2 text-inventu-blue/70 border-b border-inventu-blue/15 bg-inventu-dark/70">
+        <History className="h-5 w-5" />
+        <h2 className="font-semibold select-none tracking-tight text-base md:text-lg">Histórico</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto p-1 md:p-2 scrollbar-thin">
         <DndProvider backend={HTML5Backend}>
           <ConversationList
             conversations={conversations}
