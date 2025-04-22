@@ -10,15 +10,15 @@ import ModeSelector, { ChatMode } from '@/components/ModeSelector';
 interface AppHeaderProps {
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
-  activeMode: ChatMode;
-  onModeChange: (mode: ChatMode) => void;
+  activeMode?: ChatMode; // Make optional
+  onModeChange?: (mode: ChatMode) => void; // Make optional
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({
   sidebarOpen,
   onToggleSidebar,
-  activeMode,
-  onModeChange
+  activeMode = 'text', // Provide default value
+  onModeChange = () => {} // Provide default empty function
 }) => {
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -70,14 +70,17 @@ const AppHeader: React.FC<AppHeaderProps> = ({
           <UserMenu />
         </div>
       </div>
-      {/* MODO SELECTOR NO HEADER */}
-      <div className="flex items-center justify-center mt-2">
-        <ModeSelector
-          activeMode={activeMode}
-          onChange={onModeChange}
-          className="mx-auto"
-        />
-      </div>
+      
+      {/* Only show mode selector if we have an onModeChange handler */}
+      {onModeChange && (
+        <div className="flex items-center justify-center mt-2">
+          <ModeSelector
+            activeMode={activeMode}
+            onChange={onModeChange}
+            className="mx-auto"
+          />
+        </div>
+      )}
     </div>
   );
 };
