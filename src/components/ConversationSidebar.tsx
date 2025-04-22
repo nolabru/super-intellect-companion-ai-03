@@ -50,11 +50,21 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     if (user) {
       const savedFolders = localStorage.getItem(`folders_${user.id}`);
       const savedConversationFolders = localStorage.getItem(`conversation_folders_${user.id}`);
+
       if (savedFolders) {
-        try { setFolders(JSON.parse(savedFolders)); } catch (e) { console.error('Erro ao carregar pastas:', e); }
+        try {
+          setFolders(JSON.parse(savedFolders));
+        } catch (e) {
+          console.error('Erro ao carregar pastas:', e);
+        }
       }
+
       if (savedConversationFolders) {
-        try { setConversationFolders(JSON.parse(savedConversationFolders)); } catch (e) { console.error('Erro ao carregar associações de conversa-pasta:', e); }
+        try {
+          setConversationFolders(JSON.parse(savedConversationFolders));
+        } catch (e) {
+          console.error('Erro ao carregar associações de conversa-pasta:', e);
+        }
       }
     }
   }, [user]);
@@ -72,7 +82,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   }, [conversationFolders, user]);
 
   const handleCreateFolder = (name: string) => {
-    const newFolder: FolderType = { id: uuidv4(), name, isOpen: true };
+    const newFolder: FolderType = {
+      id: uuidv4(),
+      name,
+      isOpen: true
+    };
+
     setFolders(prev => [newFolder, ...prev]);
     toast.success(`Pasta "${name}" criada com sucesso`);
   };
@@ -93,6 +108,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         updatedConversationFolders[convId] = null;
       }
     });
+
     setConversationFolders(updatedConversationFolders);
     setFolders(prev => prev.filter(folder => folder.id !== id));
     toast.success('Pasta excluída com sucesso');
@@ -109,6 +125,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   };
 
   const handleNewConversation = async () => {
+    console.log('[ConversationSidebar] Criando nova conversa');
+
     clearMessages();
     setCurrentConversationId(null);
     navigate('/', { replace: true });
@@ -130,9 +148,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       return;
     }
 
+    console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
+
     clearMessages();
 
     if (currentConversationId === conversationId) {
+      console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
       forceReloadMessages();
     } else {
       setCurrentConversationId(conversationId);
@@ -142,7 +163,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   if (!isOpen && onToggleSidebar) {
     return (
-      <div className="fixed left-0 top-16 z-30 md:static">
+      <div className="fixed left-0 top-16 z-30">
         <Button
           onClick={onToggleSidebar}
           size="icon"
@@ -157,35 +178,25 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   }
 
   return (
-    <aside
-      className={`
-        h-full flex flex-col
-        bg-inventu-darker/95
-        border-r border-inventu-blue/20
-        w-full max-w-full md:max-w-[340px] md:w-[290px] lg:max-w-[340px]
-        transition-all duration-200
-        shadow-xl
-        fixed md:static
-        top-0 left-0 bottom-0
-        z-50
-        animate-fade-in
-        ${isMobile ? 'min-w-0 w-[99vw]' : ''}
-      `}
-      style={{
-        // Evita scroll horizontal em qualquer dispositivo
-        maxWidth: isMobile ? '100vw' : undefined,
-        width: isMobile ? '99vw' : undefined,
-        overflowX: 'hidden'
-      }}
-      tabIndex={-1}
-    >
+    <aside className={`
+      h-full flex flex-col
+      bg-inventu-darker/95
+      border-r border-inventu-blue/20 
+      w-[94vw] max-w-[98vw] md:w-[290px] md:max-w-[340px] lg:max-w-[340px]
+      transition-all duration-200
+      shadow-xl
+      fixed md:static
+      top-0 left-0 bottom-0
+      z-50
+      animate-fade-in
+    `}>
       <SidebarHeader
         onNewConversation={handleNewConversation}
         onToggleSidebar={onToggleSidebar}
         isUserLoggedIn={!!user}
       />
 
-      <div className="flex items-center px-2 md:px-4 py-1 gap-2 text-inventu-blue/70 border-b border-inventu-blue/15 bg-inventu-dark/70">
+      <div className="flex items-center px-3 md:px-4 py-1 gap-2 text-inventu-blue/70 border-b border-inventu-blue/15 bg-inventu-dark/70">
         <History className="h-5 w-5" />
         <h2 className="font-semibold select-none tracking-tight text-base md:text-lg">Histórico</h2>
       </div>
