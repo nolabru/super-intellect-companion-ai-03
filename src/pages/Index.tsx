@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -219,8 +218,8 @@ const Index: React.FC = () => {
             </div>
             <div className="flex-1 flex flex-col overflow-hidden">
               {comparing ? (
-                <div className="flex flex-col md:flex-row flex-1">
-                  <div className="flex-1 md:border-r border-white/5 min-w-0">
+                <div className="flex flex-1 flex-col divide-y divide-white/10">
+                  <div className="flex-1 min-h-0">
                     <ChatInterface
                       messages={messages}
                       model={leftModel}
@@ -231,7 +230,7 @@ const Index: React.FC = () => {
                       loading={authLoading || (messagesLoading && !initialLoadDone)}
                     />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-h-0">
                     <ChatInterface
                       messages={messages}
                       model={rightModel}
@@ -263,15 +262,15 @@ const Index: React.FC = () => {
                   model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
                 />
               ) : (
-                <div className="flex flex-col md:flex-row gap-2">
-                  <div className="flex-1 min-w-0">
+                <div className="flex flex-col gap-2">
+                  <div>
                     <ChatInput
                       onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
                       model={leftModel}
                       mode={activeMode}
                     />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div>
                     <ChatInput
                       onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
                       model={rightModel}
