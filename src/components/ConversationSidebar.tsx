@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -166,10 +167,10 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onClick={onToggleSidebar}
           size="icon"
           variant="outline"
-          className="rounded-r-2xl shadow-xl bg-white/50 hover:bg-white/70 border-gray-200 text-gray-800"
+          className="rounded-r-2xl bg-white/70 border-inventu-gray/10 shadow hover:bg-white"
           title="Abrir menu"
         >
-          <ChevronLeft className="h-5 w-5 rotate-180" />
+          <ChevronLeft className="h-5 w-5 rotate-180 text-inventu-blue" />
         </Button>
       </div>
     );
@@ -177,27 +178,26 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   return (
     <aside className="
-      h-full flex flex-col pb-0
-      bg-white/60 dark:bg-inventu-dark/60
-      border-r border-gray-200/40 shadow-2xl 
-      min-w-[256px] max-w-[330px]
-      backdrop-blur-[16px] transition-all
+      h-full flex flex-col
+      bg-white/60 dark:bg-inventu-dark/90
+      border-r border-inventu-gray/10 
+      min-w-[260px] max-w-[320px]
+      backdrop-blur-xl
       rounded-r-3xl
-      "
-      style={{ minHeight: '100svh' }}
-    >
+      transition-all
+      ">
       <SidebarHeader
         onNewConversation={handleNewConversation}
         onToggleSidebar={onToggleSidebar}
         isUserLoggedIn={!!user}
       />
 
-      <div className="flex items-center px-7 py-2 gap-2 text-gray-800 dark:text-white/80 border-b border-gray-200/20 bg-transparent">
+      <div className="flex items-center px-7 py-3 gap-2 text-inventu-gray/80 border-b border-inventu-gray/10 bg-transparent">
         <History className="h-4 w-4 opacity-70" />
-        <h2 className="font-base text-gray-600 dark:text-white/60 select-none">Histórico</h2>
+        <h2 className="font-semibold text-inventu-gray select-none tracking-tight text-lg">Histórico</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-1 scrollbar-none">
+      <div className="flex-1 overflow-y-auto px-2 py-1 scrollbar-thin">
         <DndProvider backend={HTML5Backend}>
           <ConversationList
             conversations={conversations}
@@ -221,3 +221,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 };
 
 export default ConversationSidebar;
+
+// O arquivo ficou grande (224 linhas). Considere futuramente pedir um refatoração para arquivos menores e mais fáceis de manter.
+

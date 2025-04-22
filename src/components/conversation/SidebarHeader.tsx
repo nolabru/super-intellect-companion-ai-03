@@ -26,20 +26,24 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
 
   return (
     <div className="
-      flex flex-col gap-3 p-4 
-      border-b border-gray-200/40 bg-white/30 dark:bg-inventu-dark/20
-      rounded-tr-2xl
-      ">
+      flex flex-col gap-4 px-6 pt-8 pb-4
+      border-b border-inventu-gray/20 bg-white/10 dark:bg-inventu-dark/20
+      rounded-tr-3xl
+      shadow-none
+    ">
       <div className="flex items-center gap-2 w-full">
         <Button
           onClick={handleNewConversation}
           className="
-            flex-1 h-11 rounded-2xl text-base bg-inventu-blue shadow-xl
-            hover:bg-inventu-blue/90 transition-all
+            flex-1 h-12 rounded-full text-base 
+            bg-inventu-blue/90
+            hover:bg-inventu-blue transition-all
+            font-semibold shadow-none
+            active:scale-95
           "
           disabled={!isUserLoggedIn}
         >
-          <PlusCircle className="mr-2 h-5 w-5" />
+          <PlusCircle className="mr-2 h-6 w-6" />
           Nova Conversa
         </Button>
         {onToggleSidebar && (
@@ -47,16 +51,18 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
             onClick={onToggleSidebar}
             size="icon"
             variant="ghost"
-            className="ml-1 text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="ml-2 text-inventu-gray hover:text-inventu-blue transition-colors rounded-full"
             title="Minimizar menu"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-6 w-6" />
           </Button>
         )}
       </div>
+      {/* Navegação limpa abaixo */}
       <SidebarNavigation closeMenu={onToggleSidebar} />
     </div>
   );
 };
 
 export default SidebarHeader;
+
