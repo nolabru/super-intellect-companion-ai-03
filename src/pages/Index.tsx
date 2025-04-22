@@ -8,7 +8,6 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import { ChatMode } from '@/components/ModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversation } from '@/hooks/useConversation';
-import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
 import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
@@ -194,31 +193,41 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
         {!sidebarOpen && !isMobile && (
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
         )}
-        <main className="flex-1 flex flex-col overflow-hidden items-center justify-center px-1.5 pb-1.5 md:px-2 md:pb-4 w-full">
+        <main className="flex-1 flex flex-col overflow-hidden items-center justify-center px-1 pb-1 md:px-2 md:pb-2 w-full">
           <div className={`
             w-full max-w-full md:max-w-3xl
-            flex flex-col flex-1 bg-inventu-card/90 rounded-xl md:rounded-2xl shadow-xl 
-            border border-white/5 overflow-hidden backdrop-blur-md my-1.5 md:my-4
+            flex flex-col flex-1 bg-inventu-card/90 rounded-lg md:rounded-xl shadow-lg
+            border border-white/5 overflow-hidden backdrop-blur-md my-1 md:my-2
             min-h-[80vh]
           `}>
-            <div className="border-b border-white/5 px-2.5 md:px-6 py-2 md:py-3">
-              <h2 className="text-base md:text-xl font-semibold text-white text-center tracking-tight">Conversa</h2>
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-1 md:gap-2">
+            <div className="border-b border-white/5 px-2 md:px-3 py-1.5 md:py-2 flex items-center justify-between">
+              <div className="flex items-center gap-1">
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
                 )}
-                <TokenDisplay />
               </div>
-              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1 md:gap-2">
-                {comparing && (
-                  <div className="flex flex-wrap justify-center gap-1.5">
-                    <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 1: <span className="font-medium">{leftModel}</span></span>
-                    <span className="text-xs text-white/70 px-2 py-0.5 rounded-lg bg-white/5">Modelo 2: <span className="font-medium">{rightModel}</span></span>
-                  </div>
-                )}
+              
+              <h2 className="text-base font-medium text-white text-center tracking-tight">Conversa</h2>
+              
+              <div className="flex items-center gap-1">
+                <div className="md:hidden">
+                  <TokenDisplay />
+                </div>
               </div>
             </div>
+            
+            {comparing && (
+              <div className="px-2 py-1 flex flex-wrap justify-center gap-1 border-b border-white/5 bg-black/20">
+                <span className="text-xs text-white/70 px-1.5 py-0.5 rounded-md bg-white/5">
+                  <span className="font-medium">{leftModel}</span>
+                </span>
+                <span className="text-xs text-white/70 px-1.5 py-0.5 rounded-md bg-white/5">
+                  <span className="font-medium">{rightModel}</span>
+                </span>
+              </div>
+            )}
+            
             <div className="flex-1 flex flex-col overflow-hidden">
               {comparing ? (
                 <div className="flex flex-1 flex-col divide-y divide-white/10">
@@ -257,7 +266,7 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
                 />
               )}
             </div>
-            <div className="p-1.5 md:p-4 border-t border-white/5 bg-inventu-card/60 backdrop-blur-md">
+            <div className="p-1 md:p-2 border-t border-white/5 bg-inventu-card/60 backdrop-blur-md">
               {(!comparing || isLinked) ? (
                 <ChatInput
                   onSendMessage={handleSendMessage}
@@ -265,7 +274,7 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
                   model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
                 />
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
                   <div>
                     <ChatInput
                       onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}

@@ -161,15 +161,22 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   
   return (
     <div className={cn(
-      "flex flex-col h-full bg-background shadow-lg rounded-2xl overflow-hidden", 
+      "flex flex-col h-full bg-background shadow-lg overflow-hidden", 
       className
     )}>
       <div className={cn(
-        "p-3 backdrop-blur-xl bg-black/40 border-b border-white/10 flex justify-center items-center gap-2",
+        "p-1.5 backdrop-blur-lg bg-black/40 border-b border-white/10 flex justify-between items-center gap-1",
         getModelColor(model)
       )}>
-        {onModelChange && availableModels.length > 0 ? (
-          <div className="w-full max-w-sm">
+        <div className="flex items-center">
+          <div className="h-2 w-2 rounded-full bg-green-500 mr-1.5"></div>
+          <div className="font-medium text-white text-sm">
+            {getModelDisplayName(model)}
+          </div>
+        </div>
+        
+        {onModelChange && availableModels.length > 0 && (
+          <div>
             <ModelSelector 
               mode={modelInfo?.modes[0] || 'text'} 
               selectedModel={model} 
@@ -177,26 +184,21 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               disabled={!onModelChange}
             />
           </div>
-        ) : (
-          <div className="font-medium text-white">
-            {getModelDisplayName(model)}
-            {providerName && <span className="ml-1 text-xs opacity-75">({providerName})</span>}
-          </div>
         )}
       </div>
       
       <div className={cn(
-        "flex-1 overflow-y-auto px-4 py-6 space-y-6 relative scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent",
+        "flex-1 overflow-y-auto px-3 py-4 space-y-4 relative scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent",
         "bg-background"
       )}>
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3 animate-fade-in">
-            <Loader2 className="h-8 w-8 animate-spin text-white/70" />
-            <span className="text-white/70 font-medium">Carregando mensagens...</span>
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2 animate-fade-in">
+            <Loader2 className="h-6 w-6 animate-spin text-white/70" />
+            <span className="text-white/70 text-sm">Carregando mensagens...</span>
           </div>
         ) : filteredMessages.length > 0 ? (
           <>
-            <div className="space-y-6">
+            <div className="space-y-4">
               {filteredMessages.map((message) => (
                 <div key={message.id} className="animate-fade-in">
                   <ChatMessage message={message} />
@@ -267,11 +269,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <div ref={messagesEndRef} />
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full space-y-4 animate-fade-in">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-xl">
+          <div className="flex flex-col items-center justify-center h-full space-y-3 animate-fade-in">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-lg">
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
-                className="h-8 w-8 text-white opacity-80" 
+                className="h-6 w-6 text-white opacity-80" 
                 fill="none" 
                 viewBox="0 0 24 24" 
                 stroke="currentColor"
@@ -284,8 +286,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 />
               </svg>
             </div>
-            <p className="text-gray-400 font-medium">Nenhuma mensagem ainda</p>
-            <p className="text-gray-500 text-sm px-8 text-center">Inicie uma conversa enviando uma mensagem abaixo</p>
+            <p className="text-gray-400 text-sm">Inicie uma conversa</p>
           </div>
         )}
       </div>
