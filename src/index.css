@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -230,7 +229,7 @@ input, .glass-effect, .btn-primary, .btn-secondary, .btn-accent {
   font-size: 1.08em;
 }
 input {
-  @apply px-5 py-2.5 bg-inventu-dark/80 text-inventu-blue/90 border-inventu-blue/18 focus:ring-inventu-blue/30;
+  @apply px-5 py-2.5 bg-inventu-dark/80 text-inventu-blue/90 border border-inventu-blue/10 focus:ring-inventu-blue/30;
   box-shadow: 0 2px 12px #080c1c13;
   outline: none;
 }
