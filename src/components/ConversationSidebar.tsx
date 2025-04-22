@@ -22,7 +22,7 @@ interface ConversationSidebarProps {
   isOpen?: boolean;
 }
 
-const ConversationSidebar: React.FC<ConversationSidebarProps> = ({ 
+const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onToggleSidebar,
   isOpen = true
 }) => {
@@ -161,12 +161,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   if (!isOpen && onToggleSidebar) {
     return (
-      <div className="absolute left-0 top-24 z-10">
+      <div className="absolute left-0 top-6 z-20">
         <Button
           onClick={onToggleSidebar}
           size="icon"
-          variant="secondary"
-          className="rounded-r-2xl rounded-l-none border-l-0 backdrop-blur-md bg-inventu-dark/80"
+          variant="outline"
+          className="rounded-r-2xl shadow-xl bg-white/50 hover:bg-white/70 border-gray-200 text-gray-800"
           title="Abrir menu"
         >
           <ChevronLeft className="h-5 w-5 rotate-180" />
@@ -176,21 +176,30 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   }
 
   return (
-    <aside className="h-full flex flex-col bg-inventu-dark/90 border-r border-white/10 shadow-lg backdrop-blur-xl min-w-[240px]">
-      <SidebarHeader 
+    <aside className="
+      h-full flex flex-col pb-0
+      bg-white/60 dark:bg-inventu-dark/60
+      border-r border-gray-200/40 shadow-2xl 
+      min-w-[256px] max-w-[330px]
+      backdrop-blur-[16px] transition-all
+      rounded-r-3xl
+      "
+      style={{ minHeight: '100svh' }}
+    >
+      <SidebarHeader
         onNewConversation={handleNewConversation}
         onToggleSidebar={onToggleSidebar}
         isUserLoggedIn={!!user}
       />
 
-      <div className="flex items-center p-4 pl-6 text-inventu-gray border-b border-white/10 bg-inventu-dark/80/50 backdrop-blur">
-        <History className="mr-2 h-4 w-4 " />
-        <h2 className="font-medium tracking-tight text-white">Conversas</h2>
+      <div className="flex items-center px-7 py-2 gap-2 text-gray-800 dark:text-white/80 border-b border-gray-200/20 bg-transparent">
+        <History className="h-4 w-4 opacity-70" />
+        <h2 className="font-base text-gray-600 dark:text-white/60 select-none">Histórico</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto pt-0 px-1 pb-4">
+      <div className="flex-1 overflow-y-auto px-2 py-1 scrollbar-none">
         <DndProvider backend={HTML5Backend}>
-          <ConversationList 
+          <ConversationList
             conversations={conversations}
             currentConversationId={currentConversationId}
             onSelectConversation={handleSelectConversation}

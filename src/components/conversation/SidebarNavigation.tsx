@@ -1,12 +1,12 @@
 
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { 
-  MessageSquare, 
-  Image, 
-  Brain as Memory, 
+import {
+  MessageSquare,
+  Image,
+  Brain as Memory,
   Coins,
   LogOut,
   LogIn
@@ -17,9 +17,35 @@ interface SidebarNavigationProps {
   onCreateConversation?: () => void;
 }
 
-const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ 
-  closeMenu,
-  onCreateConversation
+const menuItems = [
+  {
+    path: '/',
+    label: 'Chat',
+    icon: <MessageSquare className="h-4 w-4" />,
+    test: (loc: string) => loc === '/' || loc.startsWith('/c/')
+  },
+  {
+    path: '/gallery',
+    label: 'Galeria',
+    icon: <Image className="h-4 w-4" />,
+    test: (loc: string) => loc === '/gallery'
+  },
+  {
+    path: '/memory',
+    label: 'Memória',
+    icon: <Memory className="h-4 w-4" />,
+    test: (loc: string) => loc === '/memory'
+  },
+  {
+    path: '/tokens',
+    label: 'Tokens',
+    icon: <Coins className="h-4 w-4" />,
+    test: (loc: string) => loc === '/tokens'
+  },
+];
+
+const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
+  closeMenu
 }) => {
   const location = useLocation();
   const { user, signOut } = useAuth();
@@ -37,58 +63,32 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   };
 
   return (
-    <div className="py-4 px-2">
-      <div className="space-y-1">
+    <nav className="flex flex-col gap-1 pt-3">
+      {menuItems.map((item) => (
         <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            (location.pathname === '/' || location.pathname.startsWith('/c/')) ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/')}
+          key={item.label}
+          variant={item.test(location.pathname) ? "secondary" : "ghost"}
+          className={`
+            w-full justify-start px-4 py-2
+            gap-3 rounded-xl font-semibold text-gray-700 dark:text-gray-200
+            ${item.test(location.pathname)
+              ? "bg-inventu-blue/10 text-inventu-blue"
+              : "hover:bg-inventu-blue/10 hover:text-inventu-blue"
+            }
+            transition-all
+          `}
+          onClick={() => handleClick(item.path)}
         >
-          <MessageSquare className="mr-2 h-4 w-4" />
-          Chat
+          {item.icon}
+          {item.label}
         </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/gallery' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/gallery')}
-        >
-          <Image className="mr-2 h-4 w-4" />
-          Galeria
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/memory' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/memory')}
-        >
-          <Memory className="mr-2 h-4 w-4" />
-          Memória
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/tokens' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/tokens')}
-        >
-          <Coins className="mr-2 h-4 w-4" />
-          Tokens
-        </Button>
-      </div>
-      
-      <div className="pt-4 mt-4 border-t border-inventu-gray/30">
+      ))}
+
+      <div className="pt-3 mt-2 border-t border-gray-200/50 flex flex-col gap-2">
         {user ? (
           <Button
             variant="ghost"
-            className="w-full justify-start text-white hover:bg-inventu-dark/50"
+            className="w-full justify-start rounded-xl px-4 py-2 text-gray-400 hover:bg-inventu-blue/10 hover:text-inventu-blue transition-all"
             onClick={handleSignOut}
           >
             <LogOut className="mr-2 h-4 w-4" />
@@ -97,7 +97,7 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
         ) : (
           <Button
             variant="ghost"
-            className="w-full justify-start text-white hover:bg-inventu-dark/50"
+            className="w-full justify-start rounded-xl px-4 py-2 text-gray-400 hover:bg-inventu-blue/10 hover:text-inventu-blue transition-all"
             onClick={() => handleClick('/auth')}
           >
             <LogIn className="mr-2 h-4 w-4" />
@@ -105,7 +105,7 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
           </Button>
         )}
       </div>
-    </div>
+    </nav>
   );
 };
 
