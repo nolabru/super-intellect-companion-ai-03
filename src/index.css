@@ -46,11 +46,17 @@
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Corrige overflow em mobile */
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   /* Remove gray tones for classic brand, amplify backgrounds/feedbacks */
   .chat-bubble {
     @apply p-4 rounded-2xl max-w-full backdrop-blur-[4px] relative transition-all;
+    /* Evita overflow no mobile, ajusta responsivo */
+    word-break: break-word;
+    min-width: 0;
   }
 
   .user-bubble {
@@ -84,6 +90,8 @@
   .btn-accent,
   .mode-selector-btn {
     transition: transform .15s cubic-bezier(.22,.68,0,1.71), box-shadow .2s;
+    /* Suavização adicional mobile */
+    touch-action: manipulation;
   }
   .btn-primary:active,
   .btn-secondary:active,
@@ -105,6 +113,7 @@
   /* Ampliar visual feedback Apple-like */
   .glass-effect {
     @apply bg-inventu-blue/5 backdrop-blur-[5px] border border-inventu-blue/10 shadow-xl;
+    min-width: 0;
   }
   .text-shadow {
     text-shadow: 0 1px 2px #2563eb21;
@@ -219,3 +228,17 @@
     background-color: #2563EBdd;
   }
 }
+
+.user-bubble, .ai-bubble {
+    min-width: 0;
+    max-width: 98vw;
+  }
+  .scrollbar-thin {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+  /* Previne scroll horizontal genérico */
+  * {
+    min-width: 0;
+    box-sizing: border-box;
+  }

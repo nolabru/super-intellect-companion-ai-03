@@ -174,7 +174,7 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-inventu-dark to-inventu-darker">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-inventu-dark to-inventu-darker w-full">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       <div className="flex-1 flex overflow-hidden relative">
         {sidebarOpen && (
@@ -182,21 +182,24 @@ const Index: React.FC = () => {
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
             {isMobile && (
               <div 
-                className="fixed inset-0 bg-black/50 -z-10 backdrop-blur-sm" 
+                className="fixed inset-0 bg-black/50 -z-10 backdrop-blur-sm"
                 onClick={toggleSidebar}
               />
             )}
           </>
         )}
-        
         {!sidebarOpen && !isMobile && (
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
         )}
-
-        <div className="flex-1 flex flex-col overflow-hidden items-center justify-center px-2 pb-2 md:pb-4 w-full">
-          <div className="w-full md:max-w-3xl flex flex-col flex-1 bg-inventu-card/90 rounded-xl md:rounded-2xl shadow-xl border border-white/5 overflow-hidden backdrop-blur-md my-2 md:my-4">
-            <div className="border-b border-white/5 px-3 md:px-6 py-2 md:py-3">
-              <h2 className="text-lg md:text-xl font-semibold text-white text-center tracking-tight">Conversa</h2>
+        <main className="flex-1 flex flex-col overflow-hidden items-center justify-center px-1.5 pb-1.5 md:px-2 md:pb-4 w-full">
+          <div className={`
+            w-full max-w-full md:max-w-3xl
+            flex flex-col flex-1 bg-inventu-card/90 rounded-xl md:rounded-2xl shadow-xl 
+            border border-white/5 overflow-hidden backdrop-blur-md my-1.5 md:my-4
+            min-h-[80vh]
+          `}>
+            <div className="border-b border-white/5 px-2.5 md:px-6 py-2 md:py-3">
+              <h2 className="text-base md:text-xl font-semibold text-white text-center tracking-tight">Conversa</h2>
               <div className="mt-2 flex flex-wrap items-center justify-center gap-1 md:gap-2">
                 <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
@@ -214,12 +217,10 @@ const Index: React.FC = () => {
                 )}
               </div>
             </div>
-
-            {/* Central Chat interfaces and input */}
-            <div className={comparing ? "flex flex-1 flex-row divide-x divide-white/5" : "flex-1 flex flex-col"}>
+            <div className="flex-1 flex flex-col overflow-hidden">
               {comparing ? (
-                <>
-                  <div className="flex-1 flex flex-col">
+                <div className="flex flex-col md:flex-row flex-1">
+                  <div className="flex-1 md:border-r border-white/5 min-w-0">
                     <ChatInterface
                       messages={messages}
                       model={leftModel}
@@ -230,7 +231,7 @@ const Index: React.FC = () => {
                       loading={authLoading || (messagesLoading && !initialLoadDone)}
                     />
                   </div>
-                  <div className="flex-1 flex flex-col">
+                  <div className="flex-1 min-w-0">
                     <ChatInterface
                       messages={messages}
                       model={rightModel}
@@ -241,69 +242,50 @@ const Index: React.FC = () => {
                       loading={authLoading || (messagesLoading && !initialLoadDone)}
                     />
                   </div>
-                </>
-              ) : (
-                <div className="flex-1 flex flex-col">
-                  <ChatInterface
-                    messages={messages}
-                    model={leftModel}
-                    title={leftModel}
-                    onModelChange={handleLeftModelChange}
-                    availableModels={availableModels}
-                    isCompareMode={false}
-                    loading={authLoading || (messagesLoading && !initialLoadDone)}
-                  />
                 </div>
-              )}
-            </div>
-
-            {/* Caixa de texto input (ChatInput) */}
-            {/* Condição: comparar e vinculado -> input ÚNICO. Comparar e desvinculado -> input DUPLO */}
-            <div className="p-2 md:p-4 border-t border-white/5 bg-inventu-card/60 backdrop-blur-md">
-              {comparing ? (
-                isLinked ? (
-                  // Comparando e vinculado: uma caixa de texto centralizada
-                  <div className="w-full">
-                    <ChatInput
-                      onSendMessage={handleSendMessage}
-                      mode={activeMode}
-                      model={`${leftModel} e ${rightModel}`}
-                    />
-                  </div>
-                ) : (
-                  // Comparando e DESVINCULADO: uma para cada lado, alinhadas horizontalmente
-                  <div className="flex flex-col md:flex-row gap-2">
-                    <div className="flex-1">
-                      <ChatInput
-                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
-                        model={leftModel}
-                        mode={activeMode}
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <ChatInput
-                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
-                        model={rightModel}
-                        mode={activeMode}
-                      />
-                    </div>
-                  </div>
-                )
               ) : (
-                // Não comparando, input único abaixo do chat
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  mode={activeMode}
+                <ChatInterface
+                  messages={messages}
                   model={leftModel}
+                  title={leftModel}
+                  onModelChange={handleLeftModelChange}
+                  availableModels={availableModels}
+                  isCompareMode={false}
+                  loading={authLoading || (messagesLoading && !initialLoadDone)}
                 />
               )}
             </div>
+            <div className="p-1.5 md:p-4 border-t border-white/5 bg-inventu-card/60 backdrop-blur-md">
+              {(!comparing || isLinked) ? (
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  mode={activeMode}
+                  model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
+                />
+              ) : (
+                <div className="flex flex-col md:flex-row gap-2">
+                  <div className="flex-1 min-w-0">
+                    <ChatInput
+                      onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
+                      model={leftModel}
+                      mode={activeMode}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <ChatInput
+                      onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
+                      model={rightModel}
+                      mode={activeMode}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
 };
 
 export default Index;
-

@@ -16,8 +16,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar }) =
   const isMobile = useIsMobile();
 
   return (
-    <div className="flex items-center justify-between py-2 px-2 md:px-6 border-b border-inventu-blue/20 bg-inventu-darker/90 backdrop-blur-xl sticky top-0 z-40 shadow-md animate-fade-in">
-      <div className="flex items-center">
+    <div className="flex items-center justify-between py-2 px-2 md:px-6 border-b border-inventu-blue/20 bg-inventu-darker/90 backdrop-blur-xl sticky top-0 z-40 shadow-md animate-fade-in w-full" style={{ minHeight: isMobile ? 56 : 64 }}>
+      <div className="flex items-center min-w-0">
         {isMobile && onToggleSidebar && (
           <Button
             onClick={onToggleSidebar}
@@ -33,11 +33,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar }) =
           </Button>
         )}
 
-        <Link to="/" className="flex items-center hover:scale-105 active:scale-95 transition-transform">
+        <Link to="/" className="flex items-center hover:scale-105 active:scale-95 transition-transform min-w-0">
           <img
             src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png"
             alt="InventuAi Logo"
-            className="h-8 md:h-10"
+            className="h-8 md:h-10 max-w-[110px] md:max-w-none"
             style={{ filter: "drop-shadow(0 2px 12px #2563EB44)" }}
           />
         </Link>
@@ -55,7 +55,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar }) =
         )}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 md:gap-3">
         <UserMenu />
       </div>
     </div>
