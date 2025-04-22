@@ -174,7 +174,12 @@ const Index: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gradient-to-br from-inventu-dark to-inventu-darker w-full">
-      <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
+      <AppHeader
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={toggleSidebar}
+        activeMode={activeMode}
+        onModeChange={handleModeChange}
+      />
       <div className="flex-1 flex overflow-hidden relative">
         {sidebarOpen && (
           <>
@@ -200,7 +205,6 @@ const Index: React.FC = () => {
             <div className="border-b border-white/5 px-2.5 md:px-6 py-2 md:py-3">
               <h2 className="text-base md:text-xl font-semibold text-white text-center tracking-tight">Conversa</h2>
               <div className="mt-2 flex flex-wrap items-center justify-center gap-1 md:gap-2">
-                <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
                 <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
                 {comparing && (
                   <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
