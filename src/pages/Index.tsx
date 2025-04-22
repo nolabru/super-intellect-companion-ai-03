@@ -15,10 +15,14 @@ import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
 import TokenDisplay from '@/components/TokenDisplay';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-const Index: React.FC = () => {
+interface IndexProps {
+  activeMode: ChatMode;
+  onModeChange: (mode: ChatMode) => void;
+}
+
+const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
   const [comparing, setComparing] = useState(false);
   const [isLinked, setIsLinked] = useState(true);
-  const [activeMode, setActiveMode] = useState<ChatMode>('text');
   const [leftModel, setLeftModel] = useState('gpt-4o');
   const [rightModel, setRightModel] = useState('claude-3-opus');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -119,7 +123,7 @@ const Index: React.FC = () => {
     }
     
     if (result && result.success && result.modeSwitch) {
-      setActiveMode(result.modeSwitch as ChatMode);
+      onModeChange(result.modeSwitch as ChatMode);
       toast.info(`Modo alterado para ${result.modeSwitch} baseado no seu pedido`);
     }
   };
@@ -140,11 +144,6 @@ const Index: React.FC = () => {
   };
 
   const availableModels = getModelsByMode(activeMode).map(model => model.id);
-
-  const handleModeChange = (newMode: ChatMode) => {
-    console.log(`Modo alterado de ${activeMode} para ${newMode}`);
-    setActiveMode(newMode);
-  };
 
   const handleLeftModelChange = (model: string) => {
     console.log(`Modelo esquerdo alterado para ${model}`);
@@ -178,7 +177,7 @@ const Index: React.FC = () => {
         sidebarOpen={sidebarOpen}
         onToggleSidebar={toggleSidebar}
         activeMode={activeMode}
-        onModeChange={handleModeChange}
+        onModeChange={onModeChange}
       />
       <div className="flex-1 flex overflow-hidden relative">
         {sidebarOpen && (

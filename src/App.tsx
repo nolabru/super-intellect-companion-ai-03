@@ -1,4 +1,4 @@
-
+import React, { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import MediaGallery from "./pages/MediaGallery";
 import UserMemory from "./pages/UserMemory";
 import TokensPlans from "./pages/TokensPlans";
+import { ChatMode } from "@/components/ModeSelector";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,29 +23,57 @@ const queryClient = new QueryClient({
   }
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <GoogleAuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/c/:conversationId" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/gallery" element={<MediaGallery />} />
-              <Route path="/memory" element={<UserMemory />} />
-              <Route path="/tokens" element={<TokensPlans />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </GoogleAuthProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [activeMode, setActiveMode] = useState<ChatMode>("text");
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <GoogleAuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={
+                  <Index 
+                    activeMode={activeMode}
+                    onModeChange={setActiveMode}
+                  />
+                } />
+                <Route path="/c/:conversationId" element={
+                  <Index 
+                    activeMode={activeMode}
+                    onModeChange={setActiveMode}
+                  />
+                } />
+                <Route path="/auth" element={
+                  <Auth 
+                    activeMode={activeMode}
+                    onModeChange={setActiveMode}
+                  />
+                } />
+                <Route path="/gallery" element={
+                  <MediaGallery 
+                    activeMode={activeMode}
+                    onModeChange={setActiveMode}
+                  />
+                } />
+                <Route path="/memory" element={
+                  <UserMemory 
+                    activeMode={activeMode}
+                    onModeChange={setActiveMode}
+                  />
+                } />
+                <Route path="/tokens" element={<TokensPlans />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </GoogleAuthProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

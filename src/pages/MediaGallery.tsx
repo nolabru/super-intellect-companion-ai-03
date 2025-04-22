@@ -8,6 +8,7 @@ import GalleryFilters from '@/components/gallery/GalleryFilters';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
+import { ChatMode } from '@/components/ModeSelector';
 
 export type MediaItem = {
   id: string;
@@ -27,7 +28,12 @@ export type GalleryFilters = {
   };
 };
 
-const MediaGallery: React.FC = () => {
+interface MediaGalleryProps {
+  activeMode: ChatMode;
+  onModeChange: (mode: ChatMode) => void;
+}
+
+const MediaGallery: React.FC<MediaGalleryProps> = ({ activeMode, onModeChange }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [filteredMedia, setFilteredMedia] = useState<MediaItem[]>([]);
@@ -148,7 +154,12 @@ const MediaGallery: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-inventu-darker">
-      <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
+      <AppHeader 
+        sidebarOpen={sidebarOpen} 
+        onToggleSidebar={toggleSidebar}
+        activeMode={activeMode}
+        onModeChange={onModeChange}
+      />
       
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen ? (
