@@ -18,20 +18,20 @@ serve(async (req) => {
     
     if (!task_id) {
       return new Response(
-        JSON.stringify({ error: "task_id is required" }),
+        JSON.stringify({ error: "task_id é obrigatório" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    console.log(`Received webhook for task ${task_id} with status ${status}`);
+    console.log(`Recebido webhook para tarefa ${task_id} com status ${status}`);
     
-    // Create Supabase client
+    // Criar cliente Supabase
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") || "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Get task info from Supabase
+    // Obter informações da tarefa do Supabase
     const { data: taskData, error: fetchError } = await supabaseClient
       .from("piapi_tasks")
       .select("*")
@@ -39,14 +39,14 @@ serve(async (req) => {
       .single();
 
     if (fetchError) {
-      console.error(`Error fetching task: ${fetchError.message}`);
+      console.error(`Erro ao buscar tarefa: ${fetchError.message}`);
       return new Response(
-        JSON.stringify({ error: "Task not found" }),
+        JSON.stringify({ error: "Tarefa não encontrada" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
       );
     }
 
-    // Update task status
+    // Atualizar status da tarefa
     const { error: updateError } = await supabaseClient
       .from("piapi_tasks")
       .update({ 
@@ -57,27 +57,27 @@ serve(async (req) => {
       .eq("task_id", task_id);
 
     if (updateError) {
-      console.error(`Error updating task: ${updateError.message}`);
+      console.error(`Erro ao atualizar tarefa: ${updateError.message}`);
     }
 
-    // If status is completed, process and save the media file
+    // Se o status é completed, processar e salvar o arquivo de mídia
     if (status === "completed" && result && result.output && result.output.length > 0) {
       const mediaUrl = result.output[0].url;
       const mediaType = taskData.media_type;
       
       if (mediaUrl) {
         try {
-          // Download the media file
-          console.log(`Downloading media from ${mediaUrl}`);
+          // Baixar o arquivo de mídia
+          console.log(`Baixando mídia de ${mediaUrl}`);
           const mediaResponse = await fetch(mediaUrl);
           
           if (!mediaResponse.ok) {
-            throw new Error(`Failed to download media: ${mediaResponse.statusText}`);
+            throw new Error(`Falha ao baixar mídia: ${mediaResponse.statusText}`);
           }
           
           const mediaBlob = await mediaResponse.blob();
           
-          // Determine file extension
+          // Determinar extensão do arquivo
           let fileExtension = ".bin";
           const contentType = mediaResponse.headers.get("content-type");
           
@@ -90,13 +90,13 @@ serve(async (req) => {
               fileExtension = ".mp3";
             }
           } else {
-            // Fallback based on media type
+            // Fallback baseado no tipo de mídia
             if (mediaType === "image") fileExtension = ".png";
             else if (mediaType === "video") fileExtension = ".mp4";
             else if (mediaType === "audio") fileExtension = ".mp3";
           }
           
-          // Save to appropriate bucket
+          // Salvar no bucket adequado
           let storagePath = "";
           const fileName = `${task_id}${fileExtension}`;
           
@@ -108,9 +108,29 @@ serve(async (req) => {
             storagePath = `audios/${fileName}`;
           }
           
-          console.log(`Saving media to ${storagePath}`);
+          console.log(`Salvando mídia em ${storagePath}`);
           
-          // Upload to Supabase Storage
+          // Criar o bucket se ele não existir
+          const { data: buckets } = await supabaseClient
+            .storage
+            .listBuckets();
+            
+          const mediaBucket = buckets?.find(b => b.name === 'media');
+          
+          if (!mediaBucket) {
+            console.log('Criando bucket de mídia...');
+            const { error: bucketError } = await supabaseClient
+              .storage
+              .createBucket('media', {
+                public: true
+              });
+              
+            if (bucketError) {
+              console.error(`Erro ao criar bucket: ${bucketError.message}`);
+            }
+          }
+          
+          // Upload para Supabase Storage
           const { data: storageData, error: storageError } = await supabaseClient
             .storage
             .from("media")
@@ -120,10 +140,10 @@ serve(async (req) => {
             });
             
           if (storageError) {
-            throw new Error(`Failed to upload to storage: ${storageError.message}`);
+            throw new Error(`Falha ao fazer upload para storage: ${storageError.message}`);
           }
           
-          // Get public URL
+          // Obter URL pública
           const { data: publicUrlData } = supabaseClient
             .storage
             .from("media")
@@ -131,7 +151,7 @@ serve(async (req) => {
             
           const publicUrl = publicUrlData.publicUrl;
           
-          // Update task with stored media URL
+          // Atualizar tarefa com URL da mídia armazenada
           await supabaseClient
             .from("piapi_tasks")
             .update({ 
@@ -139,7 +159,7 @@ serve(async (req) => {
             })
             .eq("task_id", task_id);
           
-          // Broadcast completion via Realtime
+          // Transmitir conclusão via Realtime
           await supabaseClient
             .from("media_ready_events")
             .insert({
@@ -150,9 +170,9 @@ serve(async (req) => {
               model: taskData.model
             });
             
-          console.log(`Media successfully processed and saved: ${publicUrl}`);
+          console.log(`Mídia processada e salva com sucesso: ${publicUrl}`);
         } catch (processError) {
-          console.error(`Error processing media: ${processError.message}`);
+          console.error(`Erro ao processar mídia: ${processError.message}`);
         }
       }
     }
@@ -160,12 +180,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Webhook processed for task ${task_id}`
+        message: `Webhook processado para tarefa ${task_id}`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error(`Error processing webhook: ${error.message}`);
+    console.error(`Erro ao processar webhook: ${error.message}`);
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }

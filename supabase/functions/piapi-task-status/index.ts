@@ -3,128 +3,142 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const PIAPI_API_KEY = Deno.env.get("PIAPI_API_KEY") || "";
-    const MJ_API_KEY = Deno.env.get("MJ_API_KEY") || "";
-    
+    // Verificar API key
+    const PIAPI_API_KEY = Deno.env.get("PIAPI_API_KEY");
     if (!PIAPI_API_KEY) {
-      throw new Error("PIAPI_API_KEY not configured");
+      throw new Error("PIAPI_API_KEY não configurada");
     }
 
-    // Extract task_id from URL or body
-    let taskId = "";
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/');
-    
-    if (pathParts.length > 0) {
-      const lastPart = pathParts[pathParts.length - 1];
-      if (lastPart && lastPart !== "piapi-task-status") {
-        taskId = lastPart;
-      }
-    }
-    
-    if (!taskId) {
-      const body = await req.json();
-      taskId = body.task_id;
-    }
+    // Inicializar cliente Supabase
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Obter parâmetros da requisição
+    const { taskId } = await req.json();
     
     if (!taskId) {
       return new Response(
-        JSON.stringify({ error: "task_id is required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ error: "ID da tarefa é obrigatório" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
+    console.log(`Verificando status da tarefa ${taskId}`);
 
-    // First check if we have the task in our database
-    const { data: taskData, error: fetchError } = await supabaseClient
+    // Verificar se já temos dados no banco
+    const { data: taskData, error: fetchError } = await supabase
       .from("piapi_tasks")
       .select("*")
       .eq("task_id", taskId)
       .single();
 
     if (fetchError) {
-      console.log(`Task ${taskId} not found in database, querying API directly`);
+      console.error(`Erro ao buscar tarefa: ${fetchError.message}`);
+      return new Response(
+        JSON.stringify({ error: "Tarefa não encontrada" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Se já temos a URL da mídia, podemos retornar diretamente
+    if (taskData.status === "completed" && taskData.media_url) {
+      return new Response(
+        JSON.stringify({
+          status: "completed",
+          mediaUrl: taskData.media_url,
+          mediaType: taskData.media_type,
+          taskId: taskData.task_id
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Caso contrário, consultar a API para obter o status atualizado
+    const apiResponse = await fetch(`https://api.piapi.ai/api/v1/task/${taskId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${PIAPI_API_KEY}`
+      }
+    });
+
+    if (!apiResponse.ok) {
+      const errorData = await apiResponse.json();
+      console.error(`Erro ao consultar status na PiAPI: ${JSON.stringify(errorData)}`);
+      throw new Error(`Erro da PiAPI: ${errorData.error?.message || apiResponse.statusText}`);
+    }
+
+    // Processar resposta
+    const responseData = await apiResponse.json();
+    const currentStatus = responseData.status;
+    const result = responseData.result;
+    
+    console.log(`Status da tarefa ${taskId}: ${currentStatus}`);
+
+    // Atualizar o registro no banco
+    const { error: updateError } = await supabase
+      .from("piapi_tasks")
+      .update({ 
+        status: currentStatus,
+        result: result || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("task_id", taskId);
+
+    if (updateError) {
+      console.error(`Erro ao atualizar tarefa: ${updateError.message}`);
+    }
+
+    // Se o status é "completed", processar e salvar o arquivo de mídia
+    let mediaUrl = null;
+    
+    if (currentStatus === "completed" && result && result.output && result.output.length > 0) {
+      mediaUrl = result.output[0].url;
       
-      // Try to fetch from PiAPI
-      let apiResponse;
-      try {
-        const response = await fetch(`https://api.piapi.ai/api/v1/task/${taskId}`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${PIAPI_API_KEY}`
-          }
-        });
-        
-        if (!response.ok) {
-          // Try Midjourney API
-          if (MJ_API_KEY) {
-            const mjResponse = await fetch(`https://api.midjapi.com/v1/task/${taskId}`, {
-              method: "GET",
-              headers: {
-                "Authorization": `Bearer ${MJ_API_KEY}`
-              }
-            });
-            
-            if (mjResponse.ok) {
-              apiResponse = await mjResponse.json();
-            } else {
-              throw new Error(`Task not found in any API`);
-            }
-          } else {
-            throw new Error(`Task not found in PiAPI and MJ_API_KEY not configured`);
-          }
-        } else {
-          apiResponse = await response.json();
+      if (mediaUrl) {
+        // Atualizar o registro com a URL da mídia
+        const { error: mediaUpdateError } = await supabase
+          .from("piapi_tasks")
+          .update({ media_url: mediaUrl })
+          .eq("task_id", taskId);
+
+        if (mediaUpdateError) {
+          console.error(`Erro ao atualizar URL da mídia: ${mediaUpdateError.message}`);
         }
-        
-        return new Response(
-          JSON.stringify(apiResponse),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (apiError) {
-        return new Response(
-          JSON.stringify({ error: apiError.message }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
-        );
       }
     }
 
-    // Return data from our database
+    // Retornar resposta com status
     return new Response(
       JSON.stringify({
-        task_id: taskData.task_id,
-        status: taskData.status,
-        model: taskData.model,
-        prompt: taskData.prompt,
-        media_type: taskData.media_type,
-        media_url: taskData.media_url,
-        created_at: taskData.created_at,
-        updated_at: taskData.updated_at,
-        result: taskData.result
+        status: currentStatus,
+        mediaUrl,
+        mediaType: taskData.media_type,
+        taskId
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error(`Erro: ${error.message}`);
+    
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ 
+        error: "Falha ao verificar status da tarefa", 
+        message: error.message 
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
