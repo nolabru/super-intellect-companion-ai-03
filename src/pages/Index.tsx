@@ -182,103 +182,113 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-inventu-darker">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-inventu-dark/80 to-inventu-darker/90">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
-      
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen ? (
-          <div className="w-64 flex-shrink-0">
+          <div className="w-64 flex-shrink-0 bg-inventu-dark/90 backdrop-blur-lg shadow-lg border-r border-white/10">
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
           </div>
         ) : (
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
         )}
-        
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative rounded-xl mx-4 my-2 bg-inventu-dark">
-            {comparing ? (
-              <>
-                <div className="flex-1 border-r border-inventu-gray/30 flex flex-col">
-                  <ChatInterface 
-                    messages={messages} 
-                    model={leftModel} 
-                    title={leftModel}
-                    onModelChange={handleLeftModelChange}
-                    availableModels={availableModels}
-                    isCompareMode={!isLinked} // Só é verdadeiramente modo de comparação se estiver desvinculado
-                    loading={authLoading || (messagesLoading && !initialLoadDone)}
-                  />
-                  {!isLinked && (
-                    <div className="p-4 border-t border-inventu-gray/30">
-                      <ChatInput 
-                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
-                        model={leftModel}
-                        mode={activeMode}
-                      />
-                    </div>
-                  )}
+
+        {/* Central Chat Area */}
+        <div className="flex-1 flex flex-col overflow-hidden items-center justify-center px-2 pb-4">
+          <div className="w-full md:max-w-3xl flex flex-col flex-1 bg-card/80 rounded-3xl shadow-xl border border-white/5 overflow-hidden glass-effect my-6">
+            <div className="border-b border-white/10 px-8 py-5">
+              <h2 className="text-2xl font-semibold text-white text-center tracking-tight">Conversa</h2>
+              <div className="mt-2 flex items-center justify-center gap-2">
+                {/* Apple-like mode selector */}
+                <ModeSelector activeMode={activeMode} onChange={handleModeChange} className="scale-110" />
+                <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
+                {comparing && (
+                  <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
+                )}
+                <TokenDisplay />
+              </div>
+              <div className="mt-2 flex items-center justify-center gap-3">
+                {/* Mostra nome dos modelos somente ao comparar */}
+                {comparing && (
+                  <>
+                    <span className="text-xs text-gray-300 px-2 py-0.5 rounded-xl bg-black/20">Modelo 1: <span className="font-semibold">{leftModel}</span></span>
+                    <span className="text-xs text-gray-300 px-2 py-0.5 rounded-xl bg-black/20">Modelo 2: <span className="font-semibold">{rightModel}</span></span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Interface de mensagens */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {comparing ? (
+                <div className="flex flex-col md:flex-row flex-1">
+                  <div className="flex-1 border-r border-white/5">
+                    <ChatInterface
+                      messages={messages}
+                      model={leftModel}
+                      title={leftModel}
+                      onModelChange={handleLeftModelChange}
+                      availableModels={availableModels}
+                      isCompareMode={!isLinked}
+                      loading={authLoading || (messagesLoading && !initialLoadDone)}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <ChatInterface
+                      messages={messages}
+                      model={rightModel}
+                      title={rightModel}
+                      onModelChange={handleRightModelChange}
+                      availableModels={availableModels}
+                      isCompareMode={!isLinked}
+                      loading={authLoading || (messagesLoading && !initialLoadDone)}
+                    />
+                  </div>
                 </div>
-                
-                <div className="flex-1 flex flex-col">
-                  <ChatInterface 
-                    messages={messages} 
-                    model={rightModel} 
-                    title={rightModel}
-                    onModelChange={handleRightModelChange}
-                    availableModels={availableModels}
-                    isCompareMode={!isLinked} // Só é verdadeiramente modo de comparação se estiver desvinculado
-                    loading={authLoading || (messagesLoading && !initialLoadDone)}
-                  />
-                  {!isLinked && (
-                    <div className="p-4 border-t border-inventu-gray/30">
-                      <ChatInput 
-                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
-                        model={rightModel}
-                        mode={activeMode}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex-1">
-                <ChatInterface 
-                  messages={messages} 
-                  model={leftModel} 
+              ) : (
+                <ChatInterface
+                  messages={messages}
+                  model={leftModel}
                   title={leftModel}
                   onModelChange={handleLeftModelChange}
                   availableModels={availableModels}
                   isCompareMode={false}
                   loading={authLoading || (messagesLoading && !initialLoadDone)}
                 />
-              </div>
-            )}
-          </div>
-          
-          <div className="p-4 border-t border-inventu-gray/30 bg-inventu-dark">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2">
-                <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
-                <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
-                {comparing && (
-                  <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
-                )}
-                <TokenDisplay />  {/* Added back in the original location */}
-              </div>
+              )}
             </div>
-            
-            {(!comparing || isLinked) && (
-              <ChatInput 
-                onSendMessage={handleSendMessage} 
-                mode={activeMode}
-                model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
-              />
-            )}
+
+            {/* Input area */}
+            <div className="p-6 border-t border-white/10 bg-card/60 backdrop-blur-md">
+              {(!comparing || isLinked) ? (
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  mode={activeMode}
+                  model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
+                />
+              ) : (
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="flex-1">
+                    <ChatInput
+                      onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
+                      model={leftModel}
+                      mode={activeMode}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <ChatInput
+                      onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
+                      model={rightModel}
+                      mode={activeMode}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
 export default Index;

@@ -11,7 +11,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
-// Interface para as pastas
 interface FolderType {
   id: string;
   name: string;
@@ -27,7 +26,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onToggleSidebar,
   isOpen = true
 }) => {
-  // Estado para gerenciar pastas
   const [folders, setFolders] = useState<FolderType[]>([]);
   const [conversationFolders, setConversationFolders] = useState<Record<string, string | null>>({});
   
@@ -46,7 +44,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Carregar pastas do localStorage ao iniciar
   useEffect(() => {
     if (user) {
       const savedFolders = localStorage.getItem(`folders_${user.id}`);
@@ -70,21 +67,18 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   }, [user]);
   
-  // Salvar pastas no localStorage quando mudar
   useEffect(() => {
     if (user) {
       localStorage.setItem(`folders_${user.id}`, JSON.stringify(folders));
     }
   }, [folders, user]);
   
-  // Salvar associações de conversa-pasta no localStorage quando mudar
   useEffect(() => {
     if (user) {
       localStorage.setItem(`conversation_folders_${user.id}`, JSON.stringify(conversationFolders));
     }
   }, [conversationFolders, user]);
 
-  // Função para criar uma nova pasta
   const handleCreateFolder = (name: string) => {
     const newFolder: FolderType = {
       id: uuidv4(),
@@ -96,7 +90,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     toast.success(`Pasta "${name}" criada com sucesso`);
   };
   
-  // Função para renomear uma pasta
   const handleRenameFolder = (id: string, newName: string) => {
     setFolders(prev => 
       prev.map(folder => 
@@ -106,9 +99,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     toast.success(`Pasta renomeada para "${newName}"`);
   };
   
-  // Função para excluir uma pasta
   const handleDeleteFolder = (id: string) => {
-    // Remover associações de conversas com esta pasta
     const updatedConversationFolders = { ...conversationFolders };
     Object.keys(updatedConversationFolders).forEach(convId => {
       if (updatedConversationFolders[convId] === id) {
@@ -121,7 +112,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     toast.success('Pasta excluída com sucesso');
   };
   
-  // Função para mover uma conversa para uma pasta
   const handleMoveConversation = (conversationId: string, folderId: string | null) => {
     setConversationFolders(prev => ({
       ...prev,
@@ -132,20 +122,13 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     toast.success(`Conversa movida para ${folderName}`);
   };
 
-  // Função para criar uma nova conversa com navegação atualizada
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Criando nova conversa');
     
-    // Feedback visual imediato - limpar mensagens
     clearMessages();
-    
-    // Desselecionar conversa atual para feedback visual
     setCurrentConversationId(null);
-    
-    // Redirecionar para a página inicial ao iniciar nova conversa
     navigate('/', { replace: true });
     
-    // Criar nova conversa com tratamento de erro
     try {
       const success = await createNewConversation();
       if (!success) {
@@ -157,7 +140,6 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   };
 
-  // Função para selecionar uma conversa existente com navegação
   const handleSelectConversation = (conversationId: string) => {
     if (!conversationId) {
       console.error('[ConversationSidebar] ID de conversa inválido');
@@ -166,22 +148,17 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     
     console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
     
-    // Limpar mensagens imediatamente para feedback visual
     clearMessages();
     
-    // Se clicar na mesma conversa, forçar recarregamento
     if (currentConversationId === conversationId) {
       console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
-      // Força recarregar as mensagens da conversa atual
       forceReloadMessages();
     } else {
-      // Atualizar conversa selecionada e navegar para a URL
       setCurrentConversationId(conversationId);
       navigate(`/c/${conversationId}`, { replace: true });
     }
   };
 
-  // Vista de barra lateral recolhida
   if (!isOpen && onToggleSidebar) {
     return (
       <div className="absolute left-0 top-24 z-10">
@@ -189,7 +166,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onClick={onToggleSidebar}
           size="icon"
           variant="secondary"
-          className="rounded-r-md rounded-l-none border-l-0"
+          className="rounded-r-2xl rounded-l-none border-l-0 backdrop-blur-md bg-inventu-dark/80"
           title="Abrir menu"
         >
           <ChevronLeft className="h-5 w-5 rotate-180" />
@@ -199,19 +176,19 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-inventu-dark border-r border-inventu-gray/30">
+    <aside className="h-full flex flex-col bg-inventu-dark/90 border-r border-white/10 shadow-lg backdrop-blur-xl min-w-[240px]">
       <SidebarHeader 
         onNewConversation={handleNewConversation}
         onToggleSidebar={onToggleSidebar}
         isUserLoggedIn={!!user}
       />
-      
-      <div className="flex items-center p-4 text-inventu-gray border-b border-inventu-gray/30">
-        <History className="mr-2 h-4 w-4" />
-        <h2 className="font-medium">Histórico de Conversas</h2>
+
+      <div className="flex items-center p-4 pl-6 text-inventu-gray border-b border-white/10 bg-inventu-dark/80/50 backdrop-blur">
+        <History className="mr-2 h-4 w-4 " />
+        <h2 className="font-medium tracking-tight text-white">Conversas</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pt-0 px-1 pb-4">
         <DndProvider backend={HTML5Backend}>
           <ConversationList 
             conversations={conversations}
@@ -230,7 +207,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           />
         </DndProvider>
       </div>
-    </div>
+    </aside>
   );
 };
 
