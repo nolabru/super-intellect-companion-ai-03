@@ -3,6 +3,7 @@ import React from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Text, Image, Video, AudioLines } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type ChatMode = 'text' | 'image' | 'video' | 'audio';
 
@@ -12,21 +13,16 @@ interface ModeSelectorProps {
   className?: string;
 }
 
-const icons = {
-  text: <Text size={28} strokeWidth={2.2} />,
-  image: <Image size={28} strokeWidth={2.2} />,
-  video: <Video size={28} strokeWidth={2.2} />,
-  audio: <AudioLines size={28} strokeWidth={2.2} />
-};
-
-const labels = {
-  text: "Texto",
-  image: "Imagem",
-  video: "Vídeo",
-  audio: "Áudio"
-};
-
 const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, className }) => {
+  const isMobile = useIsMobile();
+  
+  const icons = {
+    text: <Text size={isMobile ? 20 : 24} strokeWidth={2.2} />,
+    image: <Image size={isMobile ? 20 : 24} strokeWidth={2.2} />,
+    video: <Video size={isMobile ? 20 : 24} strokeWidth={2.2} />,
+    audio: <AudioLines size={isMobile ? 20 : 24} strokeWidth={2.2} />
+  };
+
   return (
     <ToggleGroup
       type="single"
@@ -38,16 +34,16 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
         <ToggleGroupItem
           key={mode}
           value={mode}
-          aria-label={labels[mode]}
+          aria-label={mode}
           className={cn(
             "mode-selector-btn",
-            "rounded-2xl p-2",
+            "rounded-xl p-1.5",
             "transition-colors",
             activeMode === mode
-              ? "bg-inventu-blue/90 text-white shadow-lg ring-2 ring-inventu-blue"
+              ? "bg-inventu-blue/90 text-white shadow-sm ring-1 ring-inventu-blue"
               : "text-inventu-gray/80 hover:bg-black/10"
           )}
-          title={labels[mode]}
+          title={mode}
         >
           {icons[mode]}
         </ToggleGroupItem>
@@ -55,4 +51,5 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
     </ToggleGroup>
   );
 };
+
 export default ModeSelector;

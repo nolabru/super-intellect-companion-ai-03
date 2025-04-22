@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface FolderType {
   id: string;
@@ -44,6 +44,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (user) {
@@ -162,12 +163,12 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   if (!isOpen && onToggleSidebar) {
     return (
-      <div className="absolute left-0 top-6 z-20">
+      <div className="fixed left-0 top-16 z-30">
         <Button
           onClick={onToggleSidebar}
           size="icon"
           variant="outline"
-          className="rounded-r-2xl bg-white/70 border-inventu-gray/10 shadow hover:bg-white"
+          className="rounded-r-xl bg-white/80 border-inventu-gray/10 shadow-sm hover:bg-white"
           title="Abrir menu"
         >
           <ChevronLeft className="h-5 w-5 rotate-180 text-inventu-blue" />
@@ -177,24 +178,25 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   }
 
   return (
-    <aside className="
+    <aside className={`
       h-full flex flex-col
       bg-white/60 dark:bg-inventu-dark/90
-      border-r border-inventu-gray/10 
-      min-w-[260px] max-w-[320px]
+      border-r border-inventu-gray/5 
+      w-[280px] ${isMobile ? 'max-w-full' : 'max-w-[320px]'}
       backdrop-blur-xl
-      rounded-r-3xl
-      transition-all
-      ">
+      rounded-r-2xl md:rounded-r-3xl
+      transition-all duration-300
+      shadow-sm
+    `}>
       <SidebarHeader
         onNewConversation={handleNewConversation}
         onToggleSidebar={onToggleSidebar}
         isUserLoggedIn={!!user}
       />
 
-      <div className="flex items-center px-7 py-3 gap-2 text-inventu-gray/80 border-b border-inventu-gray/10 bg-transparent">
-        <History className="h-4 w-4 opacity-70" />
-        <h2 className="font-semibold text-inventu-gray select-none tracking-tight text-lg">Histórico</h2>
+      <div className="flex items-center px-5 py-2 gap-2 text-inventu-gray/80 border-b border-inventu-gray/5 bg-transparent">
+        <History className="h-3.5 w-3.5 opacity-70" />
+        <h2 className="font-medium text-inventu-gray select-none tracking-tight text-sm md:text-base">Histórico</h2>
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-1 scrollbar-thin">
@@ -221,6 +223,3 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 };
 
 export default ConversationSidebar;
-
-// O arquivo ficou grande (224 linhas). Considere futuramente pedir um refatoração para arquivos menores e mais fáceis de manter.
-
