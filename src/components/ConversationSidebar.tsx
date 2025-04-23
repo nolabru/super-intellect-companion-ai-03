@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import SidebarHeader from './conversation/SidebarHeader';
@@ -6,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 import { useConversation } from '@/hooks/useConversation';
+import ConversationList from './conversation/ConversationList';
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
@@ -65,6 +67,18 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         onToggleSidebar={onToggleSidebar}
         isUserLoggedIn={!!user}
       />
+      
+      {/* Lista de conversas */}
+      <div className="flex-1 overflow-y-auto">
+        <ConversationList 
+          conversations={conversations}
+          currentConversationId={currentConversationId}
+          onSelectConversation={setCurrentConversationId}
+          onDeleteConversation={deleteConversation}
+          onRenameConversation={renameConversation}
+          loading={loading}
+        />
+      </div>
     </div>
   );
 };
