@@ -76,7 +76,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           onSelectConversation={setCurrentConversationId}
           onDeleteConversation={deleteConversation}
           onRenameConversation={renameConversation}
-          loading={loading}
+          isUserLoggedIn={!!user}
+          isLoading={loading}
         />
       </div>
     </div>
