@@ -1,34 +1,28 @@
 
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { 
   MessageSquare, 
   Image, 
   Brain as Memory, 
   Coins,
+  LogIn,
   LogOut,
-  LogIn
+  Menu
 } from 'lucide-react';
+import SidebarNavLink from '../sidebar/SidebarNavLink';
+import { Button } from '@/components/ui/button';
 
 interface SidebarNavigationProps {
   closeMenu?: () => void;
-  onCreateConversation?: () => void;
 }
 
 const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ 
-  closeMenu,
-  onCreateConversation
+  closeMenu 
 }) => {
-  const location = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-
-  const handleClick = (path: string) => {
-    navigate(path);
-    if (closeMenu) closeMenu();
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -36,76 +30,63 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
     if (closeMenu) closeMenu();
   };
 
+  const navigationItems = [
+    { href: '/', icon: MessageSquare, label: 'Chat' },
+    { href: '/gallery', icon: Image, label: 'Galeria' },
+    { href: '/memory', icon: Memory, label: 'Memória' },
+    { href: '/tokens', icon: Coins, label: 'Tokens' },
+  ];
+
   return (
-    <div className="py-4 px-2">
-      <div className="space-y-1">
+    <nav className="flex flex-col h-full">
+      <div className="px-3 py-2 flex items-center justify-between md:hidden">
+        <span className="text-white/90 font-medium">Menu</span>
         <Button
           variant="ghost"
-          className={`w-full justify-start ${
-            (location.pathname === '/' || location.pathname.startsWith('/c/')) ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/')}
+          size="icon"
+          onClick={closeMenu}
+          className="text-white/70 hover:text-white"
         >
-          <MessageSquare className="mr-2 h-4 w-4" />
-          Chat
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/gallery' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/gallery')}
-        >
-          <Image className="mr-2 h-4 w-4" />
-          Galeria
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/memory' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/memory')}
-        >
-          <Memory className="mr-2 h-4 w-4" />
-          Memória
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/tokens' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/tokens')}
-        >
-          <Coins className="mr-2 h-4 w-4" />
-          Tokens
+          <Menu className="h-5 w-5" />
         </Button>
       </div>
-      
-      <div className="pt-4 mt-4 border-t border-inventu-gray/30">
+
+      <div className="flex-1 px-3 space-y-2 overflow-y-auto py-4">
+        {navigationItems.map((item) => (
+          <SidebarNavLink
+            key={item.href}
+            href={item.href}
+            icon={item.icon}
+            label={item.label}
+          />
+        ))}
+      </div>
+
+      <div className="mt-auto p-3 border-t border-white/10">
         {user ? (
           <Button
             variant="ghost"
-            className="w-full justify-start text-white hover:bg-inventu-dark/50"
+            className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5"
             onClick={handleSignOut}
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
+            <LogOut className="mr-3 h-5 w-5" />
+            <span>Sair</span>
           </Button>
         ) : (
           <Button
             variant="ghost"
-            className="w-full justify-start text-white hover:bg-inventu-dark/50"
-            onClick={() => handleClick('/auth')}
+            className="w-full justify-start text-white/70 hover:text-white hover:bg-white/5"
+            onClick={() => {
+              navigate('/auth');
+              if (closeMenu) closeMenu();
+            }}
           >
-            <LogIn className="mr-2 h-4 w-4" />
-            Entrar
+            <LogIn className="mr-3 h-5 w-5" />
+            <span>Entrar</span>
           </Button>
         )}
       </div>
-    </div>
+    </nav>
   );
 };
 

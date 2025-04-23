@@ -4,6 +4,7 @@ import { PlusCircle, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarNavigation from './SidebarNavigation';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface SidebarHeaderProps {
   onNewConversation: () => void;
@@ -17,27 +18,27 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   isUserLoggedIn
 }) => {
   const handleNewConversation = () => {
-    console.log('[SidebarHeader] Iniciando nova conversa');
-    
     if (!isUserLoggedIn) {
       toast.error('Você precisa estar logado para criar uma nova conversa');
       return;
     }
-    
-    // Chamar o handler de nova conversa
     onNewConversation();
   };
   
   return (
-    <div className="p-4 border-b border-inventu-gray/30">
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
+      <div className="p-3 border-b border-white/10">
         <div className="flex items-center gap-2">
           <Button 
             onClick={handleNewConversation}
-            className="flex-1 bg-inventu-blue hover:bg-inventu-blue/80 text-white"
+            className={cn(
+              "flex-1 bg-inventu-blue hover:bg-inventu-blue/90",
+              "text-white font-medium transition-all duration-200",
+              "active:scale-95 rounded-xl h-11"
+            )}
             disabled={!isUserLoggedIn}
           >
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <PlusCircle className="mr-2 h-5 w-5" />
             Nova Conversa
           </Button>
           
@@ -46,18 +47,18 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
               onClick={onToggleSidebar}
               size="icon"
               variant="ghost"
-              className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+              className="text-white/70 hover:text-white hover:bg-white/5 rounded-xl h-11 w-11"
               title="Minimizar menu"
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
         </div>
-        
-        <SidebarNavigation 
-          closeMenu={onToggleSidebar}
-        />
       </div>
+      
+      <SidebarNavigation 
+        closeMenu={onToggleSidebar}
+      />
     </div>
   );
 };
