@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { ConversationType } from '@/types/conversation';
 import ConversationItem from './ConversationItem';
@@ -22,6 +21,7 @@ interface ConversationListProps {
   onRenameConversation: (id: string, newTitle: string) => void;
   isUserLoggedIn: boolean;
   isLoading?: boolean;
+  isMinimized?: boolean;
   folders?: FolderType[];
   onCreateFolder?: (name: string) => void;
   onRenameFolder?: (id: string, newName: string) => void;
@@ -42,7 +42,6 @@ interface DropResult {
 
 const CONVERSATION_TYPE = 'conversation';
 
-// Separate drop target component for folders
 const FolderDropTarget: React.FC<{
   folderId: string;
   children: React.ReactNode;
@@ -70,7 +69,6 @@ const FolderDropTarget: React.FC<{
   );
 };
 
-// Separate drop target component for root (no folder)
 const RootDropTarget: React.FC<{
   children: React.ReactNode;
   onMoveConversation: (conversationId: string, folderId: string | null) => void;
@@ -105,6 +103,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
   onRenameConversation,
   isUserLoggedIn,
   isLoading = false,
+  isMinimized = false,
   folders = [],
   onCreateFolder = () => {},
   onRenameFolder = () => {},
@@ -178,7 +177,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
       >
         <div className="flex items-center">
           <FolderPlus className="h-4 w-4 mr-2" />
-          <span>Nova Pasta</span>
+          <span>{!isMinimized && "Nova Pasta"}</span>
         </div>
       </Button>
       
@@ -237,7 +236,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
                 <ChevronRight className="h-4 w-4 mr-2" />
               )}
               <Folder className="h-4 w-4 mr-2" />
-              <span>{folder.name}</span>
+              {!isMinimized && <span>{folder.name}</span>}
             </div>
           </div>
           
@@ -254,11 +253,12 @@ const ConversationList: React.FC<ConversationListProps> = ({
                   onMove={(folderId) => onMoveConversation(conv.id, folderId)}
                   folders={folders}
                   currentFolderId={folder.id}
+                  isMinimized={isMinimized}
                 />
               ))}
               {getConversationsInFolder(folder.id).length === 0 && (
                 <div className="text-sm text-inventu-gray/70 italic p-2">
-                  Pasta vazia
+                  {!isMinimized && "Pasta vazia"}
                 </div>
               )}
             </div>
@@ -278,6 +278,7 @@ const ConversationList: React.FC<ConversationListProps> = ({
             onMove={(folderId) => onMoveConversation(conv.id, folderId)}
             folders={folders}
             currentFolderId={null}
+            isMinimized={isMinimized}
           />
         ))}
       </RootDropTarget>
