@@ -61,48 +61,72 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       "transition-all duration-300 ease-out",
       !isOpen && "opacity-0 pointer-events-none"
     )}>
-      <div className="relative">
-        <Button
-          onClick={toggleMenu}
-          size="icon"
-          variant="ghost"
-          className={cn(
-            "absolute -right-4 top-4 z-50 size-8 bg-black/90 border border-white/10",
-            "text-white/70 hover:text-white rounded-full transition-all duration-300",
-            "hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-white/20"
-          )}
-        >
-          {menuExpanded ? (
-            <ChevronLeft className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </Button>
-        
-        <div className={cn(
-          "transition-all duration-300 ease-out overflow-hidden",
-          menuExpanded ? "w-64" : "w-16"
-        )}>
-          <SidebarHeader 
-            onNewConversation={handleNewConversation}
-            onToggleSidebar={onToggleSidebar}
-            isUserLoggedIn={!!user}
-            isMinimized={!menuExpanded}
-          />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar content with fixed width for conversation history */}
+        <div className="flex flex-col min-w-64 flex-1 overflow-hidden">
+          <div className="p-2 border-b border-white/10">
+            <Button 
+              onClick={handleNewConversation}
+              className="flex items-center justify-center bg-white/5 hover:bg-white/10
+                text-white font-medium transition-all duration-200
+                active:scale-95 rounded-xl h-11 w-full
+                border border-white/10 backdrop-blur-sm"
+              disabled={!user}
+              title="Nova Conversa"
+            >
+              <span className="flex items-center">
+                <span className="mr-2">+</span>
+                Nova Conversa
+              </span>
+            </Button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto">
+            <ConversationList 
+              conversations={conversations}
+              currentConversationId={currentConversationId}
+              onSelectConversation={setCurrentConversationId}
+              onDeleteConversation={deleteConversation}
+              onRenameConversation={renameConversation}
+              isUserLoggedIn={!!user}
+              isLoading={loading}
+              isMinimized={false}
+            />
+          </div>
         </div>
-      </div>
-      
-      <div className="flex-1 overflow-y-auto">
-        <ConversationList 
-          conversations={conversations}
-          currentConversationId={currentConversationId}
-          onSelectConversation={setCurrentConversationId}
-          onDeleteConversation={deleteConversation}
-          onRenameConversation={renameConversation}
-          isUserLoggedIn={!!user}
-          isLoading={loading}
-          isMinimized={!menuExpanded}
-        />
+        
+        {/* Navigation sidebar that can be minimized */}
+        <div className="relative flex flex-col border-l border-white/10">
+          <Button
+            onClick={toggleMenu}
+            size="icon"
+            variant="ghost"
+            className={cn(
+              "absolute -right-4 top-4 z-50 size-8 bg-black/90 border border-white/10",
+              "text-white/70 hover:text-white rounded-full transition-all duration-300",
+              "hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-white/20"
+            )}
+          >
+            {menuExpanded ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+          
+          <div className={cn(
+            "flex flex-col h-full transition-all duration-300 ease-out overflow-hidden",
+            menuExpanded ? "w-56" : "w-16"
+          )}>
+            <SidebarHeader 
+              onNewConversation={handleNewConversation}
+              onToggleSidebar={onToggleSidebar}
+              isUserLoggedIn={!!user}
+              isMinimized={!menuExpanded}
+              hideNewConversationButton={true}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

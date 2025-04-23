@@ -62,7 +62,7 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
             variant="ghost"
             className={cn(
               "justify-center text-white/70 hover:text-white hover:bg-white/5 w-full",
-              isMinimized && "p-2"
+              isMinimized ? "p-2" : "rounded-xl px-4 py-3 h-12"
             )}
             onClick={handleSignOut}
             title="Sair"
@@ -75,7 +75,7 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
             variant="ghost"
             className={cn(
               "justify-center text-white/70 hover:text-white hover:bg-white/5 w-full",
-              isMinimized && "p-2"
+              isMinimized ? "p-2" : "rounded-xl px-4 py-3 h-12"
             )}
             onClick={() => {
               navigate('/auth');
