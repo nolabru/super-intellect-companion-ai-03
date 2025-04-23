@@ -1,38 +1,39 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 229 29% 7%;
-    --foreground: 217 100% 97%;
+    --background: 0 0% 7%;
+    --foreground: 210 40% 98%;
 
-    --card: 231 20% 13%;
-    --card-foreground: 217 100% 97%;
+    --card: 0 0% 12%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 231 20% 13%;
-    --popover-foreground: 217 100% 97%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 226 90% 60%;
-    --primary-foreground: 217 100% 97%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
 
-    --secondary: 271 74% 70%;
-    --secondary-foreground: 217 100% 97%;
+    --secondary: 217 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 240 9% 21%;
-    --muted-foreground: 217 50% 65%;
+    --muted: 217 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 271 79% 56%;
-    --accent-foreground: 217 100% 97%;
+    --accent: 271 91% 56%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 355 84% 60%;
-    --destructive-foreground: 217 100% 97%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 226 38% 35%;
-    --input: 226 38% 35%;
-    --ring: 226 80% 68%;
+    --border: 217 32.6% 17.5%;
+    --input: 217 32.6% 17.5%;
+    --ring: 224 76% 48%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
   }
 }
 
@@ -42,99 +43,49 @@
   }
 
   body {
-    @apply bg-inventu-darker text-inventu-blue antialiased;
+    @apply bg-black text-foreground;
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Corrige overflow em mobile */
-    overflow-x: hidden;
-    max-width: 100vw;
   }
 
-  /* Remove gray tones for classic brand, amplify backgrounds/feedbacks */
   .chat-bubble {
-    @apply p-4 rounded-2xl max-w-full backdrop-blur-[4px] relative transition-all;
-    /* Evita overflow no mobile, ajusta responsivo */
-    word-break: break-word;
-    min-width: 0;
+    @apply p-4 rounded-2xl max-w-full backdrop-blur-sm relative transition-all;
   }
 
   .user-bubble {
-    @apply bg-gradient-to-br from-inventu-blue/90 to-inventu-blue text-white ml-auto shadow-xl;
+    @apply bg-gradient-to-br from-blue-500 to-blue-600 text-white ml-auto shadow-lg;
   }
 
   .ai-bubble {
-    @apply bg-gradient-to-br from-inventu-dark/90 to-inventu-darker/90 text-white shadow-xl;
+    @apply bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-white shadow-lg;
   }
 
   .btn-primary {
-    @apply bg-inventu-blue hover:bg-inventu-blue/80 text-white px-4 py-2 rounded-2xl transition shadow-lg font-semibold;
+    @apply bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl transition-all shadow-md;
   }
 
   .btn-secondary {
-    @apply bg-inventu-dark/90 hover:bg-inventu-darker/95 text-inventu-blue px-4 py-2 rounded-2xl border border-inventu-blue/15 transition shadow;
+    @apply bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl border border-white/10 transition-all shadow-md;
   }
 
   .btn-accent {
-    @apply bg-inventu-purple hover:bg-inventu-purple/90 text-white px-4 py-2 rounded-2xl transition shadow;
+    @apply bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl transition-all shadow-md;
   }
-
-  /* Mode selector button restyled */
+  
+  /* Mode selector button styles */
   .mode-selector-btn {
-    @apply rounded-xl px-3 py-2 font-medium;
+    @apply p-2 rounded-xl transition-all;
   }
-
-  /* Ripple effect for touch/animations */
-  .btn-primary,
-  .btn-secondary,
-  .btn-accent,
-  .mode-selector-btn {
-    transition: transform .15s cubic-bezier(.22,.68,0,1.71), box-shadow .2s;
-    /* Suavização adicional mobile */
-    touch-action: manipulation;
+  
+  .mode-selector-btn.active {
+    @apply bg-white/10 text-white shadow-inner;
   }
-  .btn-primary:active,
-  .btn-secondary:active,
-  .btn-accent:active,
-  .mode-selector-btn:active {
-    transform: scale(0.96);
-    box-shadow: 0 2px 12px 0 #2563eb33;
+  
+  .mode-selector-btn.inactive {
+    @apply text-white/60 hover:text-white hover:bg-white/5;
   }
-
-  /* New: Real hover burst */
-  .btn-primary:hover,
-  .btn-secondary:hover,
-  .btn-accent:hover,
-  .mode-selector-btn:hover {
-    filter: brightness(1.07);
-    box-shadow: 0 0 14px 0 #8B5CF691;
-  }
-
-  /* Ampliar visual feedback Apple-like */
-  .glass-effect {
-    @apply bg-inventu-blue/5 backdrop-blur-[5px] border border-inventu-blue/10 shadow-xl;
-    min-width: 0;
-  }
-  .text-shadow {
-    text-shadow: 0 1px 2px #2563eb21;
-  }
-  .animate-fade-in {
-    animation: fadeIn 0.4s cubic-bezier(.4,0,.2,1) forwards;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(16px);}
-    to { opacity: 1; transform: translateY(0);}
-  }
-
-  /* Atualização scrollbar colorida */
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #8B5CF6bb;
-    border-radius: 9999px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: #2563EBdd;
-  }
-
+  
   /* Markdown content styling */
   .markdown-content {
     @apply text-sm leading-relaxed;
@@ -197,48 +148,61 @@
   .backdrop-blur {
     backdrop-filter: blur(8px);
   }
-
-  .backdrop-blur-lg {
-    backdrop-filter: blur(18px);
+  
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
   }
+  
   .backdrop-blur-md {
     backdrop-filter: blur(12px);
   }
+  
+  .backdrop-blur-lg {
+    backdrop-filter: blur(16px);
+  }
+  
+  .backdrop-blur-xl {
+    backdrop-filter: blur(24px);
+  }
+  
   .glass-effect {
-    @apply bg-inventu-blue/10 backdrop-blur-md border border-inventu-blue/15 shadow-xl;
+    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-lg;
   }
-
+  
   .text-shadow {
-    text-shadow: 0 1px 2px #2563eb21;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
+  
   .animate-fade-in {
-    animation: fadeIn 0.4s cubic-bezier(.4,0,.2,1) forwards;
+    animation: fadeIn 0.3s ease-in-out forwards;
   }
+  
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(16px);}
-    to { opacity: 1; transform: translateY(0);}
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
-
-  /* Atualização scrollbar colorida */
+  
+  /* Adicionar scrollbar personalizada para uma aparência mais Apple-like */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #8B5CF6bb;
+    background-color: rgba(255, 255, 255, 0.2);
     border-radius: 9999px;
   }
+  
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: #2563EBdd;
+    background-color: rgba(255, 255, 255, 0.3);
   }
 }
-
-.user-bubble, .ai-bubble {
-    min-width: 0;
-    max-width: 98vw;
-  }
-  .scrollbar-thin {
-    max-width: 100vw;
-    overflow-x: hidden;
-  }
-  /* Previne scroll horizontal genérico */
-  * {
-    min-width: 0;
-    box-sizing: border-box;
-  }

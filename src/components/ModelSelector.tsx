@@ -103,7 +103,6 @@ interface ModelSelectorProps {
   mode?: ModelMode;
   disabled?: boolean;
   className?: string;
-  compact?: boolean;
 }
 
 const getProviderDisplayName = (provider: ModelProvider): string => {
@@ -142,8 +141,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   onChange,
   mode,
   disabled = false,
-  className = '',
-  compact = false
+  className = ''
 }) => {
   const selectedModelInfo = AVAILABLE_MODELS.find(m => m.id === selectedModel);
   const getModelsForProvider = (provider: ModelProvider): ModelInfo[] => {
@@ -184,22 +182,21 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         return '•';
     }
   };
-  
   return <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled}>
-        <button className={`flex items-center justify-between ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'} rounded-md border border-white/10 bg-black/40 text-white ring-offset-background 
+        <button className={`flex items-center justify-between w-full px-3 py-2 rounded-md border border-white/10 bg-black/40 text-sm text-white ring-offset-background 
                      backdrop-blur-sm transition-all hover:bg-black/50 hover:border-white/20
                      focus:outline-none focus:ring-1 focus:ring-white/30 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}>
           <span className="flex items-center gap-2">
-            {selectedModelInfo && <span className={`${compact ? 'text-[10px]' : 'text-xs'} opacity-70 font-medium`}>
+            {selectedModelInfo && <span className="text-xs opacity-70 font-medium">
                 {getProviderIcon(selectedModelInfo.provider)}
               </span>}
-            <span className="font-medium truncate">{selectedModelInfo?.displayName || 'Selecionar Modelo'}</span>
+            <span className="font-medium">{selectedModelInfo?.displayName || 'Selecionar Modelo'}</span>
           </span>
-          <ChevronDown className={`${compact ? 'h-3 w-3' : 'h-4 w-4'} opacity-70`} />
+          <ChevronDown className="h-4 w-4 opacity-70" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={`${compact ? 'w-[160px]' : 'w-[180px]'} bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1`}>
+      <DropdownMenuContent align="end" className="w-[180px] bg-black/90 backdrop-blur-xl border-white/10 shadow-xl rounded-xl p-1">
         <DropdownMenuLabel className="text-xs uppercase tracking-wider text-white/60 px-3 py-2">
           Selecione um modelo
         </DropdownMenuLabel>

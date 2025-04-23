@@ -64,14 +64,14 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				inventu: {
-					blue: "#2563EB",
-					purple: "#8B5CF6",
-					darkBlue: "#1E3A8A",
-					dark: "#0F0F11",
-					darker: "#09090B",
-					card: "#18181B",
+					blue: "#3B82F6",
+					purple: "#9333EA",
+					darkBlue: "#1E40AF",
+					dark: "#121212",
+					darker: "#0F0F0F",
+					card: "#1E1E1E",
 					light: "#F9FAFB",
-					gray: "#71717A"
+					gray: "#374151"
 				}
 			},
 			borderRadius: {
@@ -103,30 +103,12 @@ export default {
 					'100%': {
 						opacity: '1'
 					}
-				},
-				'slide-in': {
-					'0%': {
-						transform: 'translateX(-100%)'
-					},
-					'100%': {
-						transform: 'translateX(0)'
-					}
-				},
-				'slide-out': {
-					'0%': {
-						transform: 'translateX(0)'
-					},
-					'100%': {
-						transform: 'translateX(-100%)'
-					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'fade-in': 'fade-in 0.3s ease-out forwards',
-				'slide-in': 'slide-in 0.3s ease-out forwards',
-				'slide-out': 'slide-out 0.3s ease-out forwards'
+				'fade-in': 'fade-in 0.5s ease-out forwards'
 			}
 		}
 	},

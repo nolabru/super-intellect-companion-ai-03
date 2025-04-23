@@ -4,7 +4,6 @@ import { PlusCircle, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarNavigation from './SidebarNavigation';
 import { toast } from 'sonner';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface SidebarHeaderProps {
   onNewConversation: () => void;
@@ -12,59 +11,53 @@ interface SidebarHeaderProps {
   isUserLoggedIn: boolean;
 }
 
-const SidebarHeader: React.FC<SidebarHeaderProps> = ({
-  onNewConversation,
+const SidebarHeader: React.FC<SidebarHeaderProps> = ({ 
+  onNewConversation, 
   onToggleSidebar,
   isUserLoggedIn
 }) => {
-  const isMobile = useIsMobile();
-
   const handleNewConversation = () => {
+    console.log('[SidebarHeader] Iniciando nova conversa');
+    
     if (!isUserLoggedIn) {
       toast.error('Você precisa estar logado para criar uma nova conversa');
       return;
     }
+    
+    // Chamar o handler de nova conversa
     onNewConversation();
   };
-
+  
   return (
-    <div
-      className="
-        flex flex-col gap-3 px-2 pb-2 pt-4 md:pt-6
-        border-b border-inventu-blue/20
-        bg-inventu-dark/90 backdrop-blur-lg
-        shadow-md animate-fade-in
-      "
-    >
-      <div className="flex items-center gap-2 w-full">
-        <Button
-          onClick={handleNewConversation}
-          className="
-            flex-1 h-11 rounded-full text-base md:text-lg
-            bg-inventu-blue hover:bg-inventu-blue/90
-            font-semibold shadow-xs transition-all
-            hover:scale-105 active:scale-[0.97]
-            duration-150
-          "
-          disabled={!isUserLoggedIn}
-        >
-          <PlusCircle className="mr-2 h-5 w-5" />
-          Nova Conversa
-        </Button>
-        {onToggleSidebar && !isMobile && (
-          <Button
-            onClick={onToggleSidebar}
-            size="icon"
-            variant="ghost"
-            className="h-11 w-11 text-inventu-blue/60 hover:text-inventu-blue hover:bg-inventu-blue/10 transition-colors rounded-full hover:scale-105 active:scale-95 duration-150"
-            title="Minimizar menu"
+    <div className="p-4 border-b border-inventu-gray/30">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={handleNewConversation}
+            className="flex-1 bg-inventu-blue hover:bg-inventu-blue/80 text-white"
+            disabled={!isUserLoggedIn}
           >
-            <ChevronLeft className="h-6 w-6" />
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nova Conversa
           </Button>
-        )}
+          
+          {onToggleSidebar && (
+            <Button
+              onClick={onToggleSidebar}
+              size="icon"
+              variant="ghost"
+              className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+              title="Minimizar menu"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+        
+        <SidebarNavigation 
+          closeMenu={onToggleSidebar}
+        />
       </div>
-
-      <SidebarNavigation closeMenu={onToggleSidebar} />
     </div>
   );
 };

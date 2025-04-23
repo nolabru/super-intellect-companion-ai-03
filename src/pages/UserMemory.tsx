@@ -1,3 +1,4 @@
+
 import React from 'react';
 import AppHeader from '@/components/AppHeader';
 import ConversationSidebar from '@/components/ConversationSidebar';
@@ -5,14 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MemoryManager from '@/components/MemoryManager';
 import { Loader2 } from 'lucide-react';
-import { ChatMode } from '@/components/ModeSelector';
 
-interface UserMemoryProps {
-  activeMode: ChatMode;
-  onModeChange: (mode: ChatMode) => void;
-}
-
-const UserMemory: React.FC<UserMemoryProps> = ({ activeMode, onModeChange }) => {
+const UserMemory: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -37,12 +32,7 @@ const UserMemory: React.FC<UserMemoryProps> = ({ activeMode, onModeChange }) => 
 
   return (
     <div className="flex flex-col h-screen bg-inventu-darker">
-      <AppHeader 
-        sidebarOpen={sidebarOpen} 
-        onToggleSidebar={toggleSidebar}
-        activeMode={activeMode}
-        onModeChange={onModeChange}
-      />
+      <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen ? (

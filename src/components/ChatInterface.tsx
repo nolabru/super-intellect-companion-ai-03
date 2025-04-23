@@ -6,35 +6,6 @@ import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import ModelSelector from './ModelSelector';
-import ChatModelSelectorBar from './ChatModelSelectorBar';
-
-function ChatMinimalHeader({ model, onModelChange, availableModels }) {
-  const modelInfo = AVAILABLE_MODELS.find(m => m.id === model);
-  return (
-    <div className={cn(
-      "flex items-center justify-between px-4 py-1.5 bg-black/60 backdrop-blur-lg border-b border-white/10",
-      "min-h-[46px]"
-    )}>
-      <div className="flex items-center gap-2">
-        <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
-        <span className="font-semibold text-white text-base truncate max-w-[130px]">
-          {modelInfo?.displayName || model}
-        </span>
-      </div>
-      {onModelChange && !!availableModels?.length && (
-        <div>
-          <ModelSelector 
-            mode={modelInfo?.modes?.[0] || 'text'}
-            selectedModel={model}
-            onChange={onModelChange}
-            disabled={!onModelChange}
-            compact={true}
-          />
-        </div>
-      )}
-    </div>
-  );
-}
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -75,43 +46,97 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const filteredMessages = messages
     .filter((msg, index, array) => {
       if (index === 0) return true;
+      
       const prevMsg = array[index - 1];
       const isDuplicate = prevMsg.sender === msg.sender && 
-                        prevMsg.content === msg.content && 
-                        prevMsg.model === msg.model &&
-                        (new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime() < 500);
+                         prevMsg.content === msg.content && 
+                         prevMsg.model === msg.model &&
+                         (new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime() < 500);
+      
       return !isDuplicate;
     })
     .filter(msg => {
+      console.log(`[ChatInterface:${model}] Filtering message:`, {
+        id: msg.id,
+        sender: msg.sender,
+        model: msg.model,
+        isCompareMode
+      });
+      
       if (isCompareMode) {
-        return msg.model === model || (msg.sender === 'user' && msg.model === model);
+        return msg.model === model || 
+               (msg.sender === 'user' && msg.model === model);
       } else {
-        return msg.sender === 'user' || (msg.sender === 'assistant' && msg.model === model);
+        return msg.sender === 'user' || 
+               (msg.sender === 'assistant' && msg.model === model);
       }
     });
+  
+  const getModelInfo = (modelId: string) => {
+    return AVAILABLE_MODELS.find(m => m.id === modelId);
+  };
 
+  const getModelDisplayName = (modelId: string) => {
+    const modelInfo = getModelInfo(modelId);
+    return modelInfo?.displayName || modelId;
+  };
+
+  const getModelColor = (modelId: string) => {
+    const modelInfo = getModelInfo(modelId);
+    if (!modelInfo) return "text-blue-500";
+    
+    switch (modelInfo.provider) {
+      case 'openai':
+        return "text-blue-500";
+      case 'anthropic':
+        return "text-purple-500";
+      case 'google':
+        return "text-green-500";
+      case 'kligin':
+        return "text-orange-500";
+      case 'ideogram':
+        return "text-yellow-500";
+      case 'minimax':
+        return "text-pink-500";
+      case 'elevenlabs':
+        return "text-cyan-500";
+      case 'luma':
+        return "text-indigo-500";
+      default:
+        return "text-blue-500";
+    }
+  };
+  
   const hasErrorMessage = filteredMessages.some(msg => 
     msg.error && 
     msg.model === model
   );
+
   const errorMessage = filteredMessages.find(msg => 
     msg.error && 
     msg.model === model
   );
+
+  const isLumaVideo = model === 'luma-video';
+  
   const lumaGenIdMessage = filteredMessages.find(msg => 
-    msg.model?.includes('luma') &&
-    msg.content.includes('ID:') &&
+    msg.model?.includes('luma') && 
+    msg.content.includes('ID:') && 
     !msg.error
   );
+  
   const extractLumaId = (content: string): string | null => {
     const match = content.match(/ID: ([a-f0-9-]+)/i);
     return match ? match[1] : null;
   };
+  
   const lumaGenId = lumaGenIdMessage ? extractLumaId(lumaGenIdMessage.content) : null;
+  
   const openLumaDashboard = () => {
     window.open('https://lumalabs.ai/dashboard', '_blank');
     toast.success('Abrindo Dashboard da Luma AI');
   };
+  
   const showLumaKeyInstructions = () => {
     toast.info(
       <div className="space-y-2">
@@ -130,93 +155,137 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       }
     );
   };
-
+  
+  const modelInfo = getModelInfo(model);
+  const providerName = modelInfo ? getProviderDisplayName(modelInfo.provider) : "";
+  
   return (
-    <div className={cn("flex flex-col h-full bg-background overflow-hidden", className)}>
-      <ChatMinimalHeader 
-        model={model} 
-        onModelChange={undefined}
-        availableModels={undefined}
-      />
-      <ChatModelSelectorBar
-        selectedModel={model}
-        onModelChange={onModelChange}
-        availableModels={availableModels}
-      />
+    <div className={cn(
+      "flex flex-col h-full bg-background shadow-lg rounded-2xl overflow-hidden", 
+      className
+    )}>
       <div className={cn(
-        "flex-1 overflow-y-auto px-2 py-2 space-y-2 relative",
-        "bg-background scroll-smooth"
+        "p-3 backdrop-blur-xl bg-black/40 border-b border-white/10 flex justify-center items-center gap-2",
+        getModelColor(model)
+      )}>
+        {onModelChange && availableModels.length > 0 ? (
+          <div className="w-full max-w-sm">
+            <ModelSelector 
+              mode={modelInfo?.modes[0] || 'text'} 
+              selectedModel={model} 
+              onChange={onModelChange || (() => {})} 
+              disabled={!onModelChange}
+            />
+          </div>
+        ) : (
+          <div className="font-medium text-white">
+            {getModelDisplayName(model)}
+            {providerName && <span className="ml-1 text-xs opacity-75">({providerName})</span>}
+          </div>
+        )}
+      </div>
+      
+      <div className={cn(
+        "flex-1 overflow-y-auto px-4 py-6 space-y-6 relative scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent",
+        "bg-background"
       )}>
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-400 animate-fade-in">
-            <Loader2 className="h-5 w-5 animate-spin text-white/70" />
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3 animate-fade-in">
+            <Loader2 className="h-8 w-8 animate-spin text-white/70" />
+            <span className="text-white/70 font-medium">Carregando mensagens...</span>
           </div>
         ) : filteredMessages.length > 0 ? (
           <>
-            <div className="space-y-2">
+            <div className="space-y-6">
               {filteredMessages.map((message) => (
                 <div key={message.id} className="animate-fade-in">
                   <ChatMessage message={message} />
                 </div>
               ))}
             </div>
+            
             {lumaGenId && (
-              <div className="p-3 flex items-center gap-2 bg-indigo-900/20 border border-indigo-700/40 rounded-lg my-2">
-                <AlertTriangle className="h-4 w-4 text-indigo-400" />
-                <span className="text-xs text-indigo-200">
-                  Processando vídeo na Luma AI — resultado com ID <span className="font-semibold">{lumaGenId}</span>. 
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="ml-2 py-0.5 px-2 text-xs"
-                    onClick={openLumaDashboard}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Dashboard
-                  </Button>
-                </span>
-              </div>
-            )}
-            {hasErrorMessage && errorMessage && (
-              <div className="p-3 flex items-center gap-2 bg-red-900/20 border border-red-500/30 rounded-lg my-2">
-                <AlertTriangle className="h-4 w-4 text-red-400" />
-                <div className="flex-1 min-w-0">
-                  <span className="text-xs text-red-200">{errorMessage.content}</span>
-                  {(model === 'luma-video' || model === 'luma-image') && (
-                    <Button
-                      variant="outline" 
-                      size="sm" 
-                      className="ml-2 py-0.5 px-2 text-xs"
-                      onClick={showLumaKeyInstructions}
-                    >
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Instruções Luma
-                    </Button>
-                  )}
+              <div className="p-4 bg-indigo-900/10 backdrop-blur-sm border border-indigo-500/20 rounded-xl my-4 animate-fade-in shadow-lg">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-indigo-400 mr-3 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-indigo-300 font-medium">
+                      Processamento de vídeo na Luma AI
+                    </p>
+                    <p className="text-sm text-gray-300 mt-2">
+                      A Luma AI está processando seu vídeo, mas pode demorar mais do que nosso limite de espera. 
+                      Você pode verificar o resultado no dashboard da Luma AI com o ID: {lumaGenId}
+                    </p>
+                    <div className="mt-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-indigo-500/30"
+                        onClick={openLumaDashboard}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        <span>Abrir Dashboard da Luma AI</span>
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
+            
+            {hasErrorMessage && errorMessage && (
+              <div className="p-4 bg-red-900/10 backdrop-blur-sm border border-red-500/20 rounded-xl my-4 animate-fade-in shadow-lg">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-red-400 mr-3 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-red-300 font-medium">
+                      Erro ao processar solicitação
+                    </p>
+                    <p className="text-sm text-gray-300 mt-2">
+                      {errorMessage.content}
+                    </p>
+                    {(model === 'luma-video' || model === 'luma-image') && (
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-400 mb-2">
+                          Verifique se a chave API da Luma está configurada corretamente nas variáveis de ambiente da Edge Function.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="flex items-center gap-1 text-xs text-gray-300 bg-white/5 hover:bg-white/10 border-red-500/30"
+                          onClick={showLumaKeyInstructions}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                          <span>Ver instruções de configuração</span>
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full animate-fade-in">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow">
+          <div className="flex flex-col items-center justify-center h-full space-y-4 animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center shadow-xl">
               <svg 
                 xmlns="http://www.w3.org/2000/svg" 
-                className="h-5 w-5 text-white opacity-80"
+                className="h-8 w-8 text-white opacity-80" 
                 fill="none" 
                 viewBox="0 0 24 24" 
                 stroke="currentColor"
               >
                 <path 
                   strokeLinecap="round" 
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                  strokeLinejoin="round" 
+                  strokeWidth={1.5} 
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" 
                 />
               </svg>
             </div>
-            <p className="text-gray-400 text-xs pt-2">Inicie uma conversa</p>
+            <p className="text-gray-400 font-medium">Nenhuma mensagem ainda</p>
+            <p className="text-gray-500 text-sm px-8 text-center">Inicie uma conversa enviando uma mensagem abaixo</p>
           </div>
         )}
       </div>

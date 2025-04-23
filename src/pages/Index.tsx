@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -8,23 +9,19 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import { ChatMode } from '@/components/ModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversation } from '@/hooks/useConversation';
+import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
 import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
 import TokenDisplay from '@/components/TokenDisplay';
-import { useIsMobile } from '@/hooks/use-mobile';
 
-interface IndexProps {
-  activeMode: ChatMode;
-  onModeChange: (mode: ChatMode) => void;
-}
-
-const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
+const Index: React.FC = () => {
   const [comparing, setComparing] = useState(false);
   const [isLinked, setIsLinked] = useState(true);
+  const [activeMode, setActiveMode] = useState<ChatMode>('text');
   const [leftModel, setLeftModel] = useState('gpt-4o');
   const [rightModel, setRightModel] = useState('claude-3-opus');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const { loading: authLoading } = useAuth();
   const { 
     messages, 
@@ -36,12 +33,14 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
   } = useConversation();
   
   const { conversationId } = useParams<{ conversationId: string }>();
-  const isMobile = useIsMobile();
   
   useEffect(() => {
-    setSidebarOpen(!isMobile);
-  }, [isMobile]);
-  
+    if (conversationId && conversationId !== currentConversationId) {
+      console.log(`[Index] ID da conversa na URL: ${conversationId}, atualizando estado`);
+      setCurrentConversationId(conversationId);
+    }
+  }, [conversationId, currentConversationId, setCurrentConversationId]);
+
   useEffect(() => {
     const availableModels = getModelsByMode(activeMode).map(model => model.id);
     
@@ -81,27 +80,31 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
     
     if (comparing) {
       if (isLinked) {
+        // Modo vinculado: enviar para ambos os modelos
         result = await sendMessage(
           content, 
           activeMode, 
-          leftModel, 
-          true, 
+          leftModel, // Pode ser qualquer um dos modelos, pois estamos enviando para ambos
+          true,      // Modo de comparação ativo
           leftModel, 
           rightModel,
           files,
           params
         );
       } else {
+        // Modo desvinculado: enviar apenas para o modelo específico
         if (!targetModel) {
           console.error("Modelo alvo não especificado no modo desvinculado");
           return;
         }
         
+        // No modo desvinculado, não estamos em modo de comparação verdadeiro
+        // para o modelo específico, então definimos comparing como false
         result = await sendMessage(
           content,
           activeMode,
           targetModel,
-          true,
+          true, // Mantemos o modo de comparação, mas indicamos qual é o modelo-alvo específico
           targetModel === leftModel ? leftModel : null,
           targetModel === rightModel ? rightModel : null,
           files,
@@ -109,11 +112,12 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
         );
       }
     } else {
+      // Modo único - enviar apenas para o modelo selecionado
       result = await sendMessage(
         content, 
         activeMode, 
         leftModel, 
-        false,
+        false,   // Não é comparação
         leftModel, 
         null,
         files,
@@ -121,8 +125,10 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
       );
     }
     
+    // Check if mode was switched by orchestrator
     if (result && result.success && result.modeSwitch) {
-      onModeChange(result.modeSwitch as ChatMode);
+      // Update UI to reflect new mode
+      setActiveMode(result.modeSwitch as ChatMode);
       toast.info(`Modo alterado para ${result.modeSwitch} baseado no seu pedido`);
     }
   };
@@ -143,6 +149,11 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
   };
 
   const availableModels = getModelsByMode(activeMode).map(model => model.id);
+
+  const handleModeChange = (newMode: ChatMode) => {
+    console.log(`Modo alterado de ${activeMode} para ${newMode}`);
+    setActiveMode(newMode);
+  };
 
   const handleLeftModelChange = (model: string) => {
     console.log(`Modelo esquerdo alterado para ${model}`);
@@ -171,129 +182,100 @@ const Index: React.FC<IndexProps> = ({ activeMode, onModeChange }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-inventu-dark to-inventu-darker w-full">
-      <AppHeader
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={toggleSidebar}
-        activeMode={activeMode}
-        onModeChange={onModeChange}
-      />
-      <div className="flex-1 flex overflow-hidden relative">
-        {sidebarOpen && (
-          <>
+    <div className="flex flex-col h-screen bg-inventu-darker">
+      <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
+      
+      <div className="flex-1 flex overflow-hidden">
+        {sidebarOpen ? (
+          <div className="w-64 flex-shrink-0">
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
-            {isMobile && (
-              <div 
-                className="fixed inset-0 bg-black/50 -z-10 backdrop-blur-sm"
-                onClick={toggleSidebar}
-              />
-            )}
-          </>
-        )}
-        {!sidebarOpen && !isMobile && (
+          </div>
+        ) : (
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
         )}
-        <main className="flex-1 flex flex-col overflow-hidden items-center justify-center px-1 pb-1 md:px-2 md:pb-2 w-full">
-          <div className={`
-            w-full max-w-full md:max-w-3xl
-            flex flex-col flex-1 bg-inventu-card/90 rounded-lg md:rounded-xl shadow-lg
-            border border-white/5 overflow-hidden backdrop-blur-md my-1 md:my-2
-            min-h-[80vh]
-          `}>
-            <div className="border-b border-white/5 px-2 md:px-3 py-1.5 md:py-2 flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
-                {comparing && (
-                  <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
-                )}
-              </div>
-              
-              <h2 className="text-base font-medium text-white text-center tracking-tight">Conversa</h2>
-              
-              <div className="flex items-center gap-1">
-                <div className="md:hidden">
-                  <TokenDisplay />
+        
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative rounded-xl mx-4 my-2 bg-inventu-dark">
+            {comparing ? (
+              <>
+                <div className="flex-1 border-r border-inventu-gray/30 flex flex-col">
+                  <ChatInterface 
+                    messages={messages} 
+                    model={leftModel} 
+                    title={leftModel}
+                    onModelChange={handleLeftModelChange}
+                    availableModels={availableModels}
+                    isCompareMode={!isLinked} // Só é verdadeiramente modo de comparação se estiver desvinculado
+                    loading={authLoading || (messagesLoading && !initialLoadDone)}
+                  />
+                  {!isLinked && (
+                    <div className="p-4 border-t border-inventu-gray/30">
+                      <ChatInput 
+                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
+                        model={leftModel}
+                        mode={activeMode}
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-            
-            {comparing && (
-              <div className="px-2 py-1 flex flex-wrap justify-center gap-1 border-b border-white/5 bg-black/20">
-                <span className="text-xs text-white/70 px-1.5 py-0.5 rounded-md bg-white/5">
-                  <span className="font-medium">{leftModel}</span>
-                </span>
-                <span className="text-xs text-white/70 px-1.5 py-0.5 rounded-md bg-white/5">
-                  <span className="font-medium">{rightModel}</span>
-                </span>
-              </div>
-            )}
-            
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {comparing ? (
-                <div className="flex flex-1 flex-col divide-y divide-white/10">
-                  <div className="flex-1 min-h-0">
-                    <ChatInterface
-                      messages={messages}
-                      model={leftModel}
-                      title={leftModel}
-                      onModelChange={handleLeftModelChange}
-                      availableModels={availableModels}
-                      isCompareMode={!isLinked}
-                      loading={authLoading || (messagesLoading && !initialLoadDone)}
-                    />
-                  </div>
-                  <div className="flex-1 min-h-0">
-                    <ChatInterface
-                      messages={messages}
-                      model={rightModel}
-                      title={rightModel}
-                      onModelChange={handleRightModelChange}
-                      availableModels={availableModels}
-                      isCompareMode={!isLinked}
-                      loading={authLoading || (messagesLoading && !initialLoadDone)}
-                    />
-                  </div>
+                
+                <div className="flex-1 flex flex-col">
+                  <ChatInterface 
+                    messages={messages} 
+                    model={rightModel} 
+                    title={rightModel}
+                    onModelChange={handleRightModelChange}
+                    availableModels={availableModels}
+                    isCompareMode={!isLinked} // Só é verdadeiramente modo de comparação se estiver desvinculado
+                    loading={authLoading || (messagesLoading && !initialLoadDone)}
+                  />
+                  {!isLinked && (
+                    <div className="p-4 border-t border-inventu-gray/30">
+                      <ChatInput 
+                        onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
+                        model={rightModel}
+                        mode={activeMode}
+                      />
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <ChatInterface
-                  messages={messages}
-                  model={leftModel}
+              </>
+            ) : (
+              <div className="flex-1">
+                <ChatInterface 
+                  messages={messages} 
+                  model={leftModel} 
                   title={leftModel}
                   onModelChange={handleLeftModelChange}
                   availableModels={availableModels}
                   isCompareMode={false}
                   loading={authLoading || (messagesLoading && !initialLoadDone)}
                 />
-              )}
-            </div>
-            <div className="p-1 md:p-2 border-t border-white/5 bg-inventu-card/60 backdrop-blur-md">
-              {(!comparing || isLinked) ? (
-                <ChatInput
-                  onSendMessage={handleSendMessage}
-                  mode={activeMode}
-                  model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
-                />
-              ) : (
-                <div className="flex flex-col gap-1">
-                  <div>
-                    <ChatInput
-                      onSendMessage={(content, files, params) => handleSendMessage(content, files, params, leftModel)}
-                      model={leftModel}
-                      mode={activeMode}
-                    />
-                  </div>
-                  <div>
-                    <ChatInput
-                      onSendMessage={(content, files, params) => handleSendMessage(content, files, params, rightModel)}
-                      model={rightModel}
-                      mode={activeMode}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        </main>
+          
+          <div className="p-4 border-t border-inventu-gray/30 bg-inventu-dark">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <ModeSelector activeMode={activeMode} onChange={handleModeChange} />
+                <CompareModelsButton isComparing={comparing} onToggleCompare={toggleComparing} />
+                {comparing && (
+                  <LinkToggleButton isLinked={isLinked} onToggleLink={toggleLink} />
+                )}
+                <TokenDisplay />  {/* Added back in the original location */}
+              </div>
+            </div>
+            
+            {(!comparing || isLinked) && (
+              <ChatInput 
+                onSendMessage={handleSendMessage} 
+                mode={activeMode}
+                model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
