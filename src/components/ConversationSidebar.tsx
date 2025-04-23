@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import SidebarHeader from './conversation/SidebarHeader';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [menuExpanded, setMenuExpanded] = React.useState(true);
+  const [menuExpanded, setMenuExpanded] = useState(true);
   const { 
     conversations, 
     currentConversationId, 

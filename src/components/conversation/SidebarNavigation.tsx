@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   MessageSquare, 
   Image, 
-  Database as MemoryIcon, // Changed from Memory to Database
+  Database as MemoryIcon,
   Coins,
   LogIn,
   LogOut
