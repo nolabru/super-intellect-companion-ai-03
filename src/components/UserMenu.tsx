@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import TokenDisplay from './TokenDisplay';
 
 const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
@@ -34,9 +35,7 @@ const UserMenu: React.FC = () => {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-white text-sm hidden md:block">
-        {user.email}
-      </span>
+      <TokenDisplay />
       
       <div className="flex gap-2">
         <Avatar className="h-8 w-8 bg-inventu-blue">
