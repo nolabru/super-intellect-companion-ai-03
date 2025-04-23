@@ -1,32 +1,38 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Button,
+  ButtonProps 
+} from '@/components/ui/button';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import TokenDisplay from './TokenDisplay';
+import { User, LogOut } from 'lucide-react';
 
 const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  
+
   if (!user) {
     return (
       <Button 
-        variant="outline" 
+        variant="outline"
         onClick={() => navigate('/auth')}
         className="text-white border-inventu-gray/30 hover:bg-inventu-blue/20"
       >
-        Entrar
+        <User className="h-4 w-4 mr-2" />
+        <span className="hidden sm:inline">Entrar</span>
       </Button>
     );
   }
-
-  // Obter as iniciais do email para o avatar
-  const getInitials = () => {
-    if (!user.email) return '?';
-    return user.email.substring(0, 2).toUpperCase();
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -37,20 +43,33 @@ const UserMenu: React.FC = () => {
     <div className="flex items-center gap-3">
       <TokenDisplay />
       
-      <div className="flex gap-2">
-        <Avatar className="h-8 w-8 bg-inventu-blue">
-          <AvatarFallback>{getInitials()}</AvatarFallback>
-        </Avatar>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="ghost" 
+            className="relative h-8 w-8 rounded-full"
+          >
+            <Avatar className="h-8 w-8 bg-inventu-blue">
+              <AvatarFallback>
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+          </Button>
+        </DropdownMenuTrigger>
         
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={handleSignOut}
-          className="text-white border-inventu-gray/30 hover:bg-inventu-red/20"
+        <DropdownMenuContent 
+          align="end"
+          className="w-56 bg-inventu-dark/95 backdrop-blur-lg border-inventu-gray/30"
         >
-          Sair
-        </Button>
-      </div>
+          <DropdownMenuItem
+            onClick={handleSignOut}
+            className="text-white/90 hover:text-white focus:text-white cursor-pointer"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Sair</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 };
