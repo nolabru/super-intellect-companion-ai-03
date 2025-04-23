@@ -10,17 +10,24 @@ interface SidebarNavLinkProps {
   icon: LucideIcon;
   label: string;
   isMinimized?: boolean;
+  onClick?: () => void;
 }
 
 const SidebarNavLink: React.FC<SidebarNavLinkProps> = ({
   href,
   icon: Icon,
   label,
-  isMinimized = false
+  isMinimized = false,
+  onClick
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isActive = location.pathname === href;
+
+  const handleClick = () => {
+    navigate(href);
+    if (onClick) onClick();
+  };
 
   return (
     <Button
@@ -33,7 +40,7 @@ const SidebarNavLink: React.FC<SidebarNavLinkProps> = ({
         isActive ? "bg-white/10 text-white" : "text-white/70",
         !isMinimized && "justify-start"
       )}
-      onClick={() => navigate(href)}
+      onClick={handleClick}
       title={isMinimized ? label : undefined}
     >
       <Icon className={cn(

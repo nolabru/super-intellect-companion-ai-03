@@ -54,10 +54,14 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         </div>
       )}
       
-      <SidebarNavigation 
-        closeMenu={onToggleSidebar}
-        isMinimized={isMinimized}
-      />
+      <div className="flex-1">
+        {onToggleSidebar ? (
+          <SidebarNavigation 
+            closeMenu={onToggleSidebar}
+            isMinimized={isMinimized}
+          />
+        ) : null}
+      </div>
     </div>
   );
 };

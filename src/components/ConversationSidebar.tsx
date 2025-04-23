@@ -9,6 +9,7 @@ import { useConversation } from '@/hooks/useConversation';
 import ConversationList from './conversation/ConversationList';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from './ui/button';
+import SidebarNavigation from './conversation/SidebarNavigation';
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
@@ -21,7 +22,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [menuExpanded, setMenuExpanded] = React.useState(false);
+  const [menuExpanded, setMenuExpanded] = React.useState(true);
   const { 
     conversations, 
     currentConversationId, 
@@ -95,8 +96,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           </div>
         </div>
         
-        {/* Navigation sidebar that can be minimized */}
-        <div className="relative flex flex-col border-l border-white/10">
+        {/* Navigation sidebar with buttons for gallery, memory, etc */}
+        <div className="relative border-l border-white/10">
           <Button
             onClick={toggleMenu}
             size="icon"
@@ -118,12 +119,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             "flex flex-col h-full transition-all duration-300 ease-out overflow-hidden",
             menuExpanded ? "w-56" : "w-16"
           )}>
-            <SidebarHeader 
-              onNewConversation={handleNewConversation}
-              onToggleSidebar={onToggleSidebar}
-              isUserLoggedIn={!!user}
+            <SidebarNavigation 
+              closeMenu={onToggleSidebar}
               isMinimized={!menuExpanded}
-              hideNewConversationButton={true}
             />
           </div>
         </div>

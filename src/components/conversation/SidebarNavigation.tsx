@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   MessageSquare, 
   Image, 
-  Brain as Memory, 
+  Memory as MemoryIcon, 
   Coins,
   LogIn,
   LogOut
@@ -13,6 +13,7 @@ import {
 import SidebarNavLink from '../sidebar/SidebarNavLink';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import TokenDisplay from '../TokenDisplay';
 
 interface SidebarNavigationProps {
   closeMenu?: () => void;
@@ -35,7 +36,7 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
   const navigationItems = [
     { href: '/', icon: MessageSquare, label: 'Chat' },
     { href: '/gallery', icon: Image, label: 'Galeria' },
-    { href: '/memory', icon: Memory, label: 'Memória' },
+    { href: '/memory', icon: MemoryIcon, label: 'Memória' },
     { href: '/tokens', icon: Coins, label: 'Tokens' },
   ];
 
@@ -52,9 +53,16 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
             icon={item.icon}
             label={item.label}
             isMinimized={isMinimized}
+            onClick={closeMenu}
           />
         ))}
       </div>
+      
+      {user && (
+        <div className="px-2 py-1">
+          <TokenDisplay />
+        </div>
+      )}
 
       <div className="p-2 border-t border-white/10">
         {user ? (
