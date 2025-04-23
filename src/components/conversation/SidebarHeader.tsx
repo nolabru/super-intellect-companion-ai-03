@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PlusCircle, ChevronLeft } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarNavigation from './SidebarNavigation';
 import { toast } from 'sonner';
@@ -10,12 +10,14 @@ interface SidebarHeaderProps {
   onNewConversation: () => void;
   onToggleSidebar?: () => void;
   isUserLoggedIn: boolean;
+  isMinimized?: boolean;
 }
 
 const SidebarHeader: React.FC<SidebarHeaderProps> = ({ 
   onNewConversation, 
   onToggleSidebar,
-  isUserLoggedIn
+  isUserLoggedIn,
+  isMinimized = false
 }) => {
   const handleNewConversation = () => {
     if (!isUserLoggedIn) {
@@ -27,37 +29,30 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
   
   return (
     <div className="flex flex-col">
-      <div className="p-3 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={handleNewConversation}
-            className={cn(
-              "flex-1 bg-inventu-blue hover:bg-inventu-blue/90",
-              "text-white font-medium transition-all duration-200",
-              "active:scale-95 rounded-xl h-11"
-            )}
-            disabled={!isUserLoggedIn}
-          >
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Nova Conversa
-          </Button>
-          
-          {onToggleSidebar && (
-            <Button
-              onClick={onToggleSidebar}
-              size="icon"
-              variant="ghost"
-              className="text-white/70 hover:text-white hover:bg-white/5 rounded-xl h-11 w-11"
-              title="Minimizar menu"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
+      <div className="p-2 border-b border-white/10">
+        <Button 
+          onClick={handleNewConversation}
+          className={cn(
+            "flex items-center justify-center bg-white/5 hover:bg-white/10",
+            "text-white font-medium transition-all duration-200",
+            "active:scale-95 rounded-xl h-11 w-full",
+            "border border-white/10 backdrop-blur-sm",
+            isMinimized && "p-0 w-12"
           )}
-        </div>
+          disabled={!isUserLoggedIn}
+          title="Nova Conversa"
+        >
+          <PlusCircle className={cn(
+            "h-5 w-5",
+            !isMinimized && "mr-2"
+          )} />
+          {!isMinimized && "Nova Conversa"}
+        </Button>
       </div>
       
       <SidebarNavigation 
         closeMenu={onToggleSidebar}
+        isMinimized={isMinimized}
       />
     </div>
   );

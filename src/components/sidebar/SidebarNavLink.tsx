@@ -9,12 +9,14 @@ interface SidebarNavLinkProps {
   href: string;
   icon: LucideIcon;
   label: string;
+  isMinimized?: boolean;
 }
 
 const SidebarNavLink: React.FC<SidebarNavLinkProps> = ({
   href,
   icon: Icon,
-  label
+  label,
+  isMinimized = false
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -24,16 +26,21 @@ const SidebarNavLink: React.FC<SidebarNavLinkProps> = ({
     <Button
       variant="ghost"
       className={cn(
-        "w-full justify-start text-base font-medium transition-all duration-200",
+        "w-full justify-center text-base font-medium transition-all duration-200",
         "hover:bg-white/5 hover:backdrop-blur-lg",
         "active:scale-95",
         "rounded-xl px-4 py-3 h-12",
-        isActive ? "bg-white/10 text-white" : "text-white/70"
+        isActive ? "bg-white/10 text-white" : "text-white/70",
+        !isMinimized && "justify-start"
       )}
       onClick={() => navigate(href)}
+      title={isMinimized ? label : undefined}
     >
-      <Icon className="mr-3 h-5 w-5" />
-      <span className="truncate">{label}</span>
+      <Icon className={cn(
+        "h-5 w-5",
+        !isMinimized && "mr-3"
+      )} />
+      {!isMinimized && <span className="truncate">{label}</span>}
     </Button>
   );
 };
