@@ -1,5 +1,4 @@
-
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
@@ -216,7 +215,7 @@ export function useMessageHandler(
                 ));
                 
                 // Adicionar à galeria de mídia
-                mediaGallery.addMediaToGallery(media_url, content, mediaTypeValue, modelId);
+                mediaGallery.saveMediaToGallery(media_url, content, mediaTypeValue, modelId);
               }
               
               // Remover inscrição
@@ -242,7 +241,7 @@ export function useMessageHandler(
                 ));
                 
                 // Adicionar à galeria de mídia
-                mediaGallery.addMediaToGallery(statusResult.mediaUrl, content, mediaTypeValue, modelId);
+                mediaGallery.saveMediaToGallery(statusResult.mediaUrl, content, mediaTypeValue, modelId);
                 
                 // Remover inscrição
                 unsubscribe();
