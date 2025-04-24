@@ -3,7 +3,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Image, Video, Music } from 'lucide-react';
 import { useMediaGeneration } from '@/hooks/useMediaGeneration';
@@ -48,6 +47,8 @@ const PiapiServicesButton = () => {
     }
     
     try {
+      console.log(`[PiapiServicesButton] Iniciando geração de ${activeTab} com prompt: ${prompt}`);
+      
       switch (activeTab) {
         case 'image':
           await imageGeneration.generateMedia(prompt, 'image', 'flux-schnell');
@@ -61,6 +62,9 @@ const PiapiServicesButton = () => {
       }
     } catch (error) {
       console.error('Erro ao gerar mídia:', error);
+      toast.error('Erro ao gerar mídia', {
+        description: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
     }
   };
   

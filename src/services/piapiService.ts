@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -114,18 +113,16 @@ export const piapiService = {
         height: params.height || 768
       };
       
-      console.log(`[piapiService] Enviando requisição para edge function com payload:`, {
-        prompt,
+      const payload = { 
+        prompt, 
         model,
         params: finalParams
-      });
+      };
+      
+      console.log(`[piapiService] Enviando requisição para edge function com payload:`, payload);
       
       const { data, error } = await supabase.functions.invoke('piapi-image-create-task', {
-        body: { 
-          prompt, 
-          model,
-          params: finalParams
-        }
+        body: payload
       });
       
       if (error) {

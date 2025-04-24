@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef } from 'react';
 import { mediaService, MediaGenerationResult } from '@/services/mediaService';
 import { PiapiMediaType, PiapiModel, PiapiParams, PiapiTaskResult, piapiService } from '@/services/piapiService';
@@ -39,6 +38,14 @@ export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
     referenceUrl?: string
   ): Promise<MediaGenerationResult> => {
     try {
+      console.log(`[useMediaGeneration] Iniciando geração com parâmetros:`, {
+        prompt,
+        mediaType,
+        model,
+        params,
+        referenceUrl
+      });
+      
       setIsGenerating(true);
       
       if (options.showToasts !== false) {
@@ -51,7 +58,7 @@ export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
       // Iniciar geração com PIAPI diretamente
       let result: PiapiTaskResult;
       
-      console.log(`[useMediaGeneration] Iniciando geração de ${mediaType} com modelo ${model}`);
+      console.log(`[useMediaGeneration] Chamando serviço PIAPI para ${mediaType} com modelo ${model}`);
       
       try {
         if (mediaType === 'image') {
@@ -61,15 +68,21 @@ export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
         } else { // audio
           result = await piapiService.generateAudio(prompt, model as any, params, referenceUrl);
         }
+        
+        console.log(`[useMediaGeneration] Resultado inicial da chamada:`, result);
       } catch (err) {
-        console.error(`[useMediaGeneration] Erro ao gerar ${mediaType}:`, err);
+        console.error(`[useMediaGeneration] Erro na chamada PIAPI:`, err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        
+        if (options.showToasts !== false) {
+          toast.error(`Erro ao gerar ${mediaType}`, { description: errorMsg });
+        }
+        
         return {
           success: false,
-          error: err instanceof Error ? err.message : String(err)
+          error: errorMsg
         };
       }
-      
-      console.log(`[useMediaGeneration] Resultado inicial:`, result);
       
       // Registrar tarefa
       if (result && result.taskId) {
@@ -77,25 +90,58 @@ export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
         setCurrentTaskId(taskId);
         abortControllers.current[taskId] = controller;
         
+        const taskObject: GenerationTask = {
+          taskId,
+          progress: 0,
+          status: result.status || 'pending',
+          mediaUrl: result.mediaUrl,
+          error: result.error
+        };
+        
+        console.log(`[useMediaGeneration] Registrando nova tarefa:`, taskObject);
+        
         setTasks(prev => ({
           ...prev,
-          [taskId]: {
-            taskId,
-            progress: 0,
-            status: result.status || 'pending',
-            mediaUrl: result.mediaUrl,
-            error: result.error
-          }
+          [taskId]: taskObject
         }));
         
         // Se já estiver completo (como no caso do DALL-E)
         if (result.status === 'completed' && result.mediaUrl) {
+          console.log(`[useMediaGeneration] Tarefa já completa com URL:`, result.mediaUrl);
+          
+          setTasks(prev => ({
+            ...prev,
+            [taskId]: {
+              ...prev[taskId],
+              progress: 100
+            }
+          }));
+          
+          if (options.onProgress) {
+            options.onProgress(100);
+          }
+          
           if (options.onComplete) {
             options.onComplete({
               success: true,
               mediaUrl: result.mediaUrl,
               taskId: result.taskId
             });
+          }
+          
+          if (options.autoSaveToGallery !== false && user?.id) {
+            try {
+              await mediaService.saveToGallery(
+                result.mediaUrl,
+                prompt,
+                mediaType,
+                model as string,
+                user.id
+              );
+              console.log('[useMediaGeneration] Media saved to gallery successfully');
+            } catch (err) {
+              console.error('[useMediaGeneration] Error saving media to gallery:', err);
+            }
           }
           
           if (options.showToasts !== false) {
@@ -118,8 +164,15 @@ export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
             }
             
             console.log(`[useMediaGeneration] Verificando status da tarefa ${taskId}`);
-            const statusResult = await piapiService.checkTaskStatus(taskId);
-            console.log(`[useMediaGeneration] Status atual:`, statusResult);
+            
+            let statusResult: PiapiTaskResult;
+            try {
+              statusResult = await piapiService.checkTaskStatus(taskId);
+              console.log(`[useMediaGeneration] Status atual:`, statusResult);
+            } catch (statusError) {
+              console.error(`[useMediaGeneration] Erro ao verificar status:`, statusError);
+              return;
+            }
             
             setTasks(prev => ({
               ...prev,
@@ -177,14 +230,15 @@ export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
               // Salvar na galeria automaticamente se solicitado e se bem sucedido
               if (options.autoSaveToGallery !== false && 
                   statusResult.status === 'completed' && 
-                  statusResult.mediaUrl) {
+                  statusResult.mediaUrl &&
+                  user?.id) {
                 try {
                   await mediaService.saveToGallery(
                     statusResult.mediaUrl,
                     prompt,
                     mediaType,
                     model as string,
-                    user?.id
+                    user.id
                   );
                   console.log('[useMediaGeneration] Media saved to gallery successfully');
                 } catch (err) {
@@ -261,6 +315,8 @@ export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
   const cancelTask = useCallback(async (taskId: string): Promise<boolean> => {
     try {
       if (!taskId) return false;
+      
+      console.log(`[useMediaGeneration] Cancelando tarefa: ${taskId}`);
       
       // Abortar controller se existir
       if (abortControllers.current[taskId]) {
