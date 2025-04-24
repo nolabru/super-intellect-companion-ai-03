@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -67,16 +68,7 @@ export const piapiService = {
         throw new Error("A altura deve estar entre 256 e 1024 pixels");
       }
       
-      let endpoint = 'piapi-image-create-task';
-      
-      // Usar função específica para Midjourney
-      if (model === 'midjourney') {
-        endpoint = 'piapi-midjourney-create-task';
-      }
-      
-      console.log(`[piapiService] Chamando endpoint: ${endpoint}`);
-      
-      const { data, error } = await supabase.functions.invoke(endpoint, {
+      const { data, error } = await supabase.functions.invoke('piapi-image-create-task', {
         body: { 
           prompt, 
           model, 
