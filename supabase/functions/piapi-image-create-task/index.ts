@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -12,6 +11,7 @@ const PIAPI_API_BASE_URL = "https://api.piapi.ai/api/v1";
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("[piapi-image-create-task] Handling OPTIONS request");
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -22,50 +22,49 @@ serve(async (req) => {
       throw new Error("PIAPI_API_KEY not configured");
     }
 
-    // Extrair parâmetros da requisição
+    // Log request details
+    console.log(`[piapi-image-create-task] Received ${req.method} request`);
+    console.log(`Headers:`, Object.fromEntries(req.headers.entries()));
+
+    // Extract and validate request body
     let requestBody;
     try {
       requestBody = await req.json();
+      console.log("[piapi-image-create-task] Request body:", JSON.stringify(requestBody));
     } catch (parseError) {
-      console.error("[piapi-image-create-task] Erro ao analisar corpo da requisição:", parseError);
+      console.error("[piapi-image-create-task] Error parsing request body:", parseError);
       return new Response(
-        JSON.stringify({ error: "Invalid request body - JSON parsing failed" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ 
+          error: "Invalid request body - JSON parsing failed",
+          details: parseError.message 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 400 
+        }
       );
     }
 
-    const { prompt, model, params = {} } = requestBody;
+    const { prompt, model = "flux-schnell", params = {} } = requestBody;
     
-    if (!prompt) {
-      console.error("[piapi-image-create-task] Prompt é obrigatório");
+    // Validate required fields
+    if (!prompt || typeof prompt !== 'string') {
+      console.error("[piapi-image-create-task] Missing or invalid prompt:", prompt);
       return new Response(
-        JSON.stringify({ error: "Prompt is required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
-    console.log(`[piapi-image-create-task] Processando requisição para ${model} com prompt: ${prompt.substring(0, 50)}...`);
-    console.log(`[piapi-image-create-task] Parâmetros:`, params);
-
-    // Validar parâmetros de imagem
-    if (params.width && (params.width < 256 || params.width > 1024)) {
-      console.error("[piapi-image-create-task] Parâmetro de largura inválido");
-      return new Response(
-        JSON.stringify({ error: "Width must be between 256 and 1024 pixels" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
-    if (params.height && (params.height < 256 || params.height > 1024)) {
-      console.error("[piapi-image-create-task] Parâmetro de altura inválido");
-      return new Response(
-        JSON.stringify({ error: "Height must be between 256 and 1024 pixels" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ 
+          error: "Prompt is required and must be a string",
+          received: { prompt }
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: 400 
+        }
       );
     }
 
     // Configurar webhook para notificações
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`;
+    console.log(`[piapi-image-create-task] Using webhook URL: ${webhookUrl}`);
 
     // Tratar modelos DALL-E 3 e SDXL com chamada de API direta
     if (model === "dall-e-3" || model === "sdxl") {
@@ -306,14 +305,17 @@ serve(async (req) => {
   } catch (error) {
     // Tratamento central de erros
     console.error("[piapi-image-create-task] Erro:", error);
+    console.error("Stack trace:", error.stack);
+    
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        details: "Check the edge function logs for more information"
+        error: error.message || "Internal server error",
+        details: "Check the edge function logs for more information",
+        timestamp: new Date().toISOString()
       }),
       { 
         headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-        status: 500 
+        status: error.status || 500 
       }
     );
   }

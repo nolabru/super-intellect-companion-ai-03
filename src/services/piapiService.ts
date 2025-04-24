@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -99,23 +98,18 @@ export const piapiService = {
     params: PiapiParams = {}
   ): Promise<PiapiTaskResult> {
     try {
-      console.log(`[piapiService] Iniciando geração de imagem com modelo ${model}`);
+      console.log(`[piapiService] Iniciando geração de imagem:`);
+      console.log(`- Modelo: ${model}`);
+      console.log(`- Prompt: ${prompt}`);
+      console.log(`- Parâmetros:`, params);
       
-      // Validar parâmetros
       validatePrompt(prompt, 'image');
       validateImageParams(params);
       
-      // Definir endpoint baseado no modelo
-      let endpoint = 'piapi-image-create-task';
-      if (model === 'midjourney') {
-        endpoint = 'piapi-midjourney-create-task';
-      }
-      
-      // Enviar requisição
-      const { data, error } = await supabase.functions.invoke(endpoint, {
+      const { data, error } = await supabase.functions.invoke('piapi-image-create-task', {
         body: { 
           prompt, 
-          model, 
+          model,
           params: {
             ...params,
             width: params.width || 768,
@@ -129,9 +123,8 @@ export const piapiService = {
         throw new Error(`Erro ao criar tarefa: ${error.message}`);
       }
       
-      console.log(`[piapiService] Resposta recebida:`, data);
+      console.log(`[piapiService] Resposta da criação de tarefa:`, data);
       
-      // Normalizar e retornar resposta
       return normalizeTaskResponse(data);
     } catch (err) {
       return handleApiError(err, 'imagem');
