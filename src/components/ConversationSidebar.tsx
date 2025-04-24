@@ -1,14 +1,22 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { History, ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useConversation } from '@/hooks/useConversation';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
+import SidebarHeader from './conversation/SidebarHeader';
+import ConversationList from './conversation/ConversationList';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useConversation } from '@/hooks/useConversation';
-import ConversationList from './conversation/ConversationList';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
-import { Button } from './ui/button';
-import SidebarNavigation from './conversation/SidebarNavigation';
+import { v4 as uuidv4 } from 'uuid';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+
+// Interface para as pastas
+interface FolderType {
+  id: string;
+  name: string;
+  isOpen?: boolean;
+}
 
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
@@ -19,9 +27,10 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onToggleSidebar,
   isOpen = true
 }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [menuExpanded, setMenuExpanded] = useState(true);
+  // Estado para gerenciar pastas
+  const [folders, setFolders] = useState<FolderType[]>([]);
+  const [conversationFolders, setConversationFolders] = useState<Record<string, string | null>>({});
+  
   const { 
     conversations, 
     currentConversationId, 
@@ -30,16 +39,113 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     deleteConversation,
     renameConversation,
     clearMessages,
+    forceReloadMessages,
     loading
   } = useConversation();
+  
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
+  // Carregar pastas do localStorage ao iniciar
+  useEffect(() => {
+    if (user) {
+      const savedFolders = localStorage.getItem(`folders_${user.id}`);
+      const savedConversationFolders = localStorage.getItem(`conversation_folders_${user.id}`);
+      
+      if (savedFolders) {
+        try {
+          setFolders(JSON.parse(savedFolders));
+        } catch (e) {
+          console.error('Erro ao carregar pastas:', e);
+        }
+      }
+      
+      if (savedConversationFolders) {
+        try {
+          setConversationFolders(JSON.parse(savedConversationFolders));
+        } catch (e) {
+          console.error('Erro ao carregar associações de conversa-pasta:', e);
+        }
+      }
+    }
+  }, [user]);
+  
+  // Salvar pastas no localStorage quando mudar
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`folders_${user.id}`, JSON.stringify(folders));
+    }
+  }, [folders, user]);
+  
+  // Salvar associações de conversa-pasta no localStorage quando mudar
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem(`conversation_folders_${user.id}`, JSON.stringify(conversationFolders));
+    }
+  }, [conversationFolders, user]);
+
+  // Função para criar uma nova pasta
+  const handleCreateFolder = (name: string) => {
+    const newFolder: FolderType = {
+      id: uuidv4(),
+      name,
+      isOpen: true
+    };
+    
+    setFolders(prev => [newFolder, ...prev]);
+    toast.success(`Pasta "${name}" criada com sucesso`);
+  };
+  
+  // Função para renomear uma pasta
+  const handleRenameFolder = (id: string, newName: string) => {
+    setFolders(prev => 
+      prev.map(folder => 
+        folder.id === id ? { ...folder, name: newName } : folder
+      )
+    );
+    toast.success(`Pasta renomeada para "${newName}"`);
+  };
+  
+  // Função para excluir uma pasta
+  const handleDeleteFolder = (id: string) => {
+    // Remover associações de conversas com esta pasta
+    const updatedConversationFolders = { ...conversationFolders };
+    Object.keys(updatedConversationFolders).forEach(convId => {
+      if (updatedConversationFolders[convId] === id) {
+        updatedConversationFolders[convId] = null;
+      }
+    });
+    
+    setConversationFolders(updatedConversationFolders);
+    setFolders(prev => prev.filter(folder => folder.id !== id));
+    toast.success('Pasta excluída com sucesso');
+  };
+  
+  // Função para mover uma conversa para uma pasta
+  const handleMoveConversation = (conversationId: string, folderId: string | null) => {
+    setConversationFolders(prev => ({
+      ...prev,
+      [conversationId]: folderId
+    }));
+    
+    const folderName = folderId ? folders.find(f => f.id === folderId)?.name : 'Sem pasta';
+    toast.success(`Conversa movida para ${folderName}`);
+  };
+
+  // Função para criar uma nova conversa com navegação atualizada
   const handleNewConversation = async () => {
     console.log('[ConversationSidebar] Criando nova conversa');
     
+    // Feedback visual imediato - limpar mensagens
     clearMessages();
+    
+    // Desselecionar conversa atual para feedback visual
     setCurrentConversationId(null);
+    
+    // Redirecionar para a página inicial ao iniciar nova conversa
     navigate('/', { replace: true });
     
+    // Criar nova conversa com tratamento de erro
     try {
       const success = await createNewConversation();
       if (!success) {
@@ -51,79 +157,78 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     }
   };
 
-  const toggleMenu = () => {
-    setMenuExpanded(!menuExpanded);
+  // Função para selecionar uma conversa existente com navegação
+  const handleSelectConversation = (conversationId: string) => {
+    if (!conversationId) {
+      console.error('[ConversationSidebar] ID de conversa inválido');
+      return;
+    }
+    
+    console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
+    
+    // Limpar mensagens imediatamente para feedback visual
+    clearMessages();
+    
+    // Se clicar na mesma conversa, forçar recarregamento
+    if (currentConversationId === conversationId) {
+      console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
+      // Força recarregar as mensagens da conversa atual
+      forceReloadMessages();
+    } else {
+      // Atualizar conversa selecionada e navegar para a URL
+      setCurrentConversationId(conversationId);
+      navigate(`/c/${conversationId}`, { replace: true });
+    }
   };
 
+  // Vista de barra lateral recolhida
+  if (!isOpen && onToggleSidebar) {
+    return (
+      <div className="absolute left-0 top-24 z-10">
+        <Button
+          onClick={onToggleSidebar}
+          size="icon"
+          variant="secondary"
+          className="rounded-r-md rounded-l-none border-l-0"
+          title="Abrir menu"
+        >
+          <ChevronLeft className="h-5 w-5 rotate-180" />
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn(
-      "flex flex-col h-full bg-black/90 backdrop-blur-xl border-r border-white/10",
-      "transition-all duration-300 ease-out",
-      !isOpen && "opacity-0 pointer-events-none"
-    )}>
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar content with fixed width for conversation history */}
-        <div className="flex flex-col min-w-64 flex-1 overflow-hidden">
-          <div className="p-2 border-b border-white/10">
-            <Button 
-              onClick={handleNewConversation}
-              className="flex items-center justify-center bg-white/5 hover:bg-white/10
-                text-white font-medium transition-all duration-200
-                active:scale-95 rounded-xl h-11 w-full
-                border border-white/10 backdrop-blur-sm"
-              disabled={!user}
-              title="Nova Conversa"
-            >
-              <span className="flex items-center">
-                <span className="mr-2">+</span>
-                Nova Conversa
-              </span>
-            </Button>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto">
-            <ConversationList 
-              conversations={conversations}
-              currentConversationId={currentConversationId}
-              onSelectConversation={setCurrentConversationId}
-              onDeleteConversation={deleteConversation}
-              onRenameConversation={renameConversation}
-              isUserLoggedIn={!!user}
-              isLoading={loading}
-              isMinimized={false}
-            />
-          </div>
-        </div>
-        
-        {/* Navigation sidebar with buttons for gallery, memory, etc */}
-        <div className="relative border-l border-white/10">
-          <Button
-            onClick={toggleMenu}
-            size="icon"
-            variant="ghost"
-            className={cn(
-              "absolute -right-4 top-4 z-50 size-8 bg-black/90 border border-white/10",
-              "text-white/70 hover:text-white rounded-full transition-all duration-300",
-              "hover:bg-white/10 focus-visible:ring-1 focus-visible:ring-white/20"
-            )}
-          >
-            {menuExpanded ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </Button>
-          
-          <div className={cn(
-            "flex flex-col h-full transition-all duration-300 ease-out overflow-hidden",
-            menuExpanded ? "w-56" : "w-16"
-          )}>
-            <SidebarNavigation 
-              closeMenu={onToggleSidebar}
-              isMinimized={!menuExpanded}
-            />
-          </div>
-        </div>
+    <div className="h-full flex flex-col bg-inventu-dark border-r border-inventu-gray/30">
+      <SidebarHeader 
+        onNewConversation={handleNewConversation}
+        onToggleSidebar={onToggleSidebar}
+        isUserLoggedIn={!!user}
+      />
+      
+      <div className="flex items-center p-4 text-inventu-gray border-b border-inventu-gray/30">
+        <History className="mr-2 h-4 w-4" />
+        <h2 className="font-medium">Histórico de Conversas</h2>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <DndProvider backend={HTML5Backend}>
+          <ConversationList 
+            conversations={conversations}
+            currentConversationId={currentConversationId}
+            onSelectConversation={handleSelectConversation}
+            onDeleteConversation={deleteConversation}
+            onRenameConversation={renameConversation}
+            isUserLoggedIn={!!user}
+            isLoading={loading}
+            folders={folders}
+            onCreateFolder={handleCreateFolder}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
+            onMoveConversation={handleMoveConversation}
+            conversationFolders={conversationFolders}
+          />
+        </DndProvider>
       </div>
     </div>
   );

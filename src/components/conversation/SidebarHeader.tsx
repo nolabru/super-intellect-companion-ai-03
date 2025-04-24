@@ -1,66 +1,62 @@
 
 import React from 'react';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import SidebarNavigation from './SidebarNavigation';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 interface SidebarHeaderProps {
   onNewConversation: () => void;
   onToggleSidebar?: () => void;
   isUserLoggedIn: boolean;
-  isMinimized?: boolean;
-  hideNewConversationButton?: boolean;
 }
 
 const SidebarHeader: React.FC<SidebarHeaderProps> = ({ 
   onNewConversation, 
   onToggleSidebar,
-  isUserLoggedIn,
-  isMinimized = false,
-  hideNewConversationButton = false
+  isUserLoggedIn
 }) => {
   const handleNewConversation = () => {
+    console.log('[SidebarHeader] Iniciando nova conversa');
+    
     if (!isUserLoggedIn) {
       toast.error('Você precisa estar logado para criar uma nova conversa');
       return;
     }
+    
+    // Chamar o handler de nova conversa
     onNewConversation();
   };
   
   return (
-    <div className="flex flex-col h-full">
-      {!hideNewConversationButton && (
-        <div className="p-2 border-b border-white/10">
+    <div className="p-4 border-b border-inventu-gray/30">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
           <Button 
             onClick={handleNewConversation}
-            className={cn(
-              "flex items-center justify-center bg-white/5 hover:bg-white/10",
-              "text-white font-medium transition-all duration-200",
-              "active:scale-95 rounded-xl h-11 w-full",
-              "border border-white/10 backdrop-blur-sm",
-              isMinimized && "p-0 w-12"
-            )}
+            className="flex-1 bg-inventu-blue hover:bg-inventu-blue/80 text-white"
             disabled={!isUserLoggedIn}
-            title="Nova Conversa"
           >
-            <PlusCircle className={cn(
-              "h-5 w-5",
-              !isMinimized && "mr-2"
-            )} />
-            {!isMinimized && "Nova Conversa"}
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nova Conversa
           </Button>
+          
+          {onToggleSidebar && (
+            <Button
+              onClick={onToggleSidebar}
+              size="icon"
+              variant="ghost"
+              className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+              title="Minimizar menu"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </Button>
+          )}
         </div>
-      )}
-      
-      <div className="flex-1">
-        {onToggleSidebar ? (
-          <SidebarNavigation 
-            closeMenu={onToggleSidebar}
-            isMinimized={isMinimized}
-          />
-        ) : null}
+        
+        <SidebarNavigation 
+          closeMenu={onToggleSidebar}
+        />
       </div>
     </div>
   );

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MessageCircle, Trash2, Edit2, Check, X, MoreVertical, Folder } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,7 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { cn } from "@/lib/utils";
 
 interface FolderType {
   id: string;
@@ -45,7 +43,6 @@ interface ConversationItemProps {
   onMove?: (folderId: string | null) => void;
   folders?: FolderType[];
   currentFolderId: string | null;
-  isMinimized?: boolean;
 }
 
 const CONVERSATION_TYPE = 'conversation';
@@ -58,8 +55,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
   onRename,
   onMove,
   folders = [],
-  currentFolderId,
-  isMinimized = false
+  currentFolderId
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState(conversation.title);
@@ -150,99 +146,84 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
     <>
       <div
         ref={drag}
-        className={cn(
-          "flex items-center p-2 rounded-md cursor-pointer transition-colors",
-          isDragging ? 'opacity-50' : '',
+        className={`flex items-center p-2 rounded-md cursor-pointer transition-colors ${
+          isDragging ? 'opacity-50' : ''
+        } ${
           isActive
             ? 'bg-inventu-gray/20 text-white'
-            : 'hover:bg-inventu-gray/10 text-inventu-gray',
-          isMinimized && "justify-center"
-        )}
+            : 'hover:bg-inventu-gray/10 text-inventu-gray'
+        }`}
         data-conversation-id={conversation.id}
         style={{ cursor: 'grab' }}
-        title={isMinimized ? conversation.title : undefined}
       >
-        <div 
-          className={cn(
-            "flex-1 min-w-0", 
-            isMinimized && "flex-initial"
-          )} 
-          onClick={onSelect}
-        >
+        <div className="flex-1 min-w-0" onClick={onSelect}>
           <div className="flex items-center">
-            <MessageCircle className={cn(
-              "h-4 w-4 flex-shrink-0",
-              !isMinimized && "mr-2"
-            )} />
-            {!isMinimized && <p className="truncate">{conversation.title}</p>}
+            <MessageCircle className="mr-2 h-4 w-4 flex-shrink-0" />
+            <p className="truncate">{conversation.title}</p>
           </div>
-          {!isMinimized && (
-            <p className="text-xs text-inventu-gray/70 truncate">
-              {formatDate(conversation.updated_at)}
-            </p>
-          )}
+          <p className="text-xs text-inventu-gray/70 truncate">
+            {formatDate(conversation.updated_at)}
+          </p>
         </div>
         
-        {!isMinimized && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-inventu-gray/70 hover:text-white hover:bg-inventu-gray/20"
-              >
-                <MoreVertical className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-inventu-card border-inventu-gray/30">
-              <DropdownMenuItem 
-                className="text-white hover:bg-inventu-gray/20 cursor-pointer"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit2 className="mr-2 h-4 w-4" />
-                Renomear
-              </DropdownMenuItem>
-              
-              {onMove && (
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-white hover:bg-inventu-gray/20 cursor-pointer">
-                    <Folder className="mr-2 h-4 w-4" />
-                    Mover para pasta
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="bg-inventu-card border-inventu-gray/30">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 text-inventu-gray/70 hover:text-white hover:bg-inventu-gray/20"
+            >
+              <MoreVertical className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-inventu-card border-inventu-gray/30">
+            <DropdownMenuItem 
+              className="text-white hover:bg-inventu-gray/20 cursor-pointer"
+              onClick={() => setIsEditing(true)}
+            >
+              <Edit2 className="mr-2 h-4 w-4" />
+              Renomear
+            </DropdownMenuItem>
+            
+            {onMove && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="text-white hover:bg-inventu-gray/20 cursor-pointer">
+                  <Folder className="mr-2 h-4 w-4" />
+                  Mover para pasta
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="bg-inventu-card border-inventu-gray/30">
+                  <DropdownMenuItem 
+                    className="text-white hover:bg-inventu-gray/20 cursor-pointer"
+                    onClick={() => handleMoveToFolder(null)}
+                    disabled={currentFolderId === null}
+                  >
+                    <span className="ml-2">Sem pasta</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-inventu-gray/30" />
+                  {folders.map(folder => (
                     <DropdownMenuItem 
+                      key={folder.id}
                       className="text-white hover:bg-inventu-gray/20 cursor-pointer"
-                      onClick={() => handleMoveToFolder(null)}
-                      disabled={currentFolderId === null}
+                      onClick={() => handleMoveToFolder(folder.id)}
+                      disabled={currentFolderId === folder.id}
                     >
-                      <span className="ml-2">Sem pasta</span>
+                      <span className="ml-2">{folder.name}</span>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="bg-inventu-gray/30" />
-                    {folders.map(folder => (
-                      <DropdownMenuItem 
-                        key={folder.id}
-                        className="text-white hover:bg-inventu-gray/20 cursor-pointer"
-                        onClick={() => handleMoveToFolder(folder.id)}
-                        disabled={currentFolderId === folder.id}
-                      >
-                        <span className="ml-2">{folder.name}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              )}
-              
-              <DropdownMenuSeparator className="bg-inventu-gray/30" />
-              <DropdownMenuItem 
-                className="text-red-500 hover:bg-red-500/10 cursor-pointer"
-                onClick={() => setShowDeleteDialog(true)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Excluir
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            
+            <DropdownMenuSeparator className="bg-inventu-gray/30" />
+            <DropdownMenuItem 
+              className="text-red-500 hover:bg-red-500/10 cursor-pointer"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

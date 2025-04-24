@@ -6,11 +6,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MemoryManager from '@/components/MemoryManager';
 import { Loader2 } from 'lucide-react';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const UserMemory: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = React.useState(!useIsMobile());
-  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -37,15 +35,12 @@ const UserMemory: React.FC = () => {
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex overflow-hidden">
-        {(sidebarOpen || !isMobile) && (
-          <div className={`${isMobile ? 'fixed inset-0 z-40 bg-black/50' : 'flex-shrink-0'}`}>
-            <div className={`${isMobile ? 'h-full w-64 bg-inventu-darker' : 'h-full'}`}>
-              <ConversationSidebar 
-                onToggleSidebar={toggleSidebar} 
-                isOpen={true} 
-              />
-            </div>
+        {sidebarOpen ? (
+          <div className="w-64 flex-shrink-0">
+            <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
           </div>
+        ) : (
+          <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
         )}
         
         <div className="flex-1 flex flex-col overflow-auto p-4">

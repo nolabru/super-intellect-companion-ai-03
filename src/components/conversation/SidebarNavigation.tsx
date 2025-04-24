@@ -1,31 +1,34 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import { 
   MessageSquare, 
   Image, 
-  Database as MemoryIcon,
+  Brain as Memory, 
   Coins,
-  LogIn,
-  LogOut
+  LogOut,
+  LogIn
 } from 'lucide-react';
-import SidebarNavLink from '../sidebar/SidebarNavLink';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import TokenDisplay from '../TokenDisplay';
 
 interface SidebarNavigationProps {
   closeMenu?: () => void;
-  isMinimized?: boolean;
+  onCreateConversation?: () => void;
 }
 
 const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ 
   closeMenu,
-  isMinimized = false
+  onCreateConversation
 }) => {
+  const location = useLocation();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  const handleClick = (path: string) => {
+    navigate(path);
+    if (closeMenu) closeMenu();
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -33,70 +36,76 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({
     if (closeMenu) closeMenu();
   };
 
-  const navigationItems = [
-    { href: '/', icon: MessageSquare, label: 'Chat' },
-    { href: '/gallery', icon: Image, label: 'Galeria' },
-    { href: '/memory', icon: MemoryIcon, label: 'Memória' },
-    { href: '/tokens', icon: Coins, label: 'Tokens' },
-  ];
-
   return (
-    <nav className={cn(
-      "flex flex-col h-full transition-all duration-300",
-      isMinimized ? "items-center" : "items-stretch"
-    )}>
-      <div className="flex-1 space-y-1 p-2">
-        {navigationItems.map((item) => (
-          <SidebarNavLink
-            key={item.href}
-            href={item.href}
-            icon={item.icon}
-            label={item.label}
-            isMinimized={isMinimized}
-            onClick={closeMenu}
-          />
-        ))}
+    <div className="py-4 px-2">
+      <div className="space-y-1">
+        <Button
+          variant="ghost"
+          className={`w-full justify-start ${
+            (location.pathname === '/' || location.pathname.startsWith('/c/')) ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
+          }`}
+          onClick={() => handleClick('/')}
+        >
+          <MessageSquare className="mr-2 h-4 w-4" />
+          Chat
+        </Button>
+        
+        <Button
+          variant="ghost"
+          className={`w-full justify-start ${
+            location.pathname === '/gallery' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
+          }`}
+          onClick={() => handleClick('/gallery')}
+        >
+          <Image className="mr-2 h-4 w-4" />
+          Galeria
+        </Button>
+        
+        <Button
+          variant="ghost"
+          className={`w-full justify-start ${
+            location.pathname === '/memory' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
+          }`}
+          onClick={() => handleClick('/memory')}
+        >
+          <Memory className="mr-2 h-4 w-4" />
+          Memória
+        </Button>
+        
+        <Button
+          variant="ghost"
+          className={`w-full justify-start ${
+            location.pathname === '/tokens' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
+          }`}
+          onClick={() => handleClick('/tokens')}
+        >
+          <Coins className="mr-2 h-4 w-4" />
+          Tokens
+        </Button>
       </div>
       
-      {user && (
-        <div className="px-2 py-1">
-          <TokenDisplay />
-        </div>
-      )}
-
-      <div className="p-2 border-t border-white/10">
+      <div className="pt-4 mt-4 border-t border-inventu-gray/30">
         {user ? (
           <Button
             variant="ghost"
-            className={cn(
-              "justify-center text-white/70 hover:text-white hover:bg-white/5 w-full",
-              isMinimized ? "p-2" : "rounded-xl px-4 py-3 h-12"
-            )}
+            className="w-full justify-start text-white hover:bg-inventu-dark/50"
             onClick={handleSignOut}
-            title="Sair"
           >
-            <LogOut className="h-5 w-5" />
-            {!isMinimized && <span className="ml-3">Sair</span>}
+            <LogOut className="mr-2 h-4 w-4" />
+            Sair
           </Button>
         ) : (
           <Button
             variant="ghost"
-            className={cn(
-              "justify-center text-white/70 hover:text-white hover:bg-white/5 w-full",
-              isMinimized ? "p-2" : "rounded-xl px-4 py-3 h-12"
-            )}
-            onClick={() => {
-              navigate('/auth');
-              if (closeMenu) closeMenu();
-            }}
-            title="Entrar"
+            className="w-full justify-start text-white hover:bg-inventu-dark/50"
+            onClick={() => handleClick('/auth')}
           >
-            <LogIn className="h-5 w-5" />
-            {!isMinimized && <span className="ml-3">Entrar</span>}
+            <LogIn className="mr-2 h-4 w-4" />
+            Entrar
           </Button>
         )}
       </div>
-    </nav>
+    </div>
   );
 };
 
