@@ -34,8 +34,7 @@ export const tokenService = {
       console.log(`[tokenService] Obtendo saldo de tokens para usuário ${userId}`);
       
       const { data, error } = await supabase.functions.invoke('user-tokens', {
-        body: {},
-        query: { action: 'balance' }
+        body: { action: 'balance' }
       });
       
       if (error) {
@@ -69,8 +68,7 @@ export const tokenService = {
       console.log(`[tokenService] Obtendo taxas de consumo de tokens`);
       
       const { data, error } = await supabase.functions.invoke('user-tokens', {
-        body: {},
-        query: { action: 'rates' }
+        body: { action: 'rates' }
       });
       
       if (error) {

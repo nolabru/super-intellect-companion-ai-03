@@ -37,6 +37,7 @@ const PiapiServicesButton = () => {
   };
   
   const activeGeneration = getActiveGeneration();
+  const currentTask = activeGeneration.currentTask;
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,25 +116,25 @@ const PiapiServicesButton = () => {
                 rows={3}
               />
               
-              {activeGeneration.mediaUrl && activeGeneration.status === 'completed' && (
+              {currentTask && currentTask.mediaUrl && currentTask.status === 'completed' && (
                 <div className="mb-4">
                   {activeTab === 'image' && (
                     <img 
-                      src={activeGeneration.mediaUrl} 
+                      src={currentTask.mediaUrl} 
                       alt="Imagem gerada" 
                       className="w-full h-auto rounded-lg"
                     />
                   )}
                   {activeTab === 'video' && (
                     <video 
-                      src={activeGeneration.mediaUrl} 
+                      src={currentTask.mediaUrl} 
                       controls
                       className="w-full h-auto rounded-lg"
                     />
                   )}
                   {activeTab === 'audio' && (
                     <audio 
-                      src={activeGeneration.mediaUrl} 
+                      src={currentTask.mediaUrl} 
                       controls
                       className="w-full"
                     />
@@ -150,14 +151,14 @@ const PiapiServicesButton = () => {
                       : activeTab === 'video'
                         ? 'Gerando vídeo...'
                         : 'Gerando áudio...'}
-                    {activeGeneration.progress > 0 && ` ${activeGeneration.progress.toFixed(0)}%`}
+                    {currentTask && currentTask.progress > 0 && ` ${currentTask.progress.toFixed(0)}%`}
                   </p>
                 </div>
               )}
               
-              {activeGeneration.error && (
+              {currentTask && currentTask.error && (
                 <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 text-sm text-red-600">
-                  {activeGeneration.error}
+                  {currentTask.error}
                 </div>
               )}
               

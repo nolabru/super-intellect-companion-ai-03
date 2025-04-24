@@ -49,11 +49,19 @@ serve(async (req) => {
     }
     
     const userId = user.id;
-    const url = new URL(req.url);
-    const action = url.searchParams.get('action');
+    
+    // Parse request body to get action
+    let body;
+    try {
+      body = await req.json();
+    } catch (e) {
+      body = {};
+    }
+    
+    const action = body.action || 'balance';
     
     // Get token balance
-    if (action === 'balance' || !action) {
+    if (action === 'balance') {
       const { data: tokenData, error: tokenError } = await supabase
         .from('user_tokens')
         .select('tokens_remaining, tokens_used, next_reset_date')
