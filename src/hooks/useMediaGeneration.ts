@@ -1,10 +1,10 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { getPiapiService, PiapiMediaType, PiapiModel, PiapiParams } from '@/services/piapiDirectService';
 
 interface UseMediaGenerationOptions {
   showToasts?: boolean;
+  onProgress?: (progress: number) => void;
 }
 
 export interface MediaGenerationTask {
@@ -58,6 +58,9 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
               status: 'processing',
               progress
             }));
+            if (options.onProgress) {
+              options.onProgress(progress);
+            }
             break;
 
           default:
@@ -66,6 +69,9 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
               ...prev!,
               progress
             }));
+            if (options.onProgress) {
+              options.onProgress(progress);
+            }
         }
 
         if (!isCompleted) {
@@ -87,7 +93,7 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
     }
 
     setIsGenerating(false);
-  }, [options.showToasts]);
+  }, [options.showToasts, options.onProgress]);
 
   const generateMedia = useCallback(async (
     prompt: string,
