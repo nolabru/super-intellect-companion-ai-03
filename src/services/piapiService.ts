@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -81,7 +82,8 @@ const normalizeTaskResponse = (data: any): PiapiTaskResult => {
   return {
     taskId,
     status: data.status || 'pending',
-    mediaUrl: data.media_url || data.mediaUrl || null
+    mediaUrl: data.media_url || data.mediaUrl || null,
+    error: data.error || null
   };
 };
 
@@ -106,15 +108,23 @@ export const piapiService = {
       validatePrompt(prompt, 'image');
       validateImageParams(params);
       
+      const finalParams = {
+        ...params,
+        width: params.width || 768,
+        height: params.height || 768
+      };
+      
+      console.log(`[piapiService] Enviando requisição para edge function com payload:`, {
+        prompt,
+        model,
+        params: finalParams
+      });
+      
       const { data, error } = await supabase.functions.invoke('piapi-image-create-task', {
         body: { 
           prompt, 
           model,
-          params: {
-            ...params,
-            width: params.width || 768,
-            height: params.height || 768
-          }
+          params: finalParams
         }
       });
       
@@ -124,6 +134,16 @@ export const piapiService = {
       }
       
       console.log(`[piapiService] Resposta da criação de tarefa:`, data);
+      
+      if (!data) {
+        console.error('[piapiService] Resposta vazia da função edge');
+        throw new Error('Resposta vazia da função edge');
+      }
+      
+      if (data.error) {
+        console.error('[piapiService] Erro retornado pela função edge:', data.error);
+        throw new Error(data.error);
+      }
       
       return normalizeTaskResponse(data);
     } catch (err) {
@@ -142,6 +162,12 @@ export const piapiService = {
   ): Promise<PiapiTaskResult> {
     try {
       console.log(`[piapiService] Iniciando geração de vídeo com modelo ${model}`);
+      console.log({
+        prompt,
+        model,
+        params,
+        imageUrl
+      });
       
       // Validar parâmetros
       validatePrompt(prompt, 'video');
@@ -152,7 +178,12 @@ export const piapiService = {
       }
       
       const { data, error } = await supabase.functions.invoke('piapi-video-create-task', {
-        body: { prompt, model, imageUrl, params }
+        body: { 
+          prompt, 
+          model, 
+          imageUrl, 
+          params 
+        }
       });
       
       if (error) {
@@ -161,6 +192,16 @@ export const piapiService = {
       }
       
       console.log(`[piapiService] Resposta de criação de vídeo:`, data);
+      
+      if (!data) {
+        console.error('[piapiService] Resposta vazia da função edge');
+        throw new Error('Resposta vazia da função edge');
+      }
+      
+      if (data.error) {
+        console.error('[piapiService] Erro retornado pela função edge:', data.error);
+        throw new Error(data.error);
+      }
       
       // Normalizar e retornar resposta
       return normalizeTaskResponse(data);
@@ -180,6 +221,12 @@ export const piapiService = {
   ): Promise<PiapiTaskResult> {
     try {
       console.log(`[piapiService] Iniciando geração de áudio com modelo ${model}`);
+      console.log({
+        prompt,
+        model,
+        params,
+        videoUrl
+      });
       
       // Validar parâmetros
       if (model.includes('video2audio') && !videoUrl) {
@@ -191,7 +238,12 @@ export const piapiService = {
       }
       
       const { data, error } = await supabase.functions.invoke('piapi-audio-create-task', {
-        body: { prompt, model, videoUrl, params }
+        body: { 
+          prompt, 
+          model, 
+          videoUrl, 
+          params 
+        }
       });
       
       if (error) {
@@ -200,6 +252,16 @@ export const piapiService = {
       }
       
       console.log(`[piapiService] Resposta de criação de áudio:`, data);
+      
+      if (!data) {
+        console.error('[piapiService] Resposta vazia da função edge');
+        throw new Error('Resposta vazia da função edge');
+      }
+      
+      if (data.error) {
+        console.error('[piapiService] Erro retornado pela função edge:', data.error);
+        throw new Error(data.error);
+      }
       
       // Normalizar e retornar resposta
       return normalizeTaskResponse(data);
@@ -232,6 +294,11 @@ export const piapiService = {
       
       if (!data) {
         throw new Error('Resposta vazia da função');
+      }
+      
+      if (data.error) {
+        console.error('[piapiService] Erro retornado pela função edge:', data.error);
+        throw new Error(data.error);
       }
       
       // Normalizar resposta

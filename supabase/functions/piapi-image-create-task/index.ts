@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -26,17 +27,39 @@ serve(async (req) => {
     console.log(`[piapi-image-create-task] Received ${req.method} request`);
     console.log(`Headers:`, Object.fromEntries(req.headers.entries()));
 
-    // Extract and validate request body
+    // Extrair e validar corpo da requisição
     let requestBody;
+    let requestText;
     try {
-      requestBody = await req.json();
-      console.log("[piapi-image-create-task] Request body:", JSON.stringify(requestBody));
+      // Primeiro registra o corpo bruto como texto
+      requestText = await req.text();
+      console.log("[piapi-image-create-task] Raw request body text:", requestText);
+      
+      // Tenta analisar como JSON
+      if (requestText) {
+        requestBody = JSON.parse(requestText);
+        console.log("[piapi-image-create-task] Parsed request body:", JSON.stringify(requestBody));
+      } else {
+        console.error("[piapi-image-create-task] Empty request body");
+        return new Response(
+          JSON.stringify({ 
+            error: "Empty request body",
+          }),
+          { 
+            headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+            status: 400 
+          }
+        );
+      }
     } catch (parseError) {
       console.error("[piapi-image-create-task] Error parsing request body:", parseError);
+      console.error("[piapi-image-create-task] Request body text:", requestText);
+      
       return new Response(
         JSON.stringify({ 
           error: "Invalid request body - JSON parsing failed",
-          details: parseError.message 
+          details: parseError.message,
+          requestBody: requestText
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" }, 
@@ -45,7 +68,16 @@ serve(async (req) => {
       );
     }
 
-    const { prompt, model = "flux-schnell", params = {} } = requestBody;
+    // Verificar e extrair parâmetros necessários
+    const prompt = requestBody.prompt;
+    const model = requestBody.model || "flux-schnell";
+    const params = requestBody.params || {};
+    
+    console.log("[piapi-image-create-task] Extracted parameters:", {
+      prompt: prompt,
+      model: model,
+      paramsKeys: Object.keys(params)
+    });
     
     // Validate required fields
     if (!prompt || typeof prompt !== 'string') {
@@ -53,7 +85,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: "Prompt is required and must be a string",
-          received: { prompt }
+          received: { prompt, model, params }
         }),
         { 
           headers: { ...corsHeaders, "Content-Type": "application/json" }, 
@@ -211,14 +243,133 @@ serve(async (req) => {
       case "midjourney":
         modelName = "midjourney/v6";
         break;
+      case "dalle-3":
+        modelName = "dall-e-3";
+        break;
+      case "sdxl":
+        modelName = "stable-diffusion-xl";
+        break;
       default:
         console.error(`[piapi-image-create-task] Modelo não suportado: ${model}`);
         return new Response(
-          JSON.stringify({ error: "Unsupported model" }),
+          JSON.stringify({ 
+            error: "Unsupported model", 
+            model: model,
+            supportedModels: ["flux-dev", "flux-schnell", "midjourney", "dalle-3", "sdxl"] 
+          }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
         );
     }
 
+    // Se for DALL-E ou SDXL, usar o endpoint específico
+    if (modelName === "dall-e-3" || modelName === "stable-diffusion-xl") {
+      console.log(`[piapi-image-create-task] Redirecionando para chamada específica de ${modelName}`);
+      
+      // Construir corpo da requisição específico para cada modelo
+      const requestBody: Record<string, any> = {
+        model: modelName,
+        prompt: prompt,
+        size: params.size || "1024x1024",
+        n: 1,
+      };
+
+      // Adicionar parâmetros opcionais se fornecidos
+      if (params.negativePrompt) requestBody.negative_prompt = params.negativePrompt;
+      if (params.style) requestBody.style = params.style || "vivid";
+      if (params.quality) requestBody.quality = params.quality || "standard";
+
+      console.log(`[piapi-image-create-task] Corpo da requisição: ${JSON.stringify(requestBody)}`);
+      console.log(`[piapi-image-create-task] URL da API: ${PIAPI_API_BASE_URL}/images/generate`);
+      
+      const dalleResponse = await fetch(`${PIAPI_API_BASE_URL}/images/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${PIAPI_API_KEY}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log(`[piapi-image-create-task] Status da resposta da API: ${dalleResponse.status}`);
+
+      // Ler o corpo da resposta como texto para log e análise
+      const responseText = await dalleResponse.text();
+      console.log(`[piapi-image-create-task] Resposta bruta da API: ${responseText.substring(0, 200)}...`);
+
+      // Verificar se a resposta foi bem-sucedida
+      if (!dalleResponse.ok) {
+        let errorMessage;
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error?.message || `Error from API: ${dalleResponse.statusText}`;
+        } catch (e) {
+          errorMessage = `Error from API: ${dalleResponse.statusText}`;
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: errorMessage,
+            status: "failed",
+            model: modelName
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: dalleResponse.status }
+        );
+      }
+
+      // Analisar a resposta JSON
+      const dalleData = JSON.parse(responseText);
+      
+      // Gerar ID único para a tarefa
+      const generatedId = crypto.randomUUID();
+      
+      // Armazenar resposta no Supabase
+      const supabaseClient = createClient(
+        Deno.env.get("SUPABASE_URL") || "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+      );
+      
+      const { error: insertError } = await supabaseClient
+        .from("piapi_tasks")
+        .insert({
+          task_id: generatedId,
+          model: modelName,
+          prompt,
+          status: "completed",
+          media_type: "image",
+          media_url: dalleData.data.url,
+          params: params
+        });
+
+      if (insertError) {
+        console.error(`[piapi-image-create-task] Erro ao inserir registro:`, insertError);
+      } else {
+        const { error: eventError } = await supabaseClient
+          .from("media_ready_events")
+          .insert({
+            task_id: generatedId,
+            media_type: "image",
+            media_url: dalleData.data.url,
+            prompt,
+            model: modelName
+          });
+
+        if (eventError) {
+          console.error(`[piapi-image-create-task] Erro ao inserir evento:`, eventError);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          task_id: generatedId,
+          status: "completed",
+          media_url: dalleData.data.url,
+          message: `Image generated with model ${modelName}`
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Para modelos Flux e Midjourney, usar o endpoint de tarefas
     // Construir dados da tarefa para a API
     const taskData = {
       "model": modelName,
@@ -264,7 +415,16 @@ serve(async (req) => {
         errorMessage = `Error from PiAPI: ${response.statusText}`;
       }
       
-      throw new Error(errorMessage);
+      return new Response(
+        JSON.stringify({ 
+          error: errorMessage,
+          status: "failed" 
+        }),
+        { 
+          headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+          status: response.status 
+        }
+      );
     }
 
     // Analisar resposta bem-sucedida
