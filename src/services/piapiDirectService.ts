@@ -41,6 +41,20 @@ export interface PiapiTaskResult {
   error?: string;
 }
 
+// Define a type for task info stored in localStorage
+interface StoredTaskInfo {
+  taskId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  model: string;
+  prompt?: string;
+  mediaType: PiapiMediaType;
+  mediaUrl?: string;
+  error?: string;
+  params?: PiapiParams;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 /**
  * Storage key for the PiAPI API key in localStorage
  */
@@ -670,7 +684,7 @@ export const piapiDirectService = {
   /**
    * Store task info in localStorage for persistence
    */
-  storeTask(taskId: string, taskInfo: any): void {
+  storeTask(taskId: string, taskInfo: StoredTaskInfo): void {
     try {
       const tasks = this.getTasks();
       tasks[taskId] = { 
@@ -686,7 +700,7 @@ export const piapiDirectService = {
   /**
    * Update task info in localStorage
    */
-  updateTask(taskId: string, updates: any): void {
+  updateTask(taskId: string, updates: Partial<StoredTaskInfo>): void {
     try {
       const tasks = this.getTasks();
       if (tasks[taskId]) {
@@ -705,7 +719,7 @@ export const piapiDirectService = {
   /**
    * Get task info from localStorage
    */
-  getTask(taskId: string): any | null {
+  getTask(taskId: string): StoredTaskInfo | null {
     try {
       const tasks = this.getTasks();
       return tasks[taskId] || null;
@@ -718,7 +732,7 @@ export const piapiDirectService = {
   /**
    * Get all tasks from localStorage
    */
-  getTasks(): Record<string, any> {
+  getTasks(): Record<string, StoredTaskInfo> {
     try {
       const tasksJson = localStorage.getItem('piapi_tasks');
       return tasksJson ? JSON.parse(tasksJson) : {};
@@ -738,13 +752,16 @@ export const piapiDirectService = {
       cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
       
       let tasksRemoved = 0;
-      Object.entries(tasks).forEach(([taskId, task]) => {
-        const createdAt = new Date(task.createdAt || new Date().toISOString());
-        if (createdAt < cutoffDate) {
-          delete tasks[taskId];
-          tasksRemoved++;
+      
+      for (const [taskId, task] of Object.entries(tasks)) {
+        if (task && typeof task === 'object' && 'createdAt' in task) {
+          const createdAt = new Date(task.createdAt || new Date().toISOString());
+          if (createdAt < cutoffDate) {
+            delete tasks[taskId];
+            tasksRemoved++;
+          }
         }
-      });
+      }
       
       localStorage.setItem('piapi_tasks', JSON.stringify(tasks));
       
