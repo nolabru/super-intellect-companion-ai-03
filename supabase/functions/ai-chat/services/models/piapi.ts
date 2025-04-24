@@ -1,4 +1,3 @@
-
 import { corsHeaders } from "../../utils/cors.ts";
 
 // PiAPI Token
@@ -44,12 +43,29 @@ export async function testApiKey(apiKey: string): Promise<boolean> {
   }
 }
 
+// Get webhook URL
+function getWebhookUrl(): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  return `${supabaseUrl}/functions/v1/piapi-media-webhook`;
+}
+
 // Create a task using PiAPI
 export async function createPiapiTask(taskData: any): Promise<any> {
   verifyApiKey();
   
   try {
     console.log(`[PiAPI] Creating task with model ${taskData.model}...`);
+    
+    // Configure webhook if not set
+    if (taskData.config && taskData.config.webhook_config) {
+      taskData.config.webhook_config.endpoint = getWebhookUrl();
+    } else {
+      taskData.config = {
+        webhook_config: {
+          endpoint: getWebhookUrl()
+        }
+      };
+    }
     
     const response = await fetch(`${PIAPI_API_V1_URL}/task`, {
       method: "POST",
@@ -248,7 +264,7 @@ export async function generateImage(
         },
         "config": { 
           "webhook_config": { 
-            "endpoint": "<YOUR_WEBHOOK>" 
+            "endpoint": getWebhookUrl()
           } 
         }
       };
@@ -374,7 +390,7 @@ export async function generateVideo(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };
@@ -392,7 +408,7 @@ export async function generateVideo(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };
@@ -406,7 +422,7 @@ export async function generateVideo(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };
@@ -430,7 +446,7 @@ export async function generateVideo(
             },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };
@@ -553,7 +569,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };
@@ -567,7 +583,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };
@@ -581,7 +597,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };
@@ -596,7 +612,7 @@ export async function generateSpeech(
           },
           "config": { 
             "webhook_config": { 
-              "endpoint": "<YOUR_WEBHOOK>" 
+              "endpoint": getWebhookUrl() 
             } 
           }
         };

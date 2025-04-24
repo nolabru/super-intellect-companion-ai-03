@@ -21,11 +21,6 @@ serve(async (req) => {
       throw new Error("PIAPI_API_KEY não configurada");
     }
 
-    // Inicializar cliente Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     // Obter parâmetros da requisição
     const { taskId } = await req.json();
     
@@ -38,7 +33,27 @@ serve(async (req) => {
 
     console.log(`Cancelando tarefa ${taskId}`);
 
-    // Cancelar tarefa na PiAPI
+    // Inicializar cliente Supabase
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verificar se a tarefa existe
+    const { data: taskData, error: fetchError } = await supabase
+      .from("piapi_tasks")
+      .select("*")
+      .eq("task_id", taskId)
+      .single();
+
+    if (fetchError) {
+      console.error(`Erro ao buscar tarefa: ${fetchError.message}`);
+      return new Response(
+        JSON.stringify({ error: "Tarefa não encontrada" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Cancelar tarefa na API
     const apiResponse = await fetch(`https://api.piapi.ai/api/v1/task/${taskId}`, {
       method: "DELETE",
       headers: {
@@ -46,44 +61,51 @@ serve(async (req) => {
       }
     });
 
-    // Atualizar status no banco de dados, mesmo que a API retorne erro
-    // pois podemos ter casos onde a tarefa já foi concluída ou não existe mais na PiAPI
+    // Mesmo que falhe na API, atualizar o status no banco
     const { error: updateError } = await supabase
       .from("piapi_tasks")
       .update({ 
-        status: "cancelled",
+        status: "canceled",
         updated_at: new Date().toISOString()
       })
       .eq("task_id", taskId);
 
     if (updateError) {
       console.error(`Erro ao atualizar status da tarefa: ${updateError.message}`);
-      // Continuamos mesmo com erro no banco
     }
 
-    // Verificar resposta da API
-    if (!apiResponse.ok) {
-      const errorData = await apiResponse.json();
-      console.error(`Aviso: API respondeu com erro ao cancelar tarefa: ${JSON.stringify(errorData)}`);
-      // Retornamos sucesso mesmo assim, pois atualizamos o status localmente
+    // Se a API retornou sucesso
+    if (apiResponse.ok) {
+      const cancelData = await apiResponse.json();
+      console.log(`Tarefa ${taskId} cancelada com sucesso`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Tarefa ${taskId} cancelada com sucesso`,
+          data: cancelData
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     } else {
-      const responseData = await apiResponse.json();
-      console.log(`Resposta da API ao cancelar tarefa: ${JSON.stringify(responseData)}`);
+      // Se falhou na API mas conseguimos atualizar no banco
+      const errorData = await apiResponse.json();
+      console.error(`Erro ao cancelar tarefa na API: ${JSON.stringify(errorData)}`);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Tarefa marcada como cancelada no banco de dados, mas falhou na API: ${errorData.error?.message || apiResponse.statusText}`
+        }),
+        { status: 207, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
-    
-    // Retornar resposta de sucesso
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Tarefa ${taskId} cancelada com sucesso.`
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
   } catch (error) {
     console.error(`Erro: ${error.message}`);
     
     return new Response(
       JSON.stringify({ 
+        success: false,
         error: "Falha ao cancelar tarefa", 
         message: error.message 
       }),

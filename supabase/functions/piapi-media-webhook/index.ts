@@ -17,6 +17,7 @@ serve(async (req) => {
     const { task_id, status, result } = await req.json();
     
     if (!task_id) {
+      console.error("Webhook recebido sem task_id");
       return new Response(
         JSON.stringify({ error: "task_id é obrigatório" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -58,6 +59,10 @@ serve(async (req) => {
 
     if (updateError) {
       console.error(`Erro ao atualizar tarefa: ${updateError.message}`);
+      return new Response(
+        JSON.stringify({ error: `Erro ao atualizar tarefa: ${updateError.message}` }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
 
     // Se o status é completed, processar e salvar o arquivo de mídia
@@ -127,6 +132,10 @@ serve(async (req) => {
               
             if (bucketError) {
               console.error(`Erro ao criar bucket: ${bucketError.message}`);
+              return new Response(
+                JSON.stringify({ error: `Erro ao criar bucket: ${bucketError.message}` }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+              );
             }
           }
           
@@ -173,14 +182,37 @@ serve(async (req) => {
           console.log(`Mídia processada e salva com sucesso: ${publicUrl}`);
         } catch (processError) {
           console.error(`Erro ao processar mídia: ${processError.message}`);
+          return new Response(
+            JSON.stringify({ 
+              error: `Erro ao processar mídia: ${processError.message}`,
+              status: "error",
+              taskId: task_id 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+          );
         }
       }
+    } else if (status === "failed") {
+      console.error(`Tarefa ${task_id} falhou:`, result?.error || "Sem detalhes de erro");
+      
+      // Transmitir falha via Realtime para atualização instantânea na UI
+      await supabaseClient
+        .from("media_ready_events")
+        .insert({
+          task_id,
+          media_type: taskData.media_type,
+          media_url: null,
+          prompt: taskData.prompt,
+          model: taskData.model,
+          error: result?.error || "Falha na geração de mídia"
+        });
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Webhook processado para tarefa ${task_id}`
+        message: `Webhook processado para tarefa ${task_id}`,
+        status: status
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

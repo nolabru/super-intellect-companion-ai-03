@@ -19,6 +19,9 @@ serve(async (req) => {
       throw new Error("PIAPI_API_KEY not configured");
     }
 
+    // Get webhook URL
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`;
+
     const { prompt, model, imageUrl, params = {} } = await req.json();
     
     if (!prompt && !imageUrl) {
@@ -31,18 +34,20 @@ serve(async (req) => {
     // Construct the task data based on the model
     let taskData;
     let apiUrl = "https://api.piapi.ai/api/v1/task";
+    let modelName = "";
 
     // Common webhook configuration
     const webhookConfig = {
       "webhook_config": {
-        "endpoint": `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`
+        "endpoint": webhookUrl
       }
     };
 
-    if (model.includes("kling")) {
-      if (model === "kling-text") {
+    switch (model) {
+      case "kling-text":
+        modelName = "kling/text-to-video";
         taskData = {
-          "model": "kling/text-to-video",
+          "model": modelName,
           "task_type": "text-to-video",
           "input": {
             "prompt": prompt,
@@ -51,13 +56,15 @@ serve(async (req) => {
           },
           "config": webhookConfig
         };
-      } else if (model === "kling-image") {
+        break;
+      case "kling-image":
         if (!imageUrl) {
           throw new Error("Image URL is required for image-to-video generation");
         }
         
+        modelName = "kling/image-to-video";
         taskData = {
-          "model": "kling/image-to-video",
+          "model": modelName,
           "task_type": "image-to-video",
           "input": {
             "image_url": imageUrl,
@@ -65,25 +72,35 @@ serve(async (req) => {
           },
           "config": webhookConfig
         };
-      }
-    } else if (model.includes("hunyuan")) {
-      const modelName = model === "hunyuan-fast" 
-        ? "hunyuan/txt2video-fast" 
-        : "hunyuan/txt2video-standard";
-        
-      taskData = {
-        "model": modelName,
-        "task_type": "txt2video-standard",
-        "input": {
-          "prompt": prompt,
-          "duration": params.duration || 8
-        },
-        "config": webhookConfig
-      };
-    } else if (model.includes("hailuo")) {
-      if (model === "hailuo-text") {
+        break;
+      case "hunyuan-standard":
+        modelName = "hunyuan/txt2video-standard";
         taskData = {
-          "model": "hailuo/t2v-01",
+          "model": modelName,
+          "task_type": "txt2video-standard",
+          "input": {
+            "prompt": prompt,
+            "duration": params.duration || 8
+          },
+          "config": webhookConfig
+        };
+        break;
+      case "hunyuan-fast":
+        modelName = "hunyuan/txt2video-fast";
+        taskData = {
+          "model": modelName,
+          "task_type": "txt2video-standard",
+          "input": {
+            "prompt": prompt,
+            "duration": params.duration || 8
+          },
+          "config": webhookConfig
+        };
+        break;
+      case "hailuo-text":
+        modelName = "hailuo/t2v-01";
+        taskData = {
+          "model": modelName,
           "task_type": "video_generation",
           "input": {
             "prompt": prompt,
@@ -91,13 +108,15 @@ serve(async (req) => {
           },
           "config": webhookConfig
         };
-      } else if (model === "hailuo-image") {
+        break;
+      case "hailuo-image":
         if (!imageUrl) {
           throw new Error("Image URL is required for image-to-video generation");
         }
         
+        modelName = "hailuo/i2v-01";
         taskData = {
-          "model": "hailuo/i2v-01",
+          "model": modelName,
           "task_type": "video_generation",
           "input": {
             "prompt": prompt,
@@ -106,15 +125,15 @@ serve(async (req) => {
           },
           "config": webhookConfig
         };
-      }
-    } else {
-      return new Response(
-        JSON.stringify({ error: "Unsupported model" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+        break;
+      default:
+        return new Response(
+          JSON.stringify({ error: "Unsupported model" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
     }
 
-    console.log(`Creating video task with model ${taskData.model}`);
+    console.log(`Creating video task with model ${modelName}`);
     
     // Send request to PiAPI
     const response = await fetch(apiUrl, {
@@ -145,7 +164,7 @@ serve(async (req) => {
       .from("piapi_tasks")
       .insert({
         task_id: data.task_id,
-        model: taskData.model,
+        model: modelName,
         prompt,
         status: "pending",
         media_type: "video",
@@ -160,7 +179,7 @@ serve(async (req) => {
       JSON.stringify({
         task_id: data.task_id,
         status: "pending",
-        message: `Video generation task created with model ${taskData.model}`
+        message: `Video generation task created with model ${modelName}`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

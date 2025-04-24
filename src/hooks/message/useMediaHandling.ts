@@ -1,12 +1,18 @@
+
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { MediaUploadResult } from '@/types/media';
 import { ChatMode } from '@/components/ModeSelector';
+import { piapiService } from '@/services/piapiService';
+import { useMediaGeneration } from '@/hooks/useMediaGeneration';
 
 export function useMediaHandling() {
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isMediaUploading, setIsMediaUploading] = useState(false);
+  
+  const mediaGeneration = useMediaGeneration({
+    showToasts: false // Não queremos toasts duplicados
+  });
 
   const validateFile = (file: File, mode: ChatMode): boolean => {
     if (mode === 'image' && file.type.startsWith('image/')) {
@@ -61,7 +67,7 @@ export function useMediaHandling() {
     try {
       return filePreviewUrls;
     } catch (error) {
-      console.error('Error uploading files:', error);
+      console.error('Erro ao fazer upload dos arquivos:', error);
       toast.error('Erro ao fazer upload dos arquivos');
       return [];
     } finally {
@@ -76,6 +82,7 @@ export function useMediaHandling() {
     handleFileChange,
     removeFile,
     clearFiles,
-    uploadFiles
+    uploadFiles,
+    mediaGeneration // Expor funcionalidades de geração de mídia
   };
 }
