@@ -14,213 +14,179 @@ serve(async (req) => {
   }
 
   try {
-    const { task_id, status, result } = await req.json();
+    console.log("[piapi-media-webhook] Recebida notificação de webhook da PiAPI");
     
-    if (!task_id) {
-      console.error("Webhook recebido sem task_id");
+    // Parse webhook payload
+    let payload;
+    try {
+      payload = await req.json();
+    } catch (parseError) {
+      console.error("[piapi-media-webhook] Erro ao analisar corpo da requisição:", parseError);
       return new Response(
-        JSON.stringify({ error: "task_id é obrigatório" }),
+        JSON.stringify({ error: "Invalid webhook payload - JSON parsing failed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+    
+    // Log de alto nível dos dados recebidos
+    console.log("[piapi-media-webhook] Payload recebido:", {
+      taskId: payload.task_id,
+      status: payload.status,
+      hasOutput: !!payload.output,
+    });
+
+    // Verificar se o payload contém um ID de tarefa válido
+    if (!payload.task_id) {
+      console.error("[piapi-media-webhook] ID da tarefa ausente no payload do webhook");
+      return new Response(
+        JSON.stringify({ error: "Missing task_id in webhook payload" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    console.log(`Recebido webhook para tarefa ${task_id} com status ${status}`);
-    
-    // Criar cliente Supabase
+    // Inicializar cliente Supabase
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") || "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Obter informações da tarefa do Supabase
-    const { data: taskData, error: fetchError } = await supabaseClient
+    // Buscar detalhes da tarefa no banco de dados
+    const { data: taskData, error: taskError } = await supabaseClient
       .from("piapi_tasks")
       .select("*")
-      .eq("task_id", task_id)
+      .eq("task_id", payload.task_id)
       .single();
 
-    if (fetchError) {
-      console.error(`Erro ao buscar tarefa: ${fetchError.message}`);
+    if (taskError) {
+      console.error(`[piapi-media-webhook] Erro ao buscar tarefa ${payload.task_id}:`, taskError);
       return new Response(
-        JSON.stringify({ error: "Tarefa não encontrada" }),
+        JSON.stringify({ error: "Task not found in database" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
       );
     }
 
-    // Atualizar status da tarefa
+    console.log(`[piapi-media-webhook] Tarefa encontrada no banco de dados:`, {
+      id: taskData.task_id,
+      type: taskData.media_type,
+      currentStatus: taskData.status
+    });
+
+    // Verificar status da tarefa e extrair URL da mídia se disponível
+    let status = 'pending';
+    let mediaUrl = null;
+    let errorMessage = null;
+
+    // Mapear status da API para nosso formato interno
+    switch (payload.status) {
+      case 'succeeded':
+        status = 'completed';
+        // Extrair URL da mídia com base no tipo de mídia e formato de resposta
+        if (payload.output) {
+          if (taskData.media_type === 'image') {
+            // Lidar com diferentes formatos de resposta para imagens
+            if (Array.isArray(payload.output.images) && payload.output.images.length > 0) {
+              mediaUrl = payload.output.images[0];
+            } else if (payload.output.image_url) {
+              mediaUrl = payload.output.image_url;
+            } else if (typeof payload.output === 'string') {
+              mediaUrl = payload.output;
+            }
+          } else if (taskData.media_type === 'video') {
+            // Lidar com diferentes formatos de resposta para vídeos
+            if (payload.output.video_url) {
+              mediaUrl = payload.output.video_url;
+            } else if (payload.output.url) {
+              mediaUrl = payload.output.url;
+            } else if (typeof payload.output === 'string') {
+              mediaUrl = payload.output;
+            }
+          } else if (taskData.media_type === 'audio') {
+            // Lidar com diferentes formatos de resposta para áudio
+            if (payload.output.audio_url) {
+              mediaUrl = payload.output.audio_url;
+            } else if (payload.output.url) {
+              mediaUrl = payload.output.url;
+            } else if (typeof payload.output === 'string') {
+              mediaUrl = payload.output;
+            }
+          }
+        }
+        break;
+      case 'processing':
+        status = 'processing';
+        break;
+      case 'failed':
+        status = 'failed';
+        errorMessage = payload.error || 'Task failed without specific error message';
+        break;
+      default:
+        status = 'pending';
+    }
+
+    console.log(`[piapi-media-webhook] Status da tarefa atualizado: ${status}, URL da mídia: ${mediaUrl || 'não disponível'}`);
+
+    // Atualizar o registro no banco de dados com as informações mais recentes
     const { error: updateError } = await supabaseClient
       .from("piapi_tasks")
-      .update({ 
-        status: status,
-        result: result || null,
+      .update({
+        status,
+        media_url: mediaUrl,
+        error: errorMessage,
         updated_at: new Date().toISOString()
       })
-      .eq("task_id", task_id);
+      .eq("task_id", payload.task_id);
 
     if (updateError) {
-      console.error(`Erro ao atualizar tarefa: ${updateError.message}`);
+      console.error(`[piapi-media-webhook] Erro ao atualizar tarefa no banco de dados:`, updateError);
       return new Response(
-        JSON.stringify({ error: `Erro ao atualizar tarefa: ${updateError.message}` }),
+        JSON.stringify({ error: "Failed to update task in database" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
-    // Se o status é completed, processar e salvar o arquivo de mídia
-    if (status === "completed" && result && result.output && result.output.length > 0) {
-      const mediaUrl = result.output[0].url;
-      const mediaType = taskData.media_type;
+    console.log(`[piapi-media-webhook] Registro da tarefa atualizado com sucesso`);
+
+    // Se a tarefa foi completada com sucesso e temos URL de mídia, criar evento de mídia pronta
+    if (status === 'completed' && mediaUrl) {
+      console.log(`[piapi-media-webhook] Criando evento de mídia pronta para tarefa ${payload.task_id}`);
       
-      if (mediaUrl) {
-        try {
-          // Baixar o arquivo de mídia
-          console.log(`Baixando mídia de ${mediaUrl}`);
-          const mediaResponse = await fetch(mediaUrl);
-          
-          if (!mediaResponse.ok) {
-            throw new Error(`Falha ao baixar mídia: ${mediaResponse.statusText}`);
-          }
-          
-          const mediaBlob = await mediaResponse.blob();
-          
-          // Determinar extensão do arquivo
-          let fileExtension = ".bin";
-          const contentType = mediaResponse.headers.get("content-type");
-          
-          if (contentType) {
-            if (contentType.includes("image")) {
-              fileExtension = contentType.includes("png") ? ".png" : ".jpg";
-            } else if (contentType.includes("video")) {
-              fileExtension = ".mp4";
-            } else if (contentType.includes("audio")) {
-              fileExtension = ".mp3";
-            }
-          } else {
-            // Fallback baseado no tipo de mídia
-            if (mediaType === "image") fileExtension = ".png";
-            else if (mediaType === "video") fileExtension = ".mp4";
-            else if (mediaType === "audio") fileExtension = ".mp3";
-          }
-          
-          // Salvar no bucket adequado
-          let storagePath = "";
-          const fileName = `${task_id}${fileExtension}`;
-          
-          if (mediaType === "image") {
-            storagePath = `images/${fileName}`;
-          } else if (mediaType === "video") {
-            storagePath = `videos/${fileName}`;
-          } else if (mediaType === "audio") {
-            storagePath = `audios/${fileName}`;
-          }
-          
-          console.log(`Salvando mídia em ${storagePath}`);
-          
-          // Criar o bucket se ele não existir
-          const { data: buckets } = await supabaseClient
-            .storage
-            .listBuckets();
-            
-          const mediaBucket = buckets?.find(b => b.name === 'media');
-          
-          if (!mediaBucket) {
-            console.log('Criando bucket de mídia...');
-            const { error: bucketError } = await supabaseClient
-              .storage
-              .createBucket('media', {
-                public: true
-              });
-              
-            if (bucketError) {
-              console.error(`Erro ao criar bucket: ${bucketError.message}`);
-              return new Response(
-                JSON.stringify({ error: `Erro ao criar bucket: ${bucketError.message}` }),
-                { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-              );
-            }
-          }
-          
-          // Upload para Supabase Storage
-          const { data: storageData, error: storageError } = await supabaseClient
-            .storage
-            .from("media")
-            .upload(storagePath, mediaBlob, {
-              contentType,
-              upsert: true
-            });
-            
-          if (storageError) {
-            throw new Error(`Falha ao fazer upload para storage: ${storageError.message}`);
-          }
-          
-          // Obter URL pública
-          const { data: publicUrlData } = supabaseClient
-            .storage
-            .from("media")
-            .getPublicUrl(storagePath);
-            
-          const publicUrl = publicUrlData.publicUrl;
-          
-          // Atualizar tarefa com URL da mídia armazenada
-          await supabaseClient
-            .from("piapi_tasks")
-            .update({ 
-              media_url: publicUrl
-            })
-            .eq("task_id", task_id);
-          
-          // Transmitir conclusão via Realtime
-          await supabaseClient
-            .from("media_ready_events")
-            .insert({
-              task_id,
-              media_type: mediaType,
-              media_url: publicUrl,
-              prompt: taskData.prompt,
-              model: taskData.model
-            });
-            
-          console.log(`Mídia processada e salva com sucesso: ${publicUrl}`);
-        } catch (processError) {
-          console.error(`Erro ao processar mídia: ${processError.message}`);
-          return new Response(
-            JSON.stringify({ 
-              error: `Erro ao processar mídia: ${processError.message}`,
-              status: "error",
-              taskId: task_id 
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-          );
-        }
-      }
-    } else if (status === "failed") {
-      console.error(`Tarefa ${task_id} falhou:`, result?.error || "Sem detalhes de erro");
-      
-      // Transmitir falha via Realtime para atualização instantânea na UI
-      await supabaseClient
+      const { error: eventError } = await supabaseClient
         .from("media_ready_events")
         .insert({
-          task_id,
+          task_id: payload.task_id,
           media_type: taskData.media_type,
-          media_url: null,
+          media_url: mediaUrl,
           prompt: taskData.prompt,
-          model: taskData.model,
-          error: result?.error || "Falha na geração de mídia"
+          model: taskData.model
         });
+        
+      if (eventError) {
+        console.error(`[piapi-media-webhook] Erro ao inserir evento de mídia pronta:`, eventError);
+      } else {
+        console.log(`[piapi-media-webhook] Evento de mídia pronta criado com sucesso`);
+      }
     }
 
+    // Retornar confirmação de processamento bem-sucedido
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Webhook processado para tarefa ${task_id}`,
-        status: status
+        message: `Webhook processed successfully for task ${payload.task_id}`
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error(`Erro ao processar webhook: ${error.message}`);
+    // Tratamento central de erros
+    console.error("[piapi-media-webhook] Erro ao processar webhook:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ 
+        error: error.message || "Unknown error",
+        details: "Check the edge function logs for more information"
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
+      }
     );
   }
 });

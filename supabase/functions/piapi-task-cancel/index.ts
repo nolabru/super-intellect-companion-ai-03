@@ -3,113 +3,156 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PIAPI_API_BASE_URL = "https://api.piapi.ai/api/v1";
+
 serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verificar API key
-    const PIAPI_API_KEY = Deno.env.get("PIAPI_API_KEY");
+    const PIAPI_API_KEY = Deno.env.get("PIAPI_API_KEY") || "";
     if (!PIAPI_API_KEY) {
-      throw new Error("PIAPI_API_KEY não configurada");
+      console.error("[piapi-task-cancel] PIAPI_API_KEY não configurada");
+      throw new Error("PIAPI_API_KEY not configured");
     }
 
-    // Obter parâmetros da requisição
-    const { taskId } = await req.json();
-    
-    if (!taskId) {
+    // Extrair ID da tarefa do corpo da requisição
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("[piapi-task-cancel] Erro ao analisar corpo da requisição:", parseError);
       return new Response(
-        JSON.stringify({ error: "ID da tarefa é obrigatório" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Invalid request body - JSON parsing failed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    console.log(`Cancelando tarefa ${taskId}`);
+    const { taskId } = requestBody;
+    
+    if (!taskId) {
+      console.error("[piapi-task-cancel] taskId é obrigatório");
+      return new Response(
+        JSON.stringify({ error: "Task ID is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-    // Inicializar cliente Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log(`[piapi-task-cancel] Tentando cancelar tarefa: ${taskId}`);
 
-    // Verificar se a tarefa existe
-    const { data: taskData, error: fetchError } = await supabase
+    // Primeiro, verificar no banco de dados se a tarefa está em um estado cancelável
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") || "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+    );
+
+    const { data: taskData, error: taskError } = await supabaseClient
       .from("piapi_tasks")
       .select("*")
       .eq("task_id", taskId)
       .single();
 
-    if (fetchError) {
-      console.error(`Erro ao buscar tarefa: ${fetchError.message}`);
+    if (taskError) {
+      console.error(`[piapi-task-cancel] Erro ao buscar tarefa no banco de dados:`, taskError);
       return new Response(
-        JSON.stringify({ error: "Tarefa não encontrada" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: "Task not found in database" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
       );
     }
 
-    // Cancelar tarefa na API
-    const apiResponse = await fetch(`https://api.piapi.ai/api/v1/task/${taskId}`, {
-      method: "DELETE",
+    console.log(`[piapi-task-cancel] Status atual da tarefa: ${taskData.status}`);
+    
+    // Verificar se a tarefa já está em um estado final (completed/failed)
+    if (taskData.status === 'completed' || taskData.status === 'failed') {
+      console.log(`[piapi-task-cancel] A tarefa já está em estado final: ${taskData.status}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: `Task is already in ${taskData.status} state and cannot be cancelled`
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Tentar cancelar a tarefa na API
+    console.log(`[piapi-task-cancel] Enviando requisição de cancelamento para: ${PIAPI_API_BASE_URL}/task/${taskId}/cancel`);
+    
+    const response = await fetch(`${PIAPI_API_BASE_URL}/task/${taskId}/cancel`, {
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         "Authorization": `Bearer ${PIAPI_API_KEY}`
       }
     });
 
-    // Mesmo que falhe na API, atualizar o status no banco
-    const { error: updateError } = await supabase
-      .from("piapi_tasks")
-      .update({ 
-        status: "canceled",
-        updated_at: new Date().toISOString()
-      })
-      .eq("task_id", taskId);
-
-    if (updateError) {
-      console.error(`Erro ao atualizar status da tarefa: ${updateError.message}`);
-    }
-
-    // Se a API retornou sucesso
-    if (apiResponse.ok) {
-      const cancelData = await apiResponse.json();
-      console.log(`Tarefa ${taskId} cancelada com sucesso`);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: `Tarefa ${taskId} cancelada com sucesso`,
-          data: cancelData
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    } else {
-      // Se falhou na API mas conseguimos atualizar no banco
-      const errorData = await apiResponse.json();
-      console.error(`Erro ao cancelar tarefa na API: ${JSON.stringify(errorData)}`);
-      
-      return new Response(
-        JSON.stringify({
-          success: false,
-          message: `Tarefa marcada como cancelada no banco de dados, mas falhou na API: ${errorData.error?.message || apiResponse.statusText}`
-        }),
-        { status: 207, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-  } catch (error) {
-    console.error(`Erro: ${error.message}`);
+    // Log do status da resposta para depuração
+    console.log(`[piapi-task-cancel] Status da resposta da API: ${response.status}`);
     
+    // Ler o corpo da resposta como texto para análise
+    const responseText = await response.text();
+    console.log(`[piapi-task-cancel] Resposta da API: ${responseText}`);
+
+    let success = false;
+    
+    // Analisar resposta
+    if (response.ok) {
+      console.log(`[piapi-task-cancel] Tarefa cancelada com sucesso na API`);
+      success = true;
+    } else {
+      // Se o erro for que a tarefa já foi concluída, considerar como um sucesso parcial
+      if (responseText.includes("already completed") || responseText.includes("already failed")) {
+        console.log(`[piapi-task-cancel] A tarefa já foi concluída ou falhou na API`);
+        success = true;
+      } else {
+        console.error(`[piapi-task-cancel] Erro ao cancelar tarefa na API:`, responseText);
+      }
+    }
+
+    // Se obteve sucesso ou a tarefa já está em um estado final, atualizar no banco de dados
+    if (success) {
+      console.log(`[piapi-task-cancel] Atualizando status da tarefa no banco de dados para 'failed'`);
+      
+      const { error: updateError } = await supabaseClient
+        .from("piapi_tasks")
+        .update({
+          status: 'failed',
+          error: 'Task cancelled by user',
+          updated_at: new Date().toISOString()
+        })
+        .eq("task_id", taskId);
+
+      if (updateError) {
+        console.error(`[piapi-task-cancel] Erro ao atualizar status da tarefa no banco de dados:`, updateError);
+      }
+    }
+
+    // Retornar resultado
+    return new Response(
+      JSON.stringify({
+        success,
+        message: success ? "Task cancelled successfully" : "Failed to cancel task"
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    // Tratamento central de erros
+    console.error("[piapi-task-cancel] Erro:", error);
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: "Falha ao cancelar tarefa", 
-        message: error.message 
+        error: error.message || "Unknown error",
+        details: "Check the edge function logs for more information"
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
+      }
     );
   }
 });

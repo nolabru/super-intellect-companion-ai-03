@@ -7,6 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PIAPI_API_BASE_URL = "https://api.piapi.ai/api/v1";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -16,127 +18,131 @@ serve(async (req) => {
   try {
     const PIAPI_API_KEY = Deno.env.get("PIAPI_API_KEY") || "";
     if (!PIAPI_API_KEY) {
+      console.error("[piapi-video-create-task] PIAPI_API_KEY não configurada");
       throw new Error("PIAPI_API_KEY not configured");
     }
 
-    // Get webhook URL
-    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`;
-
-    const { prompt, model, imageUrl, params = {} } = await req.json();
-    
-    if (!prompt && !imageUrl) {
+    // Extrair parâmetros da requisição
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("[piapi-video-create-task] Erro ao analisar corpo da requisição:", parseError);
       return new Response(
-        JSON.stringify({ error: "Either prompt or imageUrl is required" }),
+        JSON.stringify({ error: "Invalid request body - JSON parsing failed" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    // Construct the task data based on the model
-    let taskData;
-    let apiUrl = "https://api.piapi.ai/api/v1/task";
-    let modelName = "";
+    const { prompt, model, imageUrl, params = {} } = requestBody;
+    
+    // Validar requisição com base no modelo
+    if (model.includes('image') && !imageUrl) {
+      console.error("[piapi-video-create-task] Modelo baseado em imagem requer imageUrl");
+      return new Response(
+        JSON.stringify({ error: "Image URL is required for image-based video generation models" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+    
+    if (!model.includes('image') && (!prompt || prompt.trim().length === 0)) {
+      console.error("[piapi-video-create-task] Prompt é obrigatório para modelos baseados em texto");
+      return new Response(
+        JSON.stringify({ error: "Prompt is required for text-based video generation models" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-    // Common webhook configuration
-    const webhookConfig = {
-      "webhook_config": {
-        "endpoint": webhookUrl
-      }
-    };
+    console.log(`[piapi-video-create-task] Processando requisição para ${model}:`, {
+      prompt: prompt ? prompt.substring(0, 50) + '...' : 'N/A',
+      hasImageUrl: !!imageUrl,
+      params: JSON.stringify(params).substring(0, 100)
+    });
 
+    // Obter URL do webhook para notificações
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`;
+    
+    // Mapear modelos para os nomes internos reconhecidos pela API
+    let modelName, taskType;
+    
     switch (model) {
       case "kling-text":
-        modelName = "kling/text-to-video";
-        taskData = {
-          "model": modelName,
-          "task_type": "text-to-video",
-          "input": {
-            "prompt": prompt,
-            "duration": params.duration || 10,
-            "aspect_ratio": params.aspectRatio || "16:9"
-          },
-          "config": webhookConfig
-        };
+        modelName = "kling/textOnly";
+        taskType = "txt2video";
         break;
       case "kling-image":
-        if (!imageUrl) {
-          throw new Error("Image URL is required for image-to-video generation");
-        }
-        
-        modelName = "kling/image-to-video";
-        taskData = {
-          "model": modelName,
-          "task_type": "image-to-video",
-          "input": {
-            "image_url": imageUrl,
-            "duration": params.duration || 8
-          },
-          "config": webhookConfig
-        };
+        modelName = "kling/imageOnly";
+        taskType = "img2video";
         break;
       case "hunyuan-standard":
-        modelName = "hunyuan/txt2video-standard";
-        taskData = {
-          "model": modelName,
-          "task_type": "txt2video-standard",
-          "input": {
-            "prompt": prompt,
-            "duration": params.duration || 8
-          },
-          "config": webhookConfig
-        };
+        modelName = "hunyuan/standard";
+        taskType = "txt2video";
         break;
       case "hunyuan-fast":
-        modelName = "hunyuan/txt2video-fast";
-        taskData = {
-          "model": modelName,
-          "task_type": "txt2video-standard",
-          "input": {
-            "prompt": prompt,
-            "duration": params.duration || 8
-          },
-          "config": webhookConfig
-        };
+        modelName = "hunyuan/fast";
+        taskType = "txt2video";
         break;
       case "hailuo-text":
-        modelName = "hailuo/t2v-01";
-        taskData = {
-          "model": modelName,
-          "task_type": "video_generation",
-          "input": {
-            "prompt": prompt,
-            "duration": params.duration || 6
-          },
-          "config": webhookConfig
-        };
+        modelName = "hailuo/textOnly";
+        taskType = "txt2video";
         break;
       case "hailuo-image":
-        if (!imageUrl) {
-          throw new Error("Image URL is required for image-to-video generation");
-        }
-        
-        modelName = "hailuo/i2v-01";
-        taskData = {
-          "model": modelName,
-          "task_type": "video_generation",
-          "input": {
-            "prompt": prompt,
-            "image_url": imageUrl,
-            "duration": params.duration || 6
-          },
-          "config": webhookConfig
-        };
+        modelName = "hailuo/imageOnly";
+        taskType = "img2video";
         break;
       default:
+        console.error(`[piapi-video-create-task] Modelo não suportado: ${model}`);
         return new Response(
           JSON.stringify({ error: "Unsupported model" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
         );
     }
 
-    console.log(`Creating video task with model ${modelName}`);
+    // Construir dados da tarefa com base no tipo de modelo
+    let taskData: Record<string, any>;
     
-    // Send request to PiAPI
-    const response = await fetch(apiUrl, {
+    if (taskType === "img2video") {
+      // Modelo baseado em imagem para vídeo
+      taskData = {
+        "model": modelName,
+        "task_type": taskType,
+        "input": {
+          "image": imageUrl,
+          "prompt": prompt || "Generate video from this image"
+        },
+        "config": {
+          "webhook_config": {
+            "endpoint": webhookUrl
+          }
+        }
+      };
+    } else {
+      // Modelo baseado em texto para vídeo
+      taskData = {
+        "model": modelName,
+        "task_type": taskType,
+        "input": {
+          "prompt": prompt
+        },
+        "config": {
+          "webhook_config": {
+            "endpoint": webhookUrl
+          }
+        }
+      };
+    }
+
+    // Adicionar parâmetros específicos conforme fornecido
+    if (params.fps) taskData.input.fps = params.fps;
+    if (params.duration) taskData.input.duration = params.duration;
+    if (params.resolution) taskData.input.resolution = params.resolution;
+    
+    console.log(`[piapi-video-create-task] Criando tarefa de vídeo com modelo ${modelName}`);
+    console.log(`[piapi-video-create-task] Dados da tarefa: ${JSON.stringify(taskData)}`);
+    console.log(`[piapi-video-create-task] URL da API: ${PIAPI_API_BASE_URL}/task`);
+    
+    // Enviar requisição para a API
+    const response = await fetch(`${PIAPI_API_BASE_URL}/task`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -145,21 +151,33 @@ serve(async (req) => {
       body: JSON.stringify(taskData)
     });
 
+    // Verificar respostas de erro
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error(`Error creating task: ${JSON.stringify(errorData)}`);
-      throw new Error(`Error from PiAPI: ${errorData.error?.message || response.statusText}`);
+      const responseText = await response.text();
+      console.error("[piapi-video-create-task] Resposta de erro da PiAPI:", responseText);
+      
+      let errorMessage;
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error?.message || `Error from PiAPI: ${response.statusText}`;
+      } catch (e) {
+        errorMessage = `Error from PiAPI: ${response.statusText}`;
+      }
+      
+      throw new Error(errorMessage);
     }
 
+    // Analisar resposta bem-sucedida
     const data = await response.json();
-    console.log(`Task created successfully: ${data.task_id}`);
+    console.log("[piapi-video-create-task] Tarefa de vídeo criada com sucesso:", data);
 
-    // Store task info in Supabase
+    // Armazenar informações da tarefa no Supabase
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") || "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
+    // Inserir registro na tabela de tarefas
     const { error: insertError } = await supabaseClient
       .from("piapi_tasks")
       .insert({
@@ -168,13 +186,17 @@ serve(async (req) => {
         prompt,
         status: "pending",
         media_type: "video",
-        params: params
+        params: {
+          ...params,
+          imageUrl: imageUrl || null
+        }
       });
 
     if (insertError) {
-      console.error(`Error inserting task record: ${insertError.message}`);
+      console.error(`[piapi-video-create-task] Erro ao inserir registro da tarefa:`, insertError);
     }
 
+    // Retornar resultado da criação da tarefa
     return new Response(
       JSON.stringify({
         task_id: data.task_id,
@@ -184,10 +206,17 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    // Tratamento central de erros
+    console.error("[piapi-video-create-task] Erro:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ 
+        error: error.message || "Unknown error",
+        details: "Check the edge function logs for more information"
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
+      }
     );
   }
 });

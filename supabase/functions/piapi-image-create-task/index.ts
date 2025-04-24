@@ -18,25 +18,38 @@ serve(async (req) => {
   try {
     const PIAPI_API_KEY = Deno.env.get("PIAPI_API_KEY") || "";
     if (!PIAPI_API_KEY) {
-      console.error("[piapi-image-create-task] PIAPI_API_KEY not configured");
+      console.error("[piapi-image-create-task] PIAPI_API_KEY não configurada");
       throw new Error("PIAPI_API_KEY not configured");
     }
 
-    const { prompt, model, params = {} } = await req.json();
+    // Extrair parâmetros da requisição
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("[piapi-image-create-task] Erro ao analisar corpo da requisição:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Invalid request body - JSON parsing failed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+
+    const { prompt, model, params = {} } = requestBody;
     
     if (!prompt) {
-      console.error("[piapi-image-create-task] Prompt is required");
+      console.error("[piapi-image-create-task] Prompt é obrigatório");
       return new Response(
         JSON.stringify({ error: "Prompt is required" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    console.log(`[piapi-image-create-task] Processing request for ${model} with prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`[piapi-image-create-task] Processando requisição para ${model} com prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`[piapi-image-create-task] Parâmetros:`, params);
 
-    // Validate image parameters
+    // Validar parâmetros de imagem
     if (params.width && (params.width < 256 || params.width > 1024)) {
-      console.error("[piapi-image-create-task] Invalid width parameter");
+      console.error("[piapi-image-create-task] Parâmetro de largura inválido");
       return new Response(
         JSON.stringify({ error: "Width must be between 256 and 1024 pixels" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -44,31 +57,37 @@ serve(async (req) => {
     }
 
     if (params.height && (params.height < 256 || params.height > 1024)) {
-      console.error("[piapi-image-create-task] Invalid height parameter");
+      console.error("[piapi-image-create-task] Parâmetro de altura inválido");
       return new Response(
         JSON.stringify({ error: "Height must be between 256 and 1024 pixels" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    // Handle DALL-E 3 and SDXL models with direct API call
+    // Configurar webhook para notificações
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`;
+
+    // Tratar modelos DALL-E 3 e SDXL com chamada de API direta
     if (model === "dall-e-3" || model === "sdxl") {
-      console.log(`[piapi-image-create-task] Processing direct API request for ${model}`);
+      console.log(`[piapi-image-create-task] Processando requisição direta para ${model}`);
       
       try {
-        const requestBody = {
+        // Construir corpo da requisição específico para cada modelo
+        const requestBody: Record<string, any> = {
           model: model === "dall-e-3" ? "dall-e-3" : "stable-diffusion-xl",
           prompt: prompt,
           size: params.size || "1024x1024",
           n: 1,
         };
 
-        // Add optional parameters if provided
+        // Adicionar parâmetros opcionais se fornecidos
         if (params.negativePrompt) requestBody.negative_prompt = params.negativePrompt;
         if (params.style) requestBody.style = params.style || "vivid";
         if (params.quality) requestBody.quality = params.quality || "standard";
 
-        console.log(`[piapi-image-create-task] Request body: ${JSON.stringify(requestBody)}`);
+        console.log(`[piapi-image-create-task] Corpo da requisição: ${JSON.stringify(requestBody)}`);
+        console.log(`[piapi-image-create-task] URL da API: ${PIAPI_API_BASE_URL}/images/generate`);
+        console.log(`[piapi-image-create-task] Tipo de modelo: ${model}`);
 
         const dalleResponse = await fetch(`${PIAPI_API_BASE_URL}/images/generate`, {
           method: "POST",
@@ -79,50 +98,57 @@ serve(async (req) => {
           body: JSON.stringify(requestBody)
         });
 
-        console.log(`[piapi-image-create-task] API Response Status: ${dalleResponse.status}`);
+        console.log(`[piapi-image-create-task] Status da resposta da API: ${dalleResponse.status}`);
 
+        // Ler o corpo da resposta como texto para log e análise
         const responseText = await dalleResponse.text();
-        console.log(`[piapi-image-create-task] Raw API Response: ${responseText.substring(0, 200)}...`);
+        console.log(`[piapi-image-create-task] Resposta bruta da API: ${responseText.substring(0, 200)}...`);
 
+        // Verificar se a resposta foi bem-sucedida
         if (!dalleResponse.ok) {
           let errorMessage;
           try {
             const errorData = JSON.parse(responseText);
             errorMessage = errorData.error?.message || `Error from ${model}: ${dalleResponse.statusText}`;
-            console.error(`[piapi-image-create-task] Parsed API Error:`, errorMessage);
+            console.error(`[piapi-image-create-task] Erro analisado da API:`, errorMessage);
           } catch (e) {
             errorMessage = `Error from ${model}: ${dalleResponse.statusText}`;
-            console.error(`[piapi-image-create-task] Failed to parse error response:`, e);
+            console.error(`[piapi-image-create-task] Falha ao analisar resposta de erro:`, e);
           }
           throw new Error(errorMessage);
         }
 
+        // Analisar a resposta JSON
         let dalleData;
         try {
           dalleData = JSON.parse(responseText);
         } catch (e) {
-          console.error(`[piapi-image-create-task] Failed to parse JSON response:`, e);
+          console.error(`[piapi-image-create-task] Falha ao analisar resposta JSON:`, e);
           throw new Error(`Failed to parse API response from ${model}`);
         }
 
-        console.log(`[piapi-image-create-task] Successfully parsed response:`, {
+        // Validar a presença da URL na resposta
+        console.log(`[piapi-image-create-task] Resposta analisada com sucesso:`, {
           hasData: !!dalleData.data,
-          hasUrl: dalleData.data?.url ? 'yes' : 'no'
+          hasUrl: dalleData.data?.url ? 'yes' : 'no',
+          dataPreview: JSON.stringify(dalleData).substring(0, 100)
         });
 
         if (!dalleData.data?.url) {
-          console.error(`[piapi-image-create-task] No URL in response:`, dalleData);
+          console.error(`[piapi-image-create-task] Sem URL na resposta:`, dalleData);
           throw new Error(`No image URL received from ${model}`);
         }
 
-        // Store info in Supabase
+        // Armazenar informações no Supabase
         const supabaseClient = createClient(
           Deno.env.get("SUPABASE_URL") || "",
           Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
         );
 
+        // Gerar ID único para a tarefa
         const generatedId = crypto.randomUUID();
         
+        // Inserir registro na tabela de tarefas
         const { error: insertError } = await supabaseClient
           .from("piapi_tasks")
           .insert({
@@ -136,9 +162,9 @@ serve(async (req) => {
           });
 
         if (insertError) {
-          console.error(`[piapi-image-create-task] Error inserting task record:`, insertError);
+          console.error(`[piapi-image-create-task] Erro ao inserir registro da tarefa:`, insertError);
         } else {
-          // Insert media ready event
+          // Inserir evento de mídia pronta para notificação
           const { error: eventError } = await supabaseClient
             .from("media_ready_events")
             .insert({
@@ -150,10 +176,11 @@ serve(async (req) => {
             });
             
           if (eventError) {
-            console.error(`[piapi-image-create-task] Error inserting media ready event:`, eventError);
+            console.error(`[piapi-image-create-task] Erro ao inserir evento de mídia pronta:`, eventError);
           }
         }
 
+        // Retornar resposta de sucesso
         return new Response(
           JSON.stringify({
             task_id: generatedId,
@@ -164,14 +191,15 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } catch (error) {
-        console.error(`[piapi-image-create-task] Error processing ${model} request:`, error);
+        console.error(`[piapi-image-create-task] Erro ao processar requisição ${model}:`, error);
         throw error;
       }
     }
 
-    // For Flux models, use the task-based API
-    console.log(`[piapi-image-create-task] Processing request for ${model} model with task API`);
+    // Para modelos Flux, usar a API baseada em tarefas
+    console.log(`[piapi-image-create-task] Processando requisição para modelo ${model} com API baseada em tarefas`);
     
+    // Traduzir nomes de modelos para os nomes internos reconhecidos pela API
     let modelName = "";
 
     switch (model) {
@@ -181,17 +209,18 @@ serve(async (req) => {
       case "flux-schnell":
         modelName = "Qubico/flux1-schnell";
         break;
+      case "midjourney":
+        modelName = "midjourney/v6";
+        break;
       default:
-        console.error(`[piapi-image-create-task] Unsupported model: ${model}`);
+        console.error(`[piapi-image-create-task] Modelo não suportado: ${model}`);
         return new Response(
           JSON.stringify({ error: "Unsupported model" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
         );
     }
 
-    // Get webhook URL for task notifications
-    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`;
-
+    // Construir dados da tarefa para a API
     const taskData = {
       "model": modelName,
       "task_type": "txt2img",
@@ -209,9 +238,11 @@ serve(async (req) => {
       }
     };
 
-    console.log(`[piapi-image-create-task] Creating task with model ${modelName}`);
-    console.log(`[piapi-image-create-task] Task data: ${JSON.stringify(taskData)}`);
+    console.log(`[piapi-image-create-task] Criando tarefa com modelo ${modelName}`);
+    console.log(`[piapi-image-create-task] Dados da tarefa: ${JSON.stringify(taskData)}`);
+    console.log(`[piapi-image-create-task] URL da API: ${PIAPI_API_BASE_URL}/task`);
     
+    // Enviar requisição para a API
     const response = await fetch(`${PIAPI_API_BASE_URL}/task`, {
       method: "POST",
       headers: {
@@ -221,9 +252,11 @@ serve(async (req) => {
       body: JSON.stringify(taskData)
     });
 
+    // Verificar respostas de erro
     if (!response.ok) {
       const responseText = await response.text();
-      console.error("[piapi-image-create-task] Error response from PiAPI:", responseText);
+      console.error("[piapi-image-create-task] Resposta de erro da PiAPI:", responseText);
+      
       let errorMessage;
       try {
         const errorData = JSON.parse(responseText);
@@ -231,18 +264,21 @@ serve(async (req) => {
       } catch (e) {
         errorMessage = `Error from PiAPI: ${response.statusText}`;
       }
+      
       throw new Error(errorMessage);
     }
 
+    // Analisar resposta bem-sucedida
     const data = await response.json();
-    console.log("[piapi-image-create-task] Task created successfully:", data);
+    console.log("[piapi-image-create-task] Tarefa criada com sucesso:", data);
 
-    // Store task info in Supabase
+    // Armazenar informações da tarefa no Supabase
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") || "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
+    // Inserir registro na tabela de tarefas
     const { error: insertError } = await supabaseClient
       .from("piapi_tasks")
       .insert({
@@ -255,9 +291,10 @@ serve(async (req) => {
       });
 
     if (insertError) {
-      console.error(`[piapi-image-create-task] Error inserting task record:`, insertError);
+      console.error(`[piapi-image-create-task] Erro ao inserir registro da tarefa:`, insertError);
     }
 
+    // Retornar resultado da criação da tarefa
     return new Response(
       JSON.stringify({
         task_id: data.task_id,
@@ -267,7 +304,8 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("[piapi-image-create-task] Error:", error);
+    // Tratamento central de erros
+    console.error("[piapi-image-create-task] Erro:", error);
     return new Response(
       JSON.stringify({ 
         error: error.message,

@@ -7,7 +7,7 @@ export type PiapiMediaType = 'image' | 'video' | 'audio';
 export type PiapiImageModel = 
   'flux-dev' | 
   'flux-schnell' | 
-  'dalle-3' | 
+  'dall-e-3' | 
   'sdxl' | 
   'midjourney';
 
@@ -54,8 +54,31 @@ export const piapiService = {
     try {
       console.log(`[piapiService] Iniciando geração de imagem com modelo ${model} e prompt: "${prompt.substring(0, 30)}..."`);
       
+      // Validar parâmetros antes de enviá-los
+      if (!prompt || prompt.trim().length === 0) {
+        throw new Error("O prompt não pode estar vazio");
+      }
+      
+      // Validar dimensões específicas (se fornecidas)
+      if (params.width && (params.width < 256 || params.width > 1024)) {
+        throw new Error("A largura deve estar entre 256 e 1024 pixels");
+      }
+      
+      if (params.height && (params.height < 256 || params.height > 1024)) {
+        throw new Error("A altura deve estar entre 256 e 1024 pixels");
+      }
+      
       const { data, error } = await supabase.functions.invoke('piapi-image-create-task', {
-        body: { prompt, model, params }
+        body: { 
+          prompt, 
+          model, 
+          params: {
+            ...params,
+            // Garantir que as dimensões tenham valores padrão quando não fornecidas
+            width: params.width || 768,
+            height: params.height || 768
+          }
+        }
       });
       
       if (error) {
@@ -70,16 +93,17 @@ export const piapiService = {
         throw new Error('Resposta vazia da função');
       }
       
-      // Obter task_id da resposta, considerando formatos diferentes
+      // Normalizar resposta para um formato consistente
       const taskId = data.task_id || data.taskId;
       if (!taskId) {
         console.error('[piapiService] ID da tarefa não encontrado na resposta:', data);
         throw new Error('ID da tarefa não recebido');
       }
       
-      // Checar se a tarefa foi completada imediatamente (caso DALL-E ou similar)
+      // Normalizar campo de status
       const status = data.status || 'pending';
-      const mediaUrl = data.media_url || null;
+      // Normalizar campo de URL de mídia
+      const mediaUrl = data.media_url || data.mediaUrl || null;
       
       console.log(`[piapiService] Tarefa ${taskId} criada com status: ${status}`);
       
@@ -90,6 +114,7 @@ export const piapiService = {
       };
     } catch (err) {
       console.error('[piapiService] Erro ao gerar imagem:', err);
+      toast.error(`Erro ao gerar imagem: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       throw err;
     }
   },
@@ -104,6 +129,18 @@ export const piapiService = {
     imageUrl?: string
   ): Promise<PiapiTaskResult> {
     try {
+      console.log(`[piapiService] Iniciando geração de vídeo com modelo ${model} e prompt: "${prompt.substring(0, 30)}..."`);
+      
+      // Validar parâmetros
+      if (!prompt || prompt.trim().length === 0) {
+        throw new Error("O prompt não pode estar vazio");
+      }
+      
+      // Verificar se é necessário um imageUrl para modelos baseados em imagem
+      if (model.includes('image') && !imageUrl) {
+        throw new Error(`O modelo ${model} requer uma imagem de referência (imageUrl)`);
+      }
+      
       const { data, error } = await supabase.functions.invoke('piapi-video-create-task', {
         body: { prompt, model, imageUrl, params }
       });
@@ -113,18 +150,31 @@ export const piapiService = {
         throw new Error(`Erro ao criar tarefa: ${error.message}`);
       }
       
-      if (!data.task_id) {
+      console.log(`[piapiService] Resposta de criação de vídeo:`, data);
+      
+      if (!data) {
+        throw new Error('Resposta vazia da função');
+      }
+      
+      // Normalizar resposta
+      const taskId = data.task_id || data.taskId;
+      if (!taskId) {
         throw new Error('ID da tarefa não recebido');
       }
       
-      console.log(`[piapiService] Tarefa de vídeo criada: ${data.task_id}`);
+      const status = data.status || 'pending';
+      const mediaUrl = data.media_url || data.mediaUrl || null;
+      
+      console.log(`[piapiService] Tarefa de vídeo ${taskId} criada com status: ${status}`);
       
       return {
-        taskId: data.task_id,
-        status: data.status || 'pending'
+        taskId,
+        status,
+        mediaUrl
       };
     } catch (err) {
       console.error('[piapiService] Erro ao gerar vídeo:', err);
+      toast.error(`Erro ao gerar vídeo: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       throw err;
     }
   },
@@ -139,6 +189,17 @@ export const piapiService = {
     videoUrl?: string
   ): Promise<PiapiTaskResult> {
     try {
+      console.log(`[piapiService] Iniciando geração de áudio com modelo ${model} e prompt: "${prompt.substring(0, 30)}..."`);
+      
+      // Validar parâmetros
+      if (model.includes('video2audio') && !videoUrl) {
+        throw new Error("O modelo de conversão de vídeo para áudio requer uma URL de vídeo");
+      }
+      
+      if (!model.includes('video2audio') && (!prompt || prompt.trim().length === 0)) {
+        throw new Error("O prompt não pode estar vazio para geração de áudio baseada em texto");
+      }
+      
       const { data, error } = await supabase.functions.invoke('piapi-audio-create-task', {
         body: { prompt, model, videoUrl, params }
       });
@@ -148,18 +209,31 @@ export const piapiService = {
         throw new Error(`Erro ao criar tarefa: ${error.message}`);
       }
       
-      if (!data.task_id) {
+      console.log(`[piapiService] Resposta de criação de áudio:`, data);
+      
+      if (!data) {
+        throw new Error('Resposta vazia da função');
+      }
+      
+      // Normalizar resposta
+      const taskId = data.task_id || data.taskId;
+      if (!taskId) {
         throw new Error('ID da tarefa não recebido');
       }
       
-      console.log(`[piapiService] Tarefa de áudio criada: ${data.task_id}`);
+      const status = data.status || 'pending';
+      const mediaUrl = data.media_url || data.mediaUrl || null;
+      
+      console.log(`[piapiService] Tarefa de áudio ${taskId} criada com status: ${status}`);
       
       return {
-        taskId: data.task_id,
-        status: data.status || 'pending'
+        taskId,
+        status,
+        mediaUrl
       };
     } catch (err) {
       console.error('[piapiService] Erro ao gerar áudio:', err);
+      toast.error(`Erro ao gerar áudio: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       throw err;
     }
   },
@@ -171,6 +245,10 @@ export const piapiService = {
     try {
       console.log(`[piapiService] Verificando status da tarefa: ${taskId}`);
       
+      if (!taskId) {
+        throw new Error("ID da tarefa não fornecido");
+      }
+      
       const { data, error } = await supabase.functions.invoke('piapi-task-status', {
         body: { taskId }
       });
@@ -180,13 +258,25 @@ export const piapiService = {
         throw new Error(`Erro ao verificar status: ${error.message}`);
       }
       
-      console.log(`[piapiService] Status da tarefa ${taskId}: ${data.status}`);
+      console.log(`[piapiService] Resposta de status da tarefa:`, data);
+      
+      if (!data) {
+        throw new Error('Resposta vazia da função');
+      }
+      
+      // Normalizar resposta
+      const normalizedTaskId = data.taskId || data.task_id || taskId;
+      const status = data.status || 'pending';
+      const mediaUrl = data.mediaUrl || data.media_url || null;
+      const responseError = data.error || null;
+      
+      console.log(`[piapiService] Status da tarefa ${taskId}: ${status}, URL: ${mediaUrl || 'não disponível'}`);
       
       return {
-        taskId: data.taskId,
-        status: data.status,
-        mediaUrl: data.mediaUrl,
-        error: data.error
+        taskId: normalizedTaskId,
+        status,
+        mediaUrl,
+        error: responseError
       };
     } catch (err) {
       console.error('[piapiService] Erro ao verificar status:', err);
@@ -199,6 +289,12 @@ export const piapiService = {
    */
   async cancelTask(taskId: string): Promise<boolean> {
     try {
+      console.log(`[piapiService] Cancelando tarefa: ${taskId}`);
+      
+      if (!taskId) {
+        throw new Error("ID da tarefa não fornecido");
+      }
+      
       const { data, error } = await supabase.functions.invoke('piapi-task-cancel', {
         body: { taskId }
       });
@@ -208,9 +304,12 @@ export const piapiService = {
         throw new Error(`Erro ao cancelar tarefa: ${error.message}`);
       }
       
-      return data.success || false;
+      console.log(`[piapiService] Resposta de cancelamento:`, data);
+      
+      return data?.success || false;
     } catch (err) {
       console.error('[piapiService] Erro ao cancelar tarefa:', err);
+      toast.error(`Erro ao cancelar tarefa: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
       return false;
     }
   },
@@ -221,6 +320,8 @@ export const piapiService = {
   subscribeToTaskUpdates(
     callback: (payload: any) => void
   ): () => void {
+    console.log(`[piapiService] Configurando inscrição para atualizações de tarefas`);
+    
     const subscription = supabase
       .channel('media-updates')
       .on(
@@ -230,11 +331,17 @@ export const piapiService = {
           schema: 'public',
           table: 'media_ready_events'
         },
-        callback
+        (payload) => {
+          console.log(`[piapiService] Recebido evento de mídia pronta:`, payload);
+          callback(payload);
+        }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[piapiService] Status da inscrição: ${status}`);
+      });
     
     return () => {
+      console.log(`[piapiService] Removendo inscrição para atualizações de tarefas`);
       supabase.removeChannel(subscription);
     };
   }
