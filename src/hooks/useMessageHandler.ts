@@ -52,10 +52,8 @@ export function useMessageHandler(
 
   const { handleGoogleCommand } = useGoogleCommandHandler();
   
-  // Sistema de geração de mídia usando PiAPI
   const mediaGeneration = useMediaGeneration({
     onProgress: (progress) => {
-      // Atualizar mensagem de loading com progresso
       if (mediaGenerationMessageId.current) {
         setMessages(prev => prev.map(msg => 
           msg.id === mediaGenerationMessageId.current 
@@ -101,14 +99,12 @@ export function useMessageHandler(
     try {
       setIsSending(true);
 
-      // Handle Google commands
       const canProceed = await handleGoogleCommand(content);
       if (!canProceed) {
         setIsSending(false);
         return false;
       }
       
-      // Adicionar mensagem do usuário
       const userMessageId = uuidv4();
       const userMessage: MessageType = {
         id: userMessageId,
@@ -124,21 +120,18 @@ export function useMessageHandler(
       
       let modeSwitch = null;
       
-      // Verificar se estamos no modo de imagem/vídeo/áudio e usando um modelo de IA para gerar mídia
       if ((mode === 'image' || mode === 'video' || mode === 'audio') && 
-          modelId.startsWith('piapi-') || 
-          modelId === 'flux-dev' || 
-          modelId === 'flux-schnell' || 
-          modelId === 'dalle-3' || 
-          modelId === 'sdxl' || 
-          modelId === 'midjourney') {
+          (modelId.startsWith('piapi-') || 
+           modelId === 'flux-dev' || 
+           modelId === 'flux-schnell' || 
+           modelId === 'dalle-3' || 
+           modelId === 'sdxl' || 
+           modelId === 'midjourney')) {
         
         try {
-          // Criar mensagem de loading para o assistente
           const loadingMessageId = uuidv4();
           mediaGenerationMessageId.current = loadingMessageId;
           
-          // Tipo de mídia baseado no modo
           let mediaTypeValue: PiapiMediaType = 'image';
           if (mode === 'video') mediaTypeValue = 'video';
           if (mode === 'audio') mediaTypeValue = 'audio';
@@ -156,7 +149,6 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          // Mapear modelo para formato correto PiAPI
           let piapiModel: PiapiModel;
           
           if (modelId.startsWith('piapi-')) {
@@ -165,18 +157,27 @@ export function useMessageHandler(
             piapiModel = modelId as PiapiModel;
           }
           
-          // Iniciar geração de mídia
+          console.log(`[useMessageHandler] Iniciando geração de ${mediaTypeValue} com modelo ${piapiModel}`);
+          
           let result;
           
-          if (mediaTypeValue === 'image') {
-            result = await piapiService.generateImage(content, piapiModel as any, params || {});
-          } else if (mediaTypeValue === 'video') {
-            result = await piapiService.generateVideo(content, piapiModel as any, params || {}, newFiles?.[0]);
-          } else if (mediaTypeValue === 'audio') {
-            result = await piapiService.generateAudio(content, piapiModel as any, params || {}, newFiles?.[0]);
+          try {
+            if (mediaTypeValue === 'image') {
+              result = await piapiService.generateImage(content, piapiModel as any, params || {});
+            } else if (mediaTypeValue === 'video') {
+              result = await piapiService.generateVideo(content, piapiModel as any, params || {}, newFiles?.[0]);
+            } else if (mediaTypeValue === 'audio') {
+              result = await piapiService.generateAudio(content, piapiModel as any, params || {}, newFiles?.[0]);
+            }
+          } catch (err) {
+            console.error(`[useMessageHandler] Erro na chamada de API:`, err);
+            throw new Error(`Erro ao criar tarefa: ${err instanceof Error ? err.message : String(err)}`);
           }
           
-          // Atualizar mensagem para indicar processamento
+          if (!result || !result.taskId) {
+            throw new Error("Resposta inválida da API: ID de tarefa não recebido");
+          }
+          
           setMessages(prev => prev.map(msg => 
             msg.id === loadingMessageId 
               ? { 
@@ -186,7 +187,6 @@ export function useMessageHandler(
               : msg
           ));
           
-          // Monitorar status da tarefa e atualizar quando pronto
           const unsubscribe = piapiService.subscribeToTaskUpdates((payload) => {
             const { task_id, media_url, error } = payload.new;
             
@@ -214,16 +214,13 @@ export function useMessageHandler(
                     : msg
                 ));
                 
-                // Adicionar à galeria de mídia
                 mediaGallery.saveMediaToGallery(media_url, content, mediaTypeValue, modelId);
               }
               
-              // Remover inscrição
               unsubscribe();
             }
           });
           
-          // Iniciar polling como backup
           const checkStatus = async () => {
             try {
               const statusResult = await piapiService.checkTaskStatus(result.taskId);
@@ -240,10 +237,8 @@ export function useMessageHandler(
                     : msg
                 ));
                 
-                // Adicionar à galeria de mídia
                 mediaGallery.saveMediaToGallery(statusResult.mediaUrl, content, mediaTypeValue, modelId);
                 
-                // Remover inscrição
                 unsubscribe();
               } else if (statusResult.status === 'failed') {
                 setMessages(prev => prev.map(msg => 
@@ -257,7 +252,6 @@ export function useMessageHandler(
                     : msg
                 ));
                 
-                // Remover inscrição
                 unsubscribe();
               }
             } catch (err) {
@@ -265,7 +259,6 @@ export function useMessageHandler(
             }
           };
           
-          // Verificar status após 10 segundos
           setTimeout(checkStatus, 10000);
         } catch (err) {
           console.error('[useMessageHandler] Erro ao gerar mídia:', err);
@@ -273,7 +266,6 @@ export function useMessageHandler(
             description: err instanceof Error ? err.message : 'Erro desconhecido'
           });
           
-          // Adicionar mensagem de erro
           setMessages(prev => [...prev, {
             id: uuidv4(),
             content: `Erro ao gerar mídia: ${err instanceof Error ? err.message : 'Erro desconhecido'}`,
@@ -285,7 +277,6 @@ export function useMessageHandler(
           }]);
         }
       } else {
-        // Caso não seja geração de mídia, processar normalmente
         if (comparing && leftModel && rightModel) {
           console.log(`[useMessageHandler] Modo comparação: enviando para modelos ${leftModel} e ${rightModel}`);
           const result = await messageService.handleCompareModels(

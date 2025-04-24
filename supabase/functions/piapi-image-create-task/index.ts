@@ -56,46 +56,62 @@ serve(async (req) => {
       console.log(`[piapi-image-create-task] Processing direct API request for ${model}`);
       
       try {
+        const requestBody = {
+          model: model === "dall-e-3" ? "dall-e-3" : "stable-diffusion-xl",
+          prompt: prompt,
+          size: params.size || "1024x1024",
+          n: 1,
+        };
+
+        // Add optional parameters if provided
+        if (params.negativePrompt) requestBody.negative_prompt = params.negativePrompt;
+        if (params.style) requestBody.style = params.style || "vivid";
+        if (params.quality) requestBody.quality = params.quality || "standard";
+
+        console.log(`[piapi-image-create-task] Request body: ${JSON.stringify(requestBody)}`);
+
         const dalleResponse = await fetch(`${PIAPI_API_BASE_URL}/images/generate`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${PIAPI_API_KEY}`
           },
-          body: JSON.stringify({
-            model: model === "dall-e-3" ? "dall-e-3" : "stable-diffusion-xl",
-            prompt: prompt,
-            size: params.size || "1024x1024",
-            negative_prompt: params.negativePrompt,
-            style: params.style || "vivid",
-            quality: params.quality || "standard"
-          })
+          body: JSON.stringify(requestBody)
         });
 
         console.log(`[piapi-image-create-task] API Response Status: ${dalleResponse.status}`);
 
         const responseText = await dalleResponse.text();
-        console.log(`[piapi-image-create-task] Raw API Response: ${responseText}`);
+        console.log(`[piapi-image-create-task] Raw API Response: ${responseText.substring(0, 200)}...`);
 
         if (!dalleResponse.ok) {
           let errorMessage;
           try {
             const errorData = JSON.parse(responseText);
             errorMessage = errorData.error?.message || `Error from ${model}: ${dalleResponse.statusText}`;
+            console.error(`[piapi-image-create-task] Parsed API Error:`, errorMessage);
           } catch (e) {
             errorMessage = `Error from ${model}: ${dalleResponse.statusText}`;
+            console.error(`[piapi-image-create-task] Failed to parse error response:`, e);
           }
-          console.error(`[piapi-image-create-task] API Error:`, errorMessage);
           throw new Error(errorMessage);
         }
 
-        const dalleData = JSON.parse(responseText);
+        let dalleData;
+        try {
+          dalleData = JSON.parse(responseText);
+        } catch (e) {
+          console.error(`[piapi-image-create-task] Failed to parse JSON response:`, e);
+          throw new Error(`Failed to parse API response from ${model}`);
+        }
+
         console.log(`[piapi-image-create-task] Successfully parsed response:`, {
           hasData: !!dalleData.data,
           hasUrl: dalleData.data?.url ? 'yes' : 'no'
         });
 
         if (!dalleData.data?.url) {
+          console.error(`[piapi-image-create-task] No URL in response:`, dalleData);
           throw new Error(`No image URL received from ${model}`);
         }
 
@@ -194,6 +210,7 @@ serve(async (req) => {
     };
 
     console.log(`[piapi-image-create-task] Creating task with model ${modelName}`);
+    console.log(`[piapi-image-create-task] Task data: ${JSON.stringify(taskData)}`);
     
     const response = await fetch(`${PIAPI_API_BASE_URL}/task`, {
       method: "POST",
@@ -263,4 +280,3 @@ serve(async (req) => {
     );
   }
 });
-

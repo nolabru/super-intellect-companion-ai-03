@@ -52,6 +52,8 @@ export const piapiService = {
     params: PiapiParams = {}
   ): Promise<PiapiTaskResult> {
     try {
+      console.log(`[piapiService] Iniciando geração de imagem com modelo ${model} e prompt: "${prompt.substring(0, 30)}..."`);
+      
       const { data, error } = await supabase.functions.invoke('piapi-image-create-task', {
         body: { prompt, model, params }
       });
@@ -61,15 +63,30 @@ export const piapiService = {
         throw new Error(`Erro ao criar tarefa: ${error.message}`);
       }
       
-      if (!data.task_id) {
+      console.log(`[piapiService] Resposta recebida:`, data);
+      
+      // Validar resposta
+      if (!data) {
+        throw new Error('Resposta vazia da função');
+      }
+      
+      // Obter task_id da resposta, considerando formatos diferentes
+      const taskId = data.task_id || data.taskId;
+      if (!taskId) {
+        console.error('[piapiService] ID da tarefa não encontrado na resposta:', data);
         throw new Error('ID da tarefa não recebido');
       }
       
-      console.log(`[piapiService] Tarefa de imagem criada: ${data.task_id}`);
+      // Checar se a tarefa foi completada imediatamente (caso DALL-E ou similar)
+      const status = data.status || 'pending';
+      const mediaUrl = data.media_url || null;
+      
+      console.log(`[piapiService] Tarefa ${taskId} criada com status: ${status}`);
       
       return {
-        taskId: data.task_id,
-        status: data.status || 'pending'
+        taskId,
+        status: status,
+        mediaUrl: mediaUrl
       };
     } catch (err) {
       console.error('[piapiService] Erro ao gerar imagem:', err);
@@ -152,6 +169,8 @@ export const piapiService = {
    */
   async checkTaskStatus(taskId: string): Promise<PiapiTaskResult> {
     try {
+      console.log(`[piapiService] Verificando status da tarefa: ${taskId}`);
+      
       const { data, error } = await supabase.functions.invoke('piapi-task-status', {
         body: { taskId }
       });
@@ -160,6 +179,8 @@ export const piapiService = {
         console.error('[piapiService] Erro ao verificar status da tarefa:', error);
         throw new Error(`Erro ao verificar status: ${error.message}`);
       }
+      
+      console.log(`[piapiService] Status da tarefa ${taskId}: ${data.status}`);
       
       return {
         taskId: data.taskId,
