@@ -1,201 +1,378 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { mediaService, MediaGenerationResult } from '@/services/mediaService';
+import { PiapiMediaType, PiapiModel, PiapiParams, PiapiTaskResult, piapiService } from '@/services/piapiService';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { getPiapiService, PiapiMediaType, PiapiModel, PiapiParams } from '@/services/piapiDirectService';
 
-interface UseMediaGenerationOptions {
+export interface MediaGenerationHookOptions {
   showToasts?: boolean;
   onProgress?: (progress: number) => void;
+  onComplete?: (result: MediaGenerationResult) => void;
+  autoSaveToGallery?: boolean;
 }
 
-export interface MediaGenerationTask {
+export interface GenerationTask {
   taskId: string;
+  progress: number;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   mediaUrl?: string;
   error?: string;
-  progress: number;
 }
 
-export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [currentTask, setCurrentTask] = useState<MediaGenerationTask | null>(null);
+export function useMediaGeneration(options: MediaGenerationHookOptions = {}) {
+  const { user } = useAuth();
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [tasks, setTasks] = useState<Record<string, GenerationTask>>({});
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  
+  const abortControllers = useRef<Record<string, AbortController>>({});
 
-  const monitorTaskProgress = useCallback(async (taskId: string) => {
-    const piapiService = getPiapiService();
-    let progress = 0;
-    let isCompleted = false;
-
-    while (!isCompleted) {
-      try {
-        const result = await piapiService.checkTaskStatus(taskId);
-
-        switch (result.status) {
-          case 'completed':
-            setCurrentTask({
-              ...result,
-              progress: 100
-            });
-            isCompleted = true;
-            if (options.showToasts) {
-              toast.success('Mídia gerada com sucesso');
-            }
-            break;
-
-          case 'failed':
-            setCurrentTask({
-              ...result,
-              progress: 100
-            });
-            isCompleted = true;
-            if (options.showToasts && result.error) {
-              toast.error('Falha ao gerar mídia', { description: result.error });
-            }
-            break;
-
-          case 'processing':
-            progress = Math.min(progress + 5, 95);
-            setCurrentTask(prev => ({
-              ...prev!,
-              status: 'processing',
-              progress
-            }));
-            if (options.onProgress) {
-              options.onProgress(progress);
-            }
-            break;
-
-          default:
-            progress = Math.min(progress + 2, 90);
-            setCurrentTask(prev => ({
-              ...prev!,
-              progress
-            }));
-            if (options.onProgress) {
-              options.onProgress(progress);
-            }
-        }
-
-        if (!isCompleted) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      } catch (error) {
-        console.error('[useMediaGeneration] Error monitoring task:', error);
-        setCurrentTask(prev => ({
-          ...prev!,
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
-          progress: 100
-        }));
-        isCompleted = true;
-        if (options.showToasts) {
-          toast.error('Erro ao verificar status da geração');
-        }
-      }
-    }
-
-    setIsGenerating(false);
-  }, [options.showToasts, options.onProgress]);
-
+  /**
+   * Gerar mídia usando diretamente o serviço PIAPI
+   */
   const generateMedia = useCallback(async (
     prompt: string,
     mediaType: PiapiMediaType,
     model: PiapiModel,
     params: PiapiParams = {},
     referenceUrl?: string
-  ) => {
+  ): Promise<MediaGenerationResult> => {
     try {
+      console.log(`[useMediaGeneration] Iniciando geração com parâmetros:`, {
+        prompt,
+        mediaType,
+        model,
+        params,
+        referenceUrl
+      });
+      
       setIsGenerating(true);
-      const piapiService = getPiapiService();
-
-      let result;
-      switch (mediaType) {
-        case 'image':
-          result = await piapiService.generateImage(prompt, model as any, params);
-          break;
-        case 'video':
-          result = await piapiService.generateVideo(
-            prompt, 
-            model as any,
-            params,
-            referenceUrl
-          );
-          break;
-        case 'audio':
-          result = await piapiService.generateAudio(
-            prompt,
-            model as any,
-            params,
-            referenceUrl
-          );
-          break;
-        default:
-          throw new Error(`Unsupported media type: ${mediaType}`);
+      
+      if (options.showToasts !== false) {
+        toast.info(`Iniciando geração de ${mediaType === 'image' ? 'imagem' : mediaType === 'video' ? 'vídeo' : 'áudio'}...`);
       }
-
-      setCurrentTask({
-        ...result,
-        progress: 0
-      });
-
-      if (result.status === 'pending' || result.status === 'processing') {
-        monitorTaskProgress(result.taskId);
-      } else if (result.status === 'completed') {
-        setCurrentTask({
-          ...result,
-          progress: 100
-        });
-        setIsGenerating(false);
-        if (options.showToasts) {
-          toast.success('Mídia gerada com sucesso');
-        }
-      }
-    } catch (error) {
-      console.error('[useMediaGeneration] Error generating media:', error);
-      setIsGenerating(false);
-      setCurrentTask({
-        taskId: '',
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        progress: 100
-      });
-      if (options.showToasts) {
-        toast.error('Erro ao gerar mídia', {
-          description: error instanceof Error ? error.message : 'Erro desconhecido'
-        });
-      }
-    }
-  }, [monitorTaskProgress, options.showToasts]);
-
-  const cancelGeneration = useCallback(async () => {
-    if (currentTask?.taskId) {
+      
+      // Criar controller para possibilitar cancelamento
+      const controller = new AbortController();
+      
+      // Iniciar geração com PIAPI diretamente
+      let result: PiapiTaskResult;
+      
+      console.log(`[useMediaGeneration] Chamando serviço PIAPI para ${mediaType} com modelo ${model}`);
+      
       try {
-        const piapiService = getPiapiService();
-        const success = await piapiService.cancelTask(currentTask.taskId);
-        
-        if (success) {
-          setCurrentTask(prev => ({
-            ...prev!,
-            status: 'failed',
-            error: 'Task cancelled by user',
-            progress: 100
-          }));
-          setIsGenerating(false);
-          if (options.showToasts) {
-            toast.info('Geração cancelada');
-          }
+        if (mediaType === 'image') {
+          result = await piapiService.generateImage(prompt, model as any, params);
+        } else if (mediaType === 'video') {
+          result = await piapiService.generateVideo(prompt, model as any, params, referenceUrl);
+        } else { // audio
+          result = await piapiService.generateAudio(prompt, model as any, params, referenceUrl);
         }
-      } catch (error) {
-        console.error('[useMediaGeneration] Error cancelling task:', error);
-        if (options.showToasts) {
-          toast.error('Erro ao cancelar geração');
+        
+        console.log(`[useMediaGeneration] Resultado inicial da chamada:`, result);
+      } catch (err) {
+        console.error(`[useMediaGeneration] Erro na chamada PIAPI:`, err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        
+        if (options.showToasts !== false) {
+          toast.error(`Erro ao gerar ${mediaType}`, { description: errorMsg });
+        }
+        
+        return {
+          success: false,
+          error: errorMsg
+        };
+      }
+      
+      // Registrar tarefa
+      if (result && result.taskId) {
+        const taskId = result.taskId;
+        setCurrentTaskId(taskId);
+        abortControllers.current[taskId] = controller;
+        
+        const taskObject: GenerationTask = {
+          taskId,
+          progress: 0,
+          status: result.status || 'pending',
+          mediaUrl: result.mediaUrl,
+          error: result.error
+        };
+        
+        console.log(`[useMediaGeneration] Registrando nova tarefa:`, taskObject);
+        
+        setTasks(prev => ({
+          ...prev,
+          [taskId]: taskObject
+        }));
+        
+        // Se já estiver completo (como no caso do DALL-E)
+        if (result.status === 'completed' && result.mediaUrl) {
+          console.log(`[useMediaGeneration] Tarefa já completa com URL:`, result.mediaUrl);
+          
+          setTasks(prev => ({
+            ...prev,
+            [taskId]: {
+              ...prev[taskId],
+              progress: 100
+            }
+          }));
+          
+          if (options.onProgress) {
+            options.onProgress(100);
+          }
+          
+          if (options.onComplete) {
+            options.onComplete({
+              success: true,
+              mediaUrl: result.mediaUrl,
+              taskId: result.taskId
+            });
+          }
+          
+          if (options.autoSaveToGallery !== false && user?.id) {
+            try {
+              await mediaService.saveToGallery(
+                result.mediaUrl,
+                prompt,
+                mediaType,
+                model as string,
+                user.id
+              );
+              console.log('[useMediaGeneration] Media saved to gallery successfully');
+            } catch (err) {
+              console.error('[useMediaGeneration] Error saving media to gallery:', err);
+            }
+          }
+          
+          if (options.showToasts !== false) {
+            toast.success(`${mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Áudio'} gerado com sucesso!`);
+          }
+          
+          return {
+            success: true,
+            mediaUrl: result.mediaUrl,
+            taskId: result.taskId
+          };
+        }
+        
+        // Monitorar status periodicamente para tarefas pendentes
+        const checkStatusInterval = setInterval(async () => {
+          try {
+            if (controller.signal.aborted) {
+              clearInterval(checkStatusInterval);
+              return;
+            }
+            
+            console.log(`[useMediaGeneration] Verificando status da tarefa ${taskId}`);
+            
+            let statusResult: PiapiTaskResult;
+            try {
+              statusResult = await piapiService.checkTaskStatus(taskId);
+              console.log(`[useMediaGeneration] Status atual:`, statusResult);
+            } catch (statusError) {
+              console.error(`[useMediaGeneration] Erro ao verificar status:`, statusError);
+              return;
+            }
+            
+            setTasks(prev => ({
+              ...prev,
+              [taskId]: {
+                ...prev[taskId],
+                status: statusResult.status,
+                mediaUrl: statusResult.mediaUrl,
+                error: statusResult.error,
+                progress: prev[taskId]?.progress || 0 // Manter progresso atual
+              }
+            }));
+            
+            // Simular progresso se não tiver progresso real
+            if (statusResult.status === 'pending' || statusResult.status === 'processing') {
+              setTasks(prev => {
+                const currentTask = prev[taskId];
+                if (!currentTask) return prev;
+                
+                // Incrementar progresso gradualmente até 90%
+                const newProgress = Math.min(90, (currentTask.progress || 0) + 5);
+                
+                if (options.onProgress) {
+                  options.onProgress(newProgress);
+                }
+                
+                return {
+                  ...prev,
+                  [taskId]: {
+                    ...currentTask,
+                    progress: newProgress
+                  }
+                };
+              });
+            }
+            
+            // Se completou ou falhou, parar monitoramento
+            if (statusResult.status === 'completed' || statusResult.status === 'failed') {
+              clearInterval(checkStatusInterval);
+              
+              // Definir progresso como 100% se concluído
+              if (statusResult.status === 'completed') {
+                setTasks(prev => ({
+                  ...prev,
+                  [taskId]: {
+                    ...prev[taskId],
+                    progress: 100
+                  }
+                }));
+                
+                if (options.onProgress) {
+                  options.onProgress(100);
+                }
+              }
+              
+              // Salvar na galeria automaticamente se solicitado e se bem sucedido
+              if (options.autoSaveToGallery !== false && 
+                  statusResult.status === 'completed' && 
+                  statusResult.mediaUrl &&
+                  user?.id) {
+                try {
+                  await mediaService.saveToGallery(
+                    statusResult.mediaUrl,
+                    prompt,
+                    mediaType,
+                    model as string,
+                    user.id
+                  );
+                  console.log('[useMediaGeneration] Media saved to gallery successfully');
+                } catch (err) {
+                  console.error('[useMediaGeneration] Error saving media to gallery:', err);
+                }
+              }
+              
+              // Notificar conclusão
+              if (options.onComplete) {
+                options.onComplete({
+                  success: statusResult.status === 'completed',
+                  error: statusResult.error,
+                  mediaUrl: statusResult.mediaUrl,
+                  taskId: statusResult.taskId
+                });
+              }
+              
+              // Notificar usuário
+              if (options.showToasts !== false) {
+                if (statusResult.status === 'completed') {
+                  toast.success(`${mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Áudio'} gerado com sucesso!`);
+                } else {
+                  toast.error(`Erro ao gerar ${mediaType === 'image' ? 'imagem' : mediaType === 'video' ? 'vídeo' : 'áudio'}: ${statusResult.error || 'Erro desconhecido'}`);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('[useMediaGeneration] Erro ao verificar status:', err);
+          }
+        }, 3000);
+        
+        // Limpar interval após timeout
+        setTimeout(() => {
+          clearInterval(checkStatusInterval);
+        }, 10 * 60 * 1000); // 10 minutos de timeout
+        
+        return {
+          success: true,
+          taskId: result.taskId
+        };
+      } else {
+        // Nenhum taskId retornado
+        const errorMsg = 'Nenhum ID de tarefa retornado pela API';
+        console.error(`[useMediaGeneration] ${errorMsg}`);
+        
+        if (options.showToasts !== false) {
+          toast.error(`Erro ao iniciar geração: ${errorMsg}`);
+        }
+        
+        return {
+          success: false,
+          error: errorMsg
+        };
+      }
+    } catch (err) {
+      console.error('[useMediaGeneration] Erro ao gerar mídia:', err);
+      
+      if (options.showToasts !== false) {
+        toast.error(`Erro ao gerar mídia: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      }
+      
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Erro desconhecido'
+      };
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [user?.id, options]);
+
+  /**
+   * Cancelar uma tarefa de geração de mídia
+   */
+  const cancelTask = useCallback(async (taskId: string): Promise<boolean> => {
+    try {
+      if (!taskId) return false;
+      
+      console.log(`[useMediaGeneration] Cancelando tarefa: ${taskId}`);
+      
+      // Abortar controller se existir
+      if (abortControllers.current[taskId]) {
+        abortControllers.current[taskId].abort();
+        delete abortControllers.current[taskId];
+      }
+      
+      // Cancelar tarefa no serviço
+      const result = await piapiService.cancelTask(taskId);
+      
+      if (result) {
+        setTasks(prev => ({
+          ...prev,
+          [taskId]: {
+            ...prev[taskId],
+            status: 'failed',
+            error: 'Tarefa cancelada pelo usuário'
+          }
+        }));
+        
+        if (options.showToasts !== false) {
+          toast.info('Tarefa de geração cancelada');
         }
       }
+      
+      return result;
+    } catch (err) {
+      console.error('[useMediaGeneration] Erro ao cancelar tarefa:', err);
+      return false;
     }
-  }, [currentTask?.taskId, options.showToasts]);
+  }, [options]);
+
+  /**
+   * Limpar tarefas
+   */
+  const clearTasks = useCallback(() => {
+    // Cancelar todos os controllers ativos
+    Object.values(abortControllers.current).forEach(controller => {
+      try {
+        controller.abort();
+      } catch (err) {
+        console.error('[useMediaGeneration] Erro ao abortar controller:', err);
+      }
+    });
+    
+    abortControllers.current = {};
+    setTasks({});
+    setCurrentTaskId(null);
+  }, []);
 
   return {
     generateMedia,
-    cancelGeneration,
+    cancelTask,
+    clearTasks,
     isGenerating,
-    currentTask
+    tasks,
+    currentTask: currentTaskId ? tasks[currentTaskId] : null
   };
 }

@@ -1,22 +1,17 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Loader2, Image, Video, Music } from 'lucide-react';
 import { useMediaGeneration } from '@/hooks/useMediaGeneration';
-import { initializePiapiService } from '@/services/piapiDirectService';
 import { toast } from 'sonner';
 
 const PiapiServicesButton = () => {
   const [prompt, setPrompt] = React.useState('');
   const [isOpen, setIsOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'image' | 'video' | 'audio'>('image');
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('piapi_key') || '');
-  const [isInitialized, setIsInitialized] = useState(false);
   
   const imageGeneration = useMediaGeneration({
     showToasts: true
@@ -30,26 +25,7 @@ const PiapiServicesButton = () => {
     showToasts: true
   });
   
-  useEffect(() => {
-    if (apiKey && !isInitialized) {
-      try {
-        initializePiapiService(apiKey);
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Error initializing PIAPI service:', error);
-        toast.error('Error initializing PIAPI service');
-      }
-    }
-  }, [apiKey, isInitialized]);
-  
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newApiKey = e.target.value;
-    setApiKey(newApiKey);
-    localStorage.setItem('piapi_key', newApiKey);
-    setIsInitialized(false); // Reset initialization state
-  };
-  
-  // Get active generation instance based on current tab
+  // Determinar qual instância de geração usar com base na aba ativa
   const getActiveGeneration = () => {
     switch (activeTab) {
       case 'image': return imageGeneration;
@@ -65,23 +41,13 @@ const PiapiServicesButton = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!apiKey) {
-      toast.error('Please enter your PIAPI API key');
-      return;
-    }
-    
     if (!prompt.trim()) {
-      toast.error('Please enter a prompt');
+      toast.error('Por favor, insira um prompt');
       return;
     }
     
     try {
-      if (!isInitialized) {
-        initializePiapiService(apiKey);
-        setIsInitialized(true);
-      }
-      
-      console.log(`[PiApiServicesButton] Starting ${activeTab} generation with prompt: ${prompt}`);
+      console.log(`[PiapiServicesButton] Iniciando geração de ${activeTab} com prompt: ${prompt}`);
       
       switch (activeTab) {
         case 'image':
@@ -95,9 +61,9 @@ const PiapiServicesButton = () => {
           break;
       }
     } catch (error) {
-      console.error('Error generating media:', error);
-      toast.error('Error generating media', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+      console.error('Erro ao gerar mídia:', error);
+      toast.error('Erro ao gerar mídia', {
+        description: error instanceof Error ? error.message : 'Erro desconhecido'
       });
     }
   };
@@ -107,27 +73,15 @@ const PiapiServicesButton = () => {
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button variant="outline" size="sm" className="flex items-center gap-1">
-            <span>PIAPI Services</span>
+            <span>Serviços PiAPI</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0" align="end">
           <div className="p-4 border-b">
-            <h2 className="text-lg font-medium">PIAPI Media Generation</h2>
+            <h2 className="text-lg font-medium">Geração de Mídia com PiAPI</h2>
             <p className="text-sm text-gray-500">
-              Generate images, videos and audio using PIAPI services.
+              Gere imagens, vídeos e áudio usando os serviços da PiAPI.
             </p>
-            
-            <div className="mt-4">
-              <Label htmlFor="apiKey">PIAPI API Key</Label>
-              <Input
-                id="apiKey"
-                type="password"
-                value={apiKey}
-                onChange={handleApiKeyChange}
-                placeholder="Enter your PIAPI API key"
-                className="mt-1"
-              />
-            </div>
           </div>
           
           <Tabs 
@@ -139,15 +93,15 @@ const PiapiServicesButton = () => {
             <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="image" className="flex items-center gap-1">
                 <Image className="h-4 w-4" />
-                <span>Image</span>
+                <span>Imagem</span>
               </TabsTrigger>
               <TabsTrigger value="video" className="flex items-center gap-1">
                 <Video className="h-4 w-4" />
-                <span>Video</span>
+                <span>Vídeo</span>
               </TabsTrigger>
               <TabsTrigger value="audio" className="flex items-center gap-1">
                 <Music className="h-4 w-4" />
-                <span>Audio</span>
+                <span>Áudio</span>
               </TabsTrigger>
             </TabsList>
             
@@ -155,10 +109,10 @@ const PiapiServicesButton = () => {
               <Textarea 
                 placeholder={
                   activeTab === 'image' 
-                    ? 'Describe the image you want to generate...' 
+                    ? 'Descreva a imagem que deseja gerar...' 
                     : activeTab === 'video'
-                      ? 'Describe the video you want to generate...'
-                      : 'Describe the audio you want to generate...'
+                      ? 'Descreva o vídeo que deseja gerar...'
+                      : 'Descreva o áudio que deseja gerar...'
                 }
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -171,7 +125,7 @@ const PiapiServicesButton = () => {
                   {activeTab === 'image' && (
                     <img 
                       src={currentTask.mediaUrl} 
-                      alt="Generated image" 
+                      alt="Imagem gerada" 
                       className="w-full h-auto rounded-lg"
                     />
                   )}
@@ -192,23 +146,23 @@ const PiapiServicesButton = () => {
                 </div>
               )}
               
-              {currentTask && currentTask.error && (
-                <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 text-sm text-red-600">
-                  {currentTask.error}
-                </div>
-              )}
-              
               {activeGeneration.isGenerating && (
                 <div className="flex flex-col items-center justify-center py-4 gap-2">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                   <p className="text-sm text-gray-500">
                     {activeTab === 'image' 
-                      ? 'Generating image...' 
+                      ? 'Gerando imagem...' 
                       : activeTab === 'video'
-                        ? 'Generating video...'
-                        : 'Generating audio...'}
+                        ? 'Gerando vídeo...'
+                        : 'Gerando áudio...'}
                     {currentTask && currentTask.progress > 0 && ` ${currentTask.progress.toFixed(0)}%`}
                   </p>
+                </div>
+              )}
+              
+              {currentTask && currentTask.error && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 text-sm text-red-600">
+                  {currentTask.error}
                 </div>
               )}
               
@@ -218,19 +172,19 @@ const PiapiServicesButton = () => {
                   variant="outline" 
                   onClick={() => setIsOpen(false)}
                 >
-                  Close
+                  Fechar
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={!apiKey || !prompt.trim() || activeGeneration.isGenerating}
+                  disabled={!prompt.trim() || activeGeneration.isGenerating}
                 >
                   {activeGeneration.isGenerating ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                      Generating...
+                      Gerando...
                     </>
                   ) : (
-                    'Generate'
+                    'Gerar'
                   )}
                 </Button>
               </div>
