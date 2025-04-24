@@ -7,6 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const DALL_E_API_URL = "https://api.piapi.ai/v1/images/generate";
+const TASK_API_URL = "https://api.piapi.ai/api/v1/task";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -31,85 +34,54 @@ serve(async (req) => {
       );
     }
 
-    // Construct the task data based on the model
-    let taskData;
-    let apiUrl = "https://api.piapi.ai/api/v1/task";
-    let modelName = "";
+    // Validate parameters
+    if (params.width && (params.width < 256 || params.width > 1024)) {
+      return new Response(
+        JSON.stringify({ error: "Width must be between 256 and 1024 pixels" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-    // Common webhook configuration
-    const webhookConfig = {
-      "webhook_config": {
-        "endpoint": webhookUrl
-      }
-    };
+    if (params.height && (params.height < 256 || params.height > 1024)) {
+      return new Response(
+        JSON.stringify({ error: "Height must be between 256 and 1024 pixels" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-    switch (model) {
-      case "flux-dev":
-        modelName = "Qubico/flux1-dev";
-        taskData = {
-          "model": modelName,
-          "task_type": "txt2img",
-          "input": {
-            "prompt": prompt,
-            "negative_prompt": params.negativePrompt || "",
-            "guidance_scale": params.guidanceScale || 7.5,
-            "width": params.width || 768,
-            "height": params.height || 768
-          },
-          "config": webhookConfig
-        };
-        break;
-      case "flux-schnell":
-        modelName = "Qubico/flux1-schnell";
-        taskData = {
-          "model": modelName,
-          "task_type": "txt2img",
-          "input": {
-            "prompt": prompt,
-            "negative_prompt": params.negativePrompt || "",
-            "guidance_scale": params.guidanceScale || 7.5,
-            "width": params.width || 768,
-            "height": params.height || 768
-          },
-          "config": webhookConfig
-        };
-        break;
-      case "midjourney":
-        modelName = "midjourney";
-        apiUrl = "https://api.piapi.ai/api/v1/midjourney/imagine";
-        taskData = {
-          "prompt": prompt,
-          "webhook_url": webhookUrl
-        };
-        break;
-      case "dalle-3":
-        modelName = "dall-e-3";
-        apiUrl = "https://api.piapi.ai/v1/images/generate";
-        
-        // Retornar diretamente pois não é baseado no sistema de tarefas
-        const dalleResponse = await fetch(apiUrl, {
+    // Handle DALL-E 3 and SDXL models differently
+    if (model === "dall-e-3" || model === "sdxl") {
+      console.log(`Processing request for ${model} model with direct API call`);
+      
+      try {
+        const dalleResponse = await fetch(DALL_E_API_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${PIAPI_API_KEY}`
           },
           body: JSON.stringify({
-            model: modelName,
+            model: model === "dall-e-3" ? "dall-e-3" : "stable-diffusion-xl",
             prompt: prompt,
-            size: params.size || "1024x1024"
+            size: params.size || "1024x1024",
+            negative_prompt: params.negativePrompt
           })
         });
 
         if (!dalleResponse.ok) {
           const errorData = await dalleResponse.json();
-          throw new Error(`Error from PiAPI: ${errorData.error?.message || dalleResponse.statusText}`);
+          console.error(`Error from PiAPI (${model}):`, errorData);
+          throw new Error(errorData.error?.message || `Error from ${model}: ${dalleResponse.statusText}`);
         }
 
         const dalleData = await dalleResponse.json();
-        const imageUrl = dalleData.data?.url;
-        
-        if (!imageUrl) {
-          throw new Error("No image URL received from PiAPI");
+        console.log(`Successful response from ${model}:`, {
+          hasData: !!dalleData.data,
+          hasUrl: dalleData.data?.url ? 'yes' : 'no'
+        });
+
+        if (!dalleData.data?.url) {
+          throw new Error(`No image URL received from ${model}`);
         }
 
         // Store info in Supabase
@@ -124,26 +96,26 @@ serve(async (req) => {
           .from("piapi_tasks")
           .insert({
             task_id: generatedId,
-            model: modelName,
+            model: model,
             prompt,
             status: "completed",
             media_type: "image",
-            media_url: imageUrl,
+            media_url: dalleData.data.url,
             params: params
           });
 
         if (insertError) {
           console.error(`Error inserting task record: ${insertError.message}`);
         } else {
-          // Inserir evento de mídia pronta
+          // Insert media ready event
           await supabaseClient
             .from("media_ready_events")
             .insert({
               task_id: generatedId,
               media_type: "image",
-              media_url: imageUrl,
+              media_url: dalleData.data.url,
               prompt,
-              model: modelName
+              model: model
             });
         }
 
@@ -151,88 +123,30 @@ serve(async (req) => {
           JSON.stringify({
             task_id: generatedId,
             status: "completed",
-            media_url: imageUrl,
-            message: `Image generated with model ${modelName}`
+            media_url: dalleData.data.url,
+            message: `Image generated with model ${model}`
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
-        
-      case "sdxl":
-        modelName = "stable-diffusion-xl";
-        apiUrl = "https://api.piapi.ai/v1/images/generate";
-        
-        // Similar ao DALL-E, retornar diretamente
-        const sdxlResponse = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${PIAPI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: modelName,
-            prompt: prompt,
-            size: params.size || "1024x1024",
-            negative_prompt: params.negativePrompt || ""
-          })
-        });
+      } catch (error) {
+        console.error(`Error processing ${model} request:`, error);
+        throw error;
+      }
+    }
 
-        if (!sdxlResponse.ok) {
-          const errorData = await sdxlResponse.json();
-          throw new Error(`Error from PiAPI: ${errorData.error?.message || sdxlResponse.statusText}`);
-        }
+    // For other models (Flux, etc.), use the task-based API
+    console.log(`Processing request for ${model} model with task API`);
+    
+    let modelName = "";
+    let taskData;
 
-        const sdxlData = await sdxlResponse.json();
-        const sdxlImageUrl = sdxlData.data?.url;
-        
-        if (!sdxlImageUrl) {
-          throw new Error("No image URL received from PiAPI");
-        }
-
-        // Store info in Supabase
-        const supabaseClientSdxl = createClient(
-          Deno.env.get("SUPABASE_URL") || "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-        );
-
-        const generatedIdSdxl = crypto.randomUUID();
-        
-        const { error: insertErrorSdxl } = await supabaseClientSdxl
-          .from("piapi_tasks")
-          .insert({
-            task_id: generatedIdSdxl,
-            model: modelName,
-            prompt,
-            status: "completed",
-            media_type: "image",
-            media_url: sdxlImageUrl,
-            params: params
-          });
-
-        if (insertErrorSdxl) {
-          console.error(`Error inserting task record: ${insertErrorSdxl.message}`);
-        } else {
-          // Inserir evento de mídia pronta
-          await supabaseClientSdxl
-            .from("media_ready_events")
-            .insert({
-              task_id: generatedIdSdxl,
-              media_type: "image",
-              media_url: sdxlImageUrl,
-              prompt,
-              model: modelName
-            });
-        }
-
-        return new Response(
-          JSON.stringify({
-            task_id: generatedIdSdxl,
-            status: "completed",
-            media_url: sdxlImageUrl,
-            message: `Image generated with model ${modelName}`
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-        
+    switch (model) {
+      case "flux-dev":
+        modelName = "Qubico/flux1-dev";
+        break;
+      case "flux-schnell":
+        modelName = "Qubico/flux1-schnell";
+        break;
       default:
         return new Response(
           JSON.stringify({ error: "Unsupported model" }),
@@ -240,10 +154,26 @@ serve(async (req) => {
         );
     }
 
-    console.log(`Creating image task with model ${modelName}`);
+    taskData = {
+      "model": modelName,
+      "task_type": "txt2img",
+      "input": {
+        "prompt": prompt,
+        "negative_prompt": params.negativePrompt || "",
+        "guidance_scale": params.guidanceScale || 7.5,
+        "width": params.width || 768,
+        "height": params.height || 768
+      },
+      "config": {
+        "webhook_config": {
+          "endpoint": webhookUrl
+        }
+      }
+    };
+
+    console.log(`Creating task with model ${modelName}`);
     
-    // Send request to PiAPI
-    const response = await fetch(apiUrl, {
+    const response = await fetch(TASK_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -254,12 +184,12 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error(`Error creating task: ${JSON.stringify(errorData)}`);
+      console.error("Error response from PiAPI:", errorData);
       throw new Error(`Error from PiAPI: ${errorData.error?.message || response.statusText}`);
     }
 
     const data = await response.json();
-    console.log(`Task created successfully: ${data.task_id}`);
+    console.log("Task created successfully:", data);
 
     // Store task info in Supabase
     const supabaseClient = createClient(
@@ -291,10 +221,16 @@ serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ 
+        error: error.message,
+        details: "Check the edge function logs for more information"
+      }),
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
+      }
     );
   }
 });
