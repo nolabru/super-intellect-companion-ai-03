@@ -99,6 +99,14 @@ serve(async (req) => {
     console.log(`[piapi-task-cancel] Resposta da API: ${responseText}`);
 
     let success = false;
+    let responseData;
+    
+    try {
+      // Tenta analisar a resposta como JSON
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      console.log("[piapi-task-cancel] Resposta não é JSON válido");
+    }
     
     // Analisar resposta
     if (response.ok) {
