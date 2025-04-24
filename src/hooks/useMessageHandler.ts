@@ -14,7 +14,7 @@ import { useMediaHandling } from './message/useMediaHandling';
 import { useMessageState } from './message/useMessageState';
 import { useGoogleCommandHandler } from './message/useGoogleCommandHandler';
 import { toast } from 'sonner';
-import { piapiService, PiapiMediaType, PiapiModel } from '@/services/piapiService';
+import { piapiDirectService as piapiService } from '@/services/piapiDirectService';
 import { useMediaGeneration } from './useMediaGeneration';
 
 export function useMessageHandler(
@@ -65,7 +65,7 @@ export function useMessageHandler(
   });
   
   const mediaGenerationMessageId = useRef<string | null>(null);
-  const mediaType = useRef<PiapiMediaType>('image');
+  const mediaType = useRef<'image' | 'video' | 'audio'>('image');
 
   const sendMessage = useCallback(async (
     content: string,
@@ -132,7 +132,7 @@ export function useMessageHandler(
           const loadingMessageId = uuidv4();
           mediaGenerationMessageId.current = loadingMessageId;
           
-          let mediaTypeValue: PiapiMediaType = 'image';
+          let mediaTypeValue: 'image' | 'video' | 'audio' = 'image';
           if (mode === 'video') mediaTypeValue = 'video';
           if (mode === 'audio') mediaTypeValue = 'audio';
           mediaType.current = mediaTypeValue;
@@ -149,117 +149,71 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          let piapiModel: PiapiModel;
+          let piapiModel;
           
           if (modelId.startsWith('piapi-')) {
-            piapiModel = modelId.replace('piapi-', '') as PiapiModel;
+            piapiModel = modelId.replace('piapi-', '');
           } else {
-            piapiModel = modelId as PiapiModel;
+            piapiModel = modelId;
           }
           
           console.log(`[useMessageHandler] Iniciando geração de ${mediaTypeValue} com modelo ${piapiModel}`);
           
+          // Check if API key is configured
+          if (!piapiService.getApiKey) {
+            throw new Error("Chave de API da PiAPI não está configurada. Configure na opção 'Serviços PiAPI'");
+          }
+          
           let result;
           
           try {
-            if (mediaTypeValue === 'image') {
-              result = await piapiService.generateImage(content, piapiModel as any, params || {});
-            } else if (mediaTypeValue === 'video') {
-              result = await piapiService.generateVideo(content, piapiModel as any, params || {}, newFiles?.[0]);
-            } else if (mediaTypeValue === 'audio') {
-              result = await piapiService.generateAudio(content, piapiModel as any, params || {}, newFiles?.[0]);
-            }
+            // Use mediaGeneration hook instead of direct API service
+            result = await mediaGeneration.generateMedia(
+              content,
+              mediaTypeValue,
+              piapiModel as any,
+              params || {},
+              newFiles?.[0]
+            );
           } catch (err) {
-            console.error(`[useMessageHandler] Erro na chamada de API:`, err);
+            console.error(`[useMessageHandler] Erro na geração de mídia:`, err);
             throw new Error(`Erro ao criar tarefa: ${err instanceof Error ? err.message : String(err)}`);
           }
           
-          if (!result || !result.taskId) {
-            throw new Error("Resposta inválida da API: ID de tarefa não recebido");
+          if (!result || !result.success) {
+            throw new Error(result?.error || "Erro desconhecido ao gerar mídia");
+          }
+          
+          const taskId = result.taskId;
+          
+          if (!taskId) {
+            throw new Error("ID de tarefa não recebido");
           }
           
           setMessages(prev => prev.map(msg => 
             msg.id === loadingMessageId 
               ? { 
                   ...msg, 
-                  content: `${mediaTypeValue.charAt(0).toUpperCase() + mediaTypeValue.slice(1)} sendo processado. ID da tarefa: ${result.taskId}`,
+                  content: `${mediaTypeValue.charAt(0).toUpperCase() + mediaTypeValue.slice(1)} sendo processado. ID da tarefa: ${taskId}`,
                 } 
               : msg
           ));
-          
-          const unsubscribe = piapiService.subscribeToTaskUpdates((payload) => {
-            const { task_id, media_url, error } = payload.new;
+
+          // If we already have a mediaUrl in the result, update the message now
+          if (result.mediaUrl) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === loadingMessageId 
+                ? { 
+                    ...msg, 
+                    content: `${content}`,
+                    loading: false,
+                    mediaUrl: result.mediaUrl
+                  } 
+                : msg
+            ));
             
-            if (task_id === result.taskId) {
-              if (error) {
-                setMessages(prev => prev.map(msg => 
-                  msg.id === loadingMessageId 
-                    ? { 
-                        ...msg, 
-                        content: `Erro ao gerar ${mediaTypeValue}: ${error}`,
-                        loading: false,
-                        error: true
-                      } 
-                    : msg
-                ));
-              } else if (media_url) {
-                setMessages(prev => prev.map(msg => 
-                  msg.id === loadingMessageId 
-                    ? { 
-                        ...msg, 
-                        content: `${content}`,
-                        loading: false,
-                        mediaUrl: media_url
-                      } 
-                    : msg
-                ));
-                
-                mediaGallery.saveMediaToGallery(media_url, content, mediaTypeValue, modelId);
-              }
-              
-              unsubscribe();
-            }
-          });
-          
-          const checkStatus = async () => {
-            try {
-              const statusResult = await piapiService.checkTaskStatus(result.taskId);
-              
-              if (statusResult.status === 'completed' && statusResult.mediaUrl) {
-                setMessages(prev => prev.map(msg => 
-                  msg.id === loadingMessageId 
-                    ? { 
-                        ...msg, 
-                        content: `${content}`,
-                        loading: false,
-                        mediaUrl: statusResult.mediaUrl
-                      } 
-                    : msg
-                ));
-                
-                mediaGallery.saveMediaToGallery(statusResult.mediaUrl, content, mediaTypeValue, modelId);
-                
-                unsubscribe();
-              } else if (statusResult.status === 'failed') {
-                setMessages(prev => prev.map(msg => 
-                  msg.id === loadingMessageId 
-                    ? { 
-                        ...msg, 
-                        content: `Erro ao gerar ${mediaTypeValue}: ${statusResult.error || 'Falha no processamento'}`,
-                        loading: false,
-                        error: true
-                      } 
-                    : msg
-                ));
-                
-                unsubscribe();
-              }
-            } catch (err) {
-              console.error('Erro ao verificar status:', err);
-            }
-          };
-          
-          setTimeout(checkStatus, 10000);
+            mediaGallery.saveMediaToGallery(result.mediaUrl, content, mediaTypeValue, modelId);
+          }
         } catch (err) {
           console.error('[useMessageHandler] Erro ao gerar mídia:', err);
           toast.error('Erro ao gerar mídia', {
