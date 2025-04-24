@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 
 /**
@@ -755,7 +754,9 @@ export const piapiDirectService = {
       
       for (const [taskId, task] of Object.entries(tasks)) {
         if (task && typeof task === 'object' && 'createdAt' in task) {
-          const createdAt = new Date(task.createdAt || new Date().toISOString());
+          const createdAtString = task.createdAt as string || new Date().toISOString();
+          const createdAt = new Date(createdAtString);
+          
           if (createdAt < cutoffDate) {
             delete tasks[taskId];
             tasksRemoved++;
