@@ -14,8 +14,8 @@ import { useMediaHandling } from './message/useMediaHandling';
 import { useMessageState } from './message/useMessageState';
 import { useGoogleCommandHandler } from './message/useGoogleCommandHandler';
 import { toast } from 'sonner';
-import { piapiDirectService as piapiService } from '@/services/piapiDirectService';
-import { useMediaGeneration } from './useMediaGeneration';
+import { apiframeService } from '@/services/apiframeService';
+import { useApiframeGeneration } from './useApiframeGeneration';
 
 export function useMessageHandler(
   messages: MessageType[],
@@ -52,7 +52,7 @@ export function useMessageHandler(
 
   const { handleGoogleCommand } = useGoogleCommandHandler();
   
-  const mediaGeneration = useMediaGeneration({
+  const apiframeGeneration = useApiframeGeneration({
     onProgress: (progress) => {
       if (mediaGenerationMessageId.current) {
         setMessages(prev => prev.map(msg => 
@@ -121,7 +121,7 @@ export function useMessageHandler(
       let modeSwitch = null;
       
       if ((mode === 'image' || mode === 'video' || mode === 'audio') && 
-          (modelId.startsWith('piapi-') || 
+          (modelId.startsWith('apiframe-') || 
            modelId === 'flux-dev' || 
            modelId === 'flux-schnell' || 
            modelId === 'dalle-3' || 
@@ -149,29 +149,29 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          let piapiModel;
+          let apiframeModelId;
           
-          if (modelId.startsWith('piapi-')) {
-            piapiModel = modelId.replace('piapi-', '');
+          if (modelId.startsWith('apiframe-')) {
+            apiframeModelId = modelId.replace('apiframe-', '');
           } else {
-            piapiModel = modelId;
+            apiframeModelId = modelId;
           }
           
-          console.log(`[useMessageHandler] Iniciando geração de ${mediaTypeValue} com modelo ${piapiModel}`);
+          console.log(`[useMessageHandler] Iniciando geração de ${mediaTypeValue} com modelo ${apiframeModelId}`);
           
           // Check if API key is configured
-          if (!piapiService.getApiKey) {
-            throw new Error("Chave de API da PiAPI não está configurada. Configure na opção 'Serviços PiAPI'");
+          if (!apiframeService.isApiKeyConfigured()) {
+            throw new Error("Chave de API da APIframe não está configurada. Configure na opção 'Serviços APIframe'");
           }
           
           let result;
           
           try {
-            // Use mediaGeneration hook instead of direct API service
-            result = await mediaGeneration.generateMedia(
+            // Use apiframeGeneration hook instead of direct API service
+            result = await apiframeGeneration.generateMedia(
               content,
               mediaTypeValue,
-              piapiModel as any,
+              apiframeModelId as any,
               params || {},
               newFiles?.[0]
             );

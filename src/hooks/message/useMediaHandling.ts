@@ -2,15 +2,14 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ChatMode } from '@/components/ModeSelector';
-import { piapiService } from '@/services/piapiService';
-import { useMediaGeneration } from '@/hooks/useMediaGeneration';
+import { useApiframeGeneration } from '@/hooks/useApiframeGeneration';
 
 export function useMediaHandling() {
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isMediaUploading, setIsMediaUploading] = useState(false);
   
-  const mediaGeneration = useMediaGeneration({
+  const apiframeGeneration = useApiframeGeneration({
     showToasts: false // Não queremos toasts duplicados
   });
 
@@ -83,6 +82,6 @@ export function useMediaHandling() {
     removeFile,
     clearFiles,
     uploadFiles,
-    mediaGeneration // Expor funcionalidades de geração de mídia
+    mediaGeneration: apiframeGeneration // Expor funcionalidades de geração de mídia
   };
 }
