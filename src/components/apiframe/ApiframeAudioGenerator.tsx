@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useAudioGeneration } from '@/hooks/apiframe/useAudioGeneration';
-import { ApiframeParams } from '@/types/apiframeGeneration';
+import { ApiframeAudioParams } from '@/types/apiframeGeneration';
 import ApiframeConfig from './ApiframeConfig';
 import { Progress } from '@/components/ui/progress';
 
@@ -36,7 +36,8 @@ const ApiframeAudioGenerator: React.FC<ApiframeAudioGeneratorProps> = ({ onAudio
       return;
     }
 
-    const params: ApiframeParams = {
+    const params: ApiframeAudioParams = {
+      // Use properly typed parameters
       length: audioLength
     };
     

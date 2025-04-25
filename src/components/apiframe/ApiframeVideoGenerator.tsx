@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Label } from '@/components/ui/label';
 import { Film, Loader2, Upload } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/apiframe/useVideoGeneration';
-import { ApiframeParams } from '@/types/apiframeGeneration';
+import { ApiframeVideoParams } from '@/types/apiframeGeneration';
 import ApiframeConfig from './ApiframeConfig';
 import MediaProgress from './common/MediaProgress';
 import VideoModelSelector, { VideoModelType, VIDEO_MODELS } from './video/VideoModelSelector';
@@ -83,7 +82,7 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
       return;
     }
 
-    const params: ApiframeParams = {
+    const params: ApiframeVideoParams = {
       duration: parseInt(duration, 10),
       aspectRatio: "16:9"
     };

@@ -51,6 +51,7 @@ export interface ApiframeVideoParams extends ApiframeBaseParams {
   fps?: number;
   motion_bucket_id?: number;
   reference_image_url?: string;
+  aspectRatio?: string;
 }
 
 // Audio-specific parameters
@@ -60,6 +61,7 @@ export interface ApiframeAudioParams {
   similarity_boost?: number;
   style?: number;
   speaking_rate?: number;
+  length?: string;
 }
 
 export type ApiframeParams = 

@@ -2,7 +2,7 @@ import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-export type ModelProvider = 'openai' | 'apiframe';
+export type ModelProvider = 'openai' | 'apiframe' | 'anthropic' | 'google' | 'kligin' | 'ideogram' | 'minimax' | 'elevenlabs' | 'luma';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 
 export interface ModelInfo {
@@ -161,18 +161,30 @@ interface ModelSelectorProps {
   className?: string;
 }
 
-const getProviderDisplayName = (provider: ModelProvider): string => {
+export const getProviderDisplayName = (provider: ModelProvider): string => {
   switch (provider) {
     case 'openai':
       return 'OpenAI';
     case 'apiframe':
       return 'APIframe';
+    case 'anthropic':
+      return 'Anthropic';
+    case 'google':
+      return 'Google';
+    case 'kligin':
+      return 'Kligin';
+    case 'ideogram':
+      return 'Ideogram';
+    case 'minimax':
+      return 'MiniMax';
+    case 'elevenlabs':
+      return 'ElevenLabs';
+    case 'luma':
+      return 'Luma AI';
     default:
       return provider;
   }
 };
-
-export { getProviderDisplayName };
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
   selectedModel,
@@ -200,6 +212,20 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         return '🟢';
       case 'apiframe':
         return '📍';
+      case 'anthropic':
+        return '🔮';
+      case 'google':
+        return '🤖';
+      case 'kligin':
+        return '🔑';
+      case 'ideogram':
+        return '📚';
+      case 'minimax':
+        return '🧠';
+      case 'elevenlabs':
+        return '🗣️';
+      case 'luma':
+        return '🎨';
       default:
         return '•';
     }

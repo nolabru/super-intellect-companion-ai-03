@@ -1,7 +1,8 @@
 
 import { useCallback } from 'react';
 import { useApiframeGeneration } from '../useApiframeGeneration';
-import { ApiframeParams } from '@/types/apiframeGeneration';
+import { ApiframeParams, ApiframeVideoModel } from '@/types/apiframeGeneration';
+import { getApiframeModelId } from '@/utils/modelMapping';
 
 /**
  * Hook for video generation using APIframe.ai
@@ -15,7 +16,9 @@ export function useVideoGeneration() {
     params: ApiframeParams = {},
     referenceImageUrl?: string
   ) => {
-    return apiframeGeneration.generateMedia(prompt, 'video', model, params, referenceImageUrl);
+    // Convert string model to ApiframeVideoModel
+    const apiframeModel = getApiframeModelId(model) as ApiframeVideoModel;
+    return apiframeGeneration.generateMedia(prompt, 'video', apiframeModel, params, referenceImageUrl);
   }, [apiframeGeneration]);
 
   return {

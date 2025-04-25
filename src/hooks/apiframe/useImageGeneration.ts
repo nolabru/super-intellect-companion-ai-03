@@ -1,7 +1,8 @@
 
 import { useCallback } from 'react';
 import { useApiframeGeneration } from '../useApiframeGeneration';
-import { ApiframeParams } from '@/types/apiframeGeneration';
+import { ApiframeParams, ApiframeImageModel } from '@/types/apiframeGeneration';
+import { getApiframeModelId } from '@/utils/modelMapping';
 
 /**
  * Hook for image generation using APIframe.ai
@@ -14,7 +15,9 @@ export function useImageGeneration() {
     model: string,
     params: ApiframeParams = {}
   ) => {
-    return apiframeGeneration.generateMedia(prompt, 'image', model, params);
+    // Convert string model to ApiframeImageModel
+    const apiframeModel = getApiframeModelId(model) as ApiframeImageModel;
+    return apiframeGeneration.generateMedia(prompt, 'image', apiframeModel, params);
   }, [apiframeGeneration]);
 
   return {
