@@ -1,11 +1,9 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
@@ -27,86 +25,69 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get request parameters
-    const { prompt, model = "mmaudio-txt2audio", params = {}, referenceUrl } = await req.json();
+    const { prompt, model = "elevenlabs-v2", params = {} } = await req.json();
     
-    if (!prompt && !referenceUrl) {
+    if (!prompt) {
       return new Response(
-        JSON.stringify({ error: "Either prompt or reference media is required" }),
+        JSON.stringify({ error: "Prompt is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Map the model to the corresponding APIframe model
-    let apiframeModel;
-    let taskType = "txt2audio";
-    
-    switch (model) {
-      case "mmaudio-txt2audio":
-        apiframeModel = "meta/mmaudio-txt2audio";
-        taskType = "txt2audio";
-        break;
-      case "mmaudio-video2audio":
-        apiframeModel = "meta/mmaudio-video2audio";
-        taskType = "video2audio";
-        break;
-      case "diffrhythm-base":
-        apiframeModel = "diffrhythm/base";
-        taskType = "txt2audio";
-        break;
-      case "diffrhythm-full":
-        apiframeModel = "diffrhythm/full";
-        taskType = "txt2audio";
-        break;
-      case "elevenlabs":
-        apiframeModel = "elevenlabs/tts";
-        taskType = "txt2audio";
-        break;
-      default:
-        apiframeModel = "meta/mmaudio-txt2audio"; // Default
-    }
-
-    console.log(`Generating audio with model ${apiframeModel} and prompt: "${prompt?.substring(0, 50)}..."`);
-
-    // Set up webhook
+    // Configure webhook
     const webhookEndpoint = `${Deno.env.get("SUPABASE_URL")}/functions/v1/apiframe-media-webhook`;
     
     // Prepare task data
     const taskData: any = {
-      "model": apiframeModel,
-      "task_type": taskType,
-      "input": {
-        "prompt": prompt || ""
-      },
-      "config": {
-        "webhook_config": {
-          "endpoint": webhookEndpoint
-        }
-      }
+      "text": prompt,
+      "webhook_url": webhookEndpoint,
+      "webhook_secret": Deno.env.get("APIFRAME_WEBHOOK_SECRET") || "apiframe-webhook-secret"
     };
 
-    // Add specific parameters based on the task type
-    if (params.length) {
-      taskData.input.duration = params.length;
+    // Add model-specific parameters based on the selected model
+    if (model === "elevenlabs-v2") {
+      // ElevenLabs model
+      taskData["model"] = "elevenlabs";
+      taskData["voice_id"] = params.voice_id || "EXAVITQu4vr4xnSDxMaL"; // Default to Sarah voice
+      
+      // Add optional parameters
+      if (params.stability !== undefined) taskData["stability"] = params.stability;
+      if (params.similarity_boost !== undefined) taskData["similarity_boost"] = params.similarity_boost;
+      if (params.style !== undefined) taskData["style"] = params.style;
+      if (params.speaking_rate !== undefined) taskData["speaking_rate"] = params.speaking_rate;
+    } 
+    else if (model === "openai-tts-1") {
+      // OpenAI TTS model
+      taskData["model"] = "openai-tts";
+      taskData["voice"] = params.voice || "alloy"; // Default to alloy voice
+      
+      // Add optional parameters
+      if (params.speed !== undefined) taskData["speed"] = params.speed;
+    }
+    else if (model === "coqui-xtts") {
+      // Coqui XTTS model
+      taskData["model"] = "coqui-xtts";
+      
+      // Add optional parameters
+      if (params.speaker_id !== undefined) taskData["speaker_id"] = params.speaker_id;
+      if (params.language !== undefined) taskData["language"] = params.language;
     }
 
-    // Add reference video for video-to-audio models
-    if (taskType === "video2audio" && referenceUrl) {
-      taskData.input.video_url = referenceUrl;
-    }
+    console.log(`[apiframe-generate-audio] Creating audio task with model ${model}`);
 
     // Create task in APIframe
-    const apiResponse = await fetch("https://api.apiframe.ai/v1/task", {
+    const apiResponse = await fetch("https://api.apiframe.pro/tts", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${APIFRAME_API_KEY}`
+        "Authorization": APIFRAME_API_KEY
       },
       body: JSON.stringify(taskData)
     });
 
     if (!apiResponse.ok) {
       const errorData = await apiResponse.json();
-      console.error(`Error creating task in APIframe: ${JSON.stringify(errorData)}`);
+      console.error(`[apiframe-generate-audio] Error creating task:`, errorData);
       throw new Error(`APIframe error: ${errorData.error?.message || apiResponse.statusText}`);
     }
 
@@ -114,14 +95,14 @@ serve(async (req) => {
     const responseData = await apiResponse.json();
     const taskId = responseData.task_id;
     
-    console.log(`Task created successfully. ID: ${taskId}`);
+    console.log(`[apiframe-generate-audio] Task created successfully. ID: ${taskId}`);
 
     // Save task information in database
     const { error: insertError } = await supabase
       .from("apiframe_tasks")
       .insert({
         task_id: taskId,
-        model: apiframeModel,
+        model,
         prompt,
         status: "pending",
         media_type: "audio",
@@ -129,22 +110,19 @@ serve(async (req) => {
       });
 
     if (insertError) {
-      console.error(`Error inserting task record: ${insertError.message}`);
+      console.error(`[apiframe-generate-audio] Error inserting task record:`, insertError);
     }
 
     // Return response with task ID
     return new Response(
       JSON.stringify({
         taskId: taskId,
-        status: "pending",
-        message: `Audio generation task created successfully. Awaiting processing.`
+        status: "pending"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    
-    // Implement retries here if needed
+    console.error(`[apiframe-generate-audio] Error:`, error);
     
     return new Response(
       JSON.stringify({ 

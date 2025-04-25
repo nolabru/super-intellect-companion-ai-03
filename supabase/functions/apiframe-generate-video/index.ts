@@ -1,11 +1,9 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
@@ -29,93 +27,71 @@ serve(async (req) => {
     // Get request parameters
     const { prompt, model = "kling-text", params = {}, referenceUrl } = await req.json();
     
-    if (!prompt && !referenceUrl) {
+    if (!prompt) {
       return new Response(
-        JSON.stringify({ error: "Either prompt or reference image is required" }),
+        JSON.stringify({ error: "Prompt is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Map the model to the corresponding APIframe model
-    let apiframeModel;
-    let taskType = "txt2vid";
-    
-    switch (model) {
-      case "kling-text":
-        apiframeModel = "kling/text-to-video";
-        taskType = "txt2vid";
-        break;
-      case "kling-image":
-        apiframeModel = "kling/image-to-video";
-        taskType = "img2vid";
-        break;
-      case "hunyuan-fast":
-        apiframeModel = "tencent/hunyuan-video-fast";
-        taskType = "txt2vid";
-        break;
-      case "hunyuan-standard":
-        apiframeModel = "tencent/hunyuan-video";
-        taskType = "txt2vid";
-        break;
-      case "hailuo-text":
-        apiframeModel = "hailuo/text-to-video";
-        taskType = "txt2vid";
-        break;
-      case "hailuo-image":
-        apiframeModel = "hailuo/image-to-video";
-        taskType = "img2vid";
-        break;
-      default:
-        apiframeModel = "kling/text-to-video"; // Default
-    }
-
-    console.log(`Generating video with model ${apiframeModel} and prompt: "${prompt?.substring(0, 50)}..."`);
-
-    // Set up webhook
+    // Configure webhook
     const webhookEndpoint = `${Deno.env.get("SUPABASE_URL")}/functions/v1/apiframe-media-webhook`;
     
     // Prepare task data
     const taskData: any = {
-      "model": apiframeModel,
-      "task_type": taskType,
-      "input": {
-        "prompt": prompt || "",
-        "negative_prompt": params.negativePrompt || ""
-      },
-      "config": {
-        "webhook_config": {
-          "endpoint": webhookEndpoint
-        }
-      }
+      "prompt": prompt,
+      "webhook_url": webhookEndpoint,
+      "webhook_secret": Deno.env.get("APIFRAME_WEBHOOK_SECRET") || "apiframe-webhook-secret"
     };
 
-    // Add specific parameters based on the task type
-    if (params.duration) {
-      taskData.input.duration = parseInt(params.duration) || 10;
+    // Add reference image if provided
+    if (referenceUrl) {
+      taskData["image_url"] = referenceUrl;
     }
 
-    if (params.aspectRatio) {
-      taskData.input.aspect_ratio = params.aspectRatio || "16:9";
+    // Add model-specific parameters based on the selected model
+    if (model === "kling-text" || model === "kling-image") {
+      // Kling AI models
+      taskData["model"] = model === "kling-text" ? "kling" : "kling-image";
+      
+      // Add optional parameters
+      if (params.aspectRatio) taskData["aspect_ratio"] = params.aspectRatio;
+      if (params.duration) taskData["duration"] = params.duration;
+      if (params.negative_prompt) taskData["negative_prompt"] = params.negative_prompt;
+    } 
+    else if (model === "hunyuan-fast" || model === "hunyuan-standard") {
+      // Hunyuan models
+      taskData["model"] = model === "hunyuan-fast" ? "hunyuan-fast" : "hunyuan-standard";
+      
+      // Add optional parameters
+      if (params.aspectRatio) taskData["aspect_ratio"] = params.aspectRatio;
+      if (params.duration) taskData["duration"] = params.duration;
+    }
+    else if (model === "hailuo-text" || model === "hailuo-image") {
+      // Hailuo models
+      taskData["model"] = model === "hailuo-text" ? "hailuo" : "hailuo-image";
+      
+      // Add optional parameters
+      if (params.aspectRatio) taskData["aspect_ratio"] = params.aspectRatio;
+      if (params.duration) taskData["duration"] = params.duration;
+      if (params.negative_prompt) taskData["negative_prompt"] = params.negative_prompt;
     }
 
-    // Add reference image for image-to-video models
-    if (taskType === "img2vid" && referenceUrl) {
-      taskData.input.image_url = referenceUrl;
-    }
+    console.log(`[apiframe-generate-video] Creating video task with model ${model}`);
 
     // Create task in APIframe
-    const apiResponse = await fetch("https://api.apiframe.ai/v1/task", {
+    const apiResponse = await fetch("https://api.apiframe.pro/imagine", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${APIFRAME_API_KEY}`
+        "Authorization": APIFRAME_API_KEY
       },
       body: JSON.stringify(taskData)
     });
 
     if (!apiResponse.ok) {
       const errorData = await apiResponse.json();
-      console.error(`Error creating task in APIframe: ${JSON.stringify(errorData)}`);
+      console.error(`[apiframe-generate-video] Error creating task:`, errorData);
       throw new Error(`APIframe error: ${errorData.error?.message || apiResponse.statusText}`);
     }
 
@@ -123,37 +99,35 @@ serve(async (req) => {
     const responseData = await apiResponse.json();
     const taskId = responseData.task_id;
     
-    console.log(`Task created successfully. ID: ${taskId}`);
+    console.log(`[apiframe-generate-video] Task created successfully. ID: ${taskId}`);
 
     // Save task information in database
     const { error: insertError } = await supabase
       .from("apiframe_tasks")
       .insert({
         task_id: taskId,
-        model: apiframeModel,
+        model,
         prompt,
         status: "pending",
         media_type: "video",
-        params: params
+        params: params,
+        reference_url: referenceUrl
       });
 
     if (insertError) {
-      console.error(`Error inserting task record: ${insertError.message}`);
+      console.error(`[apiframe-generate-video] Error inserting task record:`, insertError);
     }
 
     // Return response with task ID
     return new Response(
       JSON.stringify({
         taskId: taskId,
-        status: "pending",
-        message: `Video generation task created successfully. Awaiting processing.`
+        status: "pending"
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    
-    // Implement retries here if needed
+    console.error(`[apiframe-generate-video] Error:`, error);
     
     return new Response(
       JSON.stringify({ 

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -40,31 +39,41 @@ serve(async (req) => {
     
     // Prepare task data
     const taskData = {
-      "model": model,
-      "task_type": "txt2img",
-      "input": {
-        "prompt": prompt,
-        "negative_prompt": params.negativePrompt || "",
-        "width": params.width || 768,
-        "height": params.height || 768,
-        "num_inference_steps": params.steps || 30,
-        "guidance_scale": params.guidanceScale || 7.5
-      },
-      "config": {
-        "webhook_config": {
-          "endpoint": webhookEndpoint
-        }
-      }
+      "prompt": prompt,
+      "webhook_url": webhookEndpoint,
+      "webhook_secret": Deno.env.get("APIFRAME_WEBHOOK_SECRET") || "apiframe-webhook-secret"
     };
+
+    // Add model-specific parameters based on the selected model
+    if (model === "sdxl" || model === "sdxl-turbo") {
+      taskData["model"] = model;
+      taskData["negative_prompt"] = params.negative_prompt || "";
+      taskData["width"] = params.width || 1024;
+      taskData["height"] = params.height || 1024;
+      taskData["num_inference_steps"] = params.num_inference_steps || 30;
+      taskData["guidance_scale"] = params.guidance_scale || 7.5;
+    } else if (model === "kandinsky") {
+      taskData["model"] = "kandinsky";
+      taskData["negative_prompt"] = params.negative_prompt || "";
+      taskData["width"] = params.width || 1024;
+      taskData["height"] = params.height || 1024;
+    } else if (model === "deepfloyd") {
+      taskData["model"] = "deepfloyd";
+      taskData["negative_prompt"] = params.negative_prompt || "";
+    } else if (model === "dalle") {
+      taskData["model"] = "dalle";
+      taskData["quality"] = params.quality || "standard";
+      taskData["size"] = params.size || "1024x1024";
+    }
 
     console.log(`[apiframe-generate-image] Creating task with model ${model}`);
 
     // Create task in APIframe
-    const apiResponse = await fetch("https://api.apiframe.ai/v1/tasks", {
+    const apiResponse = await fetch("https://api.apiframe.pro/imagine", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${APIFRAME_API_KEY}`
+        "Authorization": APIFRAME_API_KEY
       },
       body: JSON.stringify(taskData)
     });

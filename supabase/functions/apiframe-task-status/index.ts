@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -72,11 +71,13 @@ serve(async (req) => {
     // Check status with APIframe API
     console.log(`[apiframe-task-status] Checking status with APIframe API`);
     
-    const apiResponse = await fetch(`https://api.apiframe.ai/v1/tasks/${taskId}`, {
-      method: "GET",
+    const apiResponse = await fetch(`https://api.apiframe.pro/fetch`, {
+      method: "POST",
       headers: {
-        "Authorization": `Bearer ${APIFRAME_API_KEY}`
-      }
+        "Content-Type": "application/json",
+        "Authorization": APIFRAME_API_KEY
+      },
+      body: JSON.stringify({ task_id: taskId })
     });
 
     if (!apiResponse.ok) {
@@ -92,36 +93,45 @@ serve(async (req) => {
     let mediaUrl = null;
     let errorMessage = null;
 
-    switch (apiData.status) {
-      case "succeeded":
+    if (apiData.task_id) {
+      // If we have image_urls, the task is completed
+      if (apiData.image_urls && apiData.image_urls.length > 0) {
         status = "completed";
-        mediaUrl = apiData.output?.url || apiData.output?.image_url || null;
-        break;
-      case "failed":
+        mediaUrl = apiData.image_urls[0];
+      } else if (apiData.status === "succeeded") {
+        status = "completed";
+        // Check for different types of media URLs
+        if (apiData.image_url) {
+          mediaUrl = apiData.image_url;
+        } else if (apiData.video_url) {
+          mediaUrl = apiData.video_url;
+        } else if (apiData.audio_url) {
+          mediaUrl = apiData.audio_url;
+        }
+      } else if (apiData.status === "failed") {
         status = "failed";
         errorMessage = apiData.error?.message || "Task failed";
-        break;
-      case "processing":
+      } else if (apiData.status === "processing") {
         status = "processing";
-        break;
-      default:
+      } else {
         status = "pending";
-    }
+      }
 
-    // Update database if task exists
-    if (taskData) {
-      const { error: updateError } = await supabaseClient
-        .from("apiframe_tasks")
-        .update({
-          status,
-          media_url: mediaUrl,
-          error: errorMessage,
-          updated_at: new Date().toISOString()
-        })
-        .eq("task_id", taskId);
+      // Update database if task exists
+      if (taskData) {
+        const { error: updateError } = await supabaseClient
+          .from("apiframe_tasks")
+          .update({
+            status,
+            media_url: mediaUrl,
+            error: errorMessage,
+            updated_at: new Date().toISOString()
+          })
+          .eq("task_id", taskId);
 
-      if (updateError) {
-        console.error(`[apiframe-task-status] Error updating task:`, updateError);
+        if (updateError) {
+          console.error(`[apiframe-task-status] Error updating task:`, updateError);
+        }
       }
     }
 
@@ -130,7 +140,8 @@ serve(async (req) => {
         taskId,
         status,
         mediaUrl,
-        error: errorMessage
+        error: errorMessage,
+        percentage: apiData.percentage || 0
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 
@@ -9,8 +8,8 @@ export const apiframeService = {
     params: ApiframeParams = {}
   ) {
     try {
-      console.log('[apiframeService] Calling apiframe-image function with model:', model);
-      const { data, error } = await supabase.functions.invoke('apiframe-image', {
+      console.log('[apiframeService] Calling apiframe-generate-image function with model:', model);
+      const { data, error } = await supabase.functions.invoke('apiframe-generate-image', {
         body: { prompt, model, params }
       });
 
@@ -34,11 +33,17 @@ export const apiframeService = {
     referenceUrl?: string
   ) {
     try {
-      const { data, error } = await supabase.functions.invoke('apiframe-video', {
+      console.log('[apiframeService] Calling apiframe-generate-video function with model:', model);
+      const { data, error } = await supabase.functions.invoke('apiframe-generate-video', {
         body: { prompt, model, params, referenceUrl }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[apiframeService] Supabase function error:', error);
+        throw error;
+      }
+      
+      console.log('[apiframeService] Video generation response:', data);
       return data;
     } catch (err) {
       console.error('[apiframeService] Error generating video:', err);
@@ -53,11 +58,17 @@ export const apiframeService = {
     referenceUrl?: string
   ) {
     try {
-      const { data, error } = await supabase.functions.invoke('apiframe-audio', {
+      console.log('[apiframeService] Calling apiframe-generate-audio function with model:', model);
+      const { data, error } = await supabase.functions.invoke('apiframe-generate-audio', {
         body: { prompt, model, params, referenceUrl }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[apiframeService] Supabase function error:', error);
+        throw error;
+      }
+      
+      console.log('[apiframeService] Audio generation response:', data);
       return data;
     } catch (err) {
       console.error('[apiframeService] Error generating audio:', err);
@@ -67,11 +78,17 @@ export const apiframeService = {
 
   async checkTaskStatus(taskId: string) {
     try {
+      console.log('[apiframeService] Checking status for task:', taskId);
       const { data, error } = await supabase.functions.invoke('apiframe-task-status', {
         body: { taskId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[apiframeService] Supabase function error:', error);
+        throw error;
+      }
+      
+      console.log('[apiframeService] Task status response:', data);
       return data;
     } catch (err) {
       console.error('[apiframeService] Error checking task status:', err);
@@ -81,11 +98,17 @@ export const apiframeService = {
 
   async cancelTask(taskId: string) {
     try {
+      console.log('[apiframeService] Cancelling task:', taskId);
       const { data, error } = await supabase.functions.invoke('apiframe-task-cancel', {
         body: { taskId }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[apiframeService] Supabase function error:', error);
+        throw error;
+      }
+      
+      console.log('[apiframeService] Task cancellation response:', data);
       return data;
     } catch (err) {
       console.error('[apiframeService] Error cancelling task:', err);
@@ -94,6 +117,7 @@ export const apiframeService = {
   },
 
   subscribeToTaskUpdates(callback: (payload: any) => void) {
+    console.log('[apiframeService] Subscribing to media-ready-events table changes');
     return supabase
       .channel('media-updates')
       .on(
@@ -103,7 +127,10 @@ export const apiframeService = {
           schema: 'public',
           table: 'media_ready_events'
         },
-        callback
+        (payload) => {
+          console.log('[apiframeService] Received media ready event:', payload);
+          callback(payload);
+        }
       )
       .subscribe();
   },
