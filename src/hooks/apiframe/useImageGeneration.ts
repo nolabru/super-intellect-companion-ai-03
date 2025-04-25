@@ -15,8 +15,11 @@ export function useImageGeneration() {
     model: string,
     params: ApiframeParams = {}
   ) => {
+    console.log(`[useImageGeneration] Generating image with model ${model}`);
+    
     // Convert string model to ApiframeImageModel
     const apiframeModel = getApiframeModelId(model) as ApiframeImageModel;
+    
     return apiframeGeneration.generateMedia(prompt, 'image', apiframeModel, params);
   }, [apiframeGeneration]);
 

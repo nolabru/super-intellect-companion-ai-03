@@ -12,11 +12,11 @@ import ApiframeConfig from './ApiframeConfig';
 import { Progress } from '@/components/ui/progress';
 
 const IMAGE_MODELS = [
-  { id: 'dalle-3', name: 'DALL-E 3' },
   { id: 'sdxl', name: 'Stable Diffusion XL' },
-  { id: 'flux-schnell', name: 'FLUX Schnell' },
-  { id: 'flux-dev', name: 'FLUX Dev' },
-  { id: 'midjourney', name: 'Midjourney' }
+  { id: 'kandinsky', name: 'Kandinsky' },
+  { id: 'deepfloyd', name: 'DeepFloyd' },
+  { id: 'dalle', name: 'DALL-E' },
+  { id: 'sdxl-turbo', name: 'SDXL Turbo' }
 ];
 
 interface ApiframeImageGeneratorProps {
@@ -36,7 +36,9 @@ const ApiframeImageGenerator: React.FC<ApiframeImageGeneratorProps> = ({ onImage
 
     const params: ApiframeParams = {};
     
+    console.log(`[ApiframeImageGenerator] Generating image with model: ${selectedModel}, prompt: ${prompt}`);
     const result = await generateImage(prompt, selectedModel, params);
+    console.log('[ApiframeImageGenerator] Generation result:', result);
     
     if (result.success && result.mediaUrl) {
       setGeneratedImage(result.mediaUrl);

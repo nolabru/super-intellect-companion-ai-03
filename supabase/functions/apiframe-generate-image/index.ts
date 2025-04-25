@@ -26,7 +26,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Get request parameters
-    const { prompt, model = "stable-diffusion-xl", params = {} } = await req.json();
+    const { prompt, model = "sdxl", params = {} } = await req.json();
     
     if (!prompt) {
       return new Response(
@@ -41,7 +41,7 @@ serve(async (req) => {
     // Prepare task data
     const taskData = {
       "model": model,
-      "task_type": "image_generation",
+      "task_type": "txt2img",
       "input": {
         "prompt": prompt,
         "negative_prompt": params.negativePrompt || "",
