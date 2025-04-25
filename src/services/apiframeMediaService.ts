@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { apiframeService } from './apiframeService';
 import { tokenService } from './tokenService';
@@ -214,7 +215,8 @@ export const apiframeMediaService = {
       }
     }, 2000);
     
-    const unsubscribe = apiframeService.subscribeToTaskUpdates((payload) => {
+    // Fix: Store the channel reference instead of expecting it to be callable
+    const channel = apiframeService.subscribeToTaskUpdates((payload) => {
       const { task_id, media_url, error } = payload.new;
       
       if (task_id === taskId) {
@@ -225,14 +227,18 @@ export const apiframeMediaService = {
           if (onProgress) onProgress(progress);
         }
         
-        unsubscribe();
+        // Fix: Use the proper method to unsubscribe from the channel
+        supabase.removeChannel(channel);
       }
     });
     
     setTimeout(() => {
       cancelled = true;
       clearInterval(updateProgressInterval);
-      unsubscribe();
+      // Fix: Use the proper method to unsubscribe from the channel
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     }, 5 * 60 * 1000);
   },
   
