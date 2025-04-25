@@ -40,7 +40,7 @@ serve(async (req) => {
     console.log('Params:', params);
 
     // Create task in APIframe
-    const response = await fetch(`https://api.apiframe.ai/v1/images/generate`, {
+    const response = await fetch("https://api.apiframe.ai/v1/tasks", {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -48,8 +48,20 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: model || 'stable-diffusion-xl',
-        prompt,
-        ...params
+        task_type: "txt2img",
+        input: {
+          prompt,
+          negative_prompt: params.negativePrompt || "",
+          width: params.width || 768,
+          height: params.height || 768,
+          num_inference_steps: params.steps || 30,
+          guidance_scale: params.guidanceScale || 7.5
+        },
+        config: {
+          webhook_config: {
+            endpoint: `${Deno.env.get("SUPABASE_URL")}/functions/v1/apiframe-media-webhook`
+          }
+        }
       })
     });
 
@@ -64,14 +76,14 @@ serve(async (req) => {
 
     // Create task record
     const { error: insertError } = await supabase
-      .from('piapi_tasks')
+      .from('apiframe_tasks')
       .insert({
         task_id: data.task_id,
         model: model || 'stable-diffusion-xl',
         prompt,
         media_type: 'image',
         params,
-        status: data.status || 'pending'
+        status: 'pending'
       });
 
     if (insertError) {
@@ -79,7 +91,11 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify({
+        taskId: data.task_id,
+        status: 'pending',
+        message: 'Task created successfully'
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

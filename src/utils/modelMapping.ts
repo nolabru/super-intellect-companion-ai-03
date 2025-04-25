@@ -2,17 +2,24 @@
 import { ApiframeModel } from "@/types/apiframeGeneration";
 
 export const getApiframeModelId = (modelId: string): ApiframeModel => {
-  // Remove 'apiframe-' prefix if present and convert to valid ApiframeModel type
+  // Remove 'apiframe-' prefix if present
   const baseId = modelId.startsWith('apiframe-') ? modelId.replace('apiframe-', '') : modelId;
   
-  // Type assertion to ApiframeModel since we already validate in isApiframeModel
+  // Validate if the model ID is a valid APIframe model
+  if (!isApiframeModel(baseId)) {
+    console.error(`Invalid APIframe model ID: ${baseId}`);
+    // Return a default model as fallback
+    return 'sdxl';
+  }
+  
+  // Type assertion to ApiframeModel since we already validate above
   return baseId as ApiframeModel;
 };
 
 export const isApiframeModel = (modelId: string): boolean => {
-  if (!modelId.startsWith('apiframe-')) return false;
+  if (!modelId) return false;
   
-  const baseId = modelId.replace('apiframe-', '');
+  const baseId = modelId.startsWith('apiframe-') ? modelId.replace('apiframe-', '') : modelId;
   
   // Image models
   const imageModels = ['sdxl', 'kandinsky', 'deepfloyd', 'dalle', 'sdxl-turbo'];
