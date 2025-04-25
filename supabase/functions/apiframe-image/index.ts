@@ -51,8 +51,8 @@ serve(async (req) => {
     console.log('Prompt:', prompt);
     console.log('Params:', params);
 
-    // Use the correct API endpoint
-    const apiUrl = "https://api.apiframe.ai/v1/tasks";
+    // FIXED: Use the correct base API URL
+    const apiUrl = "https://api.apiframe.ai/api/v1/task";
     
     // Create proper task data structure
     const taskData = {

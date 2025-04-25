@@ -9,11 +9,17 @@ export const apiframeService = {
     params: ApiframeParams = {}
   ) {
     try {
+      console.log('[apiframeService] Calling apiframe-image function with model:', model);
       const { data, error } = await supabase.functions.invoke('apiframe-image', {
         body: { prompt, model, params }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[apiframeService] Supabase function error:', error);
+        throw error;
+      }
+      
+      console.log('[apiframeService] Image generation response:', data);
       return data;
     } catch (err) {
       console.error('[apiframeService] Error generating image:', err);

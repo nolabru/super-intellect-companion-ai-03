@@ -11,12 +11,12 @@ import { ApiframeParams } from '@/types/apiframeGeneration';
 import ApiframeConfig from './ApiframeConfig';
 import { Progress } from '@/components/ui/progress';
 
+// Updated model list based on APIframe.ai's supported models
 const IMAGE_MODELS = [
   { id: 'sdxl', name: 'Stable Diffusion XL' },
+  { id: 'sdxl-turbo', name: 'SDXL Turbo' },
   { id: 'kandinsky', name: 'Kandinsky' },
-  { id: 'deepfloyd', name: 'DeepFloyd' },
-  { id: 'dalle', name: 'DALL-E' },
-  { id: 'sdxl-turbo', name: 'SDXL Turbo' }
+  { id: 'deepfloyd', name: 'DeepFloyd' }
 ];
 
 interface ApiframeImageGeneratorProps {
@@ -37,15 +37,22 @@ const ApiframeImageGenerator: React.FC<ApiframeImageGeneratorProps> = ({ onImage
     const params: ApiframeParams = {};
     
     console.log(`[ApiframeImageGenerator] Generating image with model: ${selectedModel}, prompt: ${prompt}`);
-    const result = await generateImage(prompt, selectedModel, params);
-    console.log('[ApiframeImageGenerator] Generation result:', result);
     
-    if (result.success && result.mediaUrl) {
-      setGeneratedImage(result.mediaUrl);
+    try {
+      const result = await generateImage(prompt, selectedModel, params);
+      console.log('[ApiframeImageGenerator] Generation result:', result);
       
-      if (onImageGenerated) {
-        onImageGenerated(result.mediaUrl);
+      if (result && result.success && result.mediaUrl) {
+        setGeneratedImage(result.mediaUrl);
+        
+        if (onImageGenerated) {
+          onImageGenerated(result.mediaUrl);
+        }
+      } else {
+        console.error('[ApiframeImageGenerator] Image generation failed:', result?.error || 'Unknown error');
       }
+    } catch (error) {
+      console.error('[ApiframeImageGenerator] Error generating image:', error);
     }
   };
 
