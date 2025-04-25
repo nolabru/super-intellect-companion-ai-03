@@ -2,7 +2,7 @@ import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate' | 'deepseek' | 'piapi';
+export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate' | 'deepseek' | 'piapi' | 'apiframe';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 
 export interface ModelInfo {
@@ -15,7 +15,7 @@ export interface ModelInfo {
 }
 
 export const AVAILABLE_MODELS: ModelInfo[] = [
-  // OpenAI Models - text only
+  // Text Models
   {
     id: 'gpt-4o',
     displayName: 'GPT-4o',
@@ -27,25 +27,25 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   
   // Image Models
   {
-    id: 'piapi-dalle-3',
+    id: 'apiframe-dalle-3',
     displayName: 'DALL-E 3',
-    provider: 'piapi',
+    provider: 'apiframe',
     capabilities: ['Geração de imagens realistas', 'Seguir instruções detalhadas'],
     description: 'Gerador de imagens avançado com excelente compreensão e detalhe.',
     modes: ['image']
   },
   {
-    id: 'piapi-sdxl',
+    id: 'apiframe-sdxl',
     displayName: 'Stable Diffusion XL',
-    provider: 'piapi',
+    provider: 'apiframe',
     capabilities: ['Imagens de alta qualidade', 'Personalização avançada'],
     description: 'Gerador de imagens de última geração com foco em qualidade e detalhes.',
     modes: ['image']
   },
   {
-    id: 'piapi-midjourney',
+    id: 'apiframe-midjourney',
     displayName: 'Midjourney',
-    provider: 'piapi',
+    provider: 'apiframe',
     capabilities: ['Imagens artísticas', 'Alta qualidade visual'],
     description: 'Gerador de imagens especializado em arte e ilustrações de alta qualidade.',
     modes: ['image']
@@ -53,17 +53,17 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   
   // Video Models
   {
-    id: 'piapi-gen2',
+    id: 'apiframe-gen2',
     displayName: 'Gen-2',
-    provider: 'piapi',
+    provider: 'apiframe',
     capabilities: ['Geração de vídeos', 'Animações fluidas'],
     description: 'Gerador avançado de vídeos com foco em qualidade e fluidez.',
     modes: ['video']
   },
   {
-    id: 'piapi-pika',
+    id: 'apiframe-pika',
     displayName: 'Pika',
-    provider: 'piapi',
+    provider: 'apiframe',
     capabilities: ['Vídeos criativos', 'Efeitos visuais'],
     description: 'Gerador de vídeos com foco em criatividade e efeitos especiais.',
     modes: ['video']
@@ -71,17 +71,17 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   
   // Audio Models
   {
-    id: 'piapi-elevenlabs',
+    id: 'apiframe-elevenlabs',
     displayName: 'ElevenLabs',
-    provider: 'piapi',
+    provider: 'apiframe',
     capabilities: ['Conversão de texto em áudio', 'Múltiplas vozes', 'Alta qualidade'],
     description: 'Serviço avançado de conversão de texto em áudio com vozes naturais.',
     modes: ['audio']
   },
   {
-    id: 'piapi-openai-tts',
+    id: 'apiframe-openai-tts',
     displayName: 'OpenAI TTS',
-    provider: 'piapi',
+    provider: 'apiframe',
     capabilities: ['Conversão de texto em áudio', 'Voz sintética de alta qualidade'],
     description: 'Serviço de conversão de texto em áudio com vozes realistas.',
     modes: ['audio']
@@ -129,6 +129,8 @@ const getProviderDisplayName = (provider: ModelProvider): string => {
       return 'DeepSeek';
     case 'piapi':
       return 'PiAPI';
+    case 'apiframe':
+      return 'APIframe';
     default:
       return provider;
   }
@@ -178,6 +180,10 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         return '⚙️';
       case 'deepseek':
         return '⚫';
+      case 'piapi':
+        return '📍';
+      case 'apiframe':
+        return '📍';
       default:
         return '•';
     }

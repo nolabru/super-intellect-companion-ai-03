@@ -16,6 +16,7 @@ import { useGoogleCommandHandler } from './message/useGoogleCommandHandler';
 import { toast } from 'sonner';
 import { apiframeService } from '@/services/apiframeService';
 import { useApiframeGeneration } from './useApiframeGeneration';
+import { getApiframeModelId, isApiframeModel } from '@/utils/modelMapping';
 
 export function useMessageHandler(
   messages: MessageType[],
@@ -75,7 +76,7 @@ export function useMessageHandler(
     leftModel?: string | null,
     rightModel?: string | null,
     newFiles?: string[],
-    params?: LumaParams
+    params?: any
   ) => {
     if (!currentConversationId) {
       console.error('[useMessageHandler] Cannot send message: No conversation selected');
@@ -121,12 +122,7 @@ export function useMessageHandler(
       let modeSwitch = null;
       
       if ((mode === 'image' || mode === 'video' || mode === 'audio') && 
-          (modelId.startsWith('apiframe-') || 
-           modelId === 'flux-dev' || 
-           modelId === 'flux-schnell' || 
-           modelId === 'dalle-3' || 
-           modelId === 'sdxl' || 
-           modelId === 'midjourney')) {
+          (isApiframeModel(modelId))) {
         
         try {
           const loadingMessageId = uuidv4();
@@ -149,13 +145,7 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          let apiframeModelId;
-          
-          if (modelId.startsWith('apiframe-')) {
-            apiframeModelId = modelId.replace('apiframe-', '');
-          } else {
-            apiframeModelId = modelId;
-          }
+          const apiframeModelId = getApiframeModelId(modelId);
           
           console.log(`[useMessageHandler] Iniciando geração de ${mediaTypeValue} com modelo ${apiframeModelId}`);
           

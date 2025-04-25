@@ -31,3 +31,15 @@ export interface UseMediaGenerationOptions {
   onProgress?: (progress: number) => void;
   onComplete?: (result: MediaGenerationResult) => void;
 }
+
+export type ModelProvider = 
+  | 'openai' 
+  | 'anthropic' 
+  | 'google' 
+  | 'apiframe' 
+  | 'minimax' 
+  | 'elevenlabs' 
+  | 'ideogram' 
+  | 'luma' 
+  | 'replicate' 
+  | 'deepseek';
