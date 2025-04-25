@@ -2,10 +2,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 serve(async (req) => {
-  console.log("[apiframe-media-webhook] Received webhook call");
-  
   try {
+    console.log("[apiframe-media-webhook] Received webhook call");
+    
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -42,7 +47,7 @@ serve(async (req) => {
       // Map status and extract media URL
       const mappedStatus = status === "succeeded" ? "completed" : "failed";
       const mediaUrl = status === "succeeded" 
-        ? (data.output?.output_url || data.output?.url || null) 
+        ? (data.output?.url || data.output?.image_url || null) 
         : null;
       const errorMessage = status === "failed" 
         ? (data.error?.message || "Task failed") 

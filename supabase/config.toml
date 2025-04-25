@@ -10,9 +10,6 @@ url = "https://vygluorjwehcdigzxbaa.supabase.co"
 shadow = false
 
 [functions]
-[functions.apiframe-audio]
-verify_jwt = true
-
 [functions.apiframe-generate-image]
 verify_jwt = true
 
@@ -22,9 +19,5 @@ verify_jwt = true
 [functions.apiframe-media-webhook]
 verify_jwt = false
 
-[functions.apiframe-task-cancel]
-verify_jwt = true
-
 [functions.apiframe-task-status]
 verify_jwt = true
-

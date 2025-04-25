@@ -18,10 +18,7 @@ serve(async (req) => {
     const APIFRAME_API_KEY = Deno.env.get("APIFRAME_API_KEY");
     if (!APIFRAME_API_KEY) {
       console.error("[apiframe-task-status] APIFRAME_API_KEY not configured");
-      return new Response(
-        JSON.stringify({ error: "API key not configured" }), 
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw new Error("APIFRAME_API_KEY not configured");
     }
 
     // Initialize Supabase client
@@ -30,19 +27,19 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Parse request body
+    // Extract taskId from request body
     const { taskId } = await req.json();
 
     if (!taskId) {
       return new Response(
-        JSON.stringify({ error: "Task ID is required" }), 
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Task ID is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
     console.log(`[apiframe-task-status] Checking status for task: ${taskId}`);
 
-    // First check if we have the task in our database
+    // First check database cache
     const { data: taskData, error: dbError } = await supabaseClient
       .from("apiframe_tasks")
       .select("*")
@@ -50,123 +47,104 @@ serve(async (req) => {
       .single();
 
     if (dbError) {
-      console.error(`[apiframe-task-status] Error fetching task ${taskId} from database:`, dbError);
-    }
-
-    // If task exists and is already completed, return data from database
-    if (taskData && (taskData.status === "completed" || taskData.status === "failed") && taskData.media_url) {
-      console.log(`[apiframe-task-status] Task ${taskId} already ${taskData.status}, returning cached result`);
+      console.error(`[apiframe-task-status] Error fetching task from database:`, dbError);
+    } else if (taskData) {
+      console.log(`[apiframe-task-status] Found task record:`, {
+        id: taskData.task_id,
+        status: taskData.status,
+        hasUrl: !!taskData.media_url
+      });
       
-      return new Response(
-        JSON.stringify({
-          taskId,
-          status: taskData.status,
-          mediaUrl: taskData.media_url,
-          error: taskData.error
-        }), 
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Return cached result if task is in final state
+      if (taskData.status === 'completed' || taskData.status === 'failed') {
+        return new Response(
+          JSON.stringify({
+            taskId: taskData.task_id,
+            status: taskData.status,
+            mediaUrl: taskData.media_url,
+            error: taskData.error
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    // If not completed, check with APIframe API
-    console.log(`[apiframe-task-status] Checking APIframe API for task ${taskId}`);
+    // Check status with APIframe API
+    console.log(`[apiframe-task-status] Checking status with APIframe API`);
     
-    const apiResponse = await fetch(`https://api.apiframe.ai/v1/task/${taskId}`, {
+    const apiResponse = await fetch(`https://api.apiframe.ai/v1/tasks/${taskId}`, {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${APIFRAME_API_KEY}`
       }
     });
 
     if (!apiResponse.ok) {
-      // Log full response for debugging
       const errorText = await apiResponse.text();
-      console.error(`[apiframe-task-status] Error from APIframe API: ${errorText}`);
-      
-      const errorMessage = `API Error: ${apiResponse.status} ${apiResponse.statusText}`;
-      
-      // Update task in database if exists
-      if (taskData) {
-        await supabaseClient
-          .from("apiframe_tasks")
-          .update({
-            status: "failed",
-            error: errorMessage,
-            updated_at: new Date().toISOString()
-          })
-          .eq("task_id", taskId);
-      }
-      
-      return new Response(
-        JSON.stringify({
-          taskId,
-          status: "failed",
-          error: errorMessage
-        }), 
-        { status: apiResponse.status === 404 ? 404 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.error(`[apiframe-task-status] APIframe API error:`, errorText);
+      throw new Error(`APIframe API error: ${apiResponse.statusText}`);
     }
 
-    // Process API response
     const apiData = await apiResponse.json();
     
-    console.log(`[apiframe-task-status] APIframe API status for ${taskId}: ${apiData.status}`);
-    
-    // Map APIframe status to our status format
-    let mappedStatus = apiData.status;
+    // Map APIframe status to our format
+    let status = apiData.status;
     let mediaUrl = null;
     let errorMessage = null;
-    
+
     switch (apiData.status) {
       case "succeeded":
-        mappedStatus = "completed";
-        mediaUrl = apiData.output?.output_url || apiData.output?.url || null;
-        break;
-      case "processing":
-        mappedStatus = "processing";
+        status = "completed";
+        mediaUrl = apiData.output?.url || apiData.output?.image_url || null;
         break;
       case "failed":
-        mappedStatus = "failed";
+        status = "failed";
         errorMessage = apiData.error?.message || "Task failed";
         break;
-      case "pending":
-      default:
-        mappedStatus = "pending";
+      case "processing":
+        status = "processing";
         break;
+      default:
+        status = "pending";
     }
-    
-    // Update task in database if exists
+
+    // Update database if task exists
     if (taskData) {
-      await supabaseClient
+      const { error: updateError } = await supabaseClient
         .from("apiframe_tasks")
         .update({
-          status: mappedStatus,
+          status,
           media_url: mediaUrl,
           error: errorMessage,
           updated_at: new Date().toISOString()
         })
         .eq("task_id", taskId);
+
+      if (updateError) {
+        console.error(`[apiframe-task-status] Error updating task:`, updateError);
+      }
     }
-    
+
     return new Response(
       JSON.stringify({
         taskId,
-        status: mappedStatus,
+        status,
         mediaUrl,
         error: errorMessage
-      }), 
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error(`[apiframe-task-status] Unexpected error:`, error);
-    
+    console.error("[apiframe-task-status] Error:", error);
     return new Response(
       JSON.stringify({ 
-        error: "An unexpected error occurred", 
-        details: error instanceof Error ? error.message : String(error) 
+        error: error.message || "Unknown error",
+        details: "Check the edge function logs for more information"
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
+        status: 500 
+      }
     );
   }
 });

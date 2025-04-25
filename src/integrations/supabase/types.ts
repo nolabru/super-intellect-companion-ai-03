@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      apiframe_tasks: {
+        Row: {
+          created_at: string | null
+          error: string | null
+          id: string
+          media_type: string
+          media_url: string | null
+          model: string
+          params: Json | null
+          prompt: string | null
+          status: string
+          task_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          media_type: string
+          media_url?: string | null
+          model: string
+          params?: Json | null
+          prompt?: string | null
+          status?: string
+          task_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          media_type?: string
+          media_url?: string | null
+          model?: string
+          params?: Json | null
+          prompt?: string | null
+          status?: string
+          task_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
