@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { useApiframeGeneration } from '../useApiframeGeneration';
 import { ApiframeParams, ApiframeVideoModel } from '@/types/apiframeGeneration';
@@ -14,11 +13,30 @@ export function useVideoGeneration() {
     prompt: string,
     model: string,
     params: ApiframeParams = {},
-    referenceImageUrl?: string
+    referenceUrl?: string
   ) => {
-    // Convert string model to ApiframeVideoModel
-    const apiframeModel = getApiframeModelId(model) as ApiframeVideoModel;
-    return apiframeGeneration.generateMedia(prompt, 'video', apiframeModel, params, referenceImageUrl);
+    console.log(`[useVideoGeneration] Generating video with model ${model}, prompt: "${prompt.substring(0, 50)}..."`);
+    
+    try {
+      // Convert string model to ApiframeVideoModel
+      const apiframeModel = getApiframeModelId(model) as ApiframeVideoModel;
+      console.log(`[useVideoGeneration] Mapped model ID: ${apiframeModel}`);
+      
+      // Call the generateMedia function with the correct parameters
+      const result = await apiframeGeneration.generateMedia(
+        prompt, 
+        'video', 
+        apiframeModel, 
+        params, 
+        referenceUrl
+      );
+      
+      console.log('[useVideoGeneration] Generation result:', result);
+      return result;
+    } catch (error) {
+      console.error('[useVideoGeneration] Error generating video:', error);
+      throw error;
+    }
   }, [apiframeGeneration]);
 
   return {

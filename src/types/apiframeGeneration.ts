@@ -1,4 +1,3 @@
-
 export type ApiframeMediaType = 'image' | 'video' | 'audio';
 
 // Image Models
@@ -56,11 +55,22 @@ export interface ApiframeVideoParams extends ApiframeBaseParams {
 
 // Audio-specific parameters
 export interface ApiframeAudioParams {
+  // ElevenLabs parameters
   voice_id?: string;
   stability?: number;
   similarity_boost?: number;
   style?: number;
   speaking_rate?: number;
+  
+  // OpenAI TTS parameters
+  voice?: string;
+  speed?: number;
+  
+  // Coqui XTTS parameters
+  speaker_id?: string;
+  language?: string;
+  
+  // Generic parameters
   length?: string;
 }
 
@@ -93,4 +103,3 @@ export interface UseMediaGenerationOptions {
   onProgress?: (progress: number) => void;
   onComplete?: (result: MediaGenerationResult) => void;
 }
-

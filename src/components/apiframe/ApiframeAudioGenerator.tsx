@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,14 +8,31 @@ import { Loader2 } from 'lucide-react';
 import { useAudioGeneration } from '@/hooks/apiframe/useAudioGeneration';
 import { ApiframeAudioParams } from '@/types/apiframeGeneration';
 import ApiframeConfig from './ApiframeConfig';
-import { Progress } from '@/components/ui/progress';
+import MediaProgress from './common/MediaProgress';
 
+// Updated model list based on APIframe.ai's supported models
 const AUDIO_MODELS = [
-  { id: 'mmaudio-txt2audio', name: 'MMAudio Text to Audio' },
-  { id: 'mmaudio-video2audio', name: 'MMAudio Video to Audio', requiresReference: true },
-  { id: 'diffrhythm-base', name: 'DiffRhythm Base' },
-  { id: 'diffrhythm-full', name: 'DiffRhythm Full' },
-  { id: 'elevenlabs', name: 'ElevenLabs TTS' }
+  { id: 'elevenlabs-v2', name: 'ElevenLabs v2' },
+  { id: 'openai-tts-1', name: 'OpenAI TTS-1' },
+  { id: 'coqui-xtts', name: 'Coqui XTTS' }
+];
+
+// Voice options for ElevenLabs
+const ELEVENLABS_VOICES = [
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam' },
+  { id: 'jsCqWAovK2LkecY7zXl4', name: 'Nicole' },
+  { id: 'XB0fDUnXU5powFXDhCwa', name: 'Thomas' }
+];
+
+// Voice options for OpenAI TTS
+const OPENAI_VOICES = [
+  { id: 'alloy', name: 'Alloy' },
+  { id: 'echo', name: 'Echo' },
+  { id: 'fable', name: 'Fable' },
+  { id: 'onyx', name: 'Onyx' },
+  { id: 'nova', name: 'Nova' },
+  { id: 'shimmer', name: 'Shimmer' }
 ];
 
 interface ApiframeAudioGeneratorProps {
@@ -26,20 +42,48 @@ interface ApiframeAudioGeneratorProps {
 const ApiframeAudioGenerator: React.FC<ApiframeAudioGeneratorProps> = ({ onAudioGenerated }) => {
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState(AUDIO_MODELS[0].id);
+  const [selectedVoice, setSelectedVoice] = useState(ELEVENLABS_VOICES[0].id);
   const [generatedAudio, setGeneratedAudio] = useState<string | null>(null);
-  const [audioLength, setAudioLength] = useState<string>('90s');
   
   const { generateAudio, isGenerating, isApiKeyConfigured, currentTask } = useAudioGeneration();
+  
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model);
+    
+    // Reset voice selection based on model
+    if (model === 'elevenlabs-v2') {
+      setSelectedVoice(ELEVENLABS_VOICES[0].id);
+    } else if (model === 'openai-tts-1') {
+      setSelectedVoice(OPENAI_VOICES[0].id);
+    } else {
+      setSelectedVoice('');
+    }
+  };
   
   const handleGenerate = async () => {
     if (!prompt.trim()) {
       return;
     }
 
-    const params: ApiframeAudioParams = {
-      // Use properly typed parameters
-      length: audioLength
-    };
+    let params: ApiframeAudioParams = {};
+    
+    // Set model-specific parameters
+    if (selectedModel === 'elevenlabs-v2') {
+      params = {
+        voice_id: selectedVoice,
+        stability: 0.5,
+        similarity_boost: 0.75
+      };
+    } else if (selectedModel === 'openai-tts-1') {
+      params = {
+        voice: selectedVoice,
+        speed: 1.0
+      };
+    } else if (selectedModel === 'coqui-xtts') {
+      params = {
+        language: 'en'
+      };
+    }
     
     const result = await generateAudio(prompt, selectedModel, params);
     
@@ -55,6 +99,13 @@ const ApiframeAudioGenerator: React.FC<ApiframeAudioGeneratorProps> = ({ onAudio
   if (!isApiKeyConfigured()) {
     return <ApiframeConfig onConfigChange={() => window.location.reload()} />;
   }
+
+  // Determine which voice options to show based on selected model
+  const voiceOptions = selectedModel === 'elevenlabs-v2' 
+    ? ELEVENLABS_VOICES 
+    : selectedModel === 'openai-tts-1' 
+      ? OPENAI_VOICES 
+      : [];
 
   return (
     <Card className="w-full max-w-3xl">
@@ -73,7 +124,7 @@ const ApiframeAudioGenerator: React.FC<ApiframeAudioGeneratorProps> = ({ onAudio
           <Label htmlFor="audioModel">Model</Label>
           <Select 
             value={selectedModel}
-            onValueChange={(value) => setSelectedModel(value)}
+            onValueChange={handleModelChange}
             disabled={isGenerating}
           >
             <SelectTrigger id="audioModel">
@@ -89,34 +140,36 @@ const ApiframeAudioGenerator: React.FC<ApiframeAudioGeneratorProps> = ({ onAudio
           </Select>
         </div>
         
-        <div className="space-y-2">
-          <Label htmlFor="audioLength">Audio Length</Label>
-          <Select
-            value={audioLength}
-            onValueChange={(value) => setAudioLength(value)}
-            disabled={isGenerating || selectedModel === 'elevenlabs'}
-          >
-            <SelectTrigger id="audioLength">
-              <SelectValue placeholder="Select length" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="30s">30 seconds</SelectItem>
-              <SelectItem value="1m">1 minute</SelectItem>
-              <SelectItem value="90s">1.5 minutes</SelectItem>
-              <SelectItem value="2m">2 minutes</SelectItem>
-              <SelectItem value="3m">3 minutes</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {voiceOptions.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="voiceSelector">Voice</Label>
+            <Select
+              value={selectedVoice}
+              onValueChange={setSelectedVoice}
+              disabled={isGenerating}
+            >
+              <SelectTrigger id="voiceSelector">
+                <SelectValue placeholder="Select a voice" />
+              </SelectTrigger>
+              <SelectContent>
+                {voiceOptions.map((voice) => (
+                  <SelectItem key={voice.id} value={voice.id}>
+                    {voice.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         
         <div className="space-y-2">
           <Label htmlFor="audioPrompt">
-            {selectedModel === 'elevenlabs' ? 'Text to Speak' : 'Audio Description'}
+            {selectedModel.includes('tts') ? 'Text to Speak' : 'Audio Description'}
           </Label>
           <Textarea
             id="audioPrompt"
             placeholder={
-              selectedModel === 'elevenlabs' 
+              selectedModel.includes('tts') 
                 ? "Enter text to be converted to speech..." 
                 : "Describe the audio you want to generate..."
             }
@@ -129,15 +182,10 @@ const ApiframeAudioGenerator: React.FC<ApiframeAudioGeneratorProps> = ({ onAudio
         </div>
         
         {isGenerating && currentTask && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label>Generating Audio...</Label>
-              <span className="text-xs text-muted-foreground">
-                {currentTask.progress}%
-              </span>
-            </div>
-            <Progress value={currentTask.progress} />
-          </div>
+          <MediaProgress
+            progress={currentTask.progress}
+            type="audio"
+          />
         )}
         
         {generatedAudio && !isGenerating && (

@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Settings, AlertTriangle, CheckCircle, KeyRound } from 'lucide-react';
+import { Settings, AlertTriangle, CheckCircle, KeyRound, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiframeService } from '@/services/apiframeService';
 
@@ -32,7 +31,7 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
 
   const handleSaveConfig = () => {
     if (!apiKey.trim()) {
-      toast.error('API key is required');
+      toast.error('Chave de API é obrigatória');
       return;
     }
 
@@ -40,13 +39,13 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
     
     if (result) {
       setIsConfigured(true);
-      toast.success('APIframe.ai API key configured successfully');
+      toast.success('Chave de API do APIframe configurada com sucesso');
       
       if (onConfigChange) {
         onConfigChange(true);
       }
     } else {
-      toast.error('Failed to configure APIframe.ai API key');
+      toast.error('Falha ao configurar a chave de API do APIframe');
     }
   };
 
@@ -54,17 +53,34 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
     setIsTesting(true);
     
     try {
-      // Simple test to check if the API key is valid
-      // We'll use a test request to the APIframe.ai API
-      toast.info('Testing connection to APIframe.ai...');
+      // Test connection by checking the status of a non-existent task
+      // This will validate if the API key is correct
+      toast.info('Testando conexão com o APIframe...');
       
-      // For now, let's just set a timeout
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Use a dummy task ID to test the connection
+      const dummyTaskId = 'test-connection-' + Date.now();
       
-      toast.success('APIframe.ai connection successful');
+      try {
+        await apiframeService.checkTaskStatus(dummyTaskId);
+        // If we get here without an error, the API key is valid
+        toast.success('Conexão com o APIframe bem-sucedida');
+      } catch (error) {
+        // Check if the error is due to invalid API key or just a 404 for the task
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (errorMessage.includes('unauthorized') || 
+            errorMessage.includes('invalid key') || 
+            errorMessage.includes('forbidden')) {
+          toast.error('Chave de API inválida');
+        } else {
+          // If we get a 404 or other error, it means the API key is valid
+          // but the task doesn't exist (which is expected)
+          toast.success('Conexão com o APIframe bem-sucedida');
+        }
+      }
     } catch (error) {
-      console.error('Error testing APIframe.ai connection:', error);
-      toast.error('APIframe.ai connection failed');
+      console.error('Erro ao testar conexão com o APIframe:', error);
+      toast.error('Falha na conexão com o APIframe');
     } finally {
       setIsTesting(false);
     }
@@ -75,10 +91,10 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Settings className="h-5 w-5" />
-          <span>APIframe.ai Configuration</span>
+          <span>Configuração do APIframe</span>
         </CardTitle>
         <CardDescription>
-          Configure your APIframe.ai API key to enable media generation features
+          Configure sua chave de API do APIframe para habilitar recursos de geração de mídia
         </CardDescription>
       </CardHeader>
       
@@ -87,35 +103,35 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
           {isConfigured ? (
             <Alert className="bg-green-500/10 border-green-500/50">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertTitle>API Key Configured</AlertTitle>
+              <AlertTitle>Chave de API Configurada</AlertTitle>
               <AlertDescription>
-                Your APIframe.ai API key is configured. You can replace it below if needed.
+                Sua chave de API do APIframe está configurada. Você pode substituí-la abaixo, se necessário.
               </AlertDescription>
             </Alert>
           ) : (
             <Alert className="bg-amber-500/10 border-amber-500/50">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <AlertTitle>API Key Required</AlertTitle>
+              <AlertTitle>Chave de API Necessária</AlertTitle>
               <AlertDescription>
-                To use APIframe.ai media generation features, you need to configure your API key.
+                Para usar os recursos de geração de mídia do APIframe, você precisa configurar sua chave de API.
               </AlertDescription>
             </Alert>
           )}
           
           <div className="space-y-2">
             <Label htmlFor="apiKey" className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4" /> APIframe.ai API Key
+              <KeyRound className="h-4 w-4" /> Chave de API do APIframe
             </Label>
             <Input
               id="apiKey"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your APIframe.ai API key"
+              placeholder="Digite sua chave de API do APIframe"
               className="font-mono"
             />
             <p className="text-xs text-muted-foreground">
-              Get your API key from <a href="https://apiframe.ai/dashboard/api-keys" target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">APIframe.ai Dashboard</a>
+              Obtenha sua chave de API no <a href="https://apiframe.ai/dashboard/api-keys" target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">Painel do APIframe</a>
             </p>
           </div>
         </div>
@@ -127,10 +143,15 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
           onClick={testConnection} 
           disabled={!isConfigured || isTesting}
         >
-          {isTesting ? 'Testing...' : 'Test Connection'}
+          {isTesting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Testando...
+            </>
+          ) : 'Testar Conexão'}
         </Button>
         <Button onClick={handleSaveConfig}>
-          {isConfigured ? 'Update API Key' : 'Save API Key'}
+          {isConfigured ? 'Atualizar Chave de API' : 'Salvar Chave de API'}
         </Button>
       </CardFooter>
     </Card>

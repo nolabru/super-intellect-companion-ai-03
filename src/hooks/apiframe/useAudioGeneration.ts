@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { useApiframeGeneration } from '../useApiframeGeneration';
 import { ApiframeParams, ApiframeAudioModel } from '@/types/apiframeGeneration';
@@ -13,12 +12,29 @@ export function useAudioGeneration() {
   const generateAudio = useCallback(async (
     prompt: string,
     model: string,
-    params: ApiframeParams = {},
-    referenceUrl?: string
+    params: ApiframeParams = {}
   ) => {
-    // Convert string model to ApiframeAudioModel
-    const apiframeModel = getApiframeModelId(model) as ApiframeAudioModel;
-    return apiframeGeneration.generateMedia(prompt, 'audio', apiframeModel, params, referenceUrl);
+    console.log(`[useAudioGeneration] Generating audio with model ${model}, prompt: "${prompt.substring(0, 50)}..."`);
+    
+    try {
+      // Convert string model to ApiframeAudioModel
+      const apiframeModel = getApiframeModelId(model) as ApiframeAudioModel;
+      console.log(`[useAudioGeneration] Mapped model ID: ${apiframeModel}`);
+      
+      // Call the generateMedia function with the correct parameters
+      const result = await apiframeGeneration.generateMedia(
+        prompt, 
+        'audio', 
+        apiframeModel, 
+        params
+      );
+      
+      console.log('[useAudioGeneration] Generation result:', result);
+      return result;
+    } catch (error) {
+      console.error('[useAudioGeneration] Error generating audio:', error);
+      throw error;
+    }
   }, [apiframeGeneration]);
 
   return {
