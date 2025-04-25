@@ -2,7 +2,7 @@ import React from 'react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-export type ModelProvider = 'openai' | 'anthropic' | 'google' | 'kligin' | 'minimax' | 'elevenlabs' | 'ideogram' | 'luma' | 'replicate' | 'deepseek' | 'piapi' | 'apiframe';
+export type ModelProvider = 'openai' | 'apiframe';
 export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 
 export interface ModelInfo {
@@ -27,63 +27,119 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
   
   // Image Models
   {
-    id: 'apiframe-dalle-3',
-    displayName: 'DALL-E 3',
-    provider: 'apiframe',
-    capabilities: ['Geração de imagens realistas', 'Seguir instruções detalhadas'],
-    description: 'Gerador de imagens avançado com excelente compreensão e detalhe.',
-    modes: ['image']
-  },
-  {
     id: 'apiframe-sdxl',
     displayName: 'Stable Diffusion XL',
     provider: 'apiframe',
-    capabilities: ['Imagens de alta qualidade', 'Personalização avançada'],
-    description: 'Gerador de imagens de última geração com foco em qualidade e detalhes.',
+    capabilities: ['Alta qualidade', 'Imagens detalhadas', 'Controle avançado'],
+    description: 'Modelo premium de geração de imagens com qualidade excepcional.',
     modes: ['image']
   },
   {
-    id: 'apiframe-midjourney',
-    displayName: 'Midjourney',
+    id: 'apiframe-kandinsky',
+    displayName: 'Kandinsky',
     provider: 'apiframe',
-    capabilities: ['Imagens artísticas', 'Alta qualidade visual'],
-    description: 'Gerador de imagens especializado em arte e ilustrações de alta qualidade.',
+    capabilities: ['Estilo artístico', 'Composições criativas', 'Cores vibrantes'],
+    description: 'Gerador de imagens com foco em criatividade e estilo artístico.',
+    modes: ['image']
+  },
+  {
+    id: 'apiframe-deepfloyd',
+    displayName: 'DeepFloyd',
+    provider: 'apiframe',
+    capabilities: ['Realismo', 'Detalhes precisos', 'Texturas complexas'],
+    description: 'Modelo especializado em imagens realistas e detalhadas.',
+    modes: ['image']
+  },
+  {
+    id: 'apiframe-dalle',
+    displayName: 'DALL-E 3',
+    provider: 'apiframe',
+    capabilities: ['Compreensão avançada', 'Alta fidelidade', 'Seguir instruções detalhadas'],
+    description: 'Gerador de imagens da OpenAI com excelente interpretação de prompts.',
+    modes: ['image']
+  },
+  {
+    id: 'apiframe-sdxl-turbo',
+    displayName: 'SDXL Turbo',
+    provider: 'apiframe',
+    capabilities: ['Geração rápida', 'Qualidade decente', 'Baixa latência'],
+    description: 'Versão otimizada do SDXL para geração rápida de imagens.',
     modes: ['image']
   },
   
   // Video Models
   {
-    id: 'apiframe-gen2',
-    displayName: 'Gen-2',
+    id: 'apiframe-kling-text',
+    displayName: 'Kling Text-to-Video',
     provider: 'apiframe',
-    capabilities: ['Geração de vídeos', 'Animações fluidas'],
-    description: 'Gerador avançado de vídeos com foco em qualidade e fluidez.',
+    capabilities: ['Texto para vídeo', 'Animações fluidas', 'Qualidade HD'],
+    description: 'Gerador de vídeos a partir de descrições textuais.',
     modes: ['video']
   },
   {
-    id: 'apiframe-pika',
-    displayName: 'Pika',
+    id: 'apiframe-kling-image',
+    displayName: 'Kling Image-to-Video',
     provider: 'apiframe',
-    capabilities: ['Vídeos criativos', 'Efeitos visuais'],
-    description: 'Gerador de vídeos com foco em criatividade e efeitos especiais.',
+    capabilities: ['Imagem para vídeo', 'Animações realistas', 'Controle de movimento'],
+    description: 'Transforma imagens estáticas em vídeos animados.',
+    modes: ['video']
+  },
+  {
+    id: 'apiframe-hunyuan-fast',
+    displayName: 'HunYuan Fast',
+    provider: 'apiframe',
+    capabilities: ['Geração rápida', 'Vídeos curtos', 'Baixa latência'],
+    description: 'Modelo otimizado para geração rápida de vídeos.',
+    modes: ['video']
+  },
+  {
+    id: 'apiframe-hunyuan-standard',
+    displayName: 'HunYuan Standard',
+    provider: 'apiframe',
+    capabilities: ['Alta qualidade', 'Vídeos longos', 'Controle detalhado'],
+    description: 'Modelo padrão para geração de vídeos de alta qualidade.',
+    modes: ['video']
+  },
+  {
+    id: 'apiframe-hailuo-text',
+    displayName: 'Hailuo Text-to-Video',
+    provider: 'apiframe',
+    capabilities: ['Texto para vídeo', 'Efeitos especiais', 'Transições suaves'],
+    description: 'Especializado em criar vídeos com efeitos visuais a partir de texto.',
+    modes: ['video']
+  },
+  {
+    id: 'apiframe-hailuo-image',
+    displayName: 'Hailuo Image-to-Video',
+    provider: 'apiframe',
+    capabilities: ['Imagem para vídeo', 'Animações artísticas', 'Estilos variados'],
+    description: 'Transforma imagens em vídeos com estilos artísticos.',
     modes: ['video']
   },
   
   // Audio Models
   {
-    id: 'apiframe-elevenlabs',
-    displayName: 'ElevenLabs',
+    id: 'apiframe-elevenlabs-v2',
+    displayName: 'ElevenLabs V2',
     provider: 'apiframe',
-    capabilities: ['Conversão de texto em áudio', 'Múltiplas vozes', 'Alta qualidade'],
-    description: 'Serviço avançado de conversão de texto em áudio com vozes naturais.',
+    capabilities: ['Vozes naturais', 'Múltiplos idiomas', 'Controle de emoção'],
+    description: 'Modelo avançado de síntese de voz com suporte multilíngue.',
     modes: ['audio']
   },
   {
-    id: 'apiframe-openai-tts',
-    displayName: 'OpenAI TTS',
+    id: 'apiframe-openai-tts-1',
+    displayName: 'OpenAI TTS-1',
     provider: 'apiframe',
-    capabilities: ['Conversão de texto em áudio', 'Voz sintética de alta qualidade'],
-    description: 'Serviço de conversão de texto em áudio com vozes realistas.',
+    capabilities: ['Voz realista', 'Alta qualidade', 'Rápida geração'],
+    description: 'Modelo de conversão de texto em fala da OpenAI.',
+    modes: ['audio']
+  },
+  {
+    id: 'apiframe-coqui-xtts',
+    displayName: 'Coqui XTTS',
+    provider: 'apiframe',
+    capabilities: ['Clonagem de voz', 'Multilíngue', 'Personalização avançada'],
+    description: 'Modelo especializado em clonagem e personalização de voz.',
     modes: ['audio']
   }
 ];
@@ -109,26 +165,6 @@ const getProviderDisplayName = (provider: ModelProvider): string => {
   switch (provider) {
     case 'openai':
       return 'OpenAI';
-    case 'anthropic':
-      return 'Anthropic';
-    case 'google':
-      return 'Google';
-    case 'kligin':
-      return 'Kligin';
-    case 'minimax':
-      return 'MiniMax';
-    case 'elevenlabs':
-      return 'ElevenLabs';
-    case 'ideogram':
-      return 'Ideogram';
-    case 'luma':
-      return 'Luma AI';
-    case 'replicate':
-      return 'Replicate';
-    case 'deepseek':
-      return 'DeepSeek';
-    case 'piapi':
-      return 'PiAPI';
     case 'apiframe':
       return 'APIframe';
     default:
@@ -162,26 +198,6 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     switch (provider) {
       case 'openai':
         return '🟢';
-      case 'anthropic':
-        return '🟣';
-      case 'google':
-        return '🔵';
-      case 'kligin':
-        return '🟠';
-      case 'minimax':
-        return '🔴';
-      case 'elevenlabs':
-        return '🔊';
-      case 'ideogram':
-        return '🎨';
-      case 'luma':
-        return '🎬';
-      case 'replicate':
-        return '⚙️';
-      case 'deepseek':
-        return '⚫';
-      case 'piapi':
-        return '📍';
       case 'apiframe':
         return '📍';
       default:
