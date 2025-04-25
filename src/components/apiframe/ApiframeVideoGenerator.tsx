@@ -2,24 +2,17 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Loader2, Film, Upload } from 'lucide-react';
+import { Film, Loader2, Upload } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/apiframe/useVideoGeneration';
 import { ApiframeParams } from '@/types/apiframeGeneration';
 import ApiframeConfig from './ApiframeConfig';
 import { Progress } from '@/components/ui/progress';
-
-const VIDEO_MODELS = [
-  { id: 'kling-text', name: 'Kling (Text to Video)' },
-  { id: 'kling-image', name: 'Kling (Image to Video)', requiresImage: true },
-  { id: 'hunyuan-fast', name: 'HunYuan Fast' },
-  { id: 'hunyuan-standard', name: 'HunYuan Standard' },
-  { id: 'hailuo-text', name: 'Hailuo (Text to Video)' },
-  { id: 'hailuo-image', name: 'Hailuo (Image to Video)', requiresImage: true }
-];
+import VideoModelSelector, { VIDEO_MODELS } from './video/VideoModelSelector';
+import VideoDurationSelector from './video/VideoDurationSelector';
+import VideoPreview from './video/VideoPreview';
+import { Input } from '@/components/ui/input';
 
 interface ApiframeVideoGeneratorProps {
   onVideoGenerated?: (videoUrl: string) => void;
@@ -32,16 +25,16 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
   const [duration, setDuration] = useState('10');
+  const [isMediaLoading, setIsMediaLoading] = useState(true);
+  const [mediaError, setMediaError] = useState(false);
   
   const { generateVideo, isGenerating, isApiKeyConfigured, currentTask } = useVideoGeneration();
-  
+
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
     setGeneratedVideo(null);
     
-    // Reset reference image if switching to a model that doesn't require it
-    const modelRequiresImage = VIDEO_MODELS.find(m => m.id === modelId)?.requiresImage;
-    if (!modelRequiresImage) {
+    if (!VIDEO_MODELS.find(m => m.id === modelId)?.requiresImage) {
       setReferenceImage(null);
       setReferenceImageUrl(null);
     }
@@ -53,6 +46,27 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
       setReferenceImage(file);
       const url = URL.createObjectURL(file);
       setReferenceImageUrl(url);
+    }
+  };
+
+  const handleMediaLoaded = () => {
+    setIsMediaLoading(false);
+    console.log('Video loaded successfully:', generatedVideo);
+  };
+
+  const handleMediaError = () => {
+    setMediaError(true);
+    setIsMediaLoading(false);
+  };
+
+  const retryMediaLoad = () => {
+    setMediaError(false);
+    setIsMediaLoading(true);
+  };
+  
+  const openMediaInNewTab = () => {
+    if (generatedVideo) {
+      window.open(generatedVideo, '_blank');
     }
   };
   
@@ -72,8 +86,6 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
       aspectRatio: "16:9"
     };
     
-    // For now we're just using the URL directly
-    // In a real implementation, you would upload the image first
     const result = await generateVideo(prompt, selectedModel, params, referenceImageUrl || undefined);
     
     if (result.success && result.mediaUrl) {
@@ -102,38 +114,17 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
       </CardHeader>
       
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="videoModel">Model</Label>
-          <Select 
-            value={selectedModel}
-            onValueChange={handleModelChange}
-            disabled={isGenerating}
-          >
-            <SelectTrigger id="videoModel">
-              <SelectValue placeholder="Select a model" />
-            </SelectTrigger>
-            <SelectContent>
-              {VIDEO_MODELS.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <VideoModelSelector
+          selectedModel={selectedModel}
+          onModelChange={handleModelChange}
+          disabled={isGenerating}
+        />
         
-        <div className="space-y-2">
-          <Label htmlFor="duration">Duration (seconds)</Label>
-          <Input
-            id="duration"
-            type="number"
-            min="1"
-            max="60"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            disabled={isGenerating}
-          />
-        </div>
+        <VideoDurationSelector
+          duration={duration}
+          onDurationChange={setDuration}
+          disabled={isGenerating}
+        />
         
         {requiresImage && (
           <div className="space-y-2">
@@ -195,15 +186,13 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
         )}
         
         {generatedVideo && !isGenerating && (
-          <div className="mt-4">
-            <div className="border rounded-md overflow-hidden">
-              <video 
-                src={generatedVideo} 
-                controls 
-                className="w-full h-auto" 
-              />
-            </div>
-          </div>
+          <VideoPreview
+            videoUrl={generatedVideo}
+            isLoading={isMediaLoading}
+            mediaError={mediaError}
+            onRetry={retryMediaLoad}
+            onOpenInNewTab={openMediaInNewTab}
+          />
         )}
       </CardContent>
       
