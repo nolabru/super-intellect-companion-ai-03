@@ -9,7 +9,7 @@ export const apiframeService = {
     params: ApiframeParams = {}
   ) {
     try {
-      const { data, error } = await supabase.functions.invoke('apiframe-generate-image', {
+      const { data, error } = await supabase.functions.invoke('apiframe-image', {
         body: { prompt, model, params }
       });
 

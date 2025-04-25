@@ -15,12 +15,20 @@ export function useImageGeneration() {
     model: string,
     params: ApiframeParams = {}
   ) => {
-    console.log(`[useImageGeneration] Generating image with model ${model}`);
+    console.log(`[useImageGeneration] Generating image with model ${model}, prompt: "${prompt.substring(0, 50)}..."`);
     
-    // Convert string model to ApiframeImageModel
-    const apiframeModel = getApiframeModelId(model) as ApiframeImageModel;
-    
-    return apiframeGeneration.generateMedia(prompt, 'image', apiframeModel, params);
+    try {
+      // Convert string model to ApiframeImageModel
+      const apiframeModel = getApiframeModelId(model) as ApiframeImageModel;
+      console.log(`[useImageGeneration] Mapped model ID: ${apiframeModel}`);
+      
+      const result = await apiframeGeneration.generateMedia(prompt, 'image', apiframeModel, params);
+      console.log('[useImageGeneration] Generation result:', result);
+      return result;
+    } catch (error) {
+      console.error('[useImageGeneration] Error generating image:', error);
+      throw error;
+    }
   }, [apiframeGeneration]);
 
   return {
