@@ -1,86 +1,50 @@
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { MediaGenerationResult } from '@/services/mediaService';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import piapiDirectService, {
-  PiapiMediaType, 
-  PiapiModel, 
+  PiapiMediaType,
+  PiapiModel,
   PiapiParams,
   hasPiapiApiKey,
   initPiapiService
 } from '@/services/piapiDirectService';
-
-export interface UseMediaGenerationOptions {
-  showToasts?: boolean;
-  onProgress?: (progress: number) => void;
-  onComplete?: (result: MediaGenerationResult) => void;
-  autoSaveToGallery?: boolean;
-}
-
-export interface GenerationTask {
-  taskId: string;
-  progress: number;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  mediaUrl?: string;
-  error?: string;
-}
+import { UseMediaGenerationOptions } from '@/types/mediaGeneration';
+import { useTaskState } from './media/useTaskState';
+import { useTaskCleanup } from './media/useTaskCleanup';
+import { calculateProgress } from '@/utils/mediaProgress';
 
 export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
-  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [tasks, setTasks] = useState<Record<string, GenerationTask>>({});
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean>(hasPiapiApiKey());
   
-  const abortControllers = useRef<Record<string, AbortController>>({});
-  const statusCheckIntervals = useRef<Record<string, number>>({});
+  const {
+    tasks,
+    currentTaskId,
+    currentTask,
+    updateTask,
+    registerTask,
+    clearTasks
+  } = useTaskState();
+  
+  const { abortControllers, statusCheckIntervals } = useTaskCleanup(options);
 
-  // Clean up function
-  useEffect(() => {
-    return () => {
-      // Cancel all abort controllers
-      Object.values(abortControllers.current).forEach(controller => {
-        try {
-          controller.abort();
-        } catch (err) {
-          console.error('[useMediaGeneration] Error aborting controller:', err);
-        }
-      });
-      
-      // Clear all intervals
-      Object.values(statusCheckIntervals.current).forEach(intervalId => {
-        clearInterval(intervalId);
-      });
-    };
-  }, []);
-
-  /**
-   * Configure API key
-   */
   const configureApiKey = useCallback((apiKey: string): boolean => {
     const result = initPiapiService(apiKey);
     setApiKeyConfigured(result);
     return result;
   }, []);
 
-  /**
-   * Check if API key is configured
-   */
   const isApiKeyConfigured = useCallback((): boolean => {
     return hasPiapiApiKey();
   }, []);
 
-  /**
-   * Generate media using PiAPI direct service
-   */
   const generateMedia = useCallback(async (
     prompt: string,
     mediaType: PiapiMediaType,
     model: PiapiModel,
     params: PiapiParams = {},
     referenceUrl?: string
-  ): Promise<MediaGenerationResult> => {
+  ) => {
     try {
       console.log(`[useMediaGeneration] Starting ${mediaType} generation with model ${model}`);
       
@@ -103,20 +67,15 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
       // Create controller for possible cancelation
       const controller = new AbortController();
       
-      // Initialize generation with direct PiAPI service
       let result;
-      
       try {
-        // Call the appropriate method based on media type
         if (mediaType === 'image') {
           result = await piapiDirectService.generateImage(prompt, model as any, params);
         } else if (mediaType === 'video') {
           result = await piapiDirectService.generateVideo(prompt, model as any, params, referenceUrl);
-        } else { // audio
+        } else {
           result = await piapiDirectService.generateAudio(prompt, model as any, params, referenceUrl);
         }
-        
-        console.log(`[useMediaGeneration] Initial result:`, result);
       } catch (err) {
         console.error(`[useMediaGeneration] Error in PiAPI service call:`, err);
         const errorMsg = err instanceof Error ? err.message : String(err);
@@ -131,56 +90,20 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
         };
       }
       
-      // Register task if we have a task ID
       if (result && result.taskId) {
         const taskId = result.taskId;
-        setCurrentTaskId(taskId);
-        abortControllers.current[taskId] = controller;
+        abortControllers[taskId] = controller;
         
-        const taskObject: GenerationTask = {
+        registerTask(taskId, {
           taskId,
           progress: 0,
           status: result.status || 'pending',
           mediaUrl: result.mediaUrl,
           error: result.error
-        };
+        });
         
-        console.log(`[useMediaGeneration] Registering new task:`, taskObject);
-        
-        setTasks(prev => ({
-          ...prev,
-          [taskId]: taskObject
-        }));
-        
-        // If task is already completed (like with elevenlabs)
         if (result.status === 'completed' && result.mediaUrl) {
-          console.log(`[useMediaGeneration] Task already complete with URL:`, result.mediaUrl);
-          
-          setTasks(prev => ({
-            ...prev,
-            [taskId]: {
-              ...prev[taskId],
-              progress: 100,
-              mediaUrl: result.mediaUrl
-            }
-          }));
-          
-          if (options.onProgress) {
-            options.onProgress(100);
-          }
-          
-          if (options.onComplete) {
-            options.onComplete({
-              success: true,
-              mediaUrl: result.mediaUrl,
-              taskId: result.taskId
-            });
-          }
-          
-          if (options.showToasts !== false) {
-            toast.success(`${mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Áudio'} gerado com sucesso!`);
-          }
-          
+          handleTaskCompletion(taskId, result.mediaUrl);
           return {
             success: true,
             mediaUrl: result.mediaUrl,
@@ -188,129 +111,26 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
           };
         }
         
-        // For pending tasks, set up status polling
-        const checkStatusInterval = setInterval(async () => {
-          try {
-            // Check if aborted
-            if (controller.signal.aborted) {
-              clearInterval(checkStatusInterval);
-              delete statusCheckIntervals.current[taskId];
-              return;
-            }
-            
-            console.log(`[useMediaGeneration] Checking status for task ${taskId}`);
-            
-            let statusResult;
-            try {
-              statusResult = await piapiDirectService.checkTaskStatus(taskId);
-              console.log(`[useMediaGeneration] Status update:`, statusResult);
-            } catch (statusError) {
-              console.error(`[useMediaGeneration] Error checking status:`, statusError);
-              return;
-            }
-            
-            // Update task state with latest status
-            setTasks(prev => ({
-              ...prev,
-              [taskId]: {
-                ...prev[taskId],
-                status: statusResult.status,
-                mediaUrl: statusResult.mediaUrl,
-                error: statusResult.error,
-                // Maintain progress or increment it
-                progress: statusResult.status === 'completed' ? 100 : 
-                          calculateProgress(prev[taskId]?.progress || 0, statusResult.status)
-              }
-            }));
-            
-            // Update progress via callback
-            if (options.onProgress) {
-              options.onProgress(
-                statusResult.status === 'completed' ? 100 : 
-                calculateProgress(tasks[taskId]?.progress || 0, statusResult.status)
-              );
-            }
-            
-            // If completed or failed, clear interval and handle completion
-            if (statusResult.status === 'completed' || statusResult.status === 'failed') {
-              clearInterval(checkStatusInterval);
-              delete statusCheckIntervals.current[taskId];
-              
-              // Notify completion
-              if (options.onComplete) {
-                options.onComplete({
-                  success: statusResult.status === 'completed',
-                  error: statusResult.error,
-                  mediaUrl: statusResult.mediaUrl,
-                  taskId: statusResult.taskId
-                });
-              }
-              
-              // Show toast notification
-              if (options.showToasts !== false) {
-                if (statusResult.status === 'completed') {
-                  toast.success(`${mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Áudio'} gerado com sucesso!`);
-                } else {
-                  toast.error(`Erro ao gerar ${mediaType === 'image' ? 'imagem' : mediaType === 'video' ? 'vídeo' : 'áudio'}: ${statusResult.error || 'Erro desconhecido'}`);
-                }
-              }
-            }
-          } catch (err) {
-            console.error('[useMediaGeneration] Error in status check interval:', err);
-          }
-        }, 3000); // Check every 3 seconds
-        
-        // Save interval ID for cleanup
-        statusCheckIntervals.current[taskId] = checkStatusInterval as unknown as number;
-        
-        // Set timeout to auto-clear interval after 10 minutes
-        setTimeout(() => {
-          if (statusCheckIntervals.current[taskId]) {
-            clearInterval(statusCheckIntervals.current[taskId]);
-            delete statusCheckIntervals.current[taskId];
-            
-            // Update task if it's still pending
-            setTasks(prev => {
-              if (prev[taskId] && (prev[taskId].status === 'pending' || prev[taskId].status === 'processing')) {
-                return {
-                  ...prev,
-                  [taskId]: {
-                    ...prev[taskId],
-                    status: 'failed',
-                    error: 'Timeout: Task took too long to complete'
-                  }
-                };
-              }
-              return prev;
-            });
-            
-            // Notify timeout via toast
-            if (options.showToasts !== false) {
-              toast.error(`Tempo esgotado para geração de ${mediaType}`, {
-                description: 'A tarefa demorou muito tempo e será verificada em segundo plano'
-              });
-            }
-          }
-        }, 10 * 60 * 1000); // 10 minute timeout
+        // Set up status polling for pending tasks
+        setupStatusPolling(taskId);
         
         return {
           success: true,
           taskId: result.taskId
         };
-      } else {
-        // No task ID returned
-        const errorMsg = 'Nenhum ID de tarefa retornado pela API';
-        console.error(`[useMediaGeneration] ${errorMsg}`);
-        
-        if (options.showToasts !== false) {
-          toast.error(`Erro ao iniciar geração: ${errorMsg}`);
-        }
-        
-        return {
-          success: false,
-          error: errorMsg
-        };
       }
+      
+      const errorMsg = 'Nenhum ID de tarefa retornado pela API';
+      console.error(`[useMediaGeneration] ${errorMsg}`);
+      
+      if (options.showToasts !== false) {
+        toast.error(`Erro ao iniciar geração: ${errorMsg}`);
+      }
+      
+      return {
+        success: false,
+        error: errorMsg
+      };
     } catch (err) {
       console.error('[useMediaGeneration] Error generating media:', err);
       
@@ -325,58 +145,117 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
     } finally {
       setIsGenerating(false);
     }
-  }, [isApiKeyConfigured, options]);
+  }, [isApiKeyConfigured, options, registerTask]);
 
-  /**
-   * Calculate progress based on current progress and status
-   */
-  const calculateProgress = (currentProgress: number, status: string): number => {
-    if (status === 'pending') {
-      // Increment by 5% up to 40% max for pending status
-      return Math.min(40, currentProgress + 5);
-    } else if (status === 'processing') {
-      // Increment by 10% up to 90% max for processing status
-      return Math.min(90, Math.max(50, currentProgress + 10));
-    } else if (status === 'completed') {
-      return 100;
-    } else {
-      return currentProgress;
+  const handleTaskCompletion = useCallback((taskId: string, mediaUrl: string) => {
+    updateTask(taskId, {
+      progress: 100,
+      status: 'completed',
+      mediaUrl
+    });
+    
+    if (options.onProgress) {
+      options.onProgress(100);
     }
-  };
+    
+    if (options.onComplete) {
+      options.onComplete({
+        success: true,
+        mediaUrl,
+        taskId
+      });
+    }
+    
+    if (options.showToasts !== false) {
+      toast.success('Mídia gerada com sucesso!');
+    }
+  }, [options, updateTask]);
 
-  /**
-   * Cancel a media generation task
-   */
+  const setupStatusPolling = useCallback((taskId: string) => {
+    const checkStatusInterval = setInterval(async () => {
+      if (abortControllers[taskId]?.signal.aborted) {
+        clearInterval(statusCheckIntervals[taskId]);
+        delete statusCheckIntervals[taskId];
+        return;
+      }
+
+      try {
+        const statusResult = await piapiDirectService.checkTaskStatus(taskId);
+        
+        updateTask(taskId, {
+          status: statusResult.status,
+          mediaUrl: statusResult.mediaUrl,
+          error: statusResult.error,
+          progress: calculateProgress(tasks[taskId]?.progress || 0, statusResult.status)
+        });
+        
+        if (options.onProgress) {
+          options.onProgress(
+            statusResult.status === 'completed' ? 100 : 
+            calculateProgress(tasks[taskId]?.progress || 0, statusResult.status)
+          );
+        }
+        
+        if (statusResult.status === 'completed' || statusResult.status === 'failed') {
+          clearInterval(statusCheckIntervals[taskId]);
+          delete statusCheckIntervals[taskId];
+          
+          if (statusResult.status === 'completed' && statusResult.mediaUrl) {
+            handleTaskCompletion(taskId, statusResult.mediaUrl);
+          } else if (options.showToasts !== false) {
+            toast.error(`Erro ao gerar mídia: ${statusResult.error || 'Erro desconhecido'}`);
+          }
+        }
+      } catch (err) {
+        console.error('[useMediaGeneration] Error in status check:', err);
+      }
+    }, 3000);
+    
+    statusCheckIntervals[taskId] = checkStatusInterval as unknown as number;
+    
+    // Auto-clear interval after 10 minutes
+    setTimeout(() => {
+      if (statusCheckIntervals[taskId]) {
+        clearInterval(statusCheckIntervals[taskId]);
+        delete statusCheckIntervals[taskId];
+        
+        updateTask(taskId, {
+          status: 'failed',
+          error: 'Timeout: Task took too long to complete'
+        });
+        
+        if (options.showToasts !== false) {
+          toast.error('Tempo esgotado para geração de mídia', {
+            description: 'A tarefa demorou muito tempo e será verificada em segundo plano'
+          });
+        }
+      }
+    }, 10 * 60 * 1000);
+  }, [tasks, options, updateTask]);
+
   const cancelTask = useCallback(async (taskId: string): Promise<boolean> => {
     try {
       if (!taskId) return false;
       
       console.log(`[useMediaGeneration] Cancelling task: ${taskId}`);
       
-      // Abort controller if exists
-      if (abortControllers.current[taskId]) {
-        abortControllers.current[taskId].abort();
-        delete abortControllers.current[taskId];
+      if (abortControllers[taskId]) {
+        abortControllers[taskId].abort();
+        delete abortControllers[taskId];
       }
       
-      // Clear status check interval if exists
-      if (statusCheckIntervals.current[taskId]) {
-        clearInterval(statusCheckIntervals.current[taskId]);
-        delete statusCheckIntervals.current[taskId];
+      if (statusCheckIntervals[taskId]) {
+        clearInterval(statusCheckIntervals[taskId]);
+        delete statusCheckIntervals[taskId];
       }
       
-      // Cancel task in service
       const result = await piapiDirectService.cancelTask(taskId);
       
       if (result) {
-        setTasks(prev => ({
-          ...prev,
-          [taskId]: {
-            ...prev[taskId],
-            status: 'failed',
-            error: 'Tarefa cancelada pelo usuário'
-          }
-        }));
+        updateTask(taskId, {
+          status: 'failed',
+          error: 'Tarefa cancelada pelo usuário'
+        });
         
         if (options.showToasts !== false) {
           toast.info('Tarefa de geração cancelada');
@@ -388,31 +267,7 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
       console.error('[useMediaGeneration] Error cancelling task:', err);
       return false;
     }
-  }, [options]);
-
-  /**
-   * Clear all tasks
-   */
-  const clearTasks = useCallback(() => {
-    // Cancel all controllers
-    Object.values(abortControllers.current).forEach(controller => {
-      try {
-        controller.abort();
-      } catch (err) {
-        console.error('[useMediaGeneration] Error aborting controller:', err);
-      }
-    });
-    
-    // Clear all intervals
-    Object.values(statusCheckIntervals.current).forEach(intervalId => {
-      clearInterval(intervalId);
-    });
-    
-    abortControllers.current = {};
-    statusCheckIntervals.current = {};
-    setTasks({});
-    setCurrentTaskId(null);
-  }, []);
+  }, [options, updateTask]);
 
   return {
     generateMedia,
@@ -422,7 +277,8 @@ export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
     isApiKeyConfigured,
     isGenerating,
     tasks,
-    currentTask: currentTaskId ? tasks[currentTaskId] : null,
+    currentTask,
     apiKeyConfigured
   };
 }
+
