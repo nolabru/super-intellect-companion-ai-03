@@ -8,8 +8,8 @@ import { Film, Loader2, Upload } from 'lucide-react';
 import { useVideoGeneration } from '@/hooks/apiframe/useVideoGeneration';
 import { ApiframeParams } from '@/types/apiframeGeneration';
 import ApiframeConfig from './ApiframeConfig';
-import { Progress } from '@/components/ui/progress';
-import VideoModelSelector, { VIDEO_MODELS } from './video/VideoModelSelector';
+import MediaProgress from './common/MediaProgress';
+import VideoModelSelector, { VideoModelType, VIDEO_MODELS } from './video/VideoModelSelector';
 import VideoDurationSelector from './video/VideoDurationSelector';
 import VideoPreview from './video/VideoPreview';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,7 @@ interface ApiframeVideoGeneratorProps {
 
 const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideoGenerated }) => {
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState(VIDEO_MODELS[0].id);
+  const [selectedModel, setSelectedModel] = useState<VideoModelType>('kling-text');
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
   const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
@@ -30,11 +30,12 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
   
   const { generateVideo, isGenerating, isApiKeyConfigured, currentTask } = useVideoGeneration();
 
-  const handleModelChange = (modelId: string) => {
+  const handleModelChange = (modelId: VideoModelType) => {
     setSelectedModel(modelId);
     setGeneratedVideo(null);
     
-    if (!VIDEO_MODELS.find(m => m.id === modelId)?.requiresImage) {
+    const selectedModelData = VIDEO_MODELS.find(m => m.id === modelId);
+    if (!selectedModelData?.requiresImage) {
       setReferenceImage(null);
       setReferenceImageUrl(null);
     }
@@ -75,7 +76,8 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
       return;
     }
     
-    const modelRequiresImage = VIDEO_MODELS.find(m => m.id === selectedModel)?.requiresImage;
+    const selectedModelData = VIDEO_MODELS.find(m => m.id === selectedModel);
+    const modelRequiresImage = selectedModelData?.requiresImage;
     
     if (modelRequiresImage && !referenceImageUrl) {
       return;
@@ -174,15 +176,10 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
         </div>
         
         {isGenerating && currentTask && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label>Generating Video...</Label>
-              <span className="text-xs text-muted-foreground">
-                {currentTask.progress}%
-              </span>
-            </div>
-            <Progress value={currentTask.progress} />
-          </div>
+          <MediaProgress
+            progress={currentTask.progress}
+            type="video"
+          />
         )}
         
         {generatedVideo && !isGenerating && (

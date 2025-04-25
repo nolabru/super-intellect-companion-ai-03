@@ -3,18 +3,32 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 
-export const VIDEO_MODELS = [
+export type VideoModelType = 
+  | 'kling-text' 
+  | 'kling-image' 
+  | 'hunyuan-fast' 
+  | 'hunyuan-standard' 
+  | 'hailuo-text' 
+  | 'hailuo-image';
+
+export interface VideoModel {
+  id: VideoModelType;
+  name: string;
+  requiresImage?: boolean;
+}
+
+export const VIDEO_MODELS: VideoModel[] = [
   { id: 'kling-text', name: 'Kling (Text to Video)' },
   { id: 'kling-image', name: 'Kling (Image to Video)', requiresImage: true },
   { id: 'hunyuan-fast', name: 'HunYuan Fast' },
   { id: 'hunyuan-standard', name: 'HunYuan Standard' },
   { id: 'hailuo-text', name: 'Hailuo (Text to Video)' },
   { id: 'hailuo-image', name: 'Hailuo (Image to Video)', requiresImage: true }
-] as const;
+];
 
 interface VideoModelSelectorProps {
-  selectedModel: string;
-  onModelChange: (model: string) => void;
+  selectedModel: VideoModelType;
+  onModelChange: (model: VideoModelType) => void;
   disabled?: boolean;
 }
 
