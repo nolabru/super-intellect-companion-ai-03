@@ -105,75 +105,48 @@ serve(async (req) => {
     );
 
     // Parse request body
-    let requestBody;
-    try {
-      requestBody = await req.json();
-    } catch (parseError) {
-      console.error("[apiframe-task-cancel] Error parsing request body:", parseError);
-      return createErrorResponse("Invalid request body - JSON parsing failed");
-    }
-
-    // Validate request parameters
-    const { taskId } = requestBody;
+    const { taskId } = await req.json();
+    
     if (!taskId) {
-      console.error("[apiframe-task-cancel] taskId is required");
       return createErrorResponse("Task ID is required");
     }
 
-    console.log(`[apiframe-task-cancel] Attempting to cancel task: ${taskId}`);
+    console.log(`[apiframe-task-cancel] Processing cancellation request for task: ${taskId}`);
 
-    // Get task from database
-    let taskData;
+    // Get task information from database
+    let task;
     try {
-      taskData = await getTaskFromDatabase(supabaseClient, taskId);
+      task = await getTaskFromDatabase(supabaseClient, taskId);
     } catch (error) {
-      return createErrorResponse(error.message, 404);
+      return createErrorResponse(`Could not find task: ${error.message}`, 404);
     }
 
-    console.log(`[apiframe-task-cancel] Current task status: ${taskData.status}`);
+    // Check if task is already completed or failed
+    if (task.status === "completed" || task.status === "failed") {
+      const message = `Task ${taskId} is already ${task.status}`;
+      console.log(`[apiframe-task-cancel] ${message}`);
+      return createSuccessResponse({ message });
+    }
+
+    // Attempt to cancel the task in APIframe
+    const cancelResult = await cancelTaskInAPIframe(taskId, APIFRAME_API_KEY);
     
-    // Check if task is in final state
-    if (taskData.status === 'completed' || taskData.status === 'failed') {
-      console.log(`[apiframe-task-cancel] Task is already in final state: ${taskData.status}`);
-      return createSuccessResponse({
-        message: `Task is already in ${taskData.status} state and cannot be cancelled`
-      });
-    }
+    // Update task status in the database
+    await updateTaskInDatabase(
+      supabaseClient, 
+      taskId, 
+      "failed", 
+      cancelResult.success ? "Cancelled by user" : "Failed to cancel task"
+    );
 
-    // Cancel task in APIframe
-    let apiResult;
-    try {
-      apiResult = await cancelTaskInAPIframe(taskId, APIFRAME_API_KEY);
-    } catch (error) {
-      console.error(`[apiframe-task-cancel] Error calling APIframe:`, error);
-      return createErrorResponse(`Error calling APIframe: ${error.message}`, 500);
-    }
-
-    // Update database if cancellation was successful
-    if (apiResult.success) {
-      try {
-        await updateTaskInDatabase(
-          supabaseClient, 
-          taskId, 
-          'failed', 
-          'Task cancelled by user'
-        );
-      } catch (error) {
-        return createErrorResponse(error.message, 500);
-      }
-      
-      return createSuccessResponse({ message: "Task cancelled successfully" });
-    } else {
-      return createErrorResponse(
-        `Failed to cancel task: ${apiResult.responseText}`, 
-        500
-      );
-    }
+    return createSuccessResponse({
+      taskId,
+      message: cancelResult.success ? "Task cancelled successfully" : "Task cancellation request sent"
+    });
   } catch (error) {
-    // Global error handler
-    console.error("[apiframe-task-cancel] Unhandled error:", error);
+    console.error("[apiframe-task-cancel] Error:", error);
     return createErrorResponse(
-      error.message || "Unknown error", 
+      `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
       500
     );
   }

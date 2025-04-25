@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Settings, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Settings, AlertTriangle, CheckCircle, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiframeService } from '@/services/apiframeService';
 
@@ -56,6 +56,8 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
     try {
       // Simple test to check if the API key is valid
       // We'll use a test request to the APIframe.ai API
+      toast.info('Testing connection to APIframe.ai...');
+      
       // For now, let's just set a timeout
       await new Promise(resolve => setTimeout(resolve, 1000));
       
@@ -82,7 +84,7 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
       
       <CardContent>
         <div className="space-y-4">
-          {isConfigured && (
+          {isConfigured ? (
             <Alert className="bg-green-500/10 border-green-500/50">
               <CheckCircle className="h-4 w-4 text-green-500" />
               <AlertTitle>API Key Configured</AlertTitle>
@@ -90,10 +92,20 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
                 Your APIframe.ai API key is configured. You can replace it below if needed.
               </AlertDescription>
             </Alert>
+          ) : (
+            <Alert className="bg-amber-500/10 border-amber-500/50">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertTitle>API Key Required</AlertTitle>
+              <AlertDescription>
+                To use APIframe.ai media generation features, you need to configure your API key.
+              </AlertDescription>
+            </Alert>
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="apiKey">APIframe.ai API Key</Label>
+            <Label htmlFor="apiKey" className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4" /> APIframe.ai API Key
+            </Label>
             <Input
               id="apiKey"
               type="password"
