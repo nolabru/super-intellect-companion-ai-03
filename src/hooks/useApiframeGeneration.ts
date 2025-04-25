@@ -91,15 +91,18 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
         const taskId = result.taskId;
         abortControllers[taskId] = controller;
         
+        // Map API status to our allowed status values
+        const taskStatus = mapApiStatus(result.status || 'pending');
+        
         registerTask(taskId, {
           taskId,
           progress: 0,
-          status: result.status || 'pending',
+          status: taskStatus,
           mediaUrl: result.mediaUrl,
           error: result.error
         });
         
-        if (result.status === 'completed' && result.mediaUrl) {
+        if (taskStatus === 'completed' && result.mediaUrl) {
           handleTaskCompletion(taskId, result.mediaUrl);
           return {
             success: true,
@@ -144,6 +147,22 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
     }
   }, [isApiKeyConfigured, options, registerTask]);
 
+  // Helper function to map API status strings to our allowed status values
+  const mapApiStatus = (status: string): 'pending' | 'processing' | 'completed' | 'failed' => {
+    switch (status) {
+      case 'completed':
+      case 'succeeded':
+        return 'completed';
+      case 'processing':
+        return 'processing';
+      case 'failed':
+      case 'error':
+        return 'failed';
+      default:
+        return 'pending';
+    }
+  };
+
   const handleTaskCompletion = useCallback((taskId: string, mediaUrl: string) => {
     updateTask(taskId, {
       progress: 100,
@@ -179,25 +198,28 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
       try {
         const statusResult = await apiframeService.checkTaskStatus(taskId);
         
+        // Map API status to our allowed status values
+        const mappedStatus = mapApiStatus(statusResult.status || 'pending');
+        
         updateTask(taskId, {
-          status: statusResult.status,
+          status: mappedStatus,
           mediaUrl: statusResult.mediaUrl,
           error: statusResult.error,
-          progress: calculateProgress(tasks[taskId]?.progress || 0, statusResult.status)
+          progress: calculateProgress(tasks[taskId]?.progress || 0, mappedStatus)
         });
         
         if (options.onProgress) {
           options.onProgress(
-            statusResult.status === 'completed' ? 100 : 
-            calculateProgress(tasks[taskId]?.progress || 0, statusResult.status)
+            mappedStatus === 'completed' ? 100 : 
+            calculateProgress(tasks[taskId]?.progress || 0, mappedStatus)
           );
         }
         
-        if (statusResult.status === 'completed' || statusResult.status === 'failed') {
+        if (mappedStatus === 'completed' || mappedStatus === 'failed') {
           clearInterval(statusCheckIntervals[taskId]);
           delete statusCheckIntervals[taskId];
           
-          if (statusResult.status === 'completed' && statusResult.mediaUrl) {
+          if (mappedStatus === 'completed' && statusResult.mediaUrl) {
             handleTaskCompletion(taskId, statusResult.mediaUrl);
           } else if (options.showToasts !== false) {
             toast.error(`Erro ao gerar mídia: ${statusResult.error || 'Erro desconhecido'}`);
