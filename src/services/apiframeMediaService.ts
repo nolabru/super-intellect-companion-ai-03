@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { apiframeService } from './apiframeService';
 import { tokenService } from './tokenService';
@@ -12,13 +11,7 @@ export interface MediaGenerationOptions {
   onProgress?: (progress: number) => void;
 }
 
-/**
- * Serviço para gerenciamento de geração e armazenamento de mídia
- */
 export const apiframeMediaService = {
-  /**
-   * Gera mídia através da APIframe com monitoramento e controle de tokens
-   */
   async generateMedia(
     prompt: string,
     mediaType: ApiframeMediaType,
@@ -30,7 +23,6 @@ export const apiframeMediaService = {
     try {
       console.log(`[apiframeMediaService] Iniciando geração de ${mediaType} com modelo ${model}`);
       
-      // Verificar tokens se solicitado e usuário autenticado
       if (options.shouldCheckTokens && options.userId) {
         const { hasEnough, required, remaining } = await tokenService.hasEnoughTokens(
           options.userId,
@@ -49,7 +41,6 @@ export const apiframeMediaService = {
         console.log(`[apiframeMediaService] Verificação de tokens aprovada. Disponível: ${remaining}`);
       }
       
-      // Iniciar geração de mídia com o serviço adequado
       let result;
       switch (mediaType) {
         case 'image':
@@ -67,7 +58,6 @@ export const apiframeMediaService = {
       
       console.log(`[apiframeMediaService] Tarefa de geração criada: ${result.taskId}`);
       
-      // Monitorar progresso da tarefa se solicitado
       if (options.shouldTrackProgress) {
         this._monitorTaskProgress(result.taskId, mediaType, options.onProgress);
       }
@@ -88,9 +78,6 @@ export const apiframeMediaService = {
     }
   },
   
-  /**
-   * Verifica o status de uma tarefa de geração de mídia
-   */
   async checkTaskStatus(taskId: string): Promise<MediaGenerationResult> {
     try {
       const result = await apiframeService.checkTaskStatus(taskId);
@@ -111,9 +98,6 @@ export const apiframeMediaService = {
     }
   },
   
-  /**
-   * Cancela uma tarefa de geração de mídia
-   */
   async cancelTask(taskId: string): Promise<boolean> {
     try {
       console.log(`[apiframeMediaService] Solicitando cancelamento da tarefa ${taskId}`);
@@ -124,9 +108,6 @@ export const apiframeMediaService = {
     }
   },
   
-  /**
-   * Salva uma mídia na galeria do usuário
-   */
   async saveToGallery(
     mediaUrl: string, 
     prompt: string, 
@@ -165,9 +146,6 @@ export const apiframeMediaService = {
     }
   },
   
-  /**
-   * Obtém itens da galeria do usuário
-   */
   async getGalleryItems(
     userId?: string, 
     mediaType?: ApiframeMediaType,
@@ -204,9 +182,6 @@ export const apiframeMediaService = {
     }
   },
   
-  /**
-   * Configura monitoramento de progresso para uma tarefa
-   */
   _monitorTaskProgress(
     taskId: string, 
     mediaType: ApiframeMediaType,
@@ -231,7 +206,6 @@ export const apiframeMediaService = {
         } else if (result.status === 'failed') {
           clearInterval(updateProgressInterval);
         } else {
-          // Incrementar progresso gradualmente
           progress = Math.min(progress + 5, 95);
           if (onProgress) onProgress(progress);
         }
@@ -240,7 +214,6 @@ export const apiframeMediaService = {
       }
     }, 2000);
     
-    // Inscrever-se para atualizações em tempo real
     const unsubscribe = apiframeService.subscribeToTaskUpdates((payload) => {
       const { task_id, media_url, error } = payload.new;
       
@@ -256,11 +229,25 @@ export const apiframeMediaService = {
       }
     });
     
-    // Garantir que recursos são liberados
     setTimeout(() => {
       cancelled = true;
       clearInterval(updateProgressInterval);
       unsubscribe();
-    }, 5 * 60 * 1000); // Timeout após 5 minutos
+    }, 5 * 60 * 1000);
+  },
+  
+  subscribeToTaskUpdates(callback: (payload: any) => void) {
+    return supabase
+      .channel('media-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'media_ready_events'
+        },
+        callback
+      )
+      .subscribe();
   }
 };

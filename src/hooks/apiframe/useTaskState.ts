@@ -2,9 +2,6 @@
 import { useState, useCallback } from 'react';
 import { GenerationTask } from '@/types/apiframeGeneration';
 
-/**
- * Hook for managing generation task state
- */
 export function useTaskState() {
   const [tasks, setTasks] = useState<Record<string, GenerationTask>>({});
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);

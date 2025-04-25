@@ -7,6 +7,14 @@ export interface ApiframeParams {
   [key: string]: any;
 }
 
+export interface GenerationTask {
+  taskId: string;
+  progress: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  mediaUrl?: string;
+  error?: string;
+}
+
 export interface MediaGenerationResult {
   success: boolean;
   taskId?: string;
