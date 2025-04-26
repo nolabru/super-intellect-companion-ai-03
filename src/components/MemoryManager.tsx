@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUserMemory } from '@/hooks/useUserMemory';
 import { Button } from '@/components/ui/button';
@@ -52,7 +51,13 @@ export default function MemoryManager() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingMemory, setEditingMemory] = useState<string | null>(null);
+  
+  // Adding edit states
+  const [editingMemory, setEditingMemory] = useState<{
+    key: string;
+    title: string;
+    value: string;
+  } | null>(null);
   
   // For swipe to delete gesture tracking
   const [swipingItemId, setSwipingItemId] = useState<string | null>(null);
@@ -66,7 +71,8 @@ export default function MemoryManager() {
     setNewValue('');
   };
 
-  const handleAddMemory = async () => {
+  // Modifying handleAddMemory to support both add and edit
+  const handleSaveMemory = async () => {
     if (!newValue.trim() || !newTitle.trim()) {
       toast.error('Título e valor são obrigatórios');
       return;
@@ -74,14 +80,18 @@ export default function MemoryManager() {
     
     setIsAdding(true);
     try {
-      const success = await saveMemoryItem(newTitle.trim(), newValue.trim(), 'manual', newTitle.trim());
+      const success = editingMemory 
+        ? await saveMemoryItem(editingMemory.key, newValue.trim(), 'manual', newTitle.trim()) 
+        : await saveMemoryItem(newTitle.trim(), newValue.trim(), 'manual', newTitle.trim());
+      
       if (success) {
-        toast.success('Memória adicionada com sucesso');
+        toast.success(editingMemory ? 'Memória atualizada com sucesso' : 'Memória adicionada com sucesso');
         resetForm();
         setShowAddForm(false);
         setDrawerOpen(false);
+        setEditingMemory(null);
       } else {
-        toast.error('Falha ao adicionar memória');
+        toast.error(editingMemory ? 'Falha ao atualizar memória' : 'Falha ao adicionar memória');
       }
     } finally {
       setIsAdding(false);
@@ -183,63 +193,45 @@ export default function MemoryManager() {
     </div>
   );
 
-  // Memory Item Card Component
+  // Modifying MemoryItemCard to include edit functionality
   const MemoryItemCard = ({ item }: { item: any }) => {
-    const isConfirmingDelete = deleteConfirm === item.key_name;
-    
+    const startEditing = () => {
+      setEditingMemory({
+        key: item.key_name,
+        title: item.title,
+        value: item.value
+      });
+      setNewTitle(item.title);
+      setNewValue(item.value);
+      
+      if (isMobile) {
+        setDrawerOpen(true);
+      } else {
+        setShowAddForm(true);
+      }
+    };
+
     return (
       <div 
         key={item.key_name}
-        onTouchStart={(e) => handleTouchStart(e, item.key_name)}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={() => handleTouchEnd(item.key_name)}
         className={cn(
-          "relative overflow-hidden transition-all duration-200",
-          swipingItemId === item.key_name ? getSwipePosition(item.key_name) : "translate-x-0"
+          "relative overflow-hidden transition-all duration-200 bg-black/20 backdrop-blur-sm p-4 rounded-xl border border-white/5 hover:border-white/10 transition-all group",
+          isMobile ? "mb-3" : ""
         )}
       >
-        {/* Delete confirmation overlay */}
-        {isConfirmingDelete && (
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-10 flex items-center justify-center animate-fade-in">
-            <div className="text-center px-4">
-              <p className="text-white mb-4">Excluir esta memória?</p>
-              <div className="flex justify-center space-x-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDeleteConfirm(null)}
-                  className="border-white/20 bg-transparent text-white"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => handleDeleteMemory(item.key_name)}
-                >
-                  Excluir
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Delete action revealed on swipe - Removing red background */}
-        <div className="absolute right-0 top-0 bottom-0 w-20 bg-black/40 flex items-center justify-center">
-          <Trash2 className="h-6 w-6 text-white/70" />
-        </div>
-        
-        {/* The actual card content */}
-        <div 
-          className={cn(
-            "bg-black/20 backdrop-blur-sm p-4 rounded-xl border border-white/5 hover:border-white/10 transition-all group",
-            isMobile ? "mb-3" : ""
-          )}
-        >
-          <div className="flex items-start justify-between">
-            <h3 className="font-medium text-white group-hover:text-inventu-blue transition-colors">
-              {item.title}
-            </h3>
+        <div className="flex items-start justify-between">
+          <h3 className="font-medium text-white group-hover:text-inventu-blue transition-colors">
+            {item.title}
+          </h3>
+          <div className="flex space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={startEditing}
+              className="opacity-60 hover:opacity-100 transition-opacity -mt-1 -mr-2"
+            >
+              <Edit className="h-4 w-4 text-white/70" />
+            </Button>
             {!isMobile && (
               <Button
                 variant="ghost"
@@ -251,16 +243,16 @@ export default function MemoryManager() {
               </Button>
             )}
           </div>
-          <div className="mt-2">
-            <p className="text-white/80 text-sm whitespace-pre-wrap">{item.value}</p>
-          </div>
-          {item.source && item.source !== 'manual' && (
-            <div className="text-xs text-white/40 mt-2 flex items-center">
-              <span className="w-2 h-2 rounded-full bg-inventu-blue/60 mr-1.5"></span>
-              Fonte: {item.source}
-            </div>
-          )}
         </div>
+        <div className="mt-2">
+          <p className="text-white/80 text-sm whitespace-pre-wrap">{item.value}</p>
+        </div>
+        {item.source && item.source !== 'manual' && (
+          <div className="text-xs text-white/40 mt-2 flex items-center">
+            <span className="w-2 h-2 rounded-full bg-inventu-blue/60 mr-1.5"></span>
+            Fonte: {item.source}
+          </div>
+        )}
       </div>
     );
   };
@@ -280,55 +272,65 @@ export default function MemoryManager() {
     </div>
   );
 
-  // Form for adding new memory
-  const AddMemoryForm = () => (
-    <div className="space-y-4 bg-black/20 p-5 rounded-xl border border-white/5 relative">
-      {!isMobile && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowAddForm(false)}
-          className="absolute top-2 right-2 opacity-60 hover:opacity-100 transition-opacity"
-        >
-          <X className="h-4 w-4 text-white/70" />
-        </Button>
-      )}
-      
-      <div className="space-y-3">
-        <h3 className="text-sm font-medium text-white/70">Nova Memória</h3>
+  // Modify the AddMemoryForm to support edit mode
+  const AddMemoryForm = () => {
+    const isEditMode = editingMemory !== null;
+    
+    return (
+      <div className="space-y-4 bg-black/20 p-5 rounded-xl border border-white/5 relative">
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setShowAddForm(false);
+              setEditingMemory(null);
+              resetForm();
+            }}
+            className="absolute top-2 right-2 opacity-60 hover:opacity-100 transition-opacity"
+          >
+            <X className="h-4 w-4 text-white/70" />
+          </Button>
+        )}
         
-        <Input
-          placeholder="Título da memória"
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          className="bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all"
-        />
-        
-        <Textarea
-          placeholder="Valor ou descrição detalhada"
-          value={newValue}
-          onChange={(e) => setNewValue(e.target.value)}
-          className={cn(
-            "min-h-[100px] bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all",
-            isMobile ? "min-h-[120px]" : ""
-          )}
-        />
-        
-        <Button 
-          onClick={handleAddMemory} 
-          disabled={isAdding || !newTitle.trim() || !newValue.trim()}
-          className="w-full bg-gradient-to-r from-inventu-blue to-inventu-purple hover:from-inventu-blue/90 hover:to-inventu-purple/90 transition-all"
-        >
-          {isAdding ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <PlusCircle className="h-4 w-4 mr-2" />
-          )}
-          Adicionar
-        </Button>
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-white/70">
+            {isEditMode ? 'Editar Memória' : 'Nova Memória'}
+          </h3>
+          
+          <Input
+            placeholder="Título da memória"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all"
+          />
+          
+          <Textarea
+            placeholder="Valor ou descrição detalhada"
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            className={cn(
+              "min-h-[100px] bg-white/5 border-white/10 focus:border-inventu-blue/50 transition-all",
+              isMobile ? "min-h-[120px]" : ""
+            )}
+          />
+          
+          <Button 
+            onClick={handleSaveMemory} 
+            disabled={isAdding || !newTitle.trim() || !newValue.trim()}
+            className="w-full bg-gradient-to-r from-inventu-blue to-inventu-purple hover:from-inventu-blue/90 hover:to-inventu-purple/90 transition-all"
+          >
+            {isAdding ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4 mr-2" />
+            )}
+            {isEditMode ? 'Atualizar' : 'Adicionar'}
+          </Button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Desktop version
   if (!isMobile) {
@@ -486,7 +488,7 @@ export default function MemoryManager() {
               </div>
               <DrawerFooter className="px-4 pt-0 pb-6">
                 <Button 
-                  onClick={handleAddMemory}
+                  onClick={handleSaveMemory}
                   disabled={isAdding || !newTitle.trim() || !newValue.trim()}
                   className="w-full bg-gradient-to-r from-inventu-blue to-inventu-purple hover:from-inventu-blue/90 hover:to-inventu-purple/90 transition-all h-12 text-base"
                 >
@@ -495,13 +497,14 @@ export default function MemoryManager() {
                   ) : (
                     <Check className="h-5 w-5 mr-2" />
                   )}
-                  Adicionar Memória
+                  {editingMemory ? 'Atualizar Memória' : 'Adicionar Memória'}
                 </Button>
                 <Button 
                   variant="outline" 
                   onClick={() => {
                     resetForm();
                     setDrawerOpen(false);
+                    setEditingMemory(null);
                   }}
                   className="border-white/10 text-white/70 hover:bg-white/10"
                 >
