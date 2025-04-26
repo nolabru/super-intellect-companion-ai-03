@@ -200,6 +200,36 @@ const Index: React.FC = () => {
         )}
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
+          {comparing && isMobile && (
+            <div className="p-3 border-b border-inventu-gray/30 bg-inventu-dark/80 backdrop-blur-lg">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <ModelSelector 
+                      mode={activeMode}
+                      selectedModel={leftModel}
+                      onChange={handleLeftModelChange}
+                      availableModels={availableModels}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <ModelSelector 
+                      mode={activeMode}
+                      selectedModel={rightModel}
+                      onChange={handleRightModelChange}
+                      availableModels={availableModels}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                <div className="text-xs text-white/60 text-center">
+                  Comparando modelos ({leftModel} vs {rightModel})
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative rounded-xl mx-2 sm:mx-4 my-2 bg-inventu-dark">
             {comparing ? (
               isMobile ? (
