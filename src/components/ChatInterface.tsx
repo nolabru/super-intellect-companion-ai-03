@@ -6,7 +6,6 @@ import { AVAILABLE_MODELS, getProviderDisplayName } from './ModelSelector';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import ModelSelector from './ModelSelector';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ChatInterfaceProps {
   messages: MessageType[];
@@ -29,8 +28,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   isCompareMode = false,
   loading = false
 }) => {
-  const isMobile = useIsMobile();
-
   useEffect(() => {
     console.log(`[ChatInterface] Recebeu ${messages.length} mensagens para o modelo ${model}`);
     if (messages.length === 0) {
@@ -165,7 +162,6 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   return (
     <div className={cn(
       "flex flex-col h-full bg-background shadow-lg overflow-hidden", 
-      isMobile ? "rounded-none" : "rounded-xl",
       className
     )}>
       <div className={cn(
@@ -191,10 +187,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       
       <div className={cn(
         "flex-1 overflow-y-auto overscroll-y-contain",
-        "px-4 py-4 space-y-6 relative",
+        "px-4 py-6 space-y-6 relative",
         "scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent",
-        "touch-pan-y mobile-scrollbar",
-        isMobile ? "h-[calc(100%-60px)]" : "",
+        "touch-pan-y",
         "bg-background"
       )}>
         {loading ? (

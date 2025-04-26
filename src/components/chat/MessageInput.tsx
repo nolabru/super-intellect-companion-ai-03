@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
 import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MessageInputProps {
   message: string;
@@ -71,7 +70,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [commandMenuPosition, setCommandMenuPosition] = useState({ top: 0, left: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
-  const isMobile = useIsMobile();
 
   const [cursorPosition, setCursorPosition] = useState(0);
   
@@ -176,10 +174,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div 
-      ref={containerRef} 
-      className={`relative rounded-lg border border-inventu-gray/30 bg-inventu-card ${isMobile ? 'chat-input-mobile pb-safe' : ''}`}
-    >
+    <div ref={containerRef} className="relative rounded-lg border border-inventu-gray/30 bg-inventu-card">
       {showCommandMenu && (
         <div 
           className="absolute -top-[235px] left-0 z-50 w-[300px] bg-inventu-dark border border-inventu-gray/30 rounded-md overflow-hidden shadow-lg"

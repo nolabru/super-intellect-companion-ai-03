@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,9 +12,8 @@ import { useConversation } from '@/hooks/useConversation';
 import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
-import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
+import ModelSelector from '@/components/ModelSelector';
 import TokenDisplay from '@/components/TokenDisplay';
-import { cn } from '@/lib/utils';
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(false);
@@ -235,7 +233,7 @@ const Index: React.FC = () => {
           <div className={cn(
             "flex-1 flex flex-col md:flex-row overflow-hidden relative",
             "bg-inventu-dark",
-            isMobile ? "h-[calc(100vh-180px)]" : "md:rounded-xl md:mx-4 md:my-2",
+            "md:rounded-xl md:mx-4 md:my-2",
           )}>
             {comparing ? (
               isMobile ? (
