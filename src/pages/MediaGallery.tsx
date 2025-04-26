@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,8 +7,12 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import GalleryList from '@/components/gallery/GalleryList';
 import GalleryFilters from '@/components/gallery/GalleryFilters';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
+import { ChevronLeft, Image, Loader2, Plus } from 'lucide-react';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 export type MediaItem = {
   id: string;
@@ -28,7 +33,7 @@ export type GalleryFilters = {
 };
 
 const MediaGallery: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(!useIsMobile());
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [filteredMedia, setFilteredMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +41,12 @@ const MediaGallery: React.FC = () => {
     mediaType: ['image'],
     dateRange: { from: undefined, to: undefined },
   });
+  
   const { user, loading: authLoading } = useAuth();
   const { deleteMediaFromGallery, deleting } = useMediaGallery();
+  const isMobile = useIsMobile();
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const navigate = useNavigate();
   
   const dataFetchedRef = React.useRef(false);
 
@@ -146,24 +155,56 @@ const MediaGallery: React.FC = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  const goToChat = () => {
+    navigate('/');
+  };
+
   return (
     <div className="flex flex-col h-screen bg-inventu-darker">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex overflow-hidden">
-        {sidebarOpen ? (
-          <div className="w-64 flex-shrink-0 hidden md:block">
+        {isDesktop && sidebarOpen && (
+          <div className="w-64 flex-shrink-0">
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
           </div>
-        ) : (
-          <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
         )}
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          <div className="flex-1 flex flex-col overflow-hidden mx-0 md:mx-4 my-0 md:my-2">
-            <div className="sticky top-0 z-10 bg-inventu-darker/80 backdrop-blur-xl border-b border-white/5 px-4 py-6">
-              <h1 className="text-2xl font-semibold text-white">Galeria de Mídias</h1>
-              <p className="text-inventu-gray">Visualize e gerencie suas criações de IA</p>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="sticky top-0 z-10 bg-inventu-darker/80 backdrop-blur-xl border-b border-white/5 px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center">
+                {(!isDesktop || !sidebarOpen) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="mr-2 md:mr-3 text-inventu-gray hover:text-white"
+                    onClick={toggleSidebar}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                )}
+                
+                <div>
+                  <h1 className="text-xl font-semibold text-white flex items-center">
+                    <Image className="h-5 w-5 mr-2" />
+                    Galeria de Mídias
+                  </h1>
+                  <p className="text-sm text-inventu-gray hidden sm:block">
+                    Visualize e gerencie suas criações de IA
+                  </p>
+                </div>
+              </div>
+              
+              <Button
+                variant="default"
+                size="sm"
+                className="rounded-full h-10 w-10 p-0 sm:w-auto sm:px-4"
+                onClick={goToChat}
+              >
+                <Plus className="h-5 w-5 sm:mr-2" />
+                <span className="hidden sm:inline">Criar Nova</span>
+              </Button>
             </div>
             
             <GalleryFilters 
@@ -173,7 +214,10 @@ const MediaGallery: React.FC = () => {
             
             {loading ? (
               <div className="flex-1 flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-inventu-gray" />
+                <div className="flex flex-col items-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-inventu-gray mb-3" />
+                  <p className="text-inventu-gray text-sm">Carregando galeria...</p>
+                </div>
               </div>
             ) : !user ? (
               <div className="flex-1 flex items-center justify-center text-center px-6">
@@ -183,7 +227,7 @@ const MediaGallery: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-auto pb-safe">
                 <GalleryList 
                   media={filteredMedia} 
                   onDeleteItem={handleDeleteItem}
@@ -192,6 +236,14 @@ const MediaGallery: React.FC = () => {
             )}
           </div>
         </div>
+        
+        {isMobile && sidebarOpen && (
+          <div className="fixed inset-0 bg-black/60 z-40" onClick={toggleSidebar}>
+            <div className="absolute left-0 top-0 h-full w-64" onClick={e => e.stopPropagation()}>
+              <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
