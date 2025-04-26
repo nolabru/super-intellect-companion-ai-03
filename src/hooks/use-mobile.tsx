@@ -18,8 +18,8 @@ export function useIsMobile() {
     // Set initial value
     handleResize()
     
-    // Add event listener
-    window.addEventListener('resize', handleResize)
+    // Add event listener with passive option for better performance
+    window.addEventListener('resize', handleResize, { passive: true })
     
     // Clean up
     return () => {
