@@ -3,7 +3,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 export type ModelProvider = 'openai' | 'apiframe' | 'anthropic' | 'google' | 'kligin' | 'ideogram' | 'minimax' | 'elevenlabs' | 'luma';
-export type ModelMode = 'text' | 'image' | 'audio' | 'video' | 'call';
+export type ModelMode = 'text' | 'image' | 'audio' | 'video';
 
 export interface ModelInfo {
   id: string;
@@ -141,16 +141,6 @@ export const AVAILABLE_MODELS: ModelInfo[] = [
     capabilities: ['Clonagem de voz', 'Multilíngue', 'Personalização avançada'],
     description: 'Modelo especializado em clonagem e personalização de voz.',
     modes: ['audio']
-  },
-  
-  // Call Models
-  {
-    id: 'openai-voice-chat',
-    displayName: 'OpenAI Voice Chat',
-    provider: 'openai',
-    capabilities: ['Chamadas de voz', 'Conversação natural', 'Tempo real'],
-    description: 'Modelo para chamadas de voz interativas com IA em tempo real.',
-    modes: ['call']
   }
 ];
 

@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Text, Image, Video, AudioLines, PhoneCall } from 'lucide-react';
+import { Text, Image, Video, AudioLines } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ChatMode = 'text' | 'image' | 'video' | 'audio' | 'call';
+export type ChatMode = 'text' | 'image' | 'video' | 'audio';
 
 interface ModeSelectorProps {
   activeMode: ChatMode;
@@ -62,17 +62,6 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
         )}
       >
         <AudioLines size={18} />
-      </ToggleGroupItem>
-
-      <ToggleGroupItem 
-        value="call" 
-        aria-label="Call mode"
-        className={cn(
-          "data-[state=on]:bg-inventu-gray data-[state=on]:text-white",
-          "p-2 text-gray-400 hover:text-gray-200"
-        )}
-      >
-        <PhoneCall size={18} />
       </ToggleGroupItem>
     </ToggleGroup>
   );
