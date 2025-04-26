@@ -2,14 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Users, CreditCard, Settings, BarChart2, Database } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminUserStats from '@/components/admin/AdminUserStats';
 import AdminOverview from '@/components/admin/AdminOverview';
+import AdminUserManagement from '@/components/admin/AdminUserManagement';
 
 const AdminPanel: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -50,7 +49,7 @@ const AdminPanel: React.FC = () => {
       case 'overview':
         return <AdminOverview />;
       case 'users':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Gestão de Usuários</h2><p className="text-muted-foreground">Implementação pendente</p></div>;
+        return <AdminUserManagement />;
       case 'plans':
         return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Gestão de Planos</h2><p className="text-muted-foreground">Implementação pendente</p></div>;
       case 'models':

@@ -15,6 +15,7 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -65,10 +66,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   // For mobile view
   const MobileSidebar = () => (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onToggleSidebar()}>
-      <SheetContent side="left" className="w-[250px] sm:w-[300px] p-0">
-        <div className="flex flex-col h-full bg-card">
-          <div className="p-4 border-b">
-            <h2 className="text-xl font-semibold">Painel Admin</h2>
+      <SheetContent side="left" className="w-[250px] sm:w-[300px] p-0 bg-inventu-dark border-inventu-gray/30">
+        <div className="flex flex-col h-full">
+          <div className="p-4 border-b border-inventu-gray/30">
+            <h2 className="text-xl font-semibold text-white">Painel Admin</h2>
           </div>
           <div className="flex-1 overflow-auto p-2">
             <div className="space-y-1">
@@ -76,7 +77,12 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 <Button
                   key={item.id}
                   variant={activeSection === item.id ? "default" : "ghost"}
-                  className="w-full justify-start"
+                  className={cn(
+                    "w-full justify-start",
+                    activeSection === item.id 
+                      ? "bg-inventu-blue text-white" 
+                      : "text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+                  )}
                   onClick={() => {
                     onSectionChange(item.id);
                     onToggleSidebar();
@@ -96,13 +102,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   // For desktop view
   const DesktopSidebar = () => (
     <SidebarProvider defaultOpen={isOpen}>
-      <Sidebar className="hidden md:flex" data-state={isOpen ? 'expanded' : 'collapsed'}>
+      <Sidebar className="hidden md:flex bg-inventu-dark border-r border-inventu-gray/30" data-state={isOpen ? 'expanded' : 'collapsed'}>
         <SidebarHeader className="flex items-center justify-between p-4">
-          <h2 className="text-xl font-semibold truncate">Painel Admin</h2>
+          <h2 className="text-xl font-semibold truncate text-white">Painel Admin</h2>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-inventu-gray">Menu Principal</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {menuItems.map((item) => (
@@ -111,6 +117,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                       isActive={activeSection === item.id}
                       tooltip={item.title}
                       onClick={() => onSectionChange(item.id)}
+                      className={cn(
+                        activeSection === item.id 
+                          ? "bg-inventu-blue text-white" 
+                          : "text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+                      )}
                     >
                       <item.icon />
                       <span>{item.title}</span>
