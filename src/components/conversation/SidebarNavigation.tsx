@@ -3,6 +3,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Coins, Image, BrainCircuit, Shield } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface SidebarNavigationProps {
   closeMenu?: () => void;
@@ -16,12 +17,22 @@ const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ closeMenu }) => {
     if (closeMenu) {
       closeMenu();
     }
+    
+    // Se for a rota admin, verificar se é admin
+    if (path === '/admin' && !isAdmin) {
+      toast.error('Você não tem permissão para acessar o painel administrativo');
+      console.log('Tentativa de acesso negado ao painel admin. isAdmin:', isAdmin);
+      return;
+    }
+    
     navigate(path);
   };
 
   if (!user) {
     return null;
   }
+
+  console.log('SidebarNavigation - User:', user.email, 'isAdmin:', isAdmin);
 
   const navigationItems = [
     {

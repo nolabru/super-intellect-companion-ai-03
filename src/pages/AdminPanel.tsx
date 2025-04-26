@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Users, CreditCard, Settings, BarChart2, Database } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminUserStats from '@/components/admin/AdminUserStats';
@@ -13,17 +14,32 @@ import AdminOverview from '@/components/admin/AdminOverview';
 const AdminPanel: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState<string>('overview');
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
+  console.log('AdminPanel - User:', user?.email, 'isAdmin:', isAdmin, 'loading:', loading);
+
   // Redirect if not logged in or not admin
-  React.useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        console.log('Redirecionando para /auth: usuário não está logado');
+        toast.error('Você precisa estar logado para acessar esta página');
+        navigate('/auth');
+        return;
+      }
+      
+      if (!isAdmin) {
+        console.log('Redirecionando para /: usuário não é admin');
+        toast.error('Você não tem permissão para acessar o painel administrativo');
+        navigate('/');
+        return;
+      }
+      
+      console.log('Acesso ao painel admin autorizado para:', user.email);
+      toast.success('Bem-vindo ao Painel Administrativo');
     }
-    // Here you would check if user has admin role
-    // For now we're just allowing any authenticated user
-  }, [user, loading, navigate]);
+  }, [user, loading, isAdmin, navigate]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -54,6 +70,11 @@ const AdminPanel: React.FC = () => {
         <Loader2 className="h-8 w-8 animate-spin text-inventu-blue" />
       </div>
     );
+  }
+
+  // Se não for admin, não renderizar o conteúdo
+  if (!isAdmin) {
+    return null;
   }
 
   return (

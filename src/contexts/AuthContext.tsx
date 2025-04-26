@@ -35,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState<Error | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -47,8 +48,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (data?.session) {
           setUser(data.session.user);
+          
+          // Verificar se é admin baseado no email
+          const userEmail = data.session.user.email;
+          const isUserAdmin = userEmail ? userEmail.endsWith('@admin.com') : false;
+          console.log('Verificação de admin:', userEmail, isUserAdmin);
+          setIsAdmin(isUserAdmin);
         } else {
           setUser(null);
+          setIsAdmin(false);
         }
       } catch (error: any) {
         setSessionError(error);
@@ -62,7 +70,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user || null);
+        if (session?.user) {
+          setUser(session.user);
+          
+          // Verificar se é admin baseado no email
+          const userEmail = session.user.email;
+          const isUserAdmin = userEmail ? userEmail.endsWith('@admin.com') : false;
+          console.log('Auth state change - verificação de admin:', userEmail, isUserAdmin);
+          setIsAdmin(isUserAdmin);
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+        }
         setSessionLoading(false);
       }
     );
@@ -102,9 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchProfile();
   }, [user]);
 
-  // Add isAdmin property for user roles
-  const isAdmin = user?.email?.endsWith('@admin.com') || false;
-
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
@@ -119,6 +135,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data?.user) {
         setUser(data.user);
+        // Verificar se é admin baseado no email
+        const isUserAdmin = email.endsWith('@admin.com');
+        setIsAdmin(isUserAdmin);
+        console.log('Login - verificação de admin:', email, isUserAdmin);
       }
     } catch (error: any) {
       console.error('Authentication error:', error.message);
@@ -134,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
+      setIsAdmin(false);
     } catch (error: any) {
       console.error('Logout error:', error.message);
     } finally {
