@@ -165,7 +165,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       className
     )}>
       <div className={cn(
-        "sticky top-0 z-10 p-3 backdrop-blur-xl bg-black/40 border-b border-white/10 flex justify-center items-center gap-2",
+        "sticky top-0 z-20 p-3 backdrop-blur-xl bg-black/40 border-b border-white/10 flex justify-center items-center gap-2",
         getModelColor(model)
       )}>
         {onModelChange && availableModels.length > 0 ? (
@@ -186,11 +186,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
       
       <div className={cn(
-        "flex-1 overflow-y-auto overscroll-y-contain",
-        "px-4 py-6 space-y-6 relative",
-        "scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent",
-        "touch-pan-y pb-safe",
-        "bg-background"
+        "flex-1 overflow-y-auto overscroll-y-contain touch-pan-y",
+        "px-4 py-6 space-y-6 relative pb-safe",
+        "scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
       )}>
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-3 animate-fade-in">

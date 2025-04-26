@@ -206,7 +206,7 @@ const Index: React.FC = () => {
           </div>
         )}
         
-        <div className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {comparing && isMobile && (
             <div className="sticky top-0 z-10 px-2 py-2 border-b border-inventu-gray/30 bg-inventu-dark/80 backdrop-blur-lg">
               <div className="flex flex-col gap-2">
@@ -319,7 +319,7 @@ const Index: React.FC = () => {
             )}
           </div>
           
-          <div className="sticky bottom-0 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg mobile-safe-area">
+          <div className="sticky bottom-0 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg pb-safe">
             <div className="flex flex-wrap items-center justify-between gap-2 p-2">
               <div className="flex flex-wrap items-center gap-2">
                 <ModeSelector 
@@ -343,11 +343,13 @@ const Index: React.FC = () => {
             </div>
             
             {(!comparing || isLinked || isMobile) && (
-              <ChatInput 
-                onSendMessage={handleSendMessage} 
-                mode={activeMode}
-                model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
-              />
+              <div className="px-2 pb-2">
+                <ChatInput 
+                  onSendMessage={handleSendMessage} 
+                  mode={activeMode}
+                  model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
+                />
+              </div>
             )}
           </div>
         </div>
