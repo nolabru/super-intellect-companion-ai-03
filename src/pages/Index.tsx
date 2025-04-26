@@ -12,7 +12,7 @@ import { useConversation } from '@/hooks/useConversation';
 import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
-import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
+import ModelSelector from '@/components/ModelSelector';
 import TokenDisplay from '@/components/TokenDisplay';
 
 const Index: React.FC = () => {
@@ -184,7 +184,7 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-inventu-darker">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-inventu-darker">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex overflow-hidden">
@@ -201,7 +201,7 @@ const Index: React.FC = () => {
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {comparing && isMobile && (
-            <div className="p-3 border-b border-inventu-gray/30 bg-inventu-dark/80 backdrop-blur-lg">
+            <div className="px-2 py-2 border-b border-inventu-gray/30 bg-inventu-dark/80 backdrop-blur-lg">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
@@ -230,10 +230,14 @@ const Index: React.FC = () => {
             </div>
           )}
 
-          <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative rounded-xl mx-2 sm:mx-4 my-2 bg-inventu-dark">
+          <div className={cn(
+            "flex-1 flex flex-col md:flex-row overflow-hidden relative",
+            "bg-inventu-dark",
+            "md:rounded-xl md:mx-4 md:my-2",
+          )}>
             {comparing ? (
               isMobile ? (
-                <div className="flex-1">
+                <div className="flex-1 flex flex-col h-full">
                   <ChatInterface 
                     messages={messages} 
                     model={leftModel}
@@ -294,7 +298,7 @@ const Index: React.FC = () => {
                 </>
               )
             ) : (
-              <div className="flex-1">
+              <div className="flex-1 flex flex-col h-full">
                 <ChatInterface 
                   messages={messages} 
                   model={leftModel}
@@ -308,8 +312,8 @@ const Index: React.FC = () => {
             )}
           </div>
           
-          <div className="p-2 sm:p-4 border-t border-inventu-gray/30 bg-inventu-dark backdrop-blur-lg">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div className="border-t border-inventu-gray/30 bg-inventu-dark backdrop-blur-lg">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2">
               <div className="flex flex-wrap items-center gap-2">
                 <ModeSelector 
                   activeMode={activeMode} 

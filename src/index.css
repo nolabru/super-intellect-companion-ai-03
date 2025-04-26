@@ -384,4 +384,23 @@
   .ios-shadow {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
   }
+
+  /* Mobile touch scrolling improvements */
+  .touch-pan-y {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  
+  .overscroll-y-contain {
+    overscroll-behavior-y: contain;
+  }
+  
+  /* Additional mobile optimization */
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .mobile-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
 }

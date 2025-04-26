@@ -161,7 +161,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   
   return (
     <div className={cn(
-      "flex flex-col h-full bg-background shadow-lg rounded-2xl overflow-hidden", 
+      "flex flex-col h-full bg-background shadow-lg overflow-hidden", 
       className
     )}>
       <div className={cn(
@@ -186,7 +186,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
       
       <div className={cn(
-        "flex-1 overflow-y-auto px-4 py-6 space-y-6 relative scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent",
+        "flex-1 overflow-y-auto overscroll-y-contain",
+        "px-4 py-6 space-y-6 relative",
+        "scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent",
+        "touch-pan-y",
         "bg-background"
       )}>
         {loading ? (
@@ -196,7 +199,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div>
         ) : filteredMessages.length > 0 ? (
           <>
-            <div className="space-y-6">
+            <div className="space-y-6 min-h-full">
               {filteredMessages.map((message) => (
                 <div key={message.id} className="animate-fade-in">
                   <ChatMessage message={message} />
