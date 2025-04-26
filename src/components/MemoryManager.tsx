@@ -52,6 +52,7 @@ export default function MemoryManager() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingMemory, setEditingMemory] = useState<string | null>(null);
   
   // For swipe to delete gesture tracking
   const [swipingItemId, setSwipingItemId] = useState<string | null>(null);
@@ -223,9 +224,9 @@ export default function MemoryManager() {
           </div>
         )}
         
-        {/* Delete action revealed on swipe */}
-        <div className="absolute right-0 top-0 bottom-0 w-20 bg-red-500/80 flex items-center justify-center">
-          <Trash2 className="h-6 w-6 text-white" />
+        {/* Delete action revealed on swipe - Removing red background */}
+        <div className="absolute right-0 top-0 bottom-0 w-20 bg-black/40 flex items-center justify-center">
+          <Trash2 className="h-6 w-6 text-white/70" />
         </div>
         
         {/* The actual card content */}
@@ -445,7 +446,7 @@ export default function MemoryManager() {
           {/* Add memory floating button */}
           <Button
             onClick={() => setDrawerOpen(true)}
-            className="fixed right-4 bottom-4 rounded-full shadow-lg bg-gradient-to-r from-inventu-blue to-inventu-purple hover:from-inventu-blue/90 hover:to-inventu-purple/90 h-14 w-14 p-0 flex items-center justify-center z-30"
+            className="fixed right-4 bottom-20 rounded-full shadow-lg bg-gradient-to-r from-inventu-blue to-inventu-purple hover:from-inventu-blue/90 hover:to-inventu-purple/90 h-14 w-14 p-0 flex items-center justify-center z-30"
           >
             <Plus className="h-6 w-6" />
           </Button>
