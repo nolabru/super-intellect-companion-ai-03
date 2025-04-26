@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -186,13 +185,19 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-inventu-darker">
+    <div className="flex flex-col min-h-screen w-full overflow-hidden bg-inventu-darker">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {(sidebarOpen || !isMobile) && (
-          <div className={`${isMobile ? 'fixed inset-0 z-40 bg-black/50' : 'w-64 flex-shrink-0'}`}>
-            <div className={`${isMobile ? 'h-full w-64 bg-inventu-darker' : 'h-full'}`}>
+          <div className={cn(
+            isMobile ? "fixed inset-0 z-40" : "w-64 flex-shrink-0",
+            "bg-black/50"
+          )}>
+            <div className={cn(
+              "h-full",
+              isMobile ? "w-64 bg-inventu-darker" : ""
+            )}>
               <ConversationSidebar 
                 onToggleSidebar={toggleSidebar} 
                 isOpen={true} 
@@ -203,7 +208,7 @@ const Index: React.FC = () => {
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {comparing && isMobile && (
-            <div className="px-2 py-2 border-b border-inventu-gray/30 bg-inventu-dark/80 backdrop-blur-lg">
+            <div className="sticky top-0 z-10 px-2 py-2 border-b border-inventu-gray/30 bg-inventu-dark/80 backdrop-blur-lg">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
@@ -235,7 +240,7 @@ const Index: React.FC = () => {
           <div className={cn(
             "flex-1 flex flex-col md:flex-row overflow-hidden relative",
             "bg-inventu-dark",
-            "md:rounded-xl md:mx-4 md:my-2",
+            "md:rounded-xl md:mx-4 md:my-2"
           )}>
             {comparing ? (
               isMobile ? (
@@ -314,7 +319,7 @@ const Index: React.FC = () => {
             )}
           </div>
           
-          <div className="border-t border-inventu-gray/30 bg-inventu-dark backdrop-blur-lg">
+          <div className="sticky bottom-0 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg mobile-safe-area">
             <div className="flex flex-wrap items-center justify-between gap-2 p-2">
               <div className="flex flex-wrap items-center gap-2">
                 <ModeSelector 
