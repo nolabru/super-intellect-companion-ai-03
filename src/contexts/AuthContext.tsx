@@ -144,12 +144,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (profileData: any) => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
         .upsert({
           id: user?.id,
           ...profileData,
-        }, { returning: 'minimal' });
+        }, { onConflict: 'id' });
 
       if (error) {
         throw error;

@@ -1,6 +1,5 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { GoogleTokens, GoogleConnectionState } from './types';
 
@@ -22,9 +21,9 @@ export const useGoogleTokens = () => {
   }, []);
 
   // Buscar tokens Google do Supabase com melhor tratamento de erros
-  const fetchGoogleTokens = useCallback(async (session: Session | null) => {
-    if (!session || !session.user) {
-      console.log('[useGoogleTokens] Sem sessão ou usuário, limpando tokens Google');
+  const fetchGoogleTokens = useCallback(async (userId: string) => {
+    if (!userId) {
+      console.log('[useGoogleTokens] Sem ID de usuário, limpando tokens Google');
       setGoogleTokens(null);
       setIsGoogleConnected(false);
       setConnectionState(GoogleConnectionState.DISCONNECTED);
@@ -36,13 +35,13 @@ export const useGoogleTokens = () => {
     setConnectionState(GoogleConnectionState.CONNECTING);
     
     try {
-      console.log('[useGoogleTokens] Buscando tokens Google para usuário:', session.user.id);
+      console.log('[useGoogleTokens] Buscando tokens Google para usuário:', userId);
       
       // Usar uma consulta direta à tabela
       const { data, error } = await supabase
         .from('user_google_tokens')
         .select('*')
-        .eq('user_id', session.user.id)
+        .eq('user_id', userId)
         .maybeSingle(); // Usando maybeSingle em vez de single para evitar erros quando não há dados
       
       if (error) {
@@ -82,19 +81,19 @@ export const useGoogleTokens = () => {
   }, []);
 
   // Configurar verificação periódica de tokens
-  const setupTokenChecking = useCallback((session: Session | null) => {
+  const setupTokenChecking = useCallback((userId: string) => {
     // Limpar qualquer intervalo existente
     if (tokenCheckInterval.current) {
       clearInterval(tokenCheckInterval.current);
     }
     
-    // Configurar intervalo apenas se tivermos uma sessão
-    if (session) {
+    // Configurar intervalo apenas se tivermos um ID de usuário
+    if (userId) {
       tokenCheckInterval.current = setInterval(async () => {
         // Verificar apenas se passaram mais de 30 segundos desde a última verificação
         if (Date.now() - lastChecked > 30000) {
           console.log('[useGoogleTokens] Verificando tokens Google periodicamente...');
-          await fetchGoogleTokens(session);
+          await fetchGoogleTokens(userId);
         }
       }, 60000); // Verificar a cada minuto
     }
@@ -104,7 +103,9 @@ export const useGoogleTokens = () => {
   const refreshTokensState = useCallback(async () => {
     console.log('[useGoogleTokens] Forçando atualização do estado do token');
     const { data } = await supabase.auth.getSession();
-    await fetchGoogleTokens(data.session);
+    if (data.session?.user) {
+      await fetchGoogleTokens(data.session.user.id);
+    }
   }, [fetchGoogleTokens]);
 
   return {

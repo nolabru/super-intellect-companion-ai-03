@@ -39,8 +39,8 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     if (user) {
       console.log('[GoogleAuthContext] Usuário detectado, buscando tokens Google');
-      fetchGoogleTokens(user);
-      setupTokenChecking(user);
+      fetchGoogleTokens(user.id);
+      setupTokenChecking(user.id);
     } else {
       console.log('[GoogleAuthContext] Nenhum usuário, limpando tokens Google');
       setGoogleTokens(null);
@@ -71,7 +71,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const { data } = await supabase.auth.getSession();
             if (data.session && data.session.user) {
               console.log('[GoogleAuthContext] Sessão encontrada após redirecionamento OAuth, buscando tokens');
-              await fetchGoogleTokens(data.session.user);
+              await fetchGoogleTokens(data.session.user.id);
               
               // Forçar outra verificação após um atraso maior
               setTimeout(async () => {
@@ -86,7 +86,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   );
                 } else {
                   console.log('[GoogleAuthContext] Status de conexão Google após verificação com atraso:', isGoogleConnected);
-                  await fetchGoogleTokens(data.session.user);
+                  await fetchGoogleTokens(data.session.user.id);
                   
                   // Uma verificação final com um atraso ainda maior
                   setTimeout(async () => {
