@@ -224,17 +224,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
           }
         }}
         placeholder={getPlaceholder()}
-        className="w-full pl-4 pr-20 py-2 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none"
+        className="w-full pl-4 pr-20 py-3 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none min-h-[44px]"
         rows={1}
         disabled={isSending}
+        style={{ maxHeight: '120px' }}
       />
-      <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
+      <div className="absolute top-1/2 right-2 -translate-y-1/2 flex gap-1">
         {mode !== 'text' && (
           <Button 
             onClick={onAttachment}
             variant="ghost" 
             size="icon"
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10"
             title={`Anexar ${mode}`}
             disabled={isSending}
           >
@@ -246,7 +247,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           onClick={onSendMessage}
           variant="ghost" 
           size="icon"
-          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10"
           disabled={isSending}
         >
           <Send className="h-5 w-5" />

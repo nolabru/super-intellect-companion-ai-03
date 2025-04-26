@@ -238,7 +238,7 @@ const Index: React.FC = () => {
           )}
 
           <div className={cn(
-            "flex-1 flex flex-col md:flex-row overflow-hidden relative",
+            "flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0",
             "bg-inventu-dark",
             "md:rounded-xl md:mx-4 md:my-2"
           )}>
@@ -319,7 +319,7 @@ const Index: React.FC = () => {
             )}
           </div>
           
-          <div className="sticky bottom-0 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg pb-safe">
+          <div className="sticky bottom-0 z-20 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg">
             <div className="flex flex-wrap items-center justify-between gap-2 p-2">
               <div className="flex flex-wrap items-center gap-2">
                 <ModeSelector 
@@ -343,7 +343,7 @@ const Index: React.FC = () => {
             </div>
             
             {(!comparing || isLinked || isMobile) && (
-              <div className="px-2 pb-2">
+              <div className="px-2 pb-safe">
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
                   mode={activeMode}
