@@ -188,6 +188,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
           Enviando mensagem...
         </div>
       )}
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept={
+          mode === 'image' ? 'image/*' : 
+          mode === 'video' ? 'video/*' : 
+          mode === 'audio' ? 'audio/*' : 
+          ''
+        }
+        onChange={handleFileChange}
+      />
     </div>
   );
 };

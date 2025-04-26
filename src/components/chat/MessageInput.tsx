@@ -66,14 +66,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
   model
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [commandMenuPosition, setCommandMenuPosition] = useState({ top: 0, left: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
   const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
-
   const [cursorPosition, setCursorPosition] = useState(0);
   
+  // Log Google connection status for debugging
   useEffect(() => {
     console.log('[MessageInput] Google connection status:', { 
       isGoogleConnected, 
@@ -81,6 +80,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     });
   }, [isGoogleConnected, googleAuthLoading]);
   
+  // Auto-resize textarea when content changes
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -88,6 +88,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [message]);
 
+  // Handle @ command menu display
   useEffect(() => {
     if (message.length > 0 && cursorPosition > 0) {
       const textBeforeCursor = message.substring(0, cursorPosition);
@@ -261,18 +262,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
           <Send className="h-5 w-5" />
         </Button>
       </div>
-      
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept={
-          mode === 'image' ? 'image/*' : 
-          mode === 'video' ? 'video/*' : 
-          mode === 'audio' ? 'audio/*' : 
-          ''
-        }
-      />
     </div>
   );
 };
