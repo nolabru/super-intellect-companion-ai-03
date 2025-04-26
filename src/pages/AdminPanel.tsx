@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +7,7 @@ import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminOverview from '@/components/admin/AdminOverview';
 import AdminUserManagement from '@/components/admin/AdminUserManagement';
+import AdminPlansManagement from '@/components/admin/AdminPlansManagement';
 
 const AdminPanel: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -15,7 +15,6 @@ const AdminPanel: React.FC = () => {
   const { user, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  // Add welcome toast when admin logs in
   useEffect(() => {
     if (isAdmin && user) {
       toast.success(`Bem-vindo, ${user.email?.split('@')[0]}!`, {
@@ -25,7 +24,6 @@ const AdminPanel: React.FC = () => {
     }
   }, [isAdmin, user]);
 
-  // Redirect if not logged in or not admin
   useEffect(() => {
     if (!loading) {
       if (!user) {
@@ -53,7 +51,7 @@ const AdminPanel: React.FC = () => {
       case 'users':
         return <AdminUserManagement />;
       case 'plans':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Gestão de Planos</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
+        return <AdminPlansManagement />;
       case 'models':
         return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Configuração de Modelos</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
       case 'stats':
@@ -73,7 +71,6 @@ const AdminPanel: React.FC = () => {
     );
   }
 
-  // Se não for admin, não renderizar o conteúdo
   if (!isAdmin) {
     return null;
   }
