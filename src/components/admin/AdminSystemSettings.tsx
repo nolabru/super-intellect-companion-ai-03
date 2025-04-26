@@ -7,8 +7,32 @@ import { Switch } from '@/components/ui/switch';
 import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
 
+// Define the type for our settings form values
+type SettingsFormValues = {
+  maintenanceMode: boolean;
+  debugMode: boolean;
+  notifications: boolean;
+  apiLogging: boolean;
+  securityAlerts: boolean;
+}
+
+// Define the type for individual settings
+type SettingItem = {
+  id: keyof SettingsFormValues;
+  label: string;
+  description: string;
+}
+
+// Define the type for settings sections
+type SettingsSection = {
+  title: string;
+  icon: React.ElementType;
+  description: string;
+  settings: SettingItem[];
+}
+
 const AdminSystemSettings = () => {
-  const form = useForm({
+  const form = useForm<SettingsFormValues>({
     defaultValues: {
       maintenanceMode: false,
       debugMode: false,
@@ -18,11 +42,11 @@ const AdminSystemSettings = () => {
     }
   });
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: SettingsFormValues) => {
     console.log('Settings updated:', data);
   };
 
-  const settingsSections = [
+  const settingsSections: SettingsSection[] = [
     {
       title: 'Geral',
       icon: Settings2,
