@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -12,8 +13,9 @@ import { useConversation } from '@/hooks/useConversation';
 import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
-import ModelSelector from '@/components/ModelSelector';
+import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
 import TokenDisplay from '@/components/TokenDisplay';
+import { cn } from '@/lib/utils';
 
 const Index: React.FC = () => {
   const [comparing, setComparing] = useState(false);
