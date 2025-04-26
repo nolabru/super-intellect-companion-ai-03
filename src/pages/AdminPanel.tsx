@@ -10,6 +10,7 @@ import AdminUserManagement from '@/components/admin/AdminUserManagement';
 import AdminPlansManagement from '@/components/admin/AdminPlansManagement';
 import AdminModelsManagement from '@/components/admin/AdminModelsManagement';
 import AdminStats from '@/components/admin/AdminStats';
+import AdminSystemSettings from '@/components/admin/AdminSystemSettings';
 
 const AdminPanel: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -59,7 +60,7 @@ const AdminPanel: React.FC = () => {
       case 'stats':
         return <AdminStats />;
       case 'settings':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Configurações do Sistema</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
+        return <AdminSystemSettings />;
       default:
         return <AdminOverview />;
     }
