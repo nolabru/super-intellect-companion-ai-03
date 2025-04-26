@@ -78,6 +78,10 @@
     font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    position: fixed;
   }
 
   .chat-bubble {
@@ -402,5 +406,46 @@
   
   .mobile-safe-top {
     padding-top: env(safe-area-inset-top);
+  }
+
+  /* Mobile-friendly chat interface */
+  @media (max-width: 768px) {
+    .chat-interface-mobile {
+      height: calc(100vh - 180px);
+      max-height: calc(100vh - 180px);
+    }
+    
+    .chat-container-mobile {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .chat-messages-mobile {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .chat-input-mobile {
+      position: sticky;
+      bottom: 0;
+      width: 100%;
+      background-color: theme('colors.inventu-dark');
+      z-index: 10;
+    }
+  }
+  
+  /* Mobile viewport fix */
+  .mobile-viewport-fix {
+    height: 100%;
+    position: fixed;
+    overflow: hidden;
+  }
+  
+  /* Chat interface mobile optimizations */
+  .chat-full-height {
+    height: calc(100vh - 180px);
   }
 }

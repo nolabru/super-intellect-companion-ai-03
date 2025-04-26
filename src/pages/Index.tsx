@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -234,7 +235,7 @@ const Index: React.FC = () => {
           <div className={cn(
             "flex-1 flex flex-col md:flex-row overflow-hidden relative",
             "bg-inventu-dark",
-            "md:rounded-xl md:mx-4 md:my-2",
+            isMobile ? "h-[calc(100vh-180px)]" : "md:rounded-xl md:mx-4 md:my-2",
           )}>
             {comparing ? (
               isMobile ? (
