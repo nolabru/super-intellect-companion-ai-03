@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Select,
@@ -22,6 +23,30 @@ interface ModelSelectorProps {
 export const getModelsByMode = (mode: ChatMode): ChatModel[] => {
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
 };
+
+// Add missing exports required by other components
+export const canModelGenerateImages = (modelId: string): boolean => {
+  const model = AVAILABLE_MODELS.find(m => m.id === modelId);
+  return !!model?.capabilities?.imageGeneration;
+};
+
+export const getProviderDisplayName = (provider: string): string => {
+  const providerNames: Record<string, string> = {
+    'openai': 'OpenAI',
+    'anthropic': 'Anthropic',
+    'google': 'Google',
+    'kligin': 'Kligin',
+    'ideogram': 'Ideogram',
+    'minimax': 'MiniMax',
+    'elevenlabs': 'ElevenLabs',
+    'luma': 'Luma AI'
+  };
+  
+  return providerNames[provider] || provider;
+};
+
+// Re-export constants for other components
+export { AVAILABLE_MODELS };
 
 const ModelSelector: React.FC<ModelSelectorProps> = ({
   mode,
