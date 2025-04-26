@@ -152,7 +152,7 @@ const MediaGallery: React.FC = () => {
       
       <div className="flex-1 flex overflow-hidden">
         {sidebarOpen ? (
-          <div className="w-64 flex-shrink-0">
+          <div className="w-64 flex-shrink-0 hidden md:block">
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
           </div>
         ) : (
@@ -160,10 +160,10 @@ const MediaGallery: React.FC = () => {
         )}
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
-          <div className="flex-1 flex flex-col overflow-hidden relative rounded-xl mx-4 my-2 bg-inventu-dark p-4">
-            <div className="mb-6">
+          <div className="flex-1 flex flex-col overflow-hidden mx-0 md:mx-4 my-0 md:my-2">
+            <div className="sticky top-0 z-10 bg-inventu-darker/80 backdrop-blur-xl border-b border-white/5 px-4 py-6">
               <h1 className="text-2xl font-semibold text-white">Galeria de Mídias</h1>
-              <p className="text-white">Visualize e gerencie suas criações de IA</p>
+              <p className="text-inventu-gray">Visualize e gerencie suas criações de IA</p>
             </div>
             
             <GalleryFilters 
@@ -176,21 +176,10 @@ const MediaGallery: React.FC = () => {
                 <Loader2 className="h-10 w-10 animate-spin text-inventu-gray" />
               </div>
             ) : !user ? (
-              <div className="flex-1 flex items-center justify-center text-center">
+              <div className="flex-1 flex items-center justify-center text-center px-6">
                 <div>
                   <h2 className="text-xl font-medium text-white mb-2">Faça login para visualizar sua galeria</h2>
-                  <p className="text-white">Você precisa estar logado para acessar suas mídias</p>
-                </div>
-              </div>
-            ) : filteredMedia.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-center">
-                <div>
-                  <h2 className="text-xl font-medium text-white mb-2">Nenhuma mídia encontrada</h2>
-                  <p className="text-white">
-                    {media.length === 0 
-                      ? "Você ainda não tem mídias geradas. Use o chat para criar novas mídias." 
-                      : "Nenhuma mídia corresponde aos filtros selecionados."}
-                  </p>
+                  <p className="text-inventu-gray">Você precisa estar logado para acessar suas mídias</p>
                 </div>
               </div>
             ) : (

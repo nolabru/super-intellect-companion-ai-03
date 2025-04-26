@@ -82,7 +82,7 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
   }
 
   return (
-    <div className="bg-inventu-card p-4 rounded-lg mb-4">
+    <div className="bg-inventu-card/50 backdrop-blur-xl p-4 rounded-2xl mb-4 mx-4 border border-white/5">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
         <h2 className="text-white font-medium">Filtros</h2>
         {hasActiveFilters && (
@@ -90,16 +90,16 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
             variant="ghost" 
             size="sm" 
             onClick={clearFilters}
-            className="text-white hover:text-white hover:bg-inventu-blue/20"
+            className="text-white hover:text-white hover:bg-white/5"
           >
             Limpar filtros
           </Button>
         )}
       </div>
       
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-col gap-6">
         <div>
-          <p className="text-sm text-white mb-2">Tipo de mídia</p>
+          <p className="text-sm text-white mb-3">Tipo de mídia</p>
           <div className="flex flex-wrap gap-2">
             {mediaTypes.map(type => (
               <Button
@@ -107,9 +107,12 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
                 variant={filters.mediaType.includes(type.value) ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleMediaTypeToggle(type.value)}
-                className={filters.mediaType.includes(type.value) 
-                  ? "bg-inventu-blue hover:bg-inventu-blue/80 text-white" 
-                  : "border-inventu-gray/30 text-white hover:text-white hover:bg-inventu-gray/30"}
+                className={cn(
+                  "rounded-xl transition-all duration-200",
+                  filters.mediaType.includes(type.value) 
+                    ? "bg-white text-black hover:bg-white/90" 
+                    : "border-white/10 text-white hover:text-white hover:bg-white/10"
+                )}
               >
                 {type.label}
               </Button>
@@ -117,16 +120,17 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-2">
-          <div>
-            <p className="text-sm text-white mb-2">Data inicial</p>
+        <div className="flex flex-wrap gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-sm text-white mb-3">Data inicial</p>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "border-inventu-gray/30 text-white hover:text-white hover:bg-inventu-gray/30 justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal rounded-xl",
+                    "border-white/10 bg-white/5 hover:bg-white/10",
                     !filters.dateRange.from && "text-muted-foreground"
                   )}
                 >
@@ -150,15 +154,16 @@ const GalleryFilters: React.FC<GalleryFiltersProps> = ({ filters, onFiltersChang
             </Popover>
           </div>
           
-          <div>
-            <p className="text-sm text-white mb-2">Data final</p>
+          <div className="flex-1 min-w-[200px]">
+            <p className="text-sm text-white mb-3">Data final</p>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "border-inventu-gray/30 text-white hover:text-white hover:bg-inventu-gray/30 justify-start text-left font-normal",
+                    "w-full justify-start text-left font-normal rounded-xl",
+                    "border-white/10 bg-white/5 hover:bg-white/10",
                     !filters.dateRange.to && "text-muted-foreground"
                   )}
                 >
