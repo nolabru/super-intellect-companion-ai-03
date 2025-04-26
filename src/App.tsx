@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import MediaGallery from "./pages/MediaGallery";
 import UserMemory from "./pages/UserMemory";
 import TokensPlans from "./pages/TokensPlans";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/gallery" element={<MediaGallery />} />
               <Route path="/memory" element={<UserMemory />} />
               <Route path="/tokens" element={<TokensPlans />} />
+              <Route path="/admin" element={<AdminPanel />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

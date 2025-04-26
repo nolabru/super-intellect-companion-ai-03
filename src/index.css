@@ -142,6 +142,30 @@
   .markdown-content blockquote {
     @apply border-l-4 border-white/20 pl-3 italic mb-3 bg-white/5 py-2 pr-3 rounded-r-lg;
   }
+
+  /* Responsive layout utilities */
+  .responsive-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+  
+  .responsive-form {
+    @apply space-y-4 sm:space-y-6;
+  }
+  
+  /* Mobile-first tables */
+  .table-responsive {
+    @apply w-full overflow-x-auto;
+  }
+  
+  /* Touch-friendly controls */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Mobile navigation */
+  .mobile-nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg;
+  }
 }
 
 @layer utilities {
@@ -204,5 +228,33 @@
   
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Admin panel specific utilities */
+  .stat-card {
+    @apply bg-card border-border rounded-lg p-4 transition-transform hover:scale-[1.02] duration-300;
+  }
+  
+  .stat-value {
+    @apply text-2xl font-bold;
+  }
+  
+  .stat-label {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  /* Mobile friendly cards */
+  .mobile-card {
+    @apply border-0 sm:border shadow-none sm:shadow-md bg-transparent sm:bg-card;
+  }
+  
+  /* Dashboard grid layouts */
+  .dashboard-layout {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4;
+  }
+  
+  /* Touch friendly form controls */
+  .mobile-input {
+    @apply h-12 sm:h-10 text-base sm:text-sm;
   }
 }

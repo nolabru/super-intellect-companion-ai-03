@@ -1,109 +1,69 @@
 
 import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
-import { 
-  MessageSquare, 
-  Image, 
-  Brain as Memory, 
-  Coins,
-  LogOut,
-  LogIn
-} from 'lucide-react';
+import { Coins, Image, BrainCircuit, Shield } from 'lucide-react';
 
 interface SidebarNavigationProps {
   closeMenu?: () => void;
-  onCreateConversation?: () => void;
 }
 
-const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ 
-  closeMenu,
-  onCreateConversation
-}) => {
-  const location = useLocation();
-  const { user, signOut } = useAuth();
+const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ closeMenu }) => {
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleClick = (path: string) => {
+    if (closeMenu) {
+      closeMenu();
+    }
     navigate(path);
-    if (closeMenu) closeMenu();
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-    if (closeMenu) closeMenu();
-  };
+  if (!user) {
+    return null;
+  }
+
+  const navigationItems = [
+    {
+      icon: <Image className="w-4 h-4" />,
+      label: 'Galeria de Mídia',
+      path: '/gallery',
+    },
+    {
+      icon: <BrainCircuit className="w-4 h-4" />,
+      label: 'Memória do Usuário',
+      path: '/memory',
+    },
+    {
+      icon: <Coins className="w-4 h-4" />,
+      label: 'Tokens & Planos',
+      path: '/tokens',
+    },
+  ];
+
+  // Add admin option if user is admin
+  if (isAdmin) {
+    navigationItems.push({
+      icon: <Shield className="w-4 h-4" />,
+      label: 'Painel Admin',
+      path: '/admin',
+    });
+  }
 
   return (
-    <div className="py-4 px-2">
-      <div className="space-y-1">
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            (location.pathname === '/' || location.pathname.startsWith('/c/')) ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/')}
-        >
-          <MessageSquare className="mr-2 h-4 w-4" />
-          Chat
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/gallery' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/gallery')}
-        >
-          <Image className="mr-2 h-4 w-4" />
-          Galeria
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/memory' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/memory')}
-        >
-          <Memory className="mr-2 h-4 w-4" />
-          Memória
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className={`w-full justify-start ${
-            location.pathname === '/tokens' ? 'bg-inventu-blue/10 text-inventu-blue' : 'text-white hover:bg-inventu-dark/50'
-          }`}
-          onClick={() => handleClick('/tokens')}
-        >
-          <Coins className="mr-2 h-4 w-4" />
-          Tokens
-        </Button>
-      </div>
-      
-      <div className="pt-4 mt-4 border-t border-inventu-gray/30">
-        {user ? (
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white hover:bg-inventu-dark/50"
-            onClick={handleSignOut}
+    <div className="border-t border-inventu-gray/30 pt-2 mt-2">
+      <div className="grid gap-1">
+        {navigationItems.map((item, index) => (
+          <Link
+            key={index}
+            to={item.path}
+            onClick={() => handleClick(item.path)}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-inventu-gray hover:text-white transition-colors hover:bg-inventu-gray/20"
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white hover:bg-inventu-dark/50"
-            onClick={() => handleClick('/auth')}
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            Entrar
-          </Button>
-        )}
+            {item.icon}
+            <span className="text-sm">{item.label}</span>
+          </Link>
+        ))}
       </div>
     </div>
   );
