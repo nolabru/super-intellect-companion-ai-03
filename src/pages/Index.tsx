@@ -75,6 +75,12 @@ const Index: React.FC = () => {
     }
   }, [comparing, leftModel, rightModel, activeMode]);
 
+  useEffect(() => {
+    if (isMobile && comparing) {
+      setIsLinked(true); // Force linked mode on mobile
+    }
+  }, [isMobile, comparing]);
+
   const handleSendMessage = async (content: string, files?: string[], params?: any, targetModel?: string) => {
     console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`, params);
     
@@ -136,6 +142,7 @@ const Index: React.FC = () => {
   };
 
   const toggleLink = () => {
+    if (isMobile) return; // Prevent toggling on mobile
     setIsLinked(!isLinked);
   };
 
@@ -195,53 +202,67 @@ const Index: React.FC = () => {
         <div className="flex-1 flex flex-col overflow-hidden relative">
           <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative rounded-xl mx-2 sm:mx-4 my-2 bg-inventu-dark">
             {comparing ? (
-              <>
-                <div className="flex-1 border-r border-inventu-gray/30 flex flex-col">
+              isMobile ? (
+                <div className="flex-1">
                   <ChatInterface 
                     messages={messages} 
                     model={leftModel}
-                    title={leftModel}
+                    title={`${leftModel} & ${rightModel}`}
                     onModelChange={handleLeftModelChange}
                     availableModels={availableModels}
-                    isCompareMode={!isLinked}
+                    isCompareMode={true}
                     loading={authLoading || (messagesLoading && !initialLoadDone)}
                   />
-                  {!isLinked && (
-                    <div className="p-2 sm:p-4 border-t border-inventu-gray/30">
-                      <ChatInput 
-                        onSendMessage={(content, files, params) => 
-                          handleSendMessage(content, files, params, leftModel)
-                        }
-                        model={leftModel}
-                        mode={activeMode}
-                      />
-                    </div>
-                  )}
                 </div>
-                
-                <div className="flex-1 flex flex-col">
-                  <ChatInterface 
-                    messages={messages} 
-                    model={rightModel}
-                    title={rightModel}
-                    onModelChange={handleRightModelChange}
-                    availableModels={availableModels}
-                    isCompareMode={!isLinked}
-                    loading={authLoading || (messagesLoading && !initialLoadDone)}
-                  />
-                  {!isLinked && (
-                    <div className="p-2 sm:p-4 border-t border-inventu-gray/30">
-                      <ChatInput 
-                        onSendMessage={(content, files, params) => 
-                          handleSendMessage(content, files, params, rightModel)
-                        }
-                        model={rightModel}
-                        mode={activeMode}
-                      />
-                    </div>
-                  )}
-                </div>
-              </>
+              ) : (
+                <>
+                  <div className="flex-1 border-r border-inventu-gray/30 flex flex-col">
+                    <ChatInterface 
+                      messages={messages} 
+                      model={leftModel}
+                      title={leftModel}
+                      onModelChange={handleLeftModelChange}
+                      availableModels={availableModels}
+                      isCompareMode={!isLinked}
+                      loading={authLoading || (messagesLoading && !initialLoadDone)}
+                    />
+                    {!isLinked && (
+                      <div className="p-2 sm:p-4 border-t border-inventu-gray/30">
+                        <ChatInput 
+                          onSendMessage={(content, files, params) => 
+                            handleSendMessage(content, files, params, leftModel)
+                          }
+                          model={leftModel}
+                          mode={activeMode}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col">
+                    <ChatInterface 
+                      messages={messages} 
+                      model={rightModel}
+                      title={rightModel}
+                      onModelChange={handleRightModelChange}
+                      availableModels={availableModels}
+                      isCompareMode={!isLinked}
+                      loading={authLoading || (messagesLoading && !initialLoadDone)}
+                    />
+                    {!isLinked && (
+                      <div className="p-2 sm:p-4 border-t border-inventu-gray/30">
+                        <ChatInput 
+                          onSendMessage={(content, files, params) => 
+                            handleSendMessage(content, files, params, rightModel)
+                          }
+                          model={rightModel}
+                          mode={activeMode}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )
             ) : (
               <div className="flex-1">
                 <ChatInterface 
@@ -270,7 +291,7 @@ const Index: React.FC = () => {
                     isComparing={comparing} 
                     onToggleCompare={toggleComparing} 
                   />
-                  {comparing && (
+                  {comparing && !isMobile && (
                     <LinkToggleButton 
                       isLinked={isLinked} 
                       onToggleLink={toggleLink} 
@@ -280,7 +301,7 @@ const Index: React.FC = () => {
               </div>
             </div>
             
-            {(!comparing || isLinked) && (
+            {(!comparing || isLinked || isMobile) && (
               <ChatInput 
                 onSendMessage={handleSendMessage} 
                 mode={activeMode}

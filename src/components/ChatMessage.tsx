@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ChatMode } from './ModeSelector';
 import { AlertTriangle, Loader2 } from 'lucide-react';
@@ -8,6 +7,7 @@ import ModeIcon from './chat/ModeIcon';
 import ChatMessageContent from './chat/ChatMessageContent';
 import MediaContainer from './chat/MediaContainer';
 import VideoLoading from './chat/VideoLoading';
+import { getModelBubbleColor } from '@/utils/modelColors';
 
 export interface MessageType {
   id: string;
@@ -146,7 +146,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         "chat-bubble group",
         isUser ? "user-bubble" : "ai-bubble",
         "break-words p-4 rounded-2xl max-w-[85%]",
-        isUser ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white" : "bg-gradient-to-br from-gray-800/90 to-gray-900/90 text-white",
+        isUser 
+          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white" 
+          : `bg-gradient-to-br ${getModelBubbleColor(message.model || '')} text-white`,
         isLoading && !isVideo && "animate-pulse",
         isError && "bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30"
       )}>

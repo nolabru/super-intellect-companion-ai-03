@@ -3,6 +3,7 @@ import React from 'react';
 import { Link, Link2Off } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LinkToggleButtonProps {
   isLinked: boolean;
@@ -10,6 +11,10 @@ interface LinkToggleButtonProps {
 }
 
 const LinkToggleButton: React.FC<LinkToggleButtonProps> = ({ isLinked, onToggleLink }) => {
+  const isMobile = useIsMobile();
+  
+  if (isMobile) return null;
+
   return (
     <Button
       onClick={onToggleLink}
