@@ -39,7 +39,7 @@
     @apply border-border;
   }
 
-  /* iOS Safe Area Padding utilities */
+  /* iOS Safe Area Padding utilities - Enhanced for better mobile support */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 1rem);
   }
@@ -60,10 +60,19 @@
     -moz-osx-font-smoothing: grayscale;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    height: 100%;
+    height: -webkit-fill-available;
+  }
+
+  html {
+    height: 100%;
+    height: -webkit-fill-available;
   }
 
   #root {
     @apply h-full w-full overflow-hidden;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 
   .chat-bubble {

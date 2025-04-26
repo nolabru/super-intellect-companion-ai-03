@@ -147,7 +147,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="relative mt-3">
+    <div className="relative w-full">
       {/* Luma AI Parameters Button */}
       {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
         <div className="flex justify-end mb-2">

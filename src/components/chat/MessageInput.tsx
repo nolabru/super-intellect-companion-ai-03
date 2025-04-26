@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -116,6 +117,13 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
     setCursorPosition(e.target.selectionStart);
+    
+    // Auto resize the textarea
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const newHeight = Math.min(120, Math.max(44, e.target.scrollHeight));
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
   };
 
   const getPlaceholder = () => {
@@ -224,18 +232,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
           }
         }}
         placeholder={getPlaceholder()}
-        className="w-full pl-4 pr-20 py-3 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none min-h-[44px]"
+        className="w-full pl-4 pr-24 py-3 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none min-h-[44px]"
         rows={1}
         disabled={isSending}
         style={{ maxHeight: '120px' }}
       />
-      <div className="absolute top-1/2 right-2 -translate-y-1/2 flex gap-1">
+      <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
         {mode !== 'text' && (
           <Button 
             onClick={onAttachment}
             variant="ghost" 
             size="icon"
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10"
+            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10 flex-shrink-0"
             title={`Anexar ${mode}`}
             disabled={isSending}
           >
@@ -247,7 +255,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           onClick={onSendMessage}
           variant="ghost" 
           size="icon"
-          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10"
+          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10 flex-shrink-0"
           disabled={isSending}
         >
           <Send className="h-5 w-5" />

@@ -13,7 +13,6 @@ import ModeSelector from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
 import ModelSelector, { getModelsByMode } from '@/components/ModelSelector';
-import TokenDisplay from '@/components/TokenDisplay';
 import { cn } from '@/lib/utils';
 
 const Index: React.FC = () => {
@@ -185,7 +184,7 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen w-full overflow-hidden bg-inventu-darker">
+    <div className="flex flex-col h-[100vh] w-full overflow-hidden bg-inventu-darker">
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex overflow-hidden relative">
@@ -319,7 +318,7 @@ const Index: React.FC = () => {
             )}
           </div>
           
-          <div className="sticky bottom-0 z-20 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg">
+          <div className="sticky bottom-0 z-30 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg">
             <div className="flex flex-wrap items-center justify-between gap-2 p-2">
               <div className="flex flex-wrap items-center gap-2">
                 <ModeSelector 
@@ -343,7 +342,7 @@ const Index: React.FC = () => {
             </div>
             
             {(!comparing || isLinked || isMobile) && (
-              <div className="px-2 pb-safe">
+              <div className="px-2 pb-safe mb-1">
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
                   mode={activeMode}
