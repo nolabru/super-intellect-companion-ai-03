@@ -8,6 +8,7 @@ import AdminHeader from '@/components/admin/AdminHeader';
 import AdminOverview from '@/components/admin/AdminOverview';
 import AdminUserManagement from '@/components/admin/AdminUserManagement';
 import AdminPlansManagement from '@/components/admin/AdminPlansManagement';
+import AdminModelsManagement from '@/components/admin/AdminModelsManagement';
 
 const AdminPanel: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -53,7 +54,7 @@ const AdminPanel: React.FC = () => {
       case 'plans':
         return <AdminPlansManagement />;
       case 'models':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Configuração de Modelos</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
+        return <AdminModelsManagement />;
       case 'stats':
         return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Estatísticas e Relatórios</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
       case 'settings':
