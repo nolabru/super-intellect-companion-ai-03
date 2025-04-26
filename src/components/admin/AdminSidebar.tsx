@@ -1,21 +1,16 @@
 
 import React from 'react';
-import { Users, CreditCard, Settings, BarChart2, Database, Home } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarContent, 
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarHeader,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel
-} from "@/components/ui/sidebar";
+import { 
+  LayoutDashboard, 
+  Users, 
+  CreditCard, 
+  Database, 
+  BarChart2, 
+  Settings 
+} from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -34,7 +29,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
     {
       id: 'overview',
       title: 'Visão Geral',
-      icon: Home,
+      icon: LayoutDashboard,
     },
     {
       id: 'users',
@@ -63,10 +58,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
     },
   ];
 
-  // For mobile view
+  // Mobile Sidebar
   const MobileSidebar = () => (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onToggleSidebar()}>
-      <SheetContent side="left" className="w-[250px] sm:w-[300px] p-0 bg-inventu-dark border-inventu-gray/30">
+      <SheetContent 
+        side="left" 
+        className="w-[250px] sm:w-[300px] p-0 bg-inventu-dark border-r border-inventu-gray/30"
+      >
         <div className="flex flex-col h-full">
           <div className="p-4 border-b border-inventu-gray/30">
             <h2 className="text-xl font-semibold text-white">Painel Admin</h2>
@@ -78,7 +76,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   key={item.id}
                   variant={activeSection === item.id ? "default" : "ghost"}
                   className={cn(
-                    "w-full justify-start",
+                    "w-full justify-start text-left",
                     activeSection === item.id 
                       ? "bg-inventu-blue text-white" 
                       : "text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
@@ -99,41 +97,44 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
     </Sheet>
   );
 
-  // For desktop view
+  // Desktop Sidebar
   const DesktopSidebar = () => (
-    <SidebarProvider defaultOpen={isOpen}>
-      <Sidebar className="hidden md:flex bg-inventu-dark border-r border-inventu-gray/30" data-state={isOpen ? 'expanded' : 'collapsed'}>
-        <SidebarHeader className="flex items-center justify-between p-4">
-          <h2 className="text-xl font-semibold truncate text-white">Painel Admin</h2>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel className="text-inventu-gray">Menu Principal</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {menuItems.map((item) => (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton 
-                      isActive={activeSection === item.id}
-                      tooltip={item.title}
-                      onClick={() => onSectionChange(item.id)}
-                      className={cn(
-                        activeSection === item.id 
-                          ? "bg-inventu-blue text-white" 
-                          : "text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-                      )}
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </Sidebar>
-    </SidebarProvider>
+    <div 
+      className={cn(
+        "hidden md:flex flex-col w-64 bg-inventu-dark border-r border-inventu-gray/30 transition-all duration-300",
+        isOpen ? "w-64" : "w-20"
+      )}
+    >
+      <div className="p-4 border-b border-inventu-gray/30">
+        <h2 className={cn(
+          "text-xl font-semibold text-white transition-opacity duration-300",
+          !isOpen && "opacity-0"
+        )}>
+          Painel Admin
+        </h2>
+      </div>
+      <div className="flex-1 overflow-auto p-2">
+        <div className="space-y-1">
+          {menuItems.map((item) => (
+            <Button
+              key={item.id}
+              variant="ghost"
+              className={cn(
+                "w-full justify-start",
+                activeSection === item.id 
+                  ? "bg-inventu-blue text-white" 
+                  : "text-inventu-gray hover:text-white hover:bg-inventu-gray/20",
+                !isOpen && "justify-center"
+              )}
+              onClick={() => onSectionChange(item.id)}
+            >
+              <item.icon className="h-4 w-4" />
+              {isOpen && <span className="ml-2">{item.title}</span>}
+            </Button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 
   return (

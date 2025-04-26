@@ -6,7 +6,6 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
-import AdminUserStats from '@/components/admin/AdminUserStats';
 import AdminOverview from '@/components/admin/AdminOverview';
 import AdminUserManagement from '@/components/admin/AdminUserManagement';
 
@@ -16,27 +15,30 @@ const AdminPanel: React.FC = () => {
   const { user, loading, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  console.log('AdminPanel - User:', user?.email, 'isAdmin:', isAdmin, 'loading:', loading);
+  // Add welcome toast when admin logs in
+  useEffect(() => {
+    if (isAdmin && user) {
+      toast.success(`Bem-vindo, ${user.email?.split('@')[0]}!`, {
+        description: 'Você está no Painel Administrativo',
+        duration: 3000,
+      });
+    }
+  }, [isAdmin, user]);
 
   // Redirect if not logged in or not admin
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        console.log('Redirecionando para /auth: usuário não está logado');
         toast.error('Você precisa estar logado para acessar esta página');
         navigate('/auth');
         return;
       }
       
       if (!isAdmin) {
-        console.log('Redirecionando para /: usuário não é admin');
         toast.error('Você não tem permissão para acessar o painel administrativo');
         navigate('/');
         return;
       }
-      
-      console.log('Acesso ao painel admin autorizado para:', user.email);
-      toast.success('Bem-vindo ao Painel Administrativo');
     }
   }, [user, loading, isAdmin, navigate]);
 
@@ -51,13 +53,13 @@ const AdminPanel: React.FC = () => {
       case 'users':
         return <AdminUserManagement />;
       case 'plans':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Gestão de Planos</h2><p className="text-muted-foreground">Implementação pendente</p></div>;
+        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Gestão de Planos</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
       case 'models':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Configuração de Modelos</h2><p className="text-muted-foreground">Implementação pendente</p></div>;
-      case 'settings':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Configurações do Sistema</h2><p className="text-muted-foreground">Implementação pendente</p></div>;
+        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Configuração de Modelos</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
       case 'stats':
-        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Estatísticas e Relatórios</h2><p className="text-muted-foreground">Implementação pendente</p></div>;
+        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Estatísticas e Relatórios</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
+      case 'settings':
+        return <div className="p-4"><h2 className="text-2xl font-bold mb-4">Configurações do Sistema</h2><p className="text-muted-foreground">Em desenvolvimento</p></div>;
       default:
         return <AdminOverview />;
     }
