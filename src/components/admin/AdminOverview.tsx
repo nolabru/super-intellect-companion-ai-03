@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Users, CreditCard, BarChart2, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 const AdminOverview: React.FC = () => {

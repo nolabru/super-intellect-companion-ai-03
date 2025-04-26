@@ -1,7 +1,7 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Auth, SupabaseClient, useSession, useSupabaseClient } from '@supabase/auth-helpers-react';
-import { useRouter } from 'next/router';
-import { Session, User } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 type AuthContextType = {
   user: User | null;
@@ -10,9 +10,9 @@ type AuthContextType = {
   sessionLoading: boolean;
   sessionError: Error | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  signOut: () => Promise<void>; // Renamed from logout to signOut for consistency
   updateProfile: (profile: any) => Promise<void>; // Update with proper profile type
-  isAdmin: boolean; // Add the isAdmin property type
+  isAdmin: boolean; // Admin flag
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextType>({
   sessionLoading: true,
   sessionError: null,
   login: async () => {},
-  logout: async () => {},
+  signOut: async () => {}, // Renamed from logout to signOut
   updateProfile: async () => {},
   isAdmin: false,
 });
@@ -35,15 +35,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState<Error | null>(null);
-  const supabaseClient: SupabaseClient = useSupabaseClient();
-  const session: Session | null = useSession();
 
   useEffect(() => {
     const fetchSession = async () => {
       setSessionLoading(true);
       try {
-        if (session) {
-          setUser(session.user);
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          throw error;
+        }
+        
+        if (data?.session) {
+          setUser(data.session.user);
         } else {
           setUser(null);
         }
@@ -55,14 +58,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     fetchSession();
-  }, [session]);
+    
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user || null);
+        setSessionLoading(false);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (user) {
         try {
           setLoading(true);
-          const { data, error } = await supabaseClient
+          const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
@@ -85,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     fetchProfile();
-  }, [user, supabaseClient]);
+  }, [user]);
 
   // Add isAdmin property for user roles
   const isAdmin = user?.email?.endsWith('@admin.com') || false;
@@ -93,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -113,10 +128,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = async () => {
+  const signOut = async () => {
     try {
       setLoading(true);
-      await supabaseClient.auth.signOut();
+      await supabase.auth.signOut();
       setUser(null);
       setProfile(null);
     } catch (error: any) {
@@ -129,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (profileData: any) => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseClient
+      const { data, error } = await supabase
         .from('profiles')
         .upsert({
           id: user?.id,
@@ -157,9 +172,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         sessionLoading,
         sessionError,
         login,
-        logout,
+        signOut, // Renamed from logout to signOut
         updateProfile,
-        isAdmin, // Add the isAdmin property to the context
+        isAdmin,
       }}
     >
       {children}

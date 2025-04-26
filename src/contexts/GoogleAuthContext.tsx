@@ -14,7 +14,7 @@ import { GoogleAuthContextType, GoogleConnectionState } from './google-auth/type
 const GoogleAuthContext = createContext<GoogleAuthContextType | undefined>(undefined);
 
 export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { session, user } = useAuth();
+  const { user } = useAuth();
   const [oauthRedirectInProgress, setOauthRedirectInProgress] = useState<boolean>(false);
   
   const { 
@@ -32,22 +32,22 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Debug logging de inicialização
   useEffect(() => {
-    console.log('[GoogleAuthContext] Inicialização com sessão:', !!session);
+    console.log('[GoogleAuthContext] Inicialização com usuário:', !!user);
   }, []);
 
-  // Atualizar tokens quando a sessão mudar
+  // Atualizar tokens quando o usuário mudar
   useEffect(() => {
-    if (session) {
-      console.log('[GoogleAuthContext] Sessão detectada, buscando tokens Google');
-      fetchGoogleTokens(session);
-      setupTokenChecking(session);
+    if (user) {
+      console.log('[GoogleAuthContext] Usuário detectado, buscando tokens Google');
+      fetchGoogleTokens(user);
+      setupTokenChecking(user);
     } else {
-      console.log('[GoogleAuthContext] Nenhuma sessão, limpando tokens Google');
+      console.log('[GoogleAuthContext] Nenhum usuário, limpando tokens Google');
       setGoogleTokens(null);
       setIsGoogleConnected(false);
       setConnectionState(GoogleConnectionState.DISCONNECTED);
     }
-  }, [session, fetchGoogleTokens, setGoogleTokens, setIsGoogleConnected, setConnectionState, setupTokenChecking]);
+  }, [user, fetchGoogleTokens, setGoogleTokens, setIsGoogleConnected, setConnectionState, setupTokenChecking]);
 
   // Verificar parâmetros de redirecionamento OAuth apenas uma vez na montagem do componente
   useEffect(() => {
@@ -69,9 +69,9 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           try {
             // Verificar se a sessão existe
             const { data } = await supabase.auth.getSession();
-            if (data.session) {
+            if (data.session && data.session.user) {
               console.log('[GoogleAuthContext] Sessão encontrada após redirecionamento OAuth, buscando tokens');
-              await fetchGoogleTokens(data.session);
+              await fetchGoogleTokens(data.session.user);
               
               // Forçar outra verificação após um atraso maior
               setTimeout(async () => {
@@ -86,7 +86,7 @@ export const GoogleAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   );
                 } else {
                   console.log('[GoogleAuthContext] Status de conexão Google após verificação com atraso:', isGoogleConnected);
-                  await fetchGoogleTokens(data.session);
+                  await fetchGoogleTokens(data.session.user);
                   
                   // Uma verificação final com um atraso ainda maior
                   setTimeout(async () => {
