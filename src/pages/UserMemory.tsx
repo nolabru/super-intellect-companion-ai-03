@@ -7,8 +7,6 @@ import { useNavigate } from 'react-router-dom';
 import MemoryManager from '@/components/MemoryManager';
 import { Loader2, Brain } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const UserMemory: React.FC = () => {
@@ -48,48 +46,48 @@ const UserMemory: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-inventu-darker">
-      <AppHeader 
-        sidebarOpen={sidebarOpen} 
-        onToggleSidebar={toggleSidebar} 
-        title={isMobile ? undefined : "Memória do Usuário"}
-      />
-      
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar - conditionally rendered based on device and state */}
-        {isMobile ? (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                className="fixed bottom-4 left-4 z-30 rounded-full shadow-lg bg-inventu-blue hover:bg-inventu-blue/90 text-white h-14 w-14"
-              >
-                <div className="p-3.5 rounded-full bg-white/10">
-                  <Brain className="h-5 w-5" />
-                </div>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[85%] max-w-[320px] bg-inventu-dark border-inventu-gray/20">
-              <ConversationSidebar onToggleSidebar={() => {}} isOpen={true} />
-            </SheetContent>
-          </Sheet>
-        ) : (
-          sidebarOpen ? (
-            <div className="w-64 flex-shrink-0">
-              <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
-            </div>
-          ) : (
-            <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={false} />
-          )
-        )}
+    <div className="flex min-h-screen w-full bg-inventu-darker">
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <div className={cn(
+          "fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}>
+          <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
+        </div>
+      )}
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity"
+          onClick={toggleSidebar}
+        >
+          <div 
+            className="fixed inset-y-0 left-0 z-40 w-64 transform bg-inventu-dark"
+            onClick={e => e.stopPropagation()}
+          >
+            <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className={cn(
+        "flex min-h-screen w-full flex-col transition-all duration-300",
+        !isMobile && sidebarOpen && "pl-64"
+      )}>
+        <AppHeader 
+          sidebarOpen={sidebarOpen} 
+          onToggleSidebar={toggleSidebar} 
+          title="Memória do Usuário"
+        />
         
-        {/* Main content */}
-        <div className="flex-1 flex flex-col overflow-auto">
-          {/* Mobile header - only visible on mobile */}
+        <main className="flex-1">
+          {/* Mobile Title */}
           {isMobile && (
             <div className={cn(
-              "sticky top-0 z-20 px-4 py-3 backdrop-blur-lg transition-all duration-200",
+              "sticky top-16 z-20 px-4 py-3 backdrop-blur-lg transition-all duration-200",
               isScrolled ? "bg-inventu-darker/80 shadow-md" : "bg-transparent"
             )}>
               <div className="flex items-center justify-center">
@@ -98,8 +96,8 @@ const UserMemory: React.FC = () => {
                     <Brain className="h-5 w-5 text-white" />
                   </div>
                   <h1 className={cn(
-                    "font-semibold transition-all duration-200",
-                    isScrolled ? "text-xl text-white" : "text-2xl text-white"
+                    "font-semibold text-white transition-all duration-200",
+                    isScrolled ? "text-xl" : "text-2xl"
                   )}>Memória</h1>
                 </div>
               </div>
@@ -108,7 +106,7 @@ const UserMemory: React.FC = () => {
 
           {/* Content container with padding optimized for both mobile and desktop */}
           <div className={cn(
-            "flex-1 mx-auto w-full max-w-3xl pb-safe",
+            "mx-auto w-full max-w-3xl pb-safe",
             isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8"
           )}>
             {!isMobile && (
@@ -124,7 +122,7 @@ const UserMemory: React.FC = () => {
             
             <MemoryManager />
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

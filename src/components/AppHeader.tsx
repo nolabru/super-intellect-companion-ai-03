@@ -2,9 +2,10 @@
 import React from 'react';
 import UserMenu from './UserMenu';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Menu } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
-import { useMediaQuery } from '@/hooks/use-media-query';
+import { Menu } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface AppHeaderProps {
   sidebarOpen?: boolean;
@@ -13,53 +14,47 @@ interface AppHeaderProps {
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar, title }) => {
-  const location = useLocation();
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isMobile = useIsMobile();
   
   return (
-    <div className="flex items-center justify-between py-2 sm:py-3 px-4 sm:px-6 border-b border-inventu-gray/30 bg-inventu-darker">
-      <div className="flex items-center">
-        {!isDesktop && onToggleSidebar && (
+    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-inventu-darker/80 backdrop-blur-lg">
+      <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
+        {onToggleSidebar && (
           <Button
             onClick={onToggleSidebar}
             size="icon"
             variant="ghost"
-            className="mr-3 text-inventu-gray hover:text-white hover:bg-inventu-gray/20 touch-target"
-            title="Abrir menu"
+            className="shrink-0 text-inventu-gray hover:text-white hover:bg-white/10"
+            title={sidebarOpen ? "Fechar menu" : "Abrir menu"}
           >
             <Menu className="h-5 w-5" />
           </Button>
         )}
         
-        <Link to="/" className="flex items-center">
-          <img 
-            src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
-            alt="InventuAi Logo" 
-            className="h-10 sm:h-14" 
-          />
-        </Link>
-        
-        {!sidebarOpen && isDesktop && onToggleSidebar && (
-          <Button
-            onClick={onToggleSidebar}
-            size="icon"
-            variant="ghost"
-            className="ml-3 text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-            title="Abrir menu"
-          >
-            <ChevronLeft className="h-5 w-5 rotate-180" />
-          </Button>
-        )}
-        
-        {title && (
-          <div className="ml-4 border-l border-inventu-gray/30 pl-4 hidden sm:block">
-            <h1 className="font-medium text-white">{title}</h1>
+        <div className="flex flex-1 items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center">
+              <img 
+                src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
+                alt="InventuAi Logo" 
+                className="h-8 w-auto" 
+              />
+            </Link>
+            
+            {title && !isMobile && (
+              <div className="hidden md:block">
+                <div className="flex items-center gap-1">
+                  <div className="h-4 w-px bg-white/10" />
+                  <span className="text-sm font-medium text-white/70">{title}</span>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+          
+          <UserMenu />
+        </div>
       </div>
-      
-      <UserMenu />
-    </div>
+    </header>
   );
 };
 
