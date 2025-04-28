@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Settings2 } from "lucide-react";
 import { ChatMode } from '@/components/ModeSelector';
 import ImageParameters from './ImageParameters';
-import VideoParameters from './VideoParameters';
 import AudioParameters from './AudioParameters';
 
 interface ParameterSheetProps {
@@ -23,8 +22,6 @@ const ParameterSheet: React.FC<ParameterSheetProps> = ({
     switch (mode) {
       case 'image':
         return <ImageParameters model={model} onParamsChange={onParamsChange} />;
-      case 'video':
-        return <VideoParameters model={model} onParamsChange={onParamsChange} />;
       case 'audio':
         return <AudioParameters model={model} onParamsChange={onParamsChange} />;
       default:
@@ -32,7 +29,7 @@ const ParameterSheet: React.FC<ParameterSheetProps> = ({
     }
   };
 
-  if (mode === 'text') return null;
+  if (mode === 'text' || mode === 'video' || mode === 'call') return null;
 
   return (
     <Sheet>
