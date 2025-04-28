@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -32,9 +31,6 @@ const Index: React.FC = () => {
   } = useConversation();
   
   const { conversationId } = useParams<{ conversationId: string }>();
-  
-  // Define availableModels based on activeMode
-  const availableModels = getModelsByMode(activeMode).map(model => model.id);
 
   useEffect(() => {
     if (conversationId && conversationId !== currentConversationId) {
@@ -44,6 +40,8 @@ const Index: React.FC = () => {
   }, [conversationId, currentConversationId, setCurrentConversationId]);
 
   useEffect(() => {
+    const availableModels = getModelsByMode(activeMode).map(model => model.id);
+    
     if (availableModels.length === 0) {
       console.error(`Nenhum modelo disponível para o modo ${activeMode}`);
       return;
@@ -59,10 +57,11 @@ const Index: React.FC = () => {
       setRightModel(differentModel);
       console.log(`Modelo direito atualizado para ${differentModel} devido à mudança para o modo ${activeMode}`);
     }
-  }, [activeMode, leftModel, availableModels]);
+  }, [activeMode, leftModel]);
 
   useEffect(() => {
     if (comparing && leftModel === rightModel) {
+      const availableModels = getModelsByMode(activeMode).map(model => model.id);
       const differentModel = availableModels.find(m => m !== leftModel);
       
       if (differentModel) {
@@ -70,7 +69,7 @@ const Index: React.FC = () => {
         console.log(`Modelo direito atualizado para ${differentModel} para evitar comparação com o mesmo modelo`);
       }
     }
-  }, [comparing, leftModel, rightModel, activeMode, availableModels]);
+  }, [comparing, leftModel, rightModel, activeMode]);
 
   useEffect(() => {
     if (isMobile && comparing) {
