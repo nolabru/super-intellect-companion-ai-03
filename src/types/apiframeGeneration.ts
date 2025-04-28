@@ -21,3 +21,26 @@ export interface ApiframeParams {
   guidance?: number;
   [key: string]: any;
 }
+
+// Add specific type interfaces for different media types
+export interface ApiframeVideoParams extends ApiframeParams {
+  aspectRatio?: string;
+  fps?: number;
+}
+
+export interface ApiframeAudioParams extends ApiframeParams {
+  voice_id?: string;
+  voice?: string;
+  stability?: number;
+  similarity_boost?: number;
+  speed?: number;
+  language?: string;
+}
+
+// Add MediaGenerationResult interface
+export interface MediaGenerationResult {
+  success: boolean;
+  mediaUrl?: string;
+  taskId?: string;
+  error?: string;
+}

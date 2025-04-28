@@ -22,3 +22,10 @@ export interface GoogleAuthContextType {
   disconnectGoogle: () => Promise<void>;
   refreshTokensState: () => Promise<void>;
 }
+
+// Array of Google API scopes required by the application
+export const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'openid'
+];
