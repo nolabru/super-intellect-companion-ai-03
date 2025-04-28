@@ -272,6 +272,22 @@ export const newsletterService = {
     }
 
     return true;
+  },
+
+  // Add method to increment view count
+  async incrementViewCount(postId: string): Promise<void> {
+    try {
+      await fetch(`https://vygluorjwehcdigzxbaa.supabase.co/functions/v1/increment-post-view`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token)}`
+        },
+        body: JSON.stringify({ post_id: postId })
+      });
+    } catch (error) {
+      console.error('Error incrementing view count:', error);
+    }
   }
 };
 
@@ -297,12 +313,19 @@ export const newsletterAdminService = {
       return null;
     }
 
+    // Ensure content is not undefined
+    if (!post.content) {
+      toast.error('O conteúdo não pode estar vazio');
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('newsletter_posts')
-      .insert([{
+      .insert({
         ...post,
-        author_id: user.id
-      }])
+        author_id: user.id,
+        content: post.content // Ensure content is explicitly set
+      })
       .select()
       .single();
 
@@ -386,9 +409,5 @@ export const newsletterAdminService = {
 
     toast.success('Publicação excluída com sucesso');
     return true;
-  },
-
-  async incrementViewCount(postId: string): Promise<void> {
-    await supabase.rpc('increment_post_view', { post_id: postId });
   }
 };

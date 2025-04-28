@@ -65,9 +65,7 @@ const SidebarHeader: React.FC<SidebarHeaderProps> = ({
         )}
       </div>
       
-      <SidebarNavigation 
-        closeMenu={onToggleSidebar}
-      />
+      <SidebarNavigation />
     </div>
   );
 };
