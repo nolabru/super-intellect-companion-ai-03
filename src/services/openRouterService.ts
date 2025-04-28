@@ -112,11 +112,15 @@ export const openRouterService = {
         throw new Error('API key not configured');
       }
       
+      // Get the current session token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token || '';
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/openrouter-stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify({
           params,
