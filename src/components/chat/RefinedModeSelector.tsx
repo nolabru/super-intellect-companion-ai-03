@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Text, Image, Video, AudioLines } from 'lucide-react';
+import { Text, Image, Video, AudioLines, PhoneCall } from 'lucide-react';
 import { ChatMode } from '../ModeSelector';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +31,8 @@ const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({
         { value: 'text', icon: Text },
         { value: 'image', icon: Image },
         { value: 'video', icon: Video },
-        { value: 'audio', icon: AudioLines }
+        { value: 'audio', icon: AudioLines },
+        { value: 'call', icon: PhoneCall }
       ].map(({ value, icon: Icon }) => (
         <ToggleGroupItem 
           key={value}
