@@ -13,15 +13,14 @@ const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onToggleCompa
   return (
     <Button
       onClick={onToggleCompare}
+      variant="ghost"
+      size="icon"
       className={cn(
-        "bg-transparent border flex items-center gap-2 rounded-xl",
-        isComparing 
-          ? "border-inventu-purple text-inventu-purple hover:bg-inventu-purple/10" 
-          : "border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10"
+        "flex-shrink-0",
+        isComparing && "text-inventu-purple hover:text-inventu-purple hover:bg-inventu-purple/10"
       )}
     >
-      <MessagesSquare size={18} />
-      <span>{isComparing ? "Modo único" : "Comparar"}</span>
+      <MessagesSquare size={20} />
     </Button>
   );
 };
