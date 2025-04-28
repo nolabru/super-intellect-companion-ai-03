@@ -1,16 +1,19 @@
 
 import React from 'react';
-import { 
-  LayoutDashboard, 
-  Users, 
-  CreditCard, 
-  Database, 
-  BarChart2, 
-  Settings 
+import { useNavigate } from 'react-router-dom';
+import {
+  BarChart3,
+  Cpu,
+  Home,
+  Settings,
+  Shield,
+  Users,
+  ChevronLeft,
+  MessageSquare,
+  Newspaper,
 } from 'lucide-react';
-import { cn } from "@/lib/utils";
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { cn } from '@/lib/utils';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -19,129 +22,89 @@ interface AdminSidebarProps {
   onSectionChange: (section: string) => void;
 }
 
-const AdminSidebar: React.FC<AdminSidebarProps> = ({ 
-  isOpen, 
+const AdminSidebar: React.FC<AdminSidebarProps> = ({
+  isOpen,
   onToggleSidebar,
   activeSection,
   onSectionChange
 }) => {
-  const menuItems = [
-    {
-      id: 'overview',
-      title: 'Visão Geral',
-      icon: LayoutDashboard,
-    },
-    {
-      id: 'users',
-      title: 'Usuários',
-      icon: Users,
-    },
-    {
-      id: 'plans',
-      title: 'Planos',
-      icon: CreditCard,
-    },
-    {
-      id: 'models',
-      title: 'Modelos',
-      icon: Database,
-    },
-    {
-      id: 'stats',
-      title: 'Estatísticas',
-      icon: BarChart2,
-    },
-    {
-      id: 'settings',
-      title: 'Configurações',
-      icon: Settings,
-    },
+  const navigate = useNavigate();
+
+  const sidebarItems = [
+    { id: 'overview', label: 'Visão Geral', icon: <Home className="h-5 w-5" /> },
+    { id: 'users', label: 'Usuários', icon: <Users className="h-5 w-5" /> },
+    { id: 'plans', label: 'Planos', icon: <Shield className="h-5 w-5" /> },
+    { id: 'models', label: 'Modelos', icon: <Cpu className="h-5 w-5" /> },
+    { id: 'posts', label: 'Newsletter', icon: <Newspaper className="h-5 w-5" /> },
+    { id: 'stats', label: 'Estatísticas', icon: <BarChart3 className="h-5 w-5" /> },
+    { id: 'settings', label: 'Configurações', icon: <Settings className="h-5 w-5" /> }
   ];
 
-  // Mobile Sidebar
-  const MobileSidebar = () => (
-    <Sheet open={isOpen} onOpenChange={(open) => !open && onToggleSidebar()}>
-      <SheetContent 
-        side="left" 
-        className="w-[250px] sm:w-[300px] p-0 bg-inventu-dark border-r border-inventu-gray/30"
-      >
-        <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-inventu-gray/30">
-            <h2 className="text-xl font-semibold text-white">Painel Admin</h2>
-          </div>
-          <div className="flex-1 overflow-auto p-2">
-            <div className="space-y-1">
-              {menuItems.map((item) => (
-                <Button
-                  key={item.id}
-                  variant={activeSection === item.id ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start text-left",
-                    activeSection === item.id 
-                      ? "bg-inventu-blue text-white" 
-                      : "text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
-                  )}
-                  onClick={() => {
-                    onSectionChange(item.id);
-                    onToggleSidebar();
-                  }}
-                >
-                  <item.icon className="mr-2 h-4 w-4" />
-                  {item.title}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
+  const handleSectionClick = (sectionId: string) => {
+    onSectionChange(sectionId);
+  };
 
-  // Desktop Sidebar
-  const DesktopSidebar = () => (
-    <div 
-      className={cn(
-        "hidden md:flex flex-col w-64 bg-inventu-dark border-r border-inventu-gray/30 transition-all duration-300",
-        isOpen ? "w-64" : "w-20"
-      )}
-    >
-      <div className="p-4 border-b border-inventu-gray/30">
-        <h2 className={cn(
-          "text-xl font-semibold text-white transition-opacity duration-300",
-          !isOpen && "opacity-0"
-        )}>
-          Painel Admin
-        </h2>
-      </div>
-      <div className="flex-1 overflow-auto p-2">
-        <div className="space-y-1">
-          {menuItems.map((item) => (
-            <Button
-              key={item.id}
-              variant="ghost"
-              className={cn(
-                "w-full justify-start",
-                activeSection === item.id 
-                  ? "bg-inventu-blue text-white" 
-                  : "text-inventu-gray hover:text-white hover:bg-inventu-gray/20",
-                !isOpen && "justify-center"
-              )}
-              onClick={() => onSectionChange(item.id)}
-            >
-              <item.icon className="h-4 w-4" />
-              {isOpen && <span className="ml-2">{item.title}</span>}
-            </Button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  const navigateToHome = () => {
+    navigate('/');
+  };
 
   return (
-    <>
-      <MobileSidebar />
-      <DesktopSidebar />
-    </>
+    <div className={cn(
+      "h-full bg-inventu-dark border-r border-white/10 overflow-y-auto",
+      isOpen ? "w-64" : "w-16"
+    )}>
+      <div className="p-4 flex justify-between items-center">
+        <div className={cn(
+          "flex items-center gap-2 overflow-hidden whitespace-nowrap transition-all",
+          isOpen ? "w-auto" : "w-0"
+        )}>
+          <div className="bg-inventu-blue rounded-full p-1 flex-shrink-0">
+            <Shield className="h-4 w-4 text-white" />
+          </div>
+          <h2 className="font-bold text-white">Admin Panel</h2>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-white/70 hover:bg-white/10 hover:text-white"
+          onClick={onToggleSidebar}
+        >
+          <ChevronLeft className={cn("h-5 w-5", !isOpen && "rotate-180")} />
+        </Button>
+      </div>
+
+      <nav className="mt-4 space-y-1 px-2">
+        {sidebarItems.map(item => (
+          <Button
+            key={item.id}
+            variant="ghost"
+            className={cn(
+              "w-full justify-start mb-1",
+              activeSection === item.id
+                ? "bg-inventu-blue/20 text-inventu-blue"
+                : "text-white/70 hover:text-white hover:bg-white/10"
+            )}
+            onClick={() => handleSectionClick(item.id)}
+          >
+            <div className="flex items-center">
+              {item.icon}
+              {isOpen && <span className="ml-3">{item.label}</span>}
+            </div>
+          </Button>
+        ))}
+        
+        <Button
+          variant="ghost"
+          className="w-full justify-start mb-1 text-white/70 hover:text-white hover:bg-white/10 mt-4"
+          onClick={navigateToHome}
+        >
+          <div className="flex items-center">
+            <MessageSquare className="h-5 w-5" />
+            {isOpen && <span className="ml-3">Voltar ao Chat</span>}
+          </div>
+        </Button>
+      </nav>
+    </div>
   );
 };
 

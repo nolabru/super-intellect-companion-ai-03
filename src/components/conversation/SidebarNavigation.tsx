@@ -1,87 +1,83 @@
 
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Coins, Image, BrainCircuit, Shield } from 'lucide-react';
-import { toast } from 'sonner';
+import { Link, useLocation } from 'react-router-dom';
+import { Newspaper, Image, Brain, Coins } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface SidebarNavigationProps {
-  closeMenu?: () => void;
-}
-
-const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ closeMenu }) => {
-  const { user, isAdmin } = useAuth();
-  const navigate = useNavigate();
-
-  const handleClick = (path: string) => {
-    if (closeMenu) {
-      closeMenu();
-    }
-    
-    if (path === '/admin' && !isAdmin) {
-      toast.error('Você não tem permissão para acessar o painel administrativo');
-      console.log('Tentativa de acesso negado ao painel admin. isAdmin:', isAdmin);
-      return;
-    }
-    
-    navigate(path);
-  };
-
-  if (!user) {
-    return null;
-  }
-
-  console.log('SidebarNavigation - User:', user.email, 'isAdmin:', isAdmin);
-
-  const navigationItems = [
-    {
-      icon: <Image className="w-4 h-4" />,
-      label: 'Galeria de Mídia',
-      path: '/gallery',
+const SidebarNavigation: React.FC = () => {
+  const location = useLocation();
+  const { isAdmin } = useAuth();
+  
+  const routes = [
+    { 
+      path: '/gallery', 
+      label: 'Galeria',
+      icon: <Image className="h-4 w-4 mr-2" />
     },
-    {
-      icon: <BrainCircuit className="w-4 h-4" />,
-      label: 'Memória do Usuário',
-      path: '/memory',
+    { 
+      path: '/memory', 
+      label: 'Memória',
+      icon: <Brain className="h-4 w-4 mr-2" />
     },
-    {
-      icon: <Coins className="w-4 h-4" />,
-      label: 'Tokens & Planos',
-      path: '/tokens',
+    { 
+      path: '/tokens', 
+      label: 'Tokens',
+      icon: <Coins className="h-4 w-4 mr-2" />
+    },
+    { 
+      path: '/feed', 
+      label: 'Feed',
+      icon: <Newspaper className="h-4 w-4 mr-2" />
     },
   ];
-
-  if (isAdmin) {
-    navigationItems.push({
-      icon: <Shield className="w-4 h-4" />,
-      label: 'Painel Admin',
-      path: '/admin',
-    });
-  }
-
+  
   return (
-    <nav className="w-full">
-      <div className="grid gap-1">
-        {navigationItems.map((item, index) => (
-          <Link
-            key={index}
-            to={item.path}
-            onClick={() => handleClick(item.path)}
+    <div className="mb-2 px-2">
+      <div className="space-y-1">
+        {routes.map(({ path, label, icon }) => (
+          <Button
+            key={path}
+            variant="ghost"
+            size="sm"
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2",
-              "text-slate-400 hover:text-white",
-              "transition-all duration-200",
-              "hover:bg-white/10 backdrop-blur-lg",
-              "active:scale-[0.98]"
+              "w-full justify-start",
+              location.pathname === path
+                ? "bg-white/10 text-white"
+                : "text-gray-400 hover:text-white hover:bg-white/5"
             )}
+            asChild
           >
-            {item.icon}
-            <span className="text-sm font-medium">{item.label}</span>
-          </Link>
+            <Link to={path}>
+              {icon}
+              {label}
+            </Link>
+          </Button>
         ))}
+        
+        {isAdmin && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "w-full justify-start",
+              location.pathname === '/admin'
+                ? "bg-white/10 text-white"
+                : "text-gray-400 hover:text-white hover:bg-white/5"
+            )}
+            asChild
+          >
+            <Link to="/admin">
+              <div className="bg-inventu-blue/30 p-1 rounded-full mr-2">
+                <div className="h-2 w-2 rounded-full bg-inventu-blue"></div>
+              </div>
+              Admin
+            </Link>
+          </Button>
+        )}
       </div>
-    </nav>
+    </div>
   );
 };
 

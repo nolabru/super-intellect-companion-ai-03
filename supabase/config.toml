@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.apiframe-task-status]
 verify_jwt = true
+
+[functions.increment-post-view]
+verify_jwt = false

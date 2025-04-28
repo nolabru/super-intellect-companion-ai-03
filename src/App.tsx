@@ -13,6 +13,8 @@ import MediaGallery from "./pages/MediaGallery";
 import UserMemory from "./pages/UserMemory";
 import TokensPlans from "./pages/TokensPlans";
 import AdminPanel from "./pages/AdminPanel";
+import NewsFeed from "./pages/NewsFeed";
+import PostDetail from "./pages/PostDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +41,8 @@ const App = () => (
               <Route path="/memory" element={<UserMemory />} />
               <Route path="/tokens" element={<TokensPlans />} />
               <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/feed" element={<NewsFeed />} />
+              <Route path="/feed/:postId" element={<PostDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

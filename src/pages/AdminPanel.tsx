@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ import AdminPlansManagement from '@/components/admin/AdminPlansManagement';
 import AdminModelsManagement from '@/components/admin/AdminModelsManagement';
 import AdminStats from '@/components/admin/AdminStats';
 import AdminSystemSettings from '@/components/admin/AdminSystemSettings';
+import AdminPostsManagement from '@/components/admin/AdminPostsManagement';
 
 const AdminPanel: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -61,6 +63,8 @@ const AdminPanel: React.FC = () => {
         return <AdminStats />;
       case 'settings':
         return <AdminSystemSettings />;
+      case 'posts':
+        return <AdminPostsManagement />;
       default:
         return <AdminOverview />;
     }
