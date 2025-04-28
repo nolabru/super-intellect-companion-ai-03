@@ -56,9 +56,7 @@ export function useFileUpload({ mode, maxFileSizeMB = 10 }: UseFileUploadProps) 
     } else if (mode === 'audio' && file.type.startsWith('audio/')) {
       isValidFile = true;
     } else if (mode === 'text') {
-      toast({
-        description: "Envio de arquivos não disponível no modo texto."
-      });
+      toast("Envio de arquivos não disponível no modo texto.");
       return;
     }
     
