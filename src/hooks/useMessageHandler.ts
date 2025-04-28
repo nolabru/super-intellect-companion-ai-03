@@ -1,3 +1,4 @@
+
 import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -100,6 +101,9 @@ export function useMessageHandler(
     try {
       setIsSending(true);
 
+      // Adicionar logs para debugar os arquivos
+      console.log('[useMessageHandler] Sending message with files:', newFiles);
+
       const canProceed = await handleGoogleCommand(content);
       if (!canProceed) {
         setIsSending(false);
@@ -115,6 +119,9 @@ export function useMessageHandler(
         mode,
         files: newFiles
       };
+      
+      // Adicione logs para debugar
+      console.log('[useMessageHandler] User message prepared:', userMessage);
       
       setMessages(prev => [...prev, userMessage]);
       await saveUserMessage(userMessage, currentConversationId);

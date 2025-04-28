@@ -21,7 +21,7 @@ export const discussionService = {
       const initialPrompt = `Vamos discutir sobre este post:\n\n${postContent}\n\nO que você acha sobre esse assunto?`;
       
       // Create user message object
-      const messageData = {
+      const messageData: any = {
         conversation_id: conversation.id,
         content: initialPrompt,
         sender: 'user',
@@ -30,10 +30,12 @@ export const discussionService = {
       
       // If there's media, include it in the message
       if (mediaUrl && mediaType) {
-        Object.assign(messageData, {
-          files: [mediaUrl],
-          media_type: mediaType
-        });
+        messageData.files = [mediaUrl];
+        
+        // Não estamos usando media_type, mas sim definindo o modo conforme necessário
+        if (mediaType === 'image' || mediaType === 'video') {
+          messageData.files = [mediaUrl];
+        }
       }
       
       const { error: messageError } = await supabase
