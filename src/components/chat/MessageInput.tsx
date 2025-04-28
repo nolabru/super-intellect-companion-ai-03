@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -126,15 +125,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
 
   const getPlaceholder = () => {
     if (isImageGenerationModel) {
-      return "Descreva a imagem que você deseja gerar...";
+      return "Descreva sua imagem...";
     }
     if (mode === 'audio') {
-      return "Digite o texto para converter em áudio...";
+      return "Digite seu texto...";
     }
     if (model) {
-      return `Pergunte ao ${model}...`;
+      return `Pergunte...`;
     }
-    return "Digite sua mensagem...";
+    return "Digite aqui...";
   };
 
   const insertCommand = (command: string) => {
