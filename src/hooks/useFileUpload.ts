@@ -13,7 +13,7 @@ export function useFileUpload({ mode, maxFileSizeMB = 10 }: UseFileUploadProps) 
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
+  
   // Convert MB to bytes
   const maxSizeBytes = maxFileSizeMB * 1024 * 1024;
 
@@ -29,6 +29,19 @@ export function useFileUpload({ mode, maxFileSizeMB = 10 }: UseFileUploadProps) 
       fileInputRef.current.value = '';
     }
   }, [filePreviewUrls]);
+
+  const getAcceptedFileTypes = (mode: ChatMode) => {
+    if (mode === 'text') {
+      return '.pdf,.doc,.docx,.txt,image/*';
+    } else if (mode === 'image') {
+      return 'image/*';
+    } else if (mode === 'video') {
+      return 'video/*';
+    } else if (mode === 'audio') {
+      return 'audio/*';
+    }
+    return '';
+  };
 
   const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
@@ -49,20 +62,26 @@ export function useFileUpload({ mode, maxFileSizeMB = 10 }: UseFileUploadProps) 
     // Validate file type based on mode
     let isValidFile = false;
     
-    if (mode === 'image' && file.type.startsWith('image/')) {
+    if (mode === 'text') {
+      // Allow images, PDFs, and documents in text mode
+      isValidFile = file.type.startsWith('image/') || 
+                    file.type === 'application/pdf' ||
+                    file.type === 'application/msword' ||
+                    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                    file.type === 'text/plain';
+    } else if (mode === 'image' && file.type.startsWith('image/')) {
       isValidFile = true;
     } else if (mode === 'video' && file.type.startsWith('video/')) {
       isValidFile = true;
     } else if (mode === 'audio' && file.type.startsWith('audio/')) {
       isValidFile = true;
-    } else if (mode === 'text') {
-      toast("Envio de arquivos não disponível no modo texto.");
-      return;
     }
     
     if (!isValidFile) {
       toast.error(`Tipo de arquivo inválido`, {
-        description: `Por favor, selecione um arquivo ${mode} válido.`
+        description: mode === 'text' ? 
+          'Por favor, selecione uma imagem, PDF ou documento.' :
+          `Por favor, selecione um arquivo ${mode} válido.`
       });
       return;
     }
@@ -100,7 +119,6 @@ export function useFileUpload({ mode, maxFileSizeMB = 10 }: UseFileUploadProps) 
     }
   }, []);
 
-  // Actually upload files to a server
   const uploadFiles = useCallback(async (): Promise<string[]> => {
     if (files.length === 0) return [];
     
@@ -134,6 +152,7 @@ export function useFileUpload({ mode, maxFileSizeMB = 10 }: UseFileUploadProps) 
     removeFile,
     handleClear,
     triggerFileInput,
-    uploadFiles
+    uploadFiles,
+    getAcceptedFileTypes
   };
 }

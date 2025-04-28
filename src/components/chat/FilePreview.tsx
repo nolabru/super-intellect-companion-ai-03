@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { AudioLines, X } from 'lucide-react';
+import { X, FileText, FilePdf, FileImage } from 'lucide-react';
 import { ChatMode } from '@/components/ModeSelector';
+import { cn } from '@/lib/utils';
 
 interface FilePreviewProps {
   fileUrls: string[];
@@ -9,56 +10,75 @@ interface FilePreviewProps {
   onRemoveFile: (index: number) => void;
 }
 
-const FilePreview: React.FC<FilePreviewProps> = ({ 
-  fileUrls, 
-  mode, 
-  onRemoveFile 
-}) => {
-  if (fileUrls.length === 0) return null;
+const FilePreview: React.FC<FilePreviewProps> = ({ fileUrls, mode, onRemoveFile }) => {
+  if (!fileUrls || fileUrls.length === 0) return null;
 
-  console.log(`FilePreview rendering with mode=${mode}, fileUrls=${fileUrls.length}`);
+  const getIconForFile = (url: string) => {
+    if (url.includes('.pdf')) {
+      return <FilePdf className="h-8 w-8" />;
+    } else if (url.includes('.doc') || url.includes('.docx') || url.includes('.txt')) {
+      return <FileText className="h-8 w-8" />;
+    }
+    return <FileImage className="h-8 w-8" />;
+  };
+
+  const getPreviewContent = (url: string, index: number) => {
+    // For text mode, show appropriate icon based on file type
+    if (mode === 'text') {
+      return (
+        <div className="relative flex items-center justify-center bg-inventu-dark/50 rounded-lg p-4">
+          {getIconForFile(url)}
+          <button
+            onClick={() => onRemoveFile(index)}
+            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      );
+    }
+
+    // For images, show the preview
+    if (mode === 'image' || url.startsWith('data:image/')) {
+      return (
+        <div className="relative w-24 h-24">
+          <img
+            src={url}
+            alt="Preview"
+            className="w-full h-full object-cover rounded-lg"
+          />
+          <button
+            onClick={() => onRemoveFile(index)}
+            className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      );
+    }
+
+    // For other files (video, audio)
+    return (
+      <div className="relative w-24 h-24 bg-inventu-dark/50 rounded-lg flex items-center justify-center">
+        <FileText className="h-8 w-8" />
+        <button
+          onClick={() => onRemoveFile(index)}
+          className="absolute -top-2 -right-2 p-1 rounded-full bg-red-500 hover:bg-red-600 transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    );
+  };
 
   return (
-    <div className="flex flex-wrap gap-2 mb-2">
+    <div className={cn(
+      "flex flex-wrap gap-2 px-4 py-2",
+      "bg-inventu-dark/20 rounded-lg"
+    )}>
       {fileUrls.map((url, index) => (
-        <div 
-          key={index} 
-          className="relative rounded-md overflow-hidden h-20 w-20 border border-inventu-gray/30"
-        >
-          {mode === 'image' && (
-            <img 
-              src={url} 
-              alt="Preview" 
-              className="h-full w-full object-cover" 
-              onError={(e) => {
-                console.error("Error loading image preview:", url);
-                (e.target as HTMLImageElement).src = '/placeholder.svg';
-              }}
-            />
-          )}
-          {mode === 'video' && (
-            <video 
-              src={url} 
-              className="h-full w-full object-cover" 
-              controls={false}
-              onError={(e) => {
-                console.error("Error loading video preview:", url);
-                const videoEl = e.target as HTMLVideoElement;
-                videoEl.poster = '/placeholder.svg';
-              }}
-            />
-          )}
-          {mode === 'audio' && (
-            <div className="flex items-center justify-center h-full w-full bg-inventu-darker">
-              <AudioLines className="h-10 w-10 text-inventu-gray" />
-            </div>
-          )}
-          <button 
-            onClick={() => onRemoveFile(index)}
-            className="absolute top-0 right-0 bg-black/50 p-1 rounded-bl-md"
-          >
-            <X className="h-4 w-4 text-white" />
-          </button>
+        <div key={index} className="relative">
+          {getPreviewContent(url, index)}
         </div>
       ))}
     </div>

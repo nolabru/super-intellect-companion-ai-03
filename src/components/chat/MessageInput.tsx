@@ -255,17 +255,15 @@ const MessageInput: React.FC<MessageInputProps> = ({
         "absolute top-1/2 right-2 -translate-y-1/2 flex gap-1.5",
         isMobile && "gap-3"
       )}>
-        {mode !== 'text' && (
-          <button 
-            onClick={onAttachment}
-            className={buttonClasses}
-            title={`Anexar ${mode}`}
-            disabled={isSending}
-            aria-label={`Anexar ${mode}`}
-          >
-            <Paperclip className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
-          </button>
-        )}
+        <button 
+          onClick={onAttachment}
+          className={buttonClasses}
+          title={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
+          disabled={isSending}
+          aria-label={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
+        >
+          <Paperclip className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
+        </button>
         
         <button 
           onClick={onSendMessage}

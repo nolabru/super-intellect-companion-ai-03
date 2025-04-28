@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
@@ -100,18 +99,19 @@ const ChatInput: React.FC<ChatInputProps> = ({
     } else if (mode === 'audio' && file.type.startsWith('audio/')) {
       isValidFile = true;
     } else if (mode === 'text') {
-      // No file uploads in text mode
-      toast({
-        title: "Alerta",
-        description: "Envio de arquivos não disponível no modo texto.",
-      });
-      return;
+      isValidFile = file.type.startsWith('image/') || 
+                    file.type === 'application/pdf' ||
+                    file.type === 'application/msword' ||
+                    file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                    file.type === 'text/plain';
     }
     
     if (!isValidFile) {
       toast({
         title: "Tipo de arquivo inválido",
-        description: `Por favor, selecione um arquivo ${mode} válido.`,
+        description: mode === 'text' ? 
+          'Por favor, selecione uma imagem, PDF ou documento.' :
+          `Por favor, selecione um arquivo ${mode} válido.`,
         variant: "destructive",
       });
       return;
@@ -150,9 +150,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setLumaParams(params);
   }, []);
 
+  const fileInput = useRef<HTMLInputElement>(null);
+
   return (
     <div className="relative w-full space-y-3">
-      {/* Luma AI Parameters Button */}
       {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
         <div className="flex justify-end">
           <LumaParamsButton 
@@ -164,17 +165,14 @@ const ChatInput: React.FC<ChatInputProps> = ({
         </div>
       )}
       
-      {/* Image generation tip */}
       <ImageGenerationTip show={isImageGenerationModel && files.length === 0} />
       
-      {/* File previews */}
       <FilePreview 
         fileUrls={filePreviewUrls} 
         mode={mode} 
         onRemoveFile={removeFile} 
       />
       
-      {/* Message input */}
       <div className="relative overflow-hidden rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 transition-all duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/20">
         <MessageInput
           message={message}
@@ -188,7 +186,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
         />
       </div>
       
-      {/* Sending indicator */}
       {isSending && (
         <div className="text-xs text-center mt-1 text-white/60 animate-pulse">
           Enviando mensagem...
@@ -196,10 +193,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
       )}
 
       <input
-        ref={fileInputRef}
+        ref={fileInput}
         type="file"
         className="hidden"
-        accept={
+        accept={mode === 'text' ? 
+          '.pdf,.doc,.docx,.txt,image/*' : 
           mode === 'image' ? 'image/*' : 
           mode === 'video' ? 'video/*' : 
           mode === 'audio' ? 'audio/*' : 
