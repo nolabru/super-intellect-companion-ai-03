@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { X, FileText, FilePdf, FileImage } from 'lucide-react';
+import { X, FileText, File, FileImage } from 'lucide-react';
 import { ChatMode } from '@/components/ModeSelector';
 import { cn } from '@/lib/utils';
 
@@ -15,7 +14,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileUrls, mode, onRemoveFile 
 
   const getIconForFile = (url: string) => {
     if (url.includes('.pdf')) {
-      return <FilePdf className="h-8 w-8" />;
+      return <File className="h-8 w-8" />;
     } else if (url.includes('.doc') || url.includes('.docx') || url.includes('.txt')) {
       return <FileText className="h-8 w-8" />;
     }
@@ -23,7 +22,6 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileUrls, mode, onRemoveFile 
   };
 
   const getPreviewContent = (url: string, index: number) => {
-    // For text mode, show appropriate icon based on file type
     if (mode === 'text') {
       return (
         <div className="relative flex items-center justify-center bg-inventu-dark/50 rounded-lg p-4">
@@ -38,7 +36,6 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileUrls, mode, onRemoveFile 
       );
     }
 
-    // For images, show the preview
     if (mode === 'image' || url.startsWith('data:image/')) {
       return (
         <div className="relative w-24 h-24">
@@ -57,7 +54,6 @@ const FilePreview: React.FC<FilePreviewProps> = ({ fileUrls, mode, onRemoveFile 
       );
     }
 
-    // For other files (video, audio)
     return (
       <div className="relative w-24 h-24 bg-inventu-dark/50 rounded-lg flex items-center justify-center">
         <FileText className="h-8 w-8" />
