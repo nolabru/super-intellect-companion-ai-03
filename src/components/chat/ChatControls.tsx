@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { ChatMode } from '@/components/ModeSelector';
 import RefinedModeSelector from './RefinedModeSelector';
 import { Button } from '@/components/ui/button';
-import { Compare } from 'lucide-react';
+import { MessagesSquare } from 'lucide-react';
 import ParameterSheet from './parameters/ParameterSheet';
 
 interface ChatControlsProps {
@@ -47,7 +47,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
                 : "bg-white/5 hover:bg-white/10"
             )}
           >
-            <Compare className="h-5 w-5" />
+            <MessagesSquare className="h-5 w-5" />
           </Button>
         </div>
         
