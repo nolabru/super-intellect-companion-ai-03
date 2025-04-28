@@ -21,6 +21,7 @@ const Index: React.FC = () => {
   const [leftModel, setLeftModel] = useState('gpt-4o');
   const [rightModel, setRightModel] = useState('claude-3-opus');
   const [sidebarOpen, setSidebarOpen] = useState(!useIsMobile());
+  const [generationParams, setGenerationParams] = useState<any>({});
   const isMobile = useIsMobile();
   
   const { loading: authLoading } = useAuth();
@@ -83,6 +84,8 @@ const Index: React.FC = () => {
   const handleSendMessage = async (content: string, files?: string[], params?: any, targetModel?: string) => {
     console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`, params);
     
+    const messageParams = params || generationParams;
+    
     let result;
     
     if (comparing) {
@@ -95,7 +98,7 @@ const Index: React.FC = () => {
           leftModel, 
           rightModel,
           files,
-          params
+          messageParams
         );
       } else {
         if (!targetModel) {
@@ -111,7 +114,7 @@ const Index: React.FC = () => {
           targetModel === leftModel ? leftModel : null,
           targetModel === rightModel ? rightModel : null,
           files,
-          params
+          messageParams
         );
       }
     } else {
@@ -123,7 +126,7 @@ const Index: React.FC = () => {
         leftModel, 
         null,
         files,
-        params
+        messageParams
       );
     }
     
@@ -180,6 +183,11 @@ const Index: React.FC = () => {
         setLeftModel(differentModel);
       }
     }
+  };
+
+  const handleParamsChange = (params: any) => {
+    console.log('Parâmetros atualizados:', params);
+    setGenerationParams(params);
   };
 
   const MobileComparisonHeader = () => {
@@ -279,9 +287,11 @@ const Index: React.FC = () => {
               comparing={comparing}
               isLinked={isLinked}
               isMobile={isMobile}
+              model={comparing ? `${leftModel},${rightModel}` : leftModel}
               onModeChange={handleModeChange}
               onToggleCompare={toggleComparing}
               onToggleLink={toggleLink}
+              onParamsChange={handleParamsChange}
             />
             
             {(!comparing || isLinked || isMobile) && (
