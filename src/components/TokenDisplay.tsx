@@ -1,19 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Coins } from 'lucide-react';
+import { Coins, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-
-interface TokenInfo {
-  tokens_remaining: number;
-  next_reset_date: string | null;
-}
+import { tokenService, TokenBalance } from '@/services/tokenService';
 
 const TokenDisplay = () => {
-  const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
+  const [tokenInfo, setTokenInfo] = useState<TokenBalance | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const { user } = useAuth();
@@ -27,25 +22,11 @@ const TokenDisplay = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_tokens')
-          .select('tokens_remaining, next_reset_date')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error) {
-          console.error('Erro ao buscar informações de tokens:', error);
-          // Se não tem registro, inicializa com 0 tokens
-          if (error.code === 'PGRST116' || error.message.includes('result contains 0 rows')) {
-            setTokenInfo({ tokens_remaining: 0, next_reset_date: null });
-          } else {
-            setError(true);
-          }
-        } else {
-          setTokenInfo(data);
-        }
+        const balance = await tokenService.getUserTokenBalance(user.id);
+        setTokenInfo(balance);
+        setError(false);
       } catch (err) {
-        console.error('Exceção ao buscar tokens:', err);
+        console.error('Error fetching tokens:', err);
         setError(true);
       } finally {
         setLoading(false);
@@ -53,19 +34,30 @@ const TokenDisplay = () => {
     };
 
     fetchTokenInfo();
+    
+    // Refresh token info every minute
+    const intervalId = setInterval(fetchTokenInfo, 60000);
+    
+    return () => clearInterval(intervalId);
   }, [user]);
 
-  // Função para formatar data de reset
+  // Format reset date
   const formatResetDate = (dateString: string | null) => {
-    if (!dateString) return 'Data não disponível';
+    if (!dateString) return 'Date not available';
     
     try {
       const resetDate = new Date(dateString);
-      return format(resetDate, "d 'de' MMMM", { locale: ptBR });
+      return format(resetDate, "d 'of' MMMM", { locale: ptBR });
     } catch (err) {
-      console.error('Erro ao formatar data:', err);
-      return 'Data inválida';
+      console.error('Error formatting date:', err);
+      return 'Invalid date';
     }
+  };
+  
+  // Calculate days until reset
+  const getDaysUntilReset = () => {
+    if (!tokenInfo?.nextResetDate) return null;
+    return tokenService.getDaysUntilReset(tokenInfo.nextResetDate);
   };
   
   const handleTokensClick = () => {
@@ -78,7 +70,7 @@ const TokenDisplay = () => {
     return (
       <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded">
         <Coins size={14} className="mr-1 opacity-70" />
-        <span className="animate-pulse">Carregando...</span>
+        <span className="animate-pulse">Loading...</span>
       </div>
     );
   }
@@ -86,25 +78,25 @@ const TokenDisplay = () => {
   if (error) {
     return (
       <div className="flex items-center text-xs text-red-300 px-2 py-1 rounded">
-        <Coins size={14} className="mr-1 opacity-70" />
-        <span className="animate-pulse">Erro</span>
+        <AlertTriangle size={14} className="mr-1 opacity-70" />
+        <span className="animate-pulse">Error</span>
       </div>
     );
   }
 
   if (!tokenInfo) {
     return (
-      <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded bg-gray-700/30 hover:bg-gray-700/50" title="Informações de tokens não disponíveis">
+      <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded bg-gray-700/30 hover:bg-gray-700/50" title="Token information not available">
         <Coins size={14} className="mr-1 opacity-70" />
         <span>Tokens: N/A</span>
       </div>
     );
   }
 
-  // Mostrar alerta quando os tokens estiverem acabando (menos de 100)
-  const isLow = tokenInfo.tokens_remaining < 100;
-  // Mostrar alerta crítico quando não houver mais tokens
-  const isDepleted = tokenInfo.tokens_remaining <= 0;
+  // Token states
+  const isLow = tokenInfo.tokensRemaining < 100;
+  const isDepleted = tokenInfo.tokensRemaining <= 0;
+  const daysUntilReset = getDaysUntilReset();
 
   return (
     <div 
@@ -115,20 +107,20 @@ const TokenDisplay = () => {
           ? 'bg-yellow-900/30 text-yellow-300 border border-yellow-800/50 hover:bg-yellow-900/50' 
           : 'bg-gray-700/30 text-white/70 hover:bg-gray-700/50'
         }`}
-      title={`${tokenInfo.tokens_remaining} tokens restantes. ${
-        tokenInfo.next_reset_date 
-          ? `Próximo reset em ${formatResetDate(tokenInfo.next_reset_date)}.` 
-          : 'Data de reset não disponível.'
-      } Clique para gerenciar seus tokens.`}
+      title={`${tokenInfo.tokensRemaining} tokens remaining. ${
+        tokenInfo.nextResetDate 
+          ? `Next reset in ${formatResetDate(tokenInfo.nextResetDate)}${daysUntilReset !== null ? ` (${daysUntilReset} days)` : ''}.` 
+          : 'Reset date not available.'
+      } Click to manage your tokens.`}
       onClick={handleTokensClick}
     >
       <Coins size={14} className="mr-1 opacity-70" />
       <span>
         {isDepleted 
-          ? 'Sem tokens!' 
+          ? 'No tokens!' 
           : isLow 
-          ? `Tokens: ${tokenInfo.tokens_remaining} (Baixo)` 
-          : `Tokens: ${tokenInfo.tokens_remaining}`
+          ? `Tokens: ${tokenInfo.tokensRemaining} (Low)` 
+          : `Tokens: ${tokenInfo.tokensRemaining}`
         }
       </span>
     </div>

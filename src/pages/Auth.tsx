@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 import { Separator } from '@/components/ui/separator';
 import { Loader2 } from 'lucide-react';
-import { GOOGLE_SCOPES } from '@/contexts/google-auth/types';
+import { GOOGLE_SCOPES } from '@/contexts/google-auth/types-simplified';
 
 type AuthMode = 'login' | 'signup';
 
@@ -42,7 +42,7 @@ const Auth: React.FC = () => {
       }
 
       if (hashParams.has('access_token') || params.has('provider')) {
-        console.log("[Auth] Detectada autenticação OAuth bem-sucedida");
+        console.log("[Auth] Detected successful OAuth authentication");
         
         try {
           setLoading(true);
@@ -51,27 +51,19 @@ const Auth: React.FC = () => {
             const { data } = await supabase.auth.getSession();
             
             if (data.session) {
-              console.log("[Auth] Login successful, session established:", {
-                userId: data.session.user?.id,
-                hasUser: !!data.session.user,
-                hasAccessToken: !!data.session.access_token,
-                expiresAt: data.session.expires_at
-              });
+              console.log("[Auth] Login successful, session established");
               
               if (params.has('provider') && params.get('provider') === 'google') {
-                console.log('[Auth] Google login detected, waiting for tokens to be processed...');
+                console.log('[Auth] Google login detected');
                 
                 toast.success('Login successful', { 
-                  description: 'Setting up your Google access...' 
+                  description: 'Google authentication completed' 
                 });
-                
-                setTimeout(() => {
-                  navigate('/');
-                }, 5000);
               } else {
                 toast.success('Login successful');
-                navigate('/');
               }
+              
+              navigate('/');
             } else {
               console.error("[Auth] Failed to establish session after OAuth redirect");
               toast.error('Failed to establish session', {
@@ -79,10 +71,10 @@ const Auth: React.FC = () => {
               });
               setLoading(false);
             }
-          }, 2500);
+          }, 2000);
           
         } catch (error) {
-          console.error('[Auth] Erro ao processar autenticação:', error);
+          console.error('[Auth] Error processing authentication:', error);
           toast.error('Error processing login', { 
             description: 'Please try again.'
           });
@@ -110,8 +102,8 @@ const Auth: React.FC = () => {
         if (error) throw error;
         
         toast.success(
-          "Cadastro realizado!",
-          { description: "Verifique seu email para confirmar sua conta." }
+          "Registration successful!",
+          { description: "Check your email to confirm your account." }
         );
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -125,7 +117,7 @@ const Auth: React.FC = () => {
       }
     } catch (error: any) {
       toast.error(
-        "Erro", 
+        "Error", 
         { description: error.message }
       );
     } finally {
@@ -137,7 +129,7 @@ const Auth: React.FC = () => {
     setLoading(true);
     try {
       const redirectTo = window.location.origin + '/auth';
-      console.log(`[Auth] Login Google - URL de redirecionamento: ${redirectTo}`);
+      console.log(`[Auth] Google login - Redirect URL: ${redirectTo}`);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -153,11 +145,11 @@ const Auth: React.FC = () => {
 
       if (error) throw error;
       
-      toast.info('Redirecionando para login do Google...');
+      toast.info('Redirecting to Google login...');
     } catch (error: any) {
-      console.error('[Auth] Erro no login Google:', error);
+      console.error('[Auth] Error in Google login:', error);
       toast.error(
-        "Erro ao fazer login com Google", 
+        "Error signing in with Google", 
         { description: error.message }
       );
       setLoading(false);
@@ -191,13 +183,13 @@ const Auth: React.FC = () => {
                 </g>
               </svg>
             )}
-            {loading ? 'Processando...' : 'Continuar com Google'}
+            {loading ? 'Processing...' : 'Continue with Google'}
           </Button>
           
           <div className="relative my-6">
             <Separator className="bg-inventu-gray/30" />
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-inventu-dark px-2 text-xs text-inventu-gray">
-              OU
+              OR
             </span>
           </div>
           
@@ -218,7 +210,7 @@ const Auth: React.FC = () => {
             
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
-                Senha
+                Password
               </label>
               <Input
                 id="password"
@@ -239,8 +231,8 @@ const Auth: React.FC = () => {
                 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 : null}
               {loading 
-                ? 'Processando...' 
-                : mode === 'login' ? 'Entrar' : 'Cadastrar'}
+                ? 'Processing...' 
+                : mode === 'login' ? 'Login' : 'Register'}
             </Button>
           </form>
           
@@ -251,16 +243,16 @@ const Auth: React.FC = () => {
               className="text-inventu-blue hover:underline text-sm"
             >
               {mode === 'login'
-                ? 'Não tem uma conta? Cadastre-se'
-                : 'Já tem uma conta? Faça login'}
+                ? 'Don\'t have an account? Sign up'
+                : 'Already have an account? Log in'}
             </button>
           </div>
           
           <div className="mt-6 text-xs text-center text-inventu-gray/70">
-            Ao continuar com o Google, você autoriza nosso app a:
+            By continuing with Google, you authorize our app to:
             <ul className="mt-2 list-disc list-inside text-left">
-              <li>Acessar seu nome e email para autenticação</li>
-              <li>Criar uma conta vinculada ao seu perfil Google</li>
+              <li>Access your name and email for authentication</li>
+              <li>Create a linked account to your Google profile</li>
             </ul>
           </div>
         </div>

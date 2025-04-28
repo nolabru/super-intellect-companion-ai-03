@@ -13,17 +13,37 @@ export interface TokenConsumptionRate {
   tokensPerRequest: number;
 }
 
+interface TokenCache {
+  balance: TokenBalance | null;
+  rates: TokenConsumptionRate[] | null;
+  balanceTimestamp: number;
+  ratesTimestamp: number;
+}
+
+// Cache expiration times in milliseconds
+const BALANCE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const RATES_CACHE_TTL = 60 * 60 * 1000;  // 1 hour
+
+// In-memory cache
+const cache: TokenCache = {
+  balance: null,
+  rates: null,
+  balanceTimestamp: 0,
+  ratesTimestamp: 0
+};
+
 /**
- * Serviço para gerenciar tokens de usuários
+ * Token management service
  */
 export const tokenService = {
   /**
-   * Obtém o saldo de tokens do usuário
+   * Get the user's token balance
    */
   async getUserTokenBalance(userId?: string): Promise<TokenBalance> {
     try {
+      // If no userId, return default values
       if (!userId) {
-        console.log('[tokenService] Sem ID de usuário, retornando valores padrão');
+        console.log('[tokenService] No user ID, returning default values');
         return {
           tokensRemaining: 10000,
           tokensUsed: 0,
@@ -31,71 +51,104 @@ export const tokenService = {
         };
       }
       
-      console.log(`[tokenService] Obtendo saldo de tokens para usuário ${userId}`);
+      // Check cache first
+      const now = Date.now();
+      if (cache.balance && now - cache.balanceTimestamp < BALANCE_CACHE_TTL) {
+        console.log('[tokenService] Returning cached token balance');
+        return cache.balance;
+      }
+      
+      console.log(`[tokenService] Getting token balance for user ${userId}`);
       
       const { data, error } = await supabase.functions.invoke('user-tokens', {
         body: { action: 'balance' }
       });
       
       if (error) {
-        console.error('[tokenService] Erro ao obter saldo de tokens:', error);
-        throw new Error(`Erro ao obter saldo de tokens: ${error.message}`);
+        console.error('[tokenService] Error getting token balance:', error);
+        throw new Error(`Error getting token balance: ${error.message}`);
       }
       
       if (!data || !data.tokens) {
-        console.error('[tokenService] Resposta inválida:', data);
-        throw new Error('Resposta inválida do serviço de tokens');
+        console.error('[tokenService] Invalid response:', data);
+        throw new Error('Invalid response from token service');
       }
       
-      console.log(`[tokenService] Saldo de tokens obtido:`, data.tokens);
-      
-      return {
+      const balance = {
         tokensRemaining: data.tokens.tokens_remaining || 0,
         tokensUsed: data.tokens.tokens_used || 0,
         nextResetDate: data.tokens.next_reset_date || null
       };
+      
+      // Update cache
+      cache.balance = balance;
+      cache.balanceTimestamp = now;
+      
+      console.log(`[tokenService] Token balance:`, balance);
+      return balance;
     } catch (err) {
-      console.error('[tokenService] Erro ao obter saldo de tokens:', err);
+      console.error('[tokenService] Error getting token balance:', err);
       throw err;
     }
   },
   
   /**
-   * Obtém as taxas de consumo de tokens para diferentes modelos e modos
+   * Clear the token balance cache to force a fresh fetch
+   */
+  clearBalanceCache() {
+    cache.balance = null;
+    cache.balanceTimestamp = 0;
+    console.log('[tokenService] Token balance cache cleared');
+  },
+  
+  /**
+   * Get token consumption rates for different models and modes
    */
   async getTokenConsumptionRates(): Promise<TokenConsumptionRate[]> {
     try {
-      console.log(`[tokenService] Obtendo taxas de consumo de tokens`);
+      // Check cache first
+      const now = Date.now();
+      if (cache.rates && now - cache.ratesTimestamp < RATES_CACHE_TTL) {
+        console.log('[tokenService] Returning cached token consumption rates');
+        return cache.rates;
+      }
+      
+      console.log(`[tokenService] Getting token consumption rates`);
       
       const { data, error } = await supabase.functions.invoke('user-tokens', {
         body: { action: 'rates' }
       });
       
       if (error) {
-        console.error('[tokenService] Erro ao obter taxas de consumo de tokens:', error);
-        throw new Error(`Erro ao obter taxas de consumo de tokens: ${error.message}`);
+        console.error('[tokenService] Error getting token rates:', error);
+        throw new Error(`Error getting token consumption rates: ${error.message}`);
       }
       
       if (!data || !data.rates) {
-        console.error('[tokenService] Resposta inválida:', data);
-        throw new Error('Resposta inválida do serviço de tokens');
+        console.error('[tokenService] Invalid response:', data);
+        throw new Error('Invalid response from token service');
       }
       
-      console.log(`[tokenService] Taxas de consumo de tokens obtidas:`, data.rates);
-      
-      return data.rates.map((rate: any) => ({
+      const rates = data.rates.map((rate: any) => ({
         modelId: rate.model_id,
         mode: rate.mode,
         tokensPerRequest: rate.tokens_per_request
       }));
+      
+      // Update cache
+      cache.rates = rates;
+      cache.ratesTimestamp = now;
+      
+      console.log(`[tokenService] Token consumption rates:`, rates);
+      return rates;
     } catch (err) {
-      console.error('[tokenService] Erro ao obter taxas de consumo de tokens:', err);
+      console.error('[tokenService] Error getting token consumption rates:', err);
       throw err;
     }
   },
   
   /**
-   * Verifica se o usuário possui tokens suficientes para um modelo e modo específicos
+   * Check if the user has enough tokens for a specific model and mode
    */
   async hasEnoughTokens(
     userId: string,
@@ -107,24 +160,48 @@ export const tokenService = {
         return { hasEnough: true, required: 0, remaining: 10000 };
       }
       
-      // Obter taxa de consumo para o modelo e modo
+      // Get token consumption rate for the model and mode
       const rates = await this.getTokenConsumptionRates();
       const rate = rates.find(r => r.modelId === modelId && r.mode === mode);
-      const tokensRequired = rate?.tokensPerRequest || 50; // Valor padrão se não encontrar taxa específica
+      const tokensRequired = rate?.tokensPerRequest || 50; // Default if no specific rate found
       
-      // Obter saldo atual de tokens
+      // Get current token balance
       const balance = await this.getUserTokenBalance(userId);
       
-      return {
+      const result = {
         hasEnough: balance.tokensRemaining >= tokensRequired,
         required: tokensRequired,
         remaining: balance.tokensRemaining
       };
+      
+      if (!result.hasEnough) {
+        console.warn(`[tokenService] Not enough tokens: needed ${tokensRequired}, has ${balance.tokensRemaining}`);
+      }
+      
+      return result;
     } catch (err) {
-      console.error('[tokenService] Erro ao verificar tokens disponíveis:', err);
-      // Em caso de erro, presumir que o usuário tem tokens suficientes
-      // para não bloquear a experiência, mas registrar o erro
+      console.error('[tokenService] Error checking available tokens:', err);
+      // In case of error, presume user has enough tokens
+      // to avoid blocking the experience, but log the error
       return { hasEnough: true, required: 0, remaining: 10000 };
+    }
+  },
+  
+  /**
+   * Calculate days until next token reset
+   */
+  getDaysUntilReset(nextResetDate: string | null): number | null {
+    if (!nextResetDate) return null;
+    
+    try {
+      const now = new Date();
+      const reset = new Date(nextResetDate);
+      const diffTime = reset.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays > 0 ? diffDays : 0;
+    } catch (err) {
+      console.error('[tokenService] Error calculating days until reset:', err);
+      return null;
     }
   }
 };
