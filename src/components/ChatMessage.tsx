@@ -26,9 +26,10 @@ export interface MessageType {
 
 interface ChatMessageProps {
   message: MessageType;
+  highlightModel?: string;
 }
 
-const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+const ChatMessage: React.FC<ChatMessageProps> = ({ message, highlightModel }) => {
   const isUser = message.sender === 'user';
   const isLoading = message.loading || message.id?.startsWith('loading-');
   const isVideo = message.mode === 'video';
