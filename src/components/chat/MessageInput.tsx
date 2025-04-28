@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState, useMemo, memo } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { ChatMode } from '@/components/ModeSelector';
@@ -19,7 +18,6 @@ interface MessageInputProps {
   model: string;
 }
 
-// Google command definitions
 const GOOGLE_COMMANDS = [
   {
     id: 'calendar',
@@ -58,9 +56,6 @@ const GOOGLE_COMMANDS = [
   }
 ];
 
-/**
- * Component for handling user text input with command support
- */
 const MessageInput: React.FC<MessageInputProps> = ({
   message,
   setMessage,
@@ -81,7 +76,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const isTouchDevice = useTouchDevice();
   const isMobile = useIsMobile();
   
-  // Generate placeholder based on current mode and model
   const placeholder = useMemo(() => {
     if (isImageGenerationModel) {
       return "Descreva sua imagem...";
@@ -95,7 +89,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     return "Digite aqui...";
   }, [isImageGenerationModel, mode, model]);
   
-  // Auto-resize textarea when content changes
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -103,7 +96,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [message]);
 
-  // Handle command menu visibility
   useEffect(() => {
     if (message.length > 0 && cursorPosition > 0) {
       const textBeforeCursor = message.substring(0, cursorPosition);
@@ -115,7 +107,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
         if (textAfterAt.length === 0 || !textAfterAt.includes(' ')) {
           setShowCommandMenu(true);
           
-          // For mobile, position menu higher
           const yOffset = isMobile ? -215 : -10;
           setCommandMenuPosition({
             top: yOffset,
@@ -177,7 +168,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     setShowCommandMenu(false);
   };
 
-  // Touch-friendly button styles
   const buttonClasses = cn(
     "transition-all rounded-xl",
     "text-white/60 hover:text-white active:scale-95",
@@ -185,7 +175,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     isSending && "opacity-50 cursor-not-allowed"
   );
 
-  // Memoized command menu to prevent re-renders
   const commandMenu = useMemo(() => {
     if (!showCommandMenu) return null;
     
@@ -224,7 +213,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   return (
     <div 
       className={cn(
-        "relative flex items-center gap-2 p-2",
+        "relative flex items-center gap-2 p-1.5",
         isFocused && "ring-1 ring-white/30"
       )} 
       ref={containerRef}
@@ -253,18 +242,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
         className={cn(
-          "w-full pl-3 pr-24 py-3 bg-transparent text-white resize-none overflow-hidden focus:outline-none",
-          "min-h-[44px] text-base leading-relaxed placeholder:text-white/40",
-          isMobile && "text-lg py-4" // Larger text on mobile
+          "w-full pl-3 pr-24 py-2 bg-transparent text-white resize-none overflow-hidden focus:outline-none",
+          "min-h-[36px] text-base leading-relaxed placeholder:text-white/40",
+          isMobile && "text-lg py-3"
         )}
         rows={1}
         disabled={isSending}
-        style={{ maxHeight: '120px' }}
+        style={{ maxHeight: '100px' }}
       />
       
       <div className={cn(
         "absolute top-1/2 right-2 -translate-y-1/2 flex gap-1.5",
-        isMobile && "gap-3" // More space between buttons on mobile
+        isMobile && "gap-3"
       )}>
         {mode !== 'text' && (
           <button 
