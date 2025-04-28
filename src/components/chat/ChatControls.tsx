@@ -1,8 +1,10 @@
 
 import React from 'react';
-import ModeSelector, { ChatMode } from '@/components/ModeSelector';
+import RefinedModeSelector from './RefinedModeSelector';
+import { ChatMode } from '@/components/ModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
+import { cn } from '@/lib/utils';
 
 interface ChatControlsProps {
   activeMode: ChatMode;
@@ -24,12 +26,14 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onToggleLink
 }) => {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 p-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <ModeSelector 
+    <div className={cn(
+      "flex flex-wrap items-center justify-between gap-3 p-3",
+      "bg-black/20 backdrop-blur-xl border-t border-white/5"
+    )}>
+      <div className="flex items-center gap-3">
+        <RefinedModeSelector 
           activeMode={activeMode} 
-          onChange={onModeChange} 
-          className="min-w-[200px]"
+          onChange={onModeChange}
         />
         <div className="flex items-center gap-2">
           <CompareModelsButton 

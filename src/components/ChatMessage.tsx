@@ -48,16 +48,16 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, highlightModel }) =>
   
   return (
     <div className={cn(
-      "flex flex-col mb-4 animate-fade-in",
+      "flex flex-col mb-4 animate-fade-in transition-all duration-300",
       isUser ? "items-end" : "items-start"
     )}>
       <div className={cn(
-        "chat-bubble group",
+        "chat-bubble group max-w-[85%]",
         isUser ? "user-bubble" : "ai-bubble",
-        "break-words p-4 rounded-2xl max-w-[85%]",
+        "break-words p-4 rounded-2xl",
         isUser 
-          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white" 
-          : `bg-gradient-to-br ${getModelBubbleColor(message.model || '')} text-white`,
+          ? "bg-gradient-to-br from-blue-500/90 to-blue-600/90 text-white backdrop-blur-xl border border-white/10" 
+          : `bg-gradient-to-br ${getModelBubbleColor(message.model || '')} text-white backdrop-blur-xl border border-white/10`,
         isLoading && !isVideo && "animate-pulse",
         isError && "bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30"
       )}>

@@ -147,10 +147,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full space-y-3">
       {/* Luma AI Parameters Button */}
       {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
-        <div className="flex justify-end mb-2">
+        <div className="flex justify-end">
           <LumaParamsButton 
             mode={mode} 
             model={model} 
@@ -171,20 +171,22 @@ const ChatInput: React.FC<ChatInputProps> = ({
       />
       
       {/* Message input */}
-      <MessageInput
-        message={message}
-        setMessage={setMessage}
-        onSendMessage={handleSendMessage}
-        onAttachment={handleAttachment}
-        isImageGenerationModel={isImageGenerationModel}
-        isSending={isSending}
-        mode={mode}
-        model={model}
-      />
+      <div className="relative overflow-hidden rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 transition-all duration-200 focus-within:border-white/20 focus-within:ring-1 focus-within:ring-white/20">
+        <MessageInput
+          message={message}
+          setMessage={setMessage}
+          onSendMessage={handleSendMessage}
+          onAttachment={handleAttachment}
+          isImageGenerationModel={isImageGenerationModel}
+          isSending={isSending}
+          mode={mode}
+          model={model}
+        />
+      </div>
       
       {/* Sending indicator */}
       {isSending && (
-        <div className="text-xs text-center mt-1 text-inventu-gray animate-pulse">
+        <div className="text-xs text-center mt-1 text-white/60 animate-pulse">
           Enviando mensagem...
         </div>
       )}

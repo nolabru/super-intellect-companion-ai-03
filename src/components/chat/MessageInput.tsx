@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -55,11 +54,11 @@ const GOOGLE_COMMANDS = [
   }
 ];
 
-const MessageInput: React.FC<MessageInputProps> = ({ 
-  message, 
-  setMessage, 
-  onSendMessage, 
-  onAttachment, 
+const MessageInput: React.FC<MessageInputProps> = ({
+  message,
+  setMessage,
+  onSendMessage,
+  onAttachment,
   isImageGenerationModel,
   isSending,
   mode,
@@ -72,7 +71,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
   const [cursorPosition, setCursorPosition] = useState(0);
   
-  // Log Google connection status for debugging
   useEffect(() => {
     console.log('[MessageInput] Google connection status:', { 
       isGoogleConnected, 
@@ -80,7 +78,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     });
   }, [isGoogleConnected, googleAuthLoading]);
   
-  // Auto-resize textarea when content changes
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -88,7 +85,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [message]);
 
-  // Handle @ command menu display
   useEffect(() => {
     if (message.length > 0 && cursorPosition > 0) {
       const textBeforeCursor = message.substring(0, cursorPosition);
@@ -119,7 +115,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
     setMessage(e.target.value);
     setCursorPosition(e.target.selectionStart);
     
-    // Auto resize the textarea
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const newHeight = Math.min(120, Math.max(44, e.target.scrollHeight));
@@ -183,7 +178,59 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="relative rounded-lg border border-inventu-gray/30 bg-inventu-card">
+    <div className="relative flex items-center gap-2 p-2">
+      <textarea
+        ref={textareaRef}
+        value={message}
+        onChange={handleMessageChange}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            onSendMessage();
+          }
+        }}
+        onClick={(e) => {
+          if (textareaRef.current) {
+            setCursorPosition(textareaRef.current.selectionStart);
+          }
+        }}
+        onKeyUp={(e) => {
+          if (textareaRef.current) {
+            setCursorPosition(textareaRef.current.selectionStart);
+          }
+        }}
+        placeholder={getPlaceholder()}
+        className="w-full pl-3 pr-24 py-3 bg-transparent text-white resize-none overflow-hidden focus:outline-none min-h-[44px] text-base leading-relaxed placeholder:text-white/40"
+        rows={1}
+        disabled={isSending}
+        style={{ maxHeight: '120px' }}
+      />
+      
+      <div className="absolute top-1/2 right-2 -translate-y-1/2 flex gap-1.5">
+        {mode !== 'text' && (
+          <button 
+            onClick={onAttachment}
+            className="p-2.5 text-white/60 hover:text-white transition-colors rounded-xl hover:bg-white/5 active:scale-95"
+            title={`Anexar ${mode}`}
+            disabled={isSending}
+          >
+            <Paperclip className="h-5 w-5" />
+          </button>
+        )}
+        
+        <button 
+          onClick={onSendMessage}
+          className={cn(
+            "p-2.5 transition-all rounded-xl",
+            "text-white/60 hover:text-white hover:bg-white/5",
+            "active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          )}
+          disabled={isSending}
+        >
+          <Send className="h-5 w-5" />
+        </button>
+      </div>
+      
       {showCommandMenu && (
         <div 
           className="absolute -top-[235px] left-0 z-50 w-[300px] bg-inventu-dark border border-inventu-gray/30 rounded-md overflow-hidden shadow-lg"
@@ -211,57 +258,6 @@ const MessageInput: React.FC<MessageInputProps> = ({
           </div>
         </div>
       )}
-      
-      <textarea
-        ref={textareaRef}
-        value={message}
-        onChange={handleMessageChange}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            onSendMessage();
-          }
-        }}
-        onClick={(e) => {
-          if (textareaRef.current) {
-            setCursorPosition(textareaRef.current.selectionStart);
-          }
-        }}
-        onKeyUp={(e) => {
-          if (textareaRef.current) {
-            setCursorPosition(textareaRef.current.selectionStart);
-          }
-        }}
-        placeholder={getPlaceholder()}
-        className="w-full pl-4 pr-24 py-3 rounded-lg bg-transparent text-white resize-none overflow-hidden focus:outline-none min-h-[44px]"
-        rows={1}
-        disabled={isSending}
-        style={{ maxHeight: '120px' }}
-      />
-      <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-2">
-        {mode !== 'text' && (
-          <Button 
-            onClick={onAttachment}
-            variant="ghost" 
-            size="icon"
-            className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10 flex-shrink-0"
-            title={`Anexar ${mode}`}
-            disabled={isSending}
-          >
-            <Paperclip className="h-5 w-5" />
-          </Button>
-        )}
-        
-        <Button 
-          onClick={onSendMessage}
-          variant="ghost" 
-          size="icon"
-          className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20 h-10 w-10 flex-shrink-0"
-          disabled={isSending}
-        >
-          <Send className="h-5 w-5" />
-        </Button>
-      </div>
     </div>
   );
 };
