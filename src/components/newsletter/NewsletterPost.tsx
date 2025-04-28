@@ -66,12 +66,13 @@ const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
       const result = await discussionService.createDiscussionFromPost(
         post.id,
         post.content,
-        `Discussão: ${post.content.substring(0, 30)}...`
+        `Discussão: ${post.content.substring(0, 30)}...`,
+        post.media_url || undefined,
+        post.media_type !== 'none' ? post.media_type : undefined
       );
 
       if (result.success && result.conversationId) {
         toast.success('Discussão criada com sucesso');
-        // Corrigindo a rota para usar o formato correto "/c/:conversationId"
         navigate(`/c/${result.conversationId}`);
       } else {
         throw new Error('Falha ao criar discussão');

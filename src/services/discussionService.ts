@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const discussionService = {
-  async createDiscussionFromPost(postId: string, postContent: string, postTitle?: string) {
+  async createDiscussionFromPost(postId: string, postContent: string, postTitle?: string, mediaUrl?: string, mediaType?: string) {
     try {
       // Create a new conversation
       const { data: conversation, error: conversationError } = await supabase
@@ -20,14 +20,25 @@ export const discussionService = {
       // Create initial message with post content
       const initialPrompt = `Vamos discutir sobre este post:\n\n${postContent}\n\nO que você acha sobre esse assunto?`;
       
+      // Create user message object
+      const messageData = {
+        conversation_id: conversation.id,
+        content: initialPrompt,
+        sender: 'user',
+        mode: 'text'
+      };
+      
+      // If there's media, include it in the message
+      if (mediaUrl && mediaType) {
+        Object.assign(messageData, {
+          files: [mediaUrl],
+          media_type: mediaType
+        });
+      }
+      
       const { error: messageError } = await supabase
         .from('messages')
-        .insert({
-          conversation_id: conversation.id,
-          content: initialPrompt,
-          sender: 'user',
-          mode: 'text'
-        });
+        .insert(messageData);
 
       if (messageError) throw messageError;
 
