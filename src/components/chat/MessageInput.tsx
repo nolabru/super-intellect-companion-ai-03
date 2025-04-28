@@ -1,9 +1,11 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
 import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface MessageInputProps {
   message: string;
@@ -178,7 +180,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div className="relative flex items-center gap-2 p-2">
+    <div className="relative flex items-center gap-2 p-2" ref={containerRef}>
       <textarea
         ref={textareaRef}
         value={message}
