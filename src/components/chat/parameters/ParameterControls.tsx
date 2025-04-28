@@ -10,7 +10,6 @@ import {
 import { ChatMode } from '@/components/ModeSelector';
 import ImageParameters from './ImageParameters';
 import AudioParameters from './AudioParameters';
-import VideoParameters from './VideoParameters';
 
 interface ParameterControlsProps {
   mode: ChatMode;
@@ -29,14 +28,12 @@ const ParameterControls: React.FC<ParameterControlsProps> = ({
         return <ImageParameters model={model} onParamsChange={onParamsChange} />;
       case 'audio':
         return <AudioParameters model={model} onParamsChange={onParamsChange} />;
-      case 'video':
-        return <VideoParameters model={model} onParamsChange={onParamsChange} />;
       default:
         return null;
     }
   };
 
-  if (mode === 'text') return null;
+  if (mode === 'text' || mode === 'video' || mode === 'call') return null;
 
   return (
     <div className="w-full mb-4">
