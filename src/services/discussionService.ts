@@ -30,11 +30,12 @@ export const discussionService = {
       
       // If there's media, include it in the message
       if (mediaUrl && mediaType) {
+        // Adicionar o arquivo à propriedade files
         messageData.files = [mediaUrl];
         
-        // Não estamos usando media_type, mas sim definindo o modo conforme necessário
+        // Ajustar o modo conforme o tipo de mídia
         if (mediaType === 'image' || mediaType === 'video') {
-          messageData.files = [mediaUrl];
+          messageData.mode = mediaType;
         }
       }
       
