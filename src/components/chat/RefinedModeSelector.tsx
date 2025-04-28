@@ -17,38 +17,38 @@ const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({
   className 
 }) => {
   return (
-    <div className="p-1 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10">
-      <ToggleGroup 
-        type="single" 
-        value={activeMode} 
-        onValueChange={(value) => value && onChange(value as ChatMode)}
-        className={cn(
-          "flex items-center gap-1 p-0.5",
-          className
-        )}
-      >
-        {[
-          { value: 'text', icon: Text },
-          { value: 'image', icon: Image },
-          { value: 'video', icon: Video },
-          { value: 'audio', icon: AudioLines }
-        ].map(({ value, icon: Icon }) => (
-          <ToggleGroupItem 
-            key={value}
-            value={value}
-            aria-label={`${value} mode`}
-            className={cn(
-              "transition-all duration-200 data-[state=on]:scale-105",
-              "rounded-lg p-2.5 text-white/60 hover:text-white",
-              "data-[state=on]:bg-white/10 data-[state=on]:text-white",
-              "data-[state=on]:shadow-inner data-[state=on]:shadow-white/5"
-            )}
-          >
-            <Icon size={18} />
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-    </div>
+    <ToggleGroup 
+      type="single" 
+      value={activeMode} 
+      onValueChange={(value) => value && onChange(value as ChatMode)}
+      className={cn(
+        "flex items-center p-1 rounded-2xl bg-white/5 backdrop-blur-xl",
+        "border border-white/10 gap-1",
+        className
+      )}
+    >
+      {[
+        { value: 'text', icon: Text },
+        { value: 'image', icon: Image },
+        { value: 'video', icon: Video },
+        { value: 'audio', icon: AudioLines }
+      ].map(({ value, icon: Icon }) => (
+        <ToggleGroupItem 
+          key={value}
+          value={value}
+          aria-label={`${value} mode`}
+          className={cn(
+            "transition-all duration-200 data-[state=on]:scale-100",
+            "rounded-xl p-2.5 text-white/60",
+            "data-[state=on]:bg-white/10 data-[state=on]:text-white",
+            "data-[state=on]:shadow-inner data-[state=on]:shadow-white/5",
+            "touch-feedback active:scale-95"
+          )}
+        >
+          <Icon size={18} />
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 };
 

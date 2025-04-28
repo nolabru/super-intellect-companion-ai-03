@@ -1,11 +1,11 @@
 
 import React from 'react';
-import RefinedModeSelector from './RefinedModeSelector';
+import { cn } from '@/lib/utils';
 import { ChatMode } from '@/components/ModeSelector';
+import RefinedModeSelector from './RefinedModeSelector';
 import CompareModelsButton from '@/components/CompareModelsButton';
 import LinkToggleButton from '@/components/LinkToggleButton';
-import { cn } from '@/lib/utils';
-import ParameterControls from './parameters/ParameterControls';
+import ParameterSheet from './parameters/ParameterSheet';
 
 interface ChatControlsProps {
   activeMode: ChatMode;
@@ -31,35 +31,33 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onParamsChange
 }) => {
   return (
-    <div className={cn(
-      "flex flex-col gap-3 p-3",
-      "bg-black/20 backdrop-blur-xl border-t border-white/5"
-    )}>
-      <ParameterControls 
-        mode={activeMode}
-        model={model}
-        onParamsChange={onParamsChange}
-      />
-      
+    <div className="flex flex-col gap-3 p-3 bg-black/20 backdrop-blur-xl border-t border-white/5">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <RefinedModeSelector 
             activeMode={activeMode} 
             onChange={onModeChange}
           />
-          <div className="flex items-center gap-2">
-            <CompareModelsButton 
-              isComparing={comparing} 
-              onToggleCompare={onToggleCompare} 
-            />
-            {comparing && !isMobile && (
-              <LinkToggleButton 
-                isLinked={isLinked} 
-                onToggleLink={onToggleLink} 
+          {!isMobile && (
+            <div className="flex items-center gap-2">
+              <CompareModelsButton 
+                isComparing={comparing} 
+                onToggleCompare={onToggleCompare} 
               />
-            )}
-          </div>
+              {comparing && !isMobile && (
+                <LinkToggleButton 
+                  isLinked={isLinked} 
+                  onToggleLink={onToggleLink} 
+                />
+              )}
+            </div>
+          )}
         </div>
+        <ParameterSheet 
+          mode={activeMode}
+          model={model}
+          onParamsChange={onParamsChange}
+        />
       </div>
     </div>
   );
