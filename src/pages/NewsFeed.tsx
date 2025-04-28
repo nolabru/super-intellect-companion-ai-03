@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +11,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 
 const NewsFeed: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -21,6 +22,7 @@ const NewsFeed: React.FC = () => {
   const isMobile = useIsMobile();
   const [posts, setPosts] = useState<PostWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { isAdmin } = useAdminCheck();
 
   // Effect for scroll detection
   useEffect(() => {
@@ -141,7 +143,18 @@ const NewsFeed: React.FC = () => {
               isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8"
             )}>
               {!isMobile && (
-                <h1 className="text-2xl font-bold mb-6 text-white">Feed de Notícias</h1>
+                <div className="flex items-center justify-between mb-6">
+                  <h1 className="text-2xl font-bold text-white">Feed de Notícias</h1>
+                  {isAdmin && (
+                    <Button 
+                      variant="default" 
+                      onClick={() => navigate('/feed/new')}
+                      className="bg-inventu-blue hover:bg-inventu-blue/80"
+                    >
+                      Nova Publicação
+                    </Button>
+                  )}
+                </div>
               )}
               
               {isLoading ? (

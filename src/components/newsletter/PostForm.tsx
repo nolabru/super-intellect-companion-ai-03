@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,14 +9,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Upload, X, Loader2, ImageIcon, VideoIcon, FileTextIcon } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { NewsletterPost } from '@/types/newsletter';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 
 interface PostFormProps {
   onSubmit: (postData: Partial<NewsletterPost>) => Promise<void>;
@@ -32,6 +31,7 @@ const PostForm: React.FC<PostFormProps> = ({
   submitLabel = "Publicar",
   title = "Nova Publicação"
 }) => {
+  const { isAdmin, loading: adminCheckLoading } = useAdminCheck();
   const [content, setContent] = useState(initialData?.content || '');
   const [mediaType, setMediaType] = useState<'none' | 'image' | 'video'>(initialData?.media_type as any || 'none');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -54,7 +54,7 @@ const PostForm: React.FC<PostFormProps> = ({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -90,19 +90,29 @@ const PostForm: React.FC<PostFormProps> = ({
       const fileExt = mediaFile.name.split('.').pop();
       const filePath = `newsletter/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from('media')
-        .upload(filePath, mediaFile);
+        .upload(filePath, mediaFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       if (uploadError) {
         throw uploadError;
       }
 
-      const { data } = supabase.storage.from('media').getPublicUrl(filePath);
-      return data.publicUrl;
+      if (!data?.path) {
+        throw new Error('Erro ao obter URL do arquivo após upload');
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('media')
+        .getPublicUrl(data.path);
+
+      return urlData.publicUrl;
     } catch (error) {
       console.error('Error uploading media:', error);
-      toast.error('Erro ao fazer upload do arquivo');
+      toast.error('Erro ao fazer upload do arquivo. Verifique sua conexão e tente novamente.');
       return null;
     } finally {
       setIsUploading(false);
@@ -120,6 +130,11 @@ const PostForm: React.FC<PostFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem criar publicações');
+      return;
+    }
+    
     if (!content.trim()) {
       toast.error('O conteúdo da publicação não pode estar vazio');
       return;
@@ -127,12 +142,11 @@ const PostForm: React.FC<PostFormProps> = ({
     
     setIsSubmitting(true);
     try {
-      // Upload media if there's a new file
       let finalMediaUrl = mediaUrl;
       if (mediaFile) {
         finalMediaUrl = await uploadMedia() || '';
         if (!finalMediaUrl && mediaType !== 'none') {
-          toast.error('Erro ao fazer upload da mídia');
+          toast.error('Erro ao fazer upload da mídia. Tente novamente.');
           return;
         }
       }
@@ -158,6 +172,16 @@ const PostForm: React.FC<PostFormProps> = ({
     }
   };
   
+  if (adminCheckLoading) {
+    return (
+      <Card className="border-white/10 bg-inventu-dark/80 backdrop-blur-sm shadow-md">
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-inventu-blue" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="border-white/10 bg-inventu-dark/80 backdrop-blur-sm shadow-md">
       <CardHeader>
