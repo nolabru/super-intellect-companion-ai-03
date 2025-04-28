@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -36,7 +35,6 @@ const Index: React.FC = () => {
   
   const { conversationId } = useParams<{ conversationId: string }>();
 
-  // Handle URL conversation ID
   useEffect(() => {
     if (conversationId && conversationId !== currentConversationId) {
       console.log(`[Index] ID da conversa na URL: ${conversationId}, atualizando estado`);
@@ -44,7 +42,6 @@ const Index: React.FC = () => {
     }
   }, [conversationId, currentConversationId, setCurrentConversationId]);
 
-  // Update models when mode changes
   useEffect(() => {
     const availableModels = getModelsByMode(activeMode).map(model => model.id);
     
@@ -65,7 +62,6 @@ const Index: React.FC = () => {
     }
   }, [activeMode, leftModel]);
 
-  // Prevent comparing the same models
   useEffect(() => {
     if (comparing && leftModel === rightModel) {
       const availableModels = getModelsByMode(activeMode).map(model => model.id);
@@ -78,7 +74,6 @@ const Index: React.FC = () => {
     }
   }, [comparing, leftModel, rightModel, activeMode]);
 
-  // Force linked mode on mobile when comparing
   useEffect(() => {
     if (isMobile && comparing) {
       setIsLinked(true);
@@ -187,7 +182,6 @@ const Index: React.FC = () => {
     }
   };
 
-  // Mobile comparison view header
   const MobileComparisonHeader = () => {
     if (!comparing || !isMobile) return null;
     
@@ -200,7 +194,7 @@ const Index: React.FC = () => {
                 mode={activeMode}
                 selectedModel={leftModel}
                 onChange={handleLeftModelChange}
-                availableModels={availableModels}
+                availableModels={getModelsByMode(activeMode).map(model => model.id)}
                 className="w-full"
               />
             </div>
@@ -209,7 +203,7 @@ const Index: React.FC = () => {
                 mode={activeMode}
                 selectedModel={rightModel}
                 onChange={handleRightModelChange}
-                availableModels={availableModels}
+                availableModels={getModelsByMode(activeMode).map(model => model.id)}
                 className="w-full"
               />
             </div>
@@ -227,7 +221,6 @@ const Index: React.FC = () => {
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Sidebar */}
         {(sidebarOpen || !isMobile) && (
           <div className={cn(
             isMobile ? "fixed inset-0 z-40" : "w-64 flex-shrink-0",
@@ -248,7 +241,6 @@ const Index: React.FC = () => {
         <div className="flex-1 flex flex-col overflow-hidden">
           <MobileComparisonHeader />
 
-          {/* Chat container */}
           <div className={cn(
             "flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0",
             "bg-inventu-dark",
@@ -261,7 +253,7 @@ const Index: React.FC = () => {
                 rightModel={rightModel}
                 activeMode={activeMode}
                 isLinked={isLinked}
-                availableModels={availableModels}
+                availableModels={getModelsByMode(activeMode).map(model => model.id)}
                 isMobile={isMobile}
                 loading={authLoading || messagesLoading}
                 initialLoadDone={initialLoadDone}
@@ -273,7 +265,7 @@ const Index: React.FC = () => {
               <SingleChatView
                 messages={messages}
                 model={leftModel}
-                availableModels={availableModels}
+                availableModels={getModelsByMode(activeMode).map(model => model.id)}
                 onModelChange={handleLeftModelChange}
                 loading={authLoading || messagesLoading}
                 initialLoadDone={initialLoadDone}
@@ -281,7 +273,6 @@ const Index: React.FC = () => {
             )}
           </div>
           
-          {/* Chat controls */}
           <div className="sticky bottom-0 z-30 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg">
             <ChatControls
               activeMode={activeMode}
@@ -293,7 +284,6 @@ const Index: React.FC = () => {
               onToggleLink={toggleLink}
             />
             
-            {/* Chat input */}
             {(!comparing || isLinked || isMobile) && (
               <div className="px-2 pb-safe mb-1">
                 <ChatInput 
