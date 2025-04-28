@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import AppHeader from '@/components/AppHeader';
 import ChatInput from '@/components/ChatInput';
+import ConversationSidebar from '@/components/ConversationSidebar';
 import { ChatMode } from '@/components/ModeSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useConversation } from '@/hooks/useConversation';
@@ -18,6 +21,7 @@ const Index: React.FC = () => {
   const [activeMode, setActiveMode] = useState<ChatMode>('text');
   const [leftModel, setLeftModel] = useState('gpt-4o');
   const [rightModel, setRightModel] = useState('claude-3-opus');
+  const [sidebarOpen, setSidebarOpen] = useState(!useIsMobile());
   const isMobile = useIsMobile();
   
   const { loading: authLoading } = useAuth();
@@ -32,6 +36,7 @@ const Index: React.FC = () => {
   
   const { conversationId } = useParams<{ conversationId: string }>();
 
+  // Handle URL conversation ID
   useEffect(() => {
     if (conversationId && conversationId !== currentConversationId) {
       console.log(`[Index] ID da conversa na URL: ${conversationId}, atualizando estado`);
@@ -39,6 +44,7 @@ const Index: React.FC = () => {
     }
   }, [conversationId, currentConversationId, setCurrentConversationId]);
 
+  // Update models when mode changes
   useEffect(() => {
     const availableModels = getModelsByMode(activeMode).map(model => model.id);
     
@@ -59,6 +65,7 @@ const Index: React.FC = () => {
     }
   }, [activeMode, leftModel]);
 
+  // Prevent comparing the same models
   useEffect(() => {
     if (comparing && leftModel === rightModel) {
       const availableModels = getModelsByMode(activeMode).map(model => model.id);
@@ -71,6 +78,7 @@ const Index: React.FC = () => {
     }
   }, [comparing, leftModel, rightModel, activeMode]);
 
+  // Force linked mode on mobile when comparing
   useEffect(() => {
     if (isMobile && comparing) {
       setIsLinked(true);
@@ -142,6 +150,12 @@ const Index: React.FC = () => {
     setIsLinked(!isLinked);
   };
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
+  const availableModels = getModelsByMode(activeMode).map(model => model.id);
+
   const handleModeChange = (newMode: ChatMode) => {
     console.log(`Modo alterado de ${activeMode} para ${newMode}`);
     setActiveMode(newMode);
@@ -173,6 +187,7 @@ const Index: React.FC = () => {
     }
   };
 
+  // Mobile comparison view header
   const MobileComparisonHeader = () => {
     if (!comparing || !isMobile) return null;
     
@@ -208,57 +223,88 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <MobileComparisonHeader />
-
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0">
-        {comparing ? (
-          <ComparisonView
-            messages={messages}
-            leftModel={leftModel}
-            rightModel={rightModel}
-            activeMode={activeMode}
-            isLinked={isLinked}
-            availableModels={availableModels}
-            isMobile={isMobile}
-            loading={authLoading || messagesLoading}
-            initialLoadDone={initialLoadDone}
-            handleLeftModelChange={handleLeftModelChange}
-            handleRightModelChange={handleRightModelChange}
-            handleSendMessage={handleSendMessage}
-          />
-        ) : (
-          <SingleChatView
-            messages={messages}
-            model={leftModel}
-            availableModels={availableModels}
-            onModelChange={handleLeftModelChange}
-            loading={authLoading || messagesLoading}
-            initialLoadDone={initialLoadDone}
-          />
-        )}
-      </div>
+    <div className="flex flex-col h-[100vh] w-full overflow-hidden bg-inventu-darker">
+      <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
-      <div className="sticky bottom-0 z-30 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg">
-        <ChatControls
-          activeMode={activeMode}
-          comparing={comparing}
-          isLinked={isLinked}
-          isMobile={isMobile}
-          onModeChange={handleModeChange}
-          onToggleCompare={toggleComparing}
-          onToggleLink={toggleLink}
-        />
-        
-        {(!comparing || isLinked || isMobile) && (
-          <div className="px-2 pb-safe mb-1">
-            <ChatInput 
-              onSendMessage={handleSendMessage} 
-              mode={activeMode}
-              model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
-            />
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Sidebar */}
+        {(sidebarOpen || !isMobile) && (
+          <div className={cn(
+            isMobile ? "fixed inset-0 z-40" : "w-64 flex-shrink-0",
+            "bg-black/50"
+          )}>
+            <div className={cn(
+              "h-full",
+              isMobile ? "w-64 bg-inventu-darker" : ""
+            )}>
+              <ConversationSidebar 
+                onToggleSidebar={toggleSidebar} 
+                isOpen={true} 
+              />
+            </div>
           </div>
         )}
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <MobileComparisonHeader />
+
+          {/* Chat container */}
+          <div className={cn(
+            "flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0",
+            "bg-inventu-dark",
+            "md:rounded-xl md:mx-4 md:my-2"
+          )}>
+            {comparing ? (
+              <ComparisonView
+                messages={messages}
+                leftModel={leftModel}
+                rightModel={rightModel}
+                activeMode={activeMode}
+                isLinked={isLinked}
+                availableModels={availableModels}
+                isMobile={isMobile}
+                loading={authLoading || messagesLoading}
+                initialLoadDone={initialLoadDone}
+                handleLeftModelChange={handleLeftModelChange}
+                handleRightModelChange={handleRightModelChange}
+                handleSendMessage={handleSendMessage}
+              />
+            ) : (
+              <SingleChatView
+                messages={messages}
+                model={leftModel}
+                availableModels={availableModels}
+                onModelChange={handleLeftModelChange}
+                loading={authLoading || messagesLoading}
+                initialLoadDone={initialLoadDone}
+              />
+            )}
+          </div>
+          
+          {/* Chat controls */}
+          <div className="sticky bottom-0 z-30 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg">
+            <ChatControls
+              activeMode={activeMode}
+              comparing={comparing}
+              isLinked={isLinked}
+              isMobile={isMobile}
+              onModeChange={handleModeChange}
+              onToggleCompare={toggleComparing}
+              onToggleLink={toggleLink}
+            />
+            
+            {/* Chat input */}
+            {(!comparing || isLinked || isMobile) && (
+              <div className="px-2 pb-safe mb-1">
+                <ChatInput 
+                  onSendMessage={handleSendMessage} 
+                  mode={activeMode}
+                  model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
+                />
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
