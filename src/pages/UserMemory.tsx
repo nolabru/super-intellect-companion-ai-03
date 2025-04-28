@@ -5,7 +5,7 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import MemoryManager from '@/components/MemoryManager';
-import { Loader2, ChevronDown, Brain } from 'lucide-react';
+import { Loader2, Brain } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -64,9 +64,10 @@ const UserMemory: React.FC = () => {
                 variant="ghost" 
                 size="icon"
                 className="fixed bottom-4 left-4 z-30 rounded-full shadow-lg bg-inventu-blue hover:bg-inventu-blue/90 text-white h-14 w-14"
-                aria-label="Menu de navegação"
               >
-                <ChevronDown className="h-5 w-5 rotate-90" />
+                <div className="p-3.5 rounded-full bg-white/10">
+                  <Brain className="h-5 w-5" />
+                </div>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-[85%] max-w-[320px] bg-inventu-dark border-inventu-gray/20">
