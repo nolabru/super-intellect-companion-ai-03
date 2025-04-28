@@ -3,6 +3,7 @@ import React from 'react';
 import { Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import MediaActionButton from './MediaActionButton';
+import MediaLoading from './MediaLoading';
 
 interface AudioContentProps {
   src: string;
@@ -26,9 +27,7 @@ const AudioContent: React.FC<AudioContentProps> = ({
   return (
     <div className="mt-2">
       {isLoading ? (
-        <div className="flex items-center justify-center p-6 bg-inventu-darker/50 rounded-lg">
-          <div className="h-8 w-8 animate-spin text-inventu-gray border-2 border-inventu-gray border-t-transparent rounded-full" />
-        </div>
+        <MediaLoading message="Carregando áudio..." />
       ) : (
         <>
           <audio 

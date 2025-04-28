@@ -1,26 +1,39 @@
 
-# project configuration in supabase
 project_id = "vygluorjwehcdigzxbaa"
 
 [api]
 enabled = true
-url = "https://vygluorjwehcdigzxbaa.supabase.co"
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
 [db]
-shadow = false
+port = 54322
+shadow_port = 54320
+major_version = 15
 
-[functions]
-[functions.apiframe-generate-image]
-verify_jwt = true
+[realtime]
+enabled = true
 
-[functions.apiframe-generate-video]
-verify_jwt = true
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
 
-[functions.apiframe-media-webhook]
-verify_jwt = false
+[inbucket]
+enabled = true
+port = 54324
 
-[functions.apiframe-task-status]
-verify_jwt = true
+[storage]
+enabled = true
 
-[functions.increment-post-view]
-verify_jwt = false
+[auth]
+enabled = true
+site_url = "https://super-intellect-companion-ai.lovable.app"
+
+[analytics]
+enabled = true
+
+[experimental]
+integrations_enabled = true

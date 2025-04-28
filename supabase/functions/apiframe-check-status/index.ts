@@ -23,9 +23,9 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { prompt, model, params, apiKey } = await req.json();
+    const { taskId, apiKey } = await req.json();
 
-    if (!prompt || !model || !apiKey) {
+    if (!taskId || !apiKey) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { 
@@ -35,23 +35,15 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating image with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
-
-    // Prepare request payload
-    const payload = {
-      prompt,
-      model: model,
-      ...params
-    };
+    console.log(`Checking status for task ${taskId}`);
 
     // Call APIframe API
-    const response = await fetch(`${APIFRAME_API_URL}/images/generate`, {
-      method: 'POST',
+    const response = await fetch(`${APIFRAME_API_URL}/tasks/${taskId}`, {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      }
     });
 
     if (!response.ok) {
@@ -60,7 +52,7 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({ 
-          error: errorData.message || 'Error generating image', 
+          error: errorData.message || 'Error checking task status', 
           status: 'failed' 
         }),
         { 
@@ -73,34 +65,33 @@ serve(async (req) => {
     // Process successful response
     const data = await response.json();
     
-    // Store task in database
+    // Update task in database
     const { error: dbError } = await supabase
       .from('apiframe_tasks')
-      .insert({
-        task_id: data.taskId,
-        prompt,
-        model,
-        media_type: 'image',
-        params: params || {},
-        status: data.status || 'pending'
-      });
+      .update({
+        status: data.status || 'pending',
+        media_url: data.mediaUrl,
+        error: data.error,
+        updated_at: new Date().toISOString()
+      })
+      .eq('task_id', taskId);
       
     if (dbError) {
-      console.error('Error storing task in database:', dbError);
+      console.error('Error updating task in database:', dbError);
     }
 
     return new Response(
       JSON.stringify({
-        taskId: data.taskId,
         status: data.status || 'pending',
-        mediaUrl: data.mediaUrl
+        mediaUrl: data.mediaUrl,
+        error: data.error
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error) {
-    console.error('Error in apiframe-generate-image function:', error);
+    console.error('Error in apiframe-check-status function:', error);
     
     return new Response(
       JSON.stringify({ error: error.message || 'Internal server error' }),

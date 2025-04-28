@@ -1,30 +1,38 @@
 
 import { useState, useCallback } from 'react';
-import { GenerationTask } from '@/types/apiframeGeneration';
+
+export interface Task {
+  taskId: string;
+  progress: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  mediaUrl?: string;
+  error?: string;
+}
 
 export function useTaskState() {
-  const [tasks, setTasks] = useState<Record<string, GenerationTask>>({});
+  const [tasks, setTasks] = useState<Record<string, Task>>({});
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
 
-  const updateTask = useCallback((
-    taskId: string, 
-    updates: Partial<GenerationTask>
-  ) => {
+  const registerTask = useCallback((taskId: string, task: Task) => {
     setTasks(prev => ({
       ...prev,
-      [taskId]: {
-        ...prev[taskId],
-        ...updates
-      }
-    }));
-  }, []);
-
-  const registerTask = useCallback((taskId: string, initialTask: GenerationTask) => {
-    setTasks(prev => ({
-      ...prev,
-      [taskId]: initialTask
+      [taskId]: task
     }));
     setCurrentTaskId(taskId);
+  }, []);
+
+  const updateTask = useCallback((taskId: string, updates: Partial<Task>) => {
+    setTasks(prev => {
+      if (!prev[taskId]) return prev;
+      
+      return {
+        ...prev,
+        [taskId]: {
+          ...prev[taskId],
+          ...updates
+        }
+      };
+    });
   }, []);
 
   const clearTasks = useCallback(() => {
@@ -32,12 +40,14 @@ export function useTaskState() {
     setCurrentTaskId(null);
   }, []);
 
+  const currentTask = currentTaskId ? tasks[currentTaskId] : null;
+
   return {
     tasks,
     currentTaskId,
-    currentTask: currentTaskId ? tasks[currentTaskId] : null,
-    updateTask,
+    currentTask,
     registerTask,
+    updateTask,
     clearTasks
   };
 }

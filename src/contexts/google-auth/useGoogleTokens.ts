@@ -1,112 +1,112 @@
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { GoogleTokens, GoogleConnectionState } from './types';
 
-export const useGoogleTokens = () => {
+export function useGoogleTokens() {
   const [googleTokens, setGoogleTokens] = useState<GoogleTokens | null>(null);
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
-  const [connectionState, setConnectionState] = useState<GoogleConnectionState>(GoogleConnectionState.DISCONNECTED);
   const [loading, setLoading] = useState<boolean>(true);
-  const [lastChecked, setLastChecked] = useState<number>(0);
-  const tokenCheckInterval = useRef<NodeJS.Timeout | null>(null);
+  const [connectionState, setConnectionState] = useState<GoogleConnectionState>(
+    GoogleConnectionState.DISCONNECTED
+  );
 
-  // Limpar intervalo na desmontagem
-  useEffect(() => {
-    return () => {
-      if (tokenCheckInterval.current) {
-        clearInterval(tokenCheckInterval.current);
-      }
-    };
-  }, []);
-
-  // Buscar tokens Google do Supabase com melhor tratamento de erros
   const fetchGoogleTokens = useCallback(async (userId: string) => {
-    if (!userId) {
-      console.log('[useGoogleTokens] Sem ID de usuário, limpando tokens Google');
-      setGoogleTokens(null);
-      setIsGoogleConnected(false);
-      setConnectionState(GoogleConnectionState.DISCONNECTED);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setConnectionState(GoogleConnectionState.CONNECTING);
-    
     try {
-      console.log('[useGoogleTokens] Buscando tokens Google para usuário:', userId);
+      console.log('[useGoogleTokens] Buscando tokens do Google para o usuário:', userId);
+      setLoading(true);
       
-      // Usar uma consulta direta à tabela
       const { data, error } = await supabase
         .from('user_google_tokens')
         .select('*')
         .eq('user_id', userId)
-        .maybeSingle(); // Usando maybeSingle em vez de single para evitar erros quando não há dados
+        .single();
       
       if (error) {
-        console.error('[useGoogleTokens] Erro ao buscar tokens Google:', error);
-        setGoogleTokens(null);
-        setIsGoogleConnected(false);
-        setConnectionState(GoogleConnectionState.ERROR);
-      } else if (data) {
-        console.log('[useGoogleTokens] Tokens Google encontrados:', { 
-          hasAccessToken: !!data.access_token,
-          hasRefreshToken: !!data.refresh_token,
-          expiresAt: data.expires_at
-        });
-        
-        setGoogleTokens({
-          accessToken: data.access_token,
-          refreshToken: data.refresh_token,
-          expiresAt: data.expires_at,
-        });
-        setIsGoogleConnected(true);
-        setConnectionState(GoogleConnectionState.CONNECTED);
-      } else {
-        console.log('[useGoogleTokens] Nenhum token Google encontrado para o usuário');
+        console.error('[useGoogleTokens] Erro ao buscar tokens:', error.message);
         setGoogleTokens(null);
         setIsGoogleConnected(false);
         setConnectionState(GoogleConnectionState.DISCONNECTED);
+        return null;
       }
-    } catch (error) {
-      console.error('[useGoogleTokens] Erro ao buscar tokens Google:', error);
+      
+      if (!data) {
+        console.log('[useGoogleTokens] Nenhum token encontrado');
+        setGoogleTokens(null);
+        setIsGoogleConnected(false);
+        setConnectionState(GoogleConnectionState.DISCONNECTED);
+        return null;
+      }
+      
+      const tokens = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: data.expires_at
+      };
+      
+      const isExpired = Date.now() / 1000 >= data.expires_at;
+      
+      setGoogleTokens(tokens);
+      setIsGoogleConnected(!isExpired);
+      setConnectionState(
+        isExpired ? GoogleConnectionState.DISCONNECTED : GoogleConnectionState.CONNECTED
+      );
+      
+      console.log('[useGoogleTokens] Tokens encontrados, expirado?', isExpired);
+      
+      return tokens;
+    } catch (err) {
+      console.error('[useGoogleTokens] Erro ao buscar tokens do Google:', err);
       setGoogleTokens(null);
       setIsGoogleConnected(false);
       setConnectionState(GoogleConnectionState.ERROR);
+      return null;
     } finally {
       setLoading(false);
-      setLastChecked(Date.now());
     }
   }, []);
-
-  // Configurar verificação periódica de tokens
-  const setupTokenChecking = useCallback((userId: string) => {
-    // Limpar qualquer intervalo existente
-    if (tokenCheckInterval.current) {
-      clearInterval(tokenCheckInterval.current);
+  
+  const refreshTokensState = useCallback(async () => {
+    const now = Math.floor(Date.now() / 1000);
+    
+    // Se não há tokens, mantenha o estado desconectado
+    if (!googleTokens) {
+      setIsGoogleConnected(false);
+      setConnectionState(GoogleConnectionState.DISCONNECTED);
+      return;
     }
     
-    // Configurar intervalo apenas se tivermos um ID de usuário
-    if (userId) {
-      tokenCheckInterval.current = setInterval(async () => {
-        // Verificar apenas se passaram mais de 30 segundos desde a última verificação
-        if (Date.now() - lastChecked > 30000) {
-          console.log('[useGoogleTokens] Verificando tokens Google periodicamente...');
-          await fetchGoogleTokens(userId);
-        }
-      }, 60000); // Verificar a cada minuto
-    }
-  }, [fetchGoogleTokens, lastChecked]);
-
-  // Função para forçar uma verificação de token
-  const refreshTokensState = useCallback(async () => {
-    console.log('[useGoogleTokens] Forçando atualização do estado do token');
-    const { data } = await supabase.auth.getSession();
-    if (data.session?.user) {
-      await fetchGoogleTokens(data.session.user.id);
-    }
+    // Verificar se os tokens ainda são válidos
+    const isExpired = now >= googleTokens.expiresAt;
+    
+    setIsGoogleConnected(!isExpired);
+    setConnectionState(
+      isExpired ? GoogleConnectionState.DISCONNECTED : GoogleConnectionState.CONNECTED
+    );
+    
+    console.log('[useGoogleTokens] Estado de tokens atualizado, expirado?', isExpired);
+  }, [googleTokens]);
+  
+  // Configurar verificação periódica de tokens
+  const setupTokenChecking = useCallback((userId: string) => {
+    // Verificar tokens a cada 5 minutos
+    const interval = setInterval(async () => {
+      console.log('[useGoogleTokens] Verificação periódica de tokens');
+      await fetchGoogleTokens(userId);
+    }, 5 * 60 * 1000);
+    
+    // Limpar intervalo na desmontagem
+    return () => clearInterval(interval);
   }, [fetchGoogleTokens]);
+  
+  // Log de debugging
+  useEffect(() => {
+    console.log('[useGoogleTokens] Estado atual:', { 
+      isConnected: isGoogleConnected, 
+      connectionState, 
+      hasTokens: !!googleTokens 
+    });
+  }, [isGoogleConnected, connectionState, googleTokens]);
 
   return {
     googleTokens,
@@ -116,9 +116,8 @@ export const useGoogleTokens = () => {
     connectionState,
     setConnectionState,
     loading,
-    setLoading,
     fetchGoogleTokens,
     refreshTokensState,
     setupTokenChecking
   };
-};
+}
