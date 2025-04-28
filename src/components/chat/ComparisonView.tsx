@@ -40,12 +40,13 @@ const ComparisonView: React.FC<ComparisonViewProps> = ({
       <div className="flex-1 flex flex-col h-full">
         <ChatInterface 
           messages={messages} 
-          model={leftModel}
+          model={`${leftModel} & ${rightModel}`}
           title={`${leftModel} & ${rightModel}`}
-          onModelChange={handleLeftModelChange}
-          availableModels={availableModels}
+          onModelChange={() => {}} // Desabilitamos a troca de modelo aqui
+          availableModels={[]}
           isCompareMode={true}
           loading={loading && !initialLoadDone}
+          hideModelSelector={true} // Adicionamos esta propriedade para esconder o seletor
         />
       </div>
     );
