@@ -46,7 +46,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
             size={isMobile ? "default" : "sm"}
             className={isMobile 
               ? "w-full text-white bg-inventu-blue hover:bg-inventu-blue/90 py-3" 
-              : "text-xs flex items-center text-inventu-gray hover:text-white"
+              : "text-white text-xs flex items-center hover:text-white hover:bg-inventu-blue/20"
             }
             onClick={onSaveToGallery}
             disabled={saving}
@@ -64,7 +64,7 @@ const ImageContent: React.FC<ImageContentProps> = ({
             size={isMobile ? "default" : "sm"}
             className={isMobile 
               ? "w-full text-white border-white/20 hover:bg-white/10 py-3" 
-              : "text-xs flex items-center text-inventu-gray hover:text-white"
+              : "text-white text-xs flex items-center hover:text-white hover:bg-white/10"
             }
             onClick={onOpenInNewTab}
           >

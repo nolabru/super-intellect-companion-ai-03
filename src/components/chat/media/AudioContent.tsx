@@ -44,7 +44,7 @@ const AudioContent: React.FC<AudioContentProps> = ({
               size={isMobile ? "default" : "sm"}
               className={isMobile 
                 ? "w-full text-white bg-inventu-blue hover:bg-inventu-blue/90 py-3" 
-                : "text-xs flex items-center text-inventu-gray hover:text-white"
+                : "text-white text-xs flex items-center hover:text-white hover:bg-inventu-blue/20"
               }
               onClick={onSaveToGallery}
               disabled={saving}
