@@ -28,7 +28,7 @@ const SidebarNavigation: React.FC = () => {
     },
     { 
       path: '/feed', 
-      label: 'Feed',
+      label: 'Newsletter',
       icon: <Newspaper className="h-4 w-4 mr-2" />
     },
   ];

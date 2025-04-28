@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
+
 const NewsFeed: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -28,7 +29,6 @@ const NewsFeed: React.FC = () => {
     isAdmin
   } = useAdminCheck();
 
-  // Effect for scroll detection
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
@@ -38,6 +38,7 @@ const NewsFeed: React.FC = () => {
     });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
   useEffect(() => {
     const fetchPosts = async () => {
       try {
@@ -53,6 +54,7 @@ const NewsFeed: React.FC = () => {
     };
     fetchPosts();
   }, []);
+
   const handleDeletePost = async (postId: string) => {
     try {
       const success = await newsletterService.deleteComment(postId);
@@ -65,41 +67,38 @@ const NewsFeed: React.FC = () => {
       toast.error('Erro ao excluir publicação');
     }
   };
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
   if (loading) {
     return <div className="flex h-screen items-center justify-center bg-inventu-darker">
         <Loader2 className="h-8 w-8 animate-spin text-inventu-blue" />
       </div>;
   }
+
   return <div className="flex min-h-screen w-full bg-inventu-darker">
-      {/* Desktop Sidebar */}
       {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
         </div>}
 
-      {/* Mobile Sidebar Overlay */}
       {isMobile && sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity" onClick={toggleSidebar}>
           <div className="fixed inset-y-0 left-0 z-40 w-64 transform bg-inventu-dark" onClick={e => e.stopPropagation()}>
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
           </div>
         </div>}
 
-      {/* Main Content */}
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
-        <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Feed de Notícias" />
+        <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Newsletter" />
         
         <main className="flex-1 overflow-hidden">
-          {/* Mobile Title */}
           {isMobile}
 
-          {/* Use ScrollArea for better scrolling */}
           <ScrollArea className="h-[calc(100vh-4rem)]">
-            {/* Content container with padding optimized for both mobile and desktop */}
             <div className={cn("mx-auto w-full max-w-md pb-safe", isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8")}>
               {!isMobile && <div className="flex items-center justify-between mb-6">
-                  <h1 className="text-2xl font-bold text-white">Feed de Notícias</h1>
+                  <h1 className="text-2xl font-bold text-white">Newsletter</h1>
                   {isAdmin && <Button variant="default" onClick={() => navigate('/feed/new')} className="bg-inventu-blue hover:bg-inventu-blue/80">
                       Nova Publicação
                     </Button>}
@@ -120,4 +119,5 @@ const NewsFeed: React.FC = () => {
       </div>
     </div>;
 };
+
 export default NewsFeed;
