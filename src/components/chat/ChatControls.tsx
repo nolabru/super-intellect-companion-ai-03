@@ -1,6 +1,5 @@
 
 import React, { memo } from 'react';
-import { useIsMobile } from '@/hooks/use-mobile';
 import RefinedModeSelector from './RefinedModeSelector';
 import CompareModelsButton from '../CompareModelsButton';
 import LinkToggleButton from '../LinkToggleButton';
@@ -31,9 +30,9 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onParamsChange
 }) => {
   return (
-    <div className="px-3 py-3 flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <div className="px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <RefinedModeSelector 
             activeMode={activeMode} 
             onChange={onModeChange} 
@@ -50,7 +49,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <CompareModelsButton 
             isComparing={comparing} 
             onToggleCompare={onToggleCompare} 

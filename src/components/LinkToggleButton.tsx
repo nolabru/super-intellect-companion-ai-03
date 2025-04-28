@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Link, Link2Off } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { IOSButton } from '@/components/ui/ios-button';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface LinkToggleButtonProps {
@@ -11,21 +10,25 @@ export interface LinkToggleButtonProps {
   disabled?: boolean;
 }
 
-const LinkToggleButton: React.FC<LinkToggleButtonProps> = ({ isLinked, onToggleLink, disabled }) => {
+const LinkToggleButton: React.FC<LinkToggleButtonProps> = ({ 
+  isLinked, 
+  onToggleLink, 
+  disabled 
+}) => {
   const isMobile = useIsMobile();
   
   if (isMobile) return null;
 
   return (
-    <Button
+    <IOSButton
       onClick={onToggleLink}
       disabled={disabled}
-      className={cn(
-        "bg-transparent border flex items-center gap-2 rounded-xl",
-        isLinked 
-          ? "border-inventu-blue text-inventu-blue hover:bg-inventu-blue/10" 
-          : "border-inventu-gray text-inventu-gray hover:bg-inventu-gray/10"
-      )}
+      isActive={isLinked}
+      activeColor="blue"
+      variant="outline"
+      size="default"
+      className="gap-2"
+      aria-label={isLinked ? "Unlink models" : "Link models"}
     >
       {isLinked ? (
         <>
@@ -38,7 +41,7 @@ const LinkToggleButton: React.FC<LinkToggleButtonProps> = ({ isLinked, onToggleL
           <span>Vincular</span>
         </>
       )}
-    </Button>
+    </IOSButton>
   );
 };
 

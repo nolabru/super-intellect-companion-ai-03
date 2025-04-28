@@ -1,27 +1,27 @@
 
 import React from 'react';
 import { MessagesSquare } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { IOSButton } from '@/components/ui/ios-button';
 
 export interface CompareModelsButtonProps {
   isComparing: boolean;
   onToggleCompare: () => void;
 }
 
-const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onToggleCompare, isComparing }) => {
+const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ 
+  onToggleCompare, 
+  isComparing 
+}) => {
   return (
-    <Button
+    <IOSButton
       onClick={onToggleCompare}
-      variant="ghost"
-      size="icon"
-      className={cn(
-        "flex-shrink-0",
-        isComparing && "text-inventu-purple hover:text-inventu-purple hover:bg-inventu-purple/10"
-      )}
+      isActive={isComparing}
+      activeColor="purple"
+      aria-label={isComparing ? "Disable model comparison" : "Enable model comparison"}
+      className="flex-shrink-0"
     >
       <MessagesSquare size={20} />
-    </Button>
+    </IOSButton>
   );
 };
 
