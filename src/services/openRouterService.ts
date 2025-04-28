@@ -1,0 +1,206 @@
+
+import { supabase } from '@/integrations/supabase/client';
+
+let apiKey: string | null = null;
+
+export interface OpenRouterModel {
+  id: string;
+  name: string;
+  context_length: number;
+  providers?: string[];
+}
+
+export interface OpenRouterChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  name?: string;
+}
+
+export interface OpenRouterChatParams {
+  model: string;
+  messages: OpenRouterChatMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  stream?: boolean;
+}
+
+export interface OpenRouterChatResponse {
+  id: string;
+  choices: {
+    index: number;
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason: string;
+  }[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+export const openRouterService = {
+  setApiKey(key: string): boolean {
+    if (!key || key.trim() === '') {
+      console.error('[openRouterService] Invalid API key provided');
+      return false;
+    }
+    
+    apiKey = key;
+    try {
+      // Store securely in localStorage for persistence across sessions
+      localStorage.setItem('openrouter_api_key', key);
+      return true;
+    } catch (err) {
+      console.error('[openRouterService] Error storing API key:', err);
+      return false;
+    }
+  },
+  
+  isApiKeyConfigured(): boolean {
+    // Try to load from localStorage if not in memory
+    if (!apiKey) {
+      try {
+        apiKey = localStorage.getItem('openrouter_api_key');
+      } catch (err) {
+        console.error('[openRouterService] Error loading API key from localStorage:', err);
+      }
+    }
+    return apiKey !== null && apiKey.trim() !== '';
+  },
+  
+  async chatCompletion(params: OpenRouterChatParams): Promise<OpenRouterChatResponse> {
+    try {
+      console.log(`[openRouterService] Generating chat completion with model ${params.model}`);
+      
+      if (!this.isApiKeyConfigured()) {
+        throw new Error('API key not configured');
+      }
+      
+      const { data, error } = await supabase.functions.invoke('openrouter-chat', {
+        body: { 
+          params,
+          apiKey 
+        }
+      });
+      
+      if (error || !data) {
+        console.error('[openRouterService] Error generating chat completion:', error || 'No data received');
+        throw new Error(error?.message || 'Failed to generate chat completion');
+      }
+      
+      return data;
+    } catch (err) {
+      console.error('[openRouterService] Error in chatCompletion:', err);
+      throw err;
+    }
+  },
+  
+  async streamChatCompletion(
+    params: OpenRouterChatParams & { stream: true }, 
+    onChunk: (chunk: any) => void
+  ): Promise<void> {
+    try {
+      console.log(`[openRouterService] Streaming chat completion with model ${params.model}`);
+      
+      if (!this.isApiKeyConfigured()) {
+        throw new Error('API key not configured');
+      }
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/openrouter-stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
+        },
+        body: JSON.stringify({
+          params,
+          apiKey
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to stream chat completion: ${response.statusText}`);
+      }
+      
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('Failed to get reader from response');
+      }
+      
+      const decoder = new TextDecoder();
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.trim() === '') continue;
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              console.log('[openRouterService] Stream complete');
+              return;
+            }
+            
+            try {
+              const chunk = JSON.parse(data);
+              onChunk(chunk);
+            } catch (err) {
+              console.error('[openRouterService] Error parsing chunk:', err, data);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[openRouterService] Error in streamChatCompletion:', err);
+      throw err;
+    }
+  },
+  
+  async listModels(): Promise<OpenRouterModel[]> {
+    try {
+      console.log(`[openRouterService] Fetching available models`);
+      
+      if (!this.isApiKeyConfigured()) {
+        throw new Error('API key not configured');
+      }
+      
+      const { data, error } = await supabase.functions.invoke('openrouter-models', {
+        body: { 
+          apiKey 
+        }
+      });
+      
+      if (error || !data) {
+        console.error('[openRouterService] Error fetching models:', error || 'No data received');
+        throw new Error(error?.message || 'Failed to fetch models');
+      }
+      
+      return data.data || [];
+    } catch (err) {
+      console.error('[openRouterService] Error in listModels:', err);
+      throw err;
+    }
+  }
+};
+
+// Initialize API key from localStorage on module load
+try {
+  const storedKey = localStorage.getItem('openrouter_api_key');
+  if (storedKey) {
+    apiKey = storedKey;
+  }
+} catch (err) {
+  console.error('[openRouterService] Error loading API key from localStorage:', err);
+}

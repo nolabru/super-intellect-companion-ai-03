@@ -15,6 +15,7 @@ import TokensPlans from "./pages/TokensPlans";
 import AdminPanel from "./pages/AdminPanel";
 import NewsFeed from "./pages/NewsFeed";
 import PostDetail from "./pages/PostDetail";
+import ServicesConfig from "./pages/ServicesConfig";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/feed" element={<NewsFeed />} />
               <Route path="/feed/:postId" element={<PostDetail />} />
+              <Route path="/services" element={<ServicesConfig />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

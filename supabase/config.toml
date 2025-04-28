@@ -4,17 +4,10 @@ project_id = "vygluorjwehcdigzxbaa"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "storage"]
-extra_search_path = ["public", "extensions"]
-max_rows = 1000
+schemas = ["public", "storage", "graphql_public"]
 
 [db]
 port = 54322
-shadow_port = 54320
-major_version = 15
-
-[realtime]
-enabled = true
 
 [studio]
 enabled = true
@@ -27,13 +20,32 @@ port = 54324
 
 [storage]
 enabled = true
+port = 54325
 
 [auth]
 enabled = true
-site_url = "https://super-intellect-companion-ai.lovable.app"
+port = 54326
 
-[analytics]
+[realtime]
 enabled = true
+port = 54327
 
-[experimental]
-integrations_enabled = true
+[functions]
+[functions.apiframe-check-status]
+verify_jwt = true
+[functions.apiframe-generate-audio]
+verify_jwt = true
+[functions.apiframe-generate-image]
+verify_jwt = true
+[functions.apiframe-generate-video]
+verify_jwt = true
+[functions.apiframe-task-cancel]
+verify_jwt = true
+[functions.user-tokens]
+verify_jwt = true
+[functions.openrouter-chat]
+verify_jwt = true
+[functions.openrouter-stream]
+verify_jwt = true
+[functions.openrouter-models]
+verify_jwt = true
