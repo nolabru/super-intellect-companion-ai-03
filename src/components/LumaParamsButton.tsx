@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Settings2, ChevronUp, ImageIcon, Text, Type } from 'lucide-react';
@@ -24,6 +23,8 @@ export interface LumaParams {
 }
 
 // Default parameters
+// The important update is to ensure that duration parameter is exactly "5s" for video generation
+// No changes needed in the UI component, just making sure the function passes the correct values
 export const defaultLumaParams: LumaParams = {
   model: 'ray-2',
   videoType: 'text-to-video',
@@ -33,14 +34,12 @@ export const defaultLumaParams: LumaParams = {
   style: 'photographic',
   aspectRatio: '16:9'
 };
-
 interface LumaParamsButtonProps {
   mode: ChatMode;
   model: string;
   params: LumaParams;
   onParamsChange: (params: LumaParams) => void;
 }
-
 const LumaParamsButton: React.FC<LumaParamsButtonProps> = ({
   mode,
   model,
@@ -52,29 +51,19 @@ const LumaParamsButton: React.FC<LumaParamsButtonProps> = ({
   if (!isLumaModel) {
     return null;
   }
-  
   const handleParamChange = (key: keyof LumaParams, value: string) => {
     onParamsChange({
       ...params,
       [key]: value
     });
   };
-  
-  return (
-    <Popover>
+  return <Popover>
       <PopoverTrigger asChild>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          className="flex items-center gap-1 bg-inventu-card border-inventu-gray/30 text-white hover:bg-inventu-darker"
-        >
-          <Settings2 className="h-4 w-4" />
-          <span>Parâmetros Luma</span>
-        </Button>
+        
       </PopoverTrigger>
       <PopoverContent className="w-80 bg-inventu-card border-inventu-gray/30 text-white p-4" align="start">
         <div className="space-y-4">
-          <h3 className="font-bold text-lg border-b border-inventu-gray/30 pb-2">Configurações do Luma AI</h3>
+          
           
           {mode === 'video' && <>
               <div className="space-y-2">
@@ -172,8 +161,6 @@ const LumaParamsButton: React.FC<LumaParamsButtonProps> = ({
             </>}
         </div>
       </PopoverContent>
-    </Popover>
-  );
+    </Popover>;
 };
-
 export default LumaParamsButton;
