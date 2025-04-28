@@ -1,4 +1,3 @@
-
 import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -137,7 +136,7 @@ export const apiframeService = {
     }
   },
   
-  async checkTaskStatus(taskId: string): Promise<{ status: string; mediaUrl?: string; error?: string }> {
+  async checkTaskStatus(taskId: string): Promise<{ status: string; mediaUrl?: string; error?: string; taskId?: string }> {
     try {
       console.log(`[apiframeService] Checking status for task ${taskId}`);
       
@@ -157,7 +156,10 @@ export const apiframeService = {
         throw new Error(error?.message || 'Failed to check task status');
       }
       
-      return data;
+      return {
+        ...data,
+        taskId
+      };
     } catch (err) {
       console.error('[apiframeService] Error in checkTaskStatus:', err);
       throw err;
@@ -189,6 +191,21 @@ export const apiframeService = {
       console.error('[apiframeService] Error in cancelTask:', err);
       throw err;
     }
+  },
+  
+  subscribeToTaskUpdates(callback: (payload: any) => void) {
+    return supabase
+      .channel('media-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'media_ready_events'
+        },
+        callback
+      )
+      .subscribe();
   }
 };
 

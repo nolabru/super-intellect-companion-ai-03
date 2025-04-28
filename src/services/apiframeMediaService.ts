@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { apiframeService } from './apiframeService';
 import { tokenService } from './tokenService';
@@ -85,7 +84,7 @@ export const apiframeMediaService = {
       
       return {
         success: true,
-        taskId: result.taskId,
+        taskId: result.taskId || taskId,
         status: result.status,
         mediaUrl: result.mediaUrl,
         error: result.error

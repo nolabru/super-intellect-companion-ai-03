@@ -37,10 +37,11 @@ export interface ApiframeAudioParams extends ApiframeParams {
   language?: string;
 }
 
-// Add MediaGenerationResult interface
+// Add MediaGenerationResult interface with status property
 export interface MediaGenerationResult {
   success: boolean;
   mediaUrl?: string;
   taskId?: string;
   error?: string;
+  status?: string;
 }
