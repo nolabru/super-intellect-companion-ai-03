@@ -31,44 +31,42 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onParamsChange
 }) => {
   return (
-    <div className="px-3 py-3 flex flex-col md:flex-row md:items-center gap-3">
-      <div className="flex-1 flex items-center justify-between gap-2">
-        <RefinedModeSelector 
-          activeMode={activeMode} 
-          onChange={onModeChange} 
-        />
-        
-        {/* Only show on desktop */}
-        {!isMobile && (
-          <div className="flex items-center gap-2">
-            <CompareModelsButton 
-              isComparing={comparing} 
-              onToggleCompare={onToggleCompare} 
+    <div className="px-3 py-3 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <RefinedModeSelector 
+            activeMode={activeMode} 
+            onChange={onModeChange} 
+          />
+          
+          {activeMode !== 'text' && (
+            <ParametersManager
+              mode={activeMode}
+              model={model}
+              onParamsChange={onParamsChange}
+              variant="icon"
+              className="flex-shrink-0"
             />
-            
-            {comparing && (
-              <LinkToggleButton 
-                isLinked={isLinked} 
-                onToggleLink={onToggleLink} 
-                disabled={isMobile}
-              />
-            )}
-          </div>
-        )}
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <CompareModelsButton 
+            isComparing={comparing} 
+            onToggleCompare={onToggleCompare} 
+          />
+          
+          {comparing && !isMobile && (
+            <LinkToggleButton 
+              isLinked={isLinked} 
+              onToggleLink={onToggleLink} 
+              disabled={isMobile}
+            />
+          )}
+        </div>
       </div>
-      
-      {activeMode !== 'text' && (
-        <ParametersManager
-          mode={activeMode}
-          model={model}
-          onParamsChange={onParamsChange}
-          variant={isMobile ? "icon" : "button"}
-          className={isMobile ? "flex justify-end" : "w-full md:w-auto md:min-w-[200px]"}
-        />
-      )}
     </div>
   );
 };
 
-// Export a memoized version to prevent unnecessary re-renders
 export default memo(ChatControls);
