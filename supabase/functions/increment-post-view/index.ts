@@ -1,5 +1,6 @@
 
-import { createClient } from '@supabase/supabase-js';
+// Import Supabase client with the correct Deno URL pattern
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.6';
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
