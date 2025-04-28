@@ -3,8 +3,8 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { ChatMode } from '@/components/ModeSelector';
 import RefinedModeSelector from './RefinedModeSelector';
-import CompareModelsButton from '@/components/CompareModelsButton';
-import LinkToggleButton from '@/components/LinkToggleButton';
+import { Button } from '@/components/ui/button';
+import { Compare } from 'lucide-react';
 import ParameterSheet from './parameters/ParameterSheet';
 
 interface ChatControlsProps {
@@ -22,12 +22,10 @@ interface ChatControlsProps {
 const ChatControls: React.FC<ChatControlsProps> = ({
   activeMode,
   comparing,
-  isLinked,
   isMobile,
   model,
   onModeChange,
   onToggleCompare,
-  onToggleLink,
   onParamsChange
 }) => {
   return (
@@ -38,26 +36,28 @@ const ChatControls: React.FC<ChatControlsProps> = ({
             activeMode={activeMode} 
             onChange={onModeChange}
           />
-          {!isMobile && (
-            <div className="flex items-center gap-2">
-              <CompareModelsButton 
-                isComparing={comparing} 
-                onToggleCompare={onToggleCompare} 
-              />
-              {comparing && !isMobile && (
-                <LinkToggleButton 
-                  isLinked={isLinked} 
-                  onToggleLink={onToggleLink} 
-                />
-              )}
-            </div>
-          )}
+          <Button
+            onClick={onToggleCompare}
+            size="icon"
+            variant="ghost"
+            className={cn(
+              "rounded-full w-10 h-10",
+              comparing 
+                ? "bg-inventu-purple/20 text-inventu-purple hover:bg-inventu-purple/30" 
+                : "bg-white/5 hover:bg-white/10"
+            )}
+          >
+            <Compare className="h-5 w-5" />
+          </Button>
         </div>
-        <ParameterSheet 
-          mode={activeMode}
-          model={model}
-          onParamsChange={onParamsChange}
-        />
+        
+        {activeMode !== 'text' && (
+          <ParameterSheet 
+            mode={activeMode}
+            model={model}
+            onParamsChange={onParamsChange}
+          />
+        )}
       </div>
     </div>
   );
