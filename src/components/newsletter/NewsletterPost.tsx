@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Heart, MessageCircle, MoreVertical, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, MoreVertical, Trash2, MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -28,6 +27,7 @@ interface NewsletterPostProps {
 const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
   const [isLiked, setIsLiked] = useState(post.user_has_liked);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [isCreatingDiscussion, setIsCreatingDiscussion] = useState(false);
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const [likeInProgress, setLikeInProgress] = useState(false);
@@ -52,6 +52,31 @@ const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
   const handleDelete = () => {
     if (onDelete) {
       onDelete(post.id);
+    }
+  };
+
+  const handleDiscuss = async () => {
+    if (!post || isCreatingDiscussion) return;
+    
+    setIsCreatingDiscussion(true);
+    try {
+      const result = await discussionService.createDiscussionFromPost(
+        post.id,
+        post.content,
+        `Discussão: ${post.content.substring(0, 30)}...`
+      );
+
+      if (result.success && result.conversationId) {
+        toast.success('Discussão criada com sucesso');
+        navigate(`/${result.conversationId}`);
+      } else {
+        throw new Error('Falha ao criar discussão');
+      }
+    } catch (error) {
+      console.error('Error starting discussion:', error);
+      toast.error('Erro ao criar discussão');
+    } finally {
+      setIsCreatingDiscussion(false);
     }
   };
 
@@ -153,6 +178,17 @@ const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
           >
             <MessageCircle className="h-4 w-4 mr-1" />
             {post.comments_count || 0}
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-white/70 hover:text-white"
+            onClick={handleDiscuss}
+            disabled={isCreatingDiscussion}
+          >
+            <MessageSquare className="h-4 w-4 mr-1" />
+            Discutir
           </Button>
         </div>
         
