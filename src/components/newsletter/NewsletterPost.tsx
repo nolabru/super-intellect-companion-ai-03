@@ -9,9 +9,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { PostWithStats } from '@/types/newsletter';
 import { newsletterService } from '@/services/newsletterService';
+import { discussionService } from '@/services/discussionService';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { useAuth } from '@/contexts/AuthContext';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
