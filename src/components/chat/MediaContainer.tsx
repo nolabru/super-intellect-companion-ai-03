@@ -1,12 +1,12 @@
 
 import React from 'react';
-import { AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react';
 import { ChatMode } from '../ModeSelector';
 import { useMediaLoading } from '@/hooks/useMediaLoading';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 import ImageContent from './media/ImageContent';
 import VideoContent from './media/VideoContent';
 import AudioContent from './media/AudioContent';
+import MediaErrorDisplay from './media/MediaErrorDisplay';
 
 interface MediaContainerProps {
   mediaUrl: string | null;
@@ -43,33 +43,12 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
 
   if (hasError) {
     return (
-      <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-        <p className="text-sm text-red-400 flex items-start">
-          <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
-          <span>
-            Não foi possível carregar a mídia. 
-            {mode === 'video' && " Isso pode ocorrer porque o vídeo ainda está sendo processado."}
-          </span>
-        </p>
-        <div className="mt-2 flex space-x-2">
-          <button 
-            onClick={retryMediaLoad}
-            className="text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded flex items-center"
-          >
-            <RefreshCw size={12} className="mr-1" />
-            Tentar novamente
-          </button>
-          {mediaUrl && (
-            <button 
-              onClick={openInNewTab}
-              className="text-xs bg-inventu-darker/50 hover:bg-inventu-darker/80 text-white py-1 px-2 rounded flex items-center"
-            >
-              <ExternalLink size={12} className="mr-1" />
-              Abrir link diretamente
-            </button>
-          )}
-        </div>
-      </div>
+      <MediaErrorDisplay 
+        onRetry={retryMediaLoad}
+        onOpenInNewTab={openInNewTab}
+        mediaUrl={mediaUrl}
+        mode={mode}
+      />
     );
   }
 
