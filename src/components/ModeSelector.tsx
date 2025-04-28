@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { memo } from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Text, Image, Video, AudioLines, PhoneCall } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -77,4 +78,4 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
   );
 };
 
-export default ModeSelector;
+export default memo(ModeSelector);

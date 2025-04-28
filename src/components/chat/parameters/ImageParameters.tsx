@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ImageParameters as ImageParamsType } from '@/types/parameters';
 
 const IMAGE_MODELS = [
   { id: 'sdxl', name: 'Stable Diffusion XL' },
@@ -31,17 +32,36 @@ const ASPECT_RATIOS = [
 
 interface ImageParametersProps {
   model: string;
-  onParamsChange: (params: any) => void;
+  onParamsChange: (params: ImageParamsType) => void;
+  initialParams?: Partial<ImageParamsType>;
 }
 
-const ImageParameters: React.FC<ImageParametersProps> = ({ onParamsChange }) => {
-  const [params, setParams] = useState({
-    model: 'sdxl',
-    style: 'photographic',
-    aspectRatio: '1:1'
+const ImageParameters: React.FC<ImageParametersProps> = ({ 
+  model, 
+  onParamsChange, 
+  initialParams 
+}) => {
+  const [params, setParams] = useState<ImageParamsType>({
+    model: model || 'sdxl',
+    style: initialParams?.style || 'photographic',
+    aspectRatio: initialParams?.aspectRatio || '1:1'
   });
 
-  const handleParamChange = (key: string, value: string) => {
+  // Update params when model prop changes
+  useEffect(() => {
+    if (model && model !== params.model) {
+      setParams(prev => ({ ...prev, model }));
+    }
+  }, [model, params.model]);
+
+  // Update params if initialParams changes
+  useEffect(() => {
+    if (initialParams) {
+      setParams(prev => ({ ...prev, ...initialParams }));
+    }
+  }, [initialParams]);
+
+  const handleParamChange = (key: keyof ImageParamsType, value: string) => {
     const newParams = { ...params, [key]: value };
     setParams(newParams);
     onParamsChange(newParams);
@@ -58,7 +78,7 @@ const ImageParameters: React.FC<ImageParametersProps> = ({ onParamsChange }) => 
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
             <SelectValue placeholder="Selecione um modelo" />
           </SelectTrigger>
-          <SelectContent className="bg-inventu-darker border-inventu-gray/30">
+          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
             {IMAGE_MODELS.map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 {model.name}
@@ -77,7 +97,7 @@ const ImageParameters: React.FC<ImageParametersProps> = ({ onParamsChange }) => 
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
             <SelectValue placeholder="Selecione um estilo" />
           </SelectTrigger>
-          <SelectContent className="bg-inventu-darker border-inventu-gray/30">
+          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
             {STYLES.map((style) => (
               <SelectItem key={style.id} value={style.id}>
                 {style.name}
@@ -96,7 +116,7 @@ const ImageParameters: React.FC<ImageParametersProps> = ({ onParamsChange }) => 
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
             <SelectValue placeholder="Selecione uma proporção" />
           </SelectTrigger>
-          <SelectContent className="bg-inventu-darker border-inventu-gray/30">
+          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
             {ASPECT_RATIOS.map((ratio) => (
               <SelectItem key={ratio.id} value={ratio.id}>
                 {ratio.name}

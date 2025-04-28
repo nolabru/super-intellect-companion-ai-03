@@ -1,37 +1,102 @@
 
-export const extractMediaUrl = (content: string): string | null => {
-  if (!content) return null;
+/**
+ * Media utility functions for handling file operations, previews, and validations
+ */
+
+import { ChatMode } from '@/components/ModeSelector';
+
+/**
+ * Validates if a file matches the expected type based on ChatMode
+ * @param file The file to validate
+ * @param mode The current chat mode
+ * @returns Boolean indicating if file matches the expected type
+ */
+export function isValidFileForMode(file: File, mode: ChatMode): boolean {
+  if (!file) return false;
   
-  if (content.includes('[Imagem gerada]:') || 
-      content.includes('[Vídeo gerado]:') || 
-      content.includes('[Áudio gerado]:')) {
-    const match = content.match(/\]\: (https?:\/\/[^\s]+)/);
-    return match ? match[1] : null;
+  switch (mode) {
+    case 'image':
+      return file.type.startsWith('image/');
+    case 'video':
+      return file.type.startsWith('video/');
+    case 'audio':
+      return file.type.startsWith('audio/');
+    case 'text':
+    case 'call':
+    default:
+      return false;
   }
-  return null;
-};
+}
 
-export const cleanMessageContent = (content: string): string => {
-  if (!content) return '';
+/**
+ * Creates a human-readable file size string
+ * @param bytes File size in bytes
+ * @returns Formatted string (e.g., "1.5 MB")
+ */
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
   
-  return content
-    .replace(/\[Imagem gerada\]\: https?:\/\/[^\s]+/, '')
-    .replace(/\[Vídeo gerado\]\: https?:\/\/[^\s]+/, '')
-    .replace(/\[Áudio gerado\]/, '')
-    .trim();
-};
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
 
-export const getMediaTypeFromUrl = (url: string): 'image' | 'video' | 'audio' | null => {
-  if (!url) return null;
+/**
+ * Get appropriate file accept string for HTML file input based on mode
+ * @param mode The current chat mode
+ * @returns String for accept attribute of file input
+ */
+export function getAcceptTypesByMode(mode: ChatMode): string {
+  switch (mode) {
+    case 'image':
+      return 'image/*';
+    case 'video':
+      return 'video/*';
+    case 'audio':
+      return 'audio/*';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Safely revokes object URLs to prevent memory leaks
+ * @param urls Array of object URLs to revoke
+ */
+export function revokeObjectUrls(urls: string[]): void {
+  if (!urls || !Array.isArray(urls)) return;
   
-  if (url.match(/\.(jpg|jpeg|png|gif|webp)$/i)) return 'image';
-  if (url.match(/\.(mp4|mov|webm)$/i)) return 'video';
-  if (url.match(/\.(mp3|wav|ogg)$/i)) return 'audio';
-  
-  // Check content hints in URL
-  if (url.includes('image')) return 'image';
-  if (url.includes('video')) return 'video';
-  if (url.includes('audio')) return 'audio';
-  
-  return null;
-};
+  urls.forEach(url => {
+    if (url && url.startsWith('blob:')) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Error revoking URL:', error);
+      }
+    }
+  });
+}
+
+/**
+ * Creates a readable label based on chat mode
+ * @param mode The current chat mode
+ * @returns Human-readable label
+ */
+export function getChatModeLabel(mode: ChatMode): string {
+  switch (mode) {
+    case 'text':
+      return 'Texto';
+    case 'image':
+      return 'Imagem';
+    case 'video':
+      return 'Vídeo';
+    case 'audio':
+      return 'Áudio';
+    case 'call':
+      return 'Chamada';
+    default:
+      return 'Desconhecido';
+  }
+}

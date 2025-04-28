@@ -1,11 +1,11 @@
 
-import React from 'react';
-import { cn } from '@/lib/utils';
-import { ChatMode } from '@/components/ModeSelector';
+import React, { memo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import RefinedModeSelector from './RefinedModeSelector';
-import { Button } from '@/components/ui/button';
-import { MessagesSquare } from 'lucide-react';
-import ParameterSheet from './parameters/ParameterSheet';
+import CompareModelsButton from '../CompareModelsButton';
+import LinkToggleButton from '../LinkToggleButton';
+import ParametersManager from './parameters/ParametersManager';
+import { ChatMode } from '../ModeSelector';
 
 interface ChatControlsProps {
   activeMode: ChatMode;
@@ -22,45 +22,53 @@ interface ChatControlsProps {
 const ChatControls: React.FC<ChatControlsProps> = ({
   activeMode,
   comparing,
+  isLinked,
   isMobile,
   model,
   onModeChange,
   onToggleCompare,
+  onToggleLink,
   onParamsChange
 }) => {
   return (
-    <div className="flex flex-col gap-3 p-3 bg-black/20 backdrop-blur-xl border-t border-white/5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <RefinedModeSelector 
-            activeMode={activeMode} 
-            onChange={onModeChange}
-          />
-          <Button
-            onClick={onToggleCompare}
-            size="icon"
-            variant="ghost"
-            className={cn(
-              "rounded-full w-10 h-10",
-              comparing 
-                ? "bg-inventu-purple/20 text-inventu-purple hover:bg-inventu-purple/30" 
-                : "bg-white/5 hover:bg-white/10"
-            )}
-          >
-            <MessagesSquare className="h-5 w-5" />
-          </Button>
-        </div>
+    <div className="px-3 py-3 flex flex-col md:flex-row md:items-center gap-3">
+      <div className="flex-1 flex items-center justify-between gap-2">
+        <RefinedModeSelector 
+          activeMode={activeMode} 
+          onChange={onModeChange} 
+        />
         
-        {activeMode !== 'text' && (
-          <ParameterSheet 
-            mode={activeMode}
-            model={model}
-            onParamsChange={onParamsChange}
-          />
+        {/* Only show on desktop */}
+        {!isMobile && (
+          <div className="flex items-center gap-2">
+            <CompareModelsButton 
+              isComparing={comparing} 
+              onToggle={onToggleCompare} 
+            />
+            
+            {comparing && (
+              <LinkToggleButton 
+                isLinked={isLinked} 
+                onToggle={onToggleLink} 
+                disabled={isMobile}
+              />
+            )}
+          </div>
         )}
       </div>
+      
+      {activeMode !== 'text' && (
+        <ParametersManager
+          mode={activeMode}
+          model={model}
+          onParamsChange={onParamsChange}
+          variant={isMobile ? "icon" : "button"}
+          className={isMobile ? "flex justify-end" : "w-full md:w-auto md:min-w-[200px]"}
+        />
+      )}
     </div>
   );
 };
 
-export default ChatControls;
+// Export a memoized version to prevent unnecessary re-renders
+export default memo(ChatControls);

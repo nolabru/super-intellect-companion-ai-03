@@ -1,10 +1,12 @@
-import React, { useRef, useEffect, useState } from 'react';
+
+import React, { useRef, useEffect, useState, useMemo, memo } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { ChatMode } from '@/components/ModeSelector';
 import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useTouchDevice } from '@/hooks/useTouchDevice';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface MessageInputProps {
   message: string;
@@ -17,6 +19,7 @@ interface MessageInputProps {
   model: string;
 }
 
+// Google command definitions
 const GOOGLE_COMMANDS = [
   {
     id: 'calendar',
@@ -55,6 +58,9 @@ const GOOGLE_COMMANDS = [
   }
 ];
 
+/**
+ * Component for handling user text input with command support
+ */
 const MessageInput: React.FC<MessageInputProps> = ({
   message,
   setMessage,
@@ -69,16 +75,27 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
   const [commandMenuPosition, setCommandMenuPosition] = useState({ top: 0, left: 0 });
-  const { isGoogleConnected, loading: googleAuthLoading } = useGoogleAuth();
+  const { isGoogleConnected } = useGoogleAuth();
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
+  const isTouchDevice = useTouchDevice();
+  const isMobile = useIsMobile();
   
-  useEffect(() => {
-    console.log('[MessageInput] Google connection status:', { 
-      isGoogleConnected, 
-      googleAuthLoading 
-    });
-  }, [isGoogleConnected, googleAuthLoading]);
+  // Generate placeholder based on current mode and model
+  const placeholder = useMemo(() => {
+    if (isImageGenerationModel) {
+      return "Descreva sua imagem...";
+    }
+    if (mode === 'audio') {
+      return "Digite seu texto...";
+    }
+    if (model) {
+      return "Pergunte...";
+    }
+    return "Digite aqui...";
+  }, [isImageGenerationModel, mode, model]);
   
+  // Auto-resize textarea when content changes
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -86,6 +103,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [message]);
 
+  // Handle command menu visibility
   useEffect(() => {
     if (message.length > 0 && cursorPosition > 0) {
       const textBeforeCursor = message.substring(0, cursorPosition);
@@ -97,20 +115,19 @@ const MessageInput: React.FC<MessageInputProps> = ({
         if (textAfterAt.length === 0 || !textAfterAt.includes(' ')) {
           setShowCommandMenu(true);
           
-          if (textareaRef.current && containerRef.current) {
-            const containerRect = containerRef.current.getBoundingClientRect();
-            setCommandMenuPosition({
-              top: -10,
-              left: 10,
-            });
-          }
+          // For mobile, position menu higher
+          const yOffset = isMobile ? -215 : -10;
+          setCommandMenuPosition({
+            top: yOffset,
+            left: 10,
+          });
           return;
         }
       }
     }
     
     setShowCommandMenu(false);
-  }, [message, cursorPosition]);
+  }, [message, cursorPosition, isMobile]);
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
@@ -123,25 +140,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
-  const getPlaceholder = () => {
-    if (isImageGenerationModel) {
-      return "Descreva sua imagem...";
-    }
-    if (mode === 'audio') {
-      return "Digite seu texto...";
-    }
-    if (model) {
-      return `Pergunte...`;
-    }
-    return "Digite aqui...";
-  };
-
   const insertCommand = (command: string) => {
-    console.log('[MessageInput] Checking Google connection before inserting command', { 
-      isGoogleConnected, 
-      googleAuthLoading 
-    });
-    
     if (!isGoogleConnected) {
       toast.error(
         "Conta Google não conectada", 
@@ -178,8 +177,58 @@ const MessageInput: React.FC<MessageInputProps> = ({
     setShowCommandMenu(false);
   };
 
+  // Touch-friendly button styles
+  const buttonClasses = cn(
+    "transition-all rounded-xl",
+    "text-white/60 hover:text-white active:scale-95",
+    isTouchDevice ? "p-3 hover:bg-white/10" : "p-2.5 hover:bg-white/5",
+    isSending && "opacity-50 cursor-not-allowed"
+  );
+
+  // Memoized command menu to prevent re-renders
+  const commandMenu = useMemo(() => {
+    if (!showCommandMenu) return null;
+    
+    return (
+      <div 
+        className={cn(
+          "absolute left-0 z-50 w-[300px] bg-inventu-dark border border-inventu-gray/30 rounded-md overflow-hidden shadow-lg",
+          isMobile ? "bottom-[65px]" : "-top-[235px]"
+        )}
+        style={{
+          transform: `translate(${commandMenuPosition.left}px, 0px)`,
+        }}
+      >
+        <div className="p-2 bg-inventu-darker border-b border-inventu-gray/30">
+          <p className="text-xs text-inventu-gray">Google Workspace</p>
+        </div>
+        <div className="max-h-[200px] overflow-y-auto">
+          {GOOGLE_COMMANDS.map((cmd) => (
+            <div 
+              key={cmd.id}
+              className="flex items-center p-2 hover:bg-inventu-gray/20 active:bg-inventu-gray/30 cursor-pointer text-white"
+              onClick={() => insertCommand(cmd.command)}
+            >
+              {cmd.icon}
+              <div>
+                <p className="text-sm font-medium">{cmd.name}</p>
+                <p className="text-xs text-inventu-gray">{cmd.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }, [showCommandMenu, commandMenuPosition, message, cursorPosition, isGoogleConnected, isMobile]);
+
   return (
-    <div className="relative flex items-center gap-2 p-2" ref={containerRef}>
+    <div 
+      className={cn(
+        "relative flex items-center gap-2 p-2",
+        isFocused && "ring-1 ring-white/30"
+      )} 
+      ref={containerRef}
+    >
       <textarea
         ref={textareaRef}
         value={message}
@@ -190,77 +239,58 @@ const MessageInput: React.FC<MessageInputProps> = ({
             onSendMessage();
           }
         }}
-        onClick={(e) => {
+        onClick={() => {
           if (textareaRef.current) {
             setCursorPosition(textareaRef.current.selectionStart);
           }
         }}
-        onKeyUp={(e) => {
+        onKeyUp={() => {
           if (textareaRef.current) {
             setCursorPosition(textareaRef.current.selectionStart);
           }
         }}
-        placeholder={getPlaceholder()}
-        className="w-full pl-3 pr-24 py-3 bg-transparent text-white resize-none overflow-hidden focus:outline-none min-h-[44px] text-base leading-relaxed placeholder:text-white/40"
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
+        placeholder={placeholder}
+        className={cn(
+          "w-full pl-3 pr-24 py-3 bg-transparent text-white resize-none overflow-hidden focus:outline-none",
+          "min-h-[44px] text-base leading-relaxed placeholder:text-white/40",
+          isMobile && "text-lg py-4" // Larger text on mobile
+        )}
         rows={1}
         disabled={isSending}
         style={{ maxHeight: '120px' }}
       />
       
-      <div className="absolute top-1/2 right-2 -translate-y-1/2 flex gap-1.5">
+      <div className={cn(
+        "absolute top-1/2 right-2 -translate-y-1/2 flex gap-1.5",
+        isMobile && "gap-3" // More space between buttons on mobile
+      )}>
         {mode !== 'text' && (
           <button 
             onClick={onAttachment}
-            className="p-2.5 text-white/60 hover:text-white transition-colors rounded-xl hover:bg-white/5 active:scale-95"
+            className={buttonClasses}
             title={`Anexar ${mode}`}
             disabled={isSending}
+            aria-label={`Anexar ${mode}`}
           >
-            <Paperclip className="h-5 w-5" />
+            <Paperclip className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
           </button>
         )}
         
         <button 
           onClick={onSendMessage}
-          className={cn(
-            "p-2.5 transition-all rounded-xl",
-            "text-white/60 hover:text-white hover:bg-white/5",
-            "active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
+          className={buttonClasses}
           disabled={isSending}
+          aria-label="Enviar mensagem"
         >
-          <Send className="h-5 w-5" />
+          <Send className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
         </button>
       </div>
       
-      {showCommandMenu && (
-        <div 
-          className="absolute -top-[235px] left-0 z-50 w-[300px] bg-inventu-dark border border-inventu-gray/30 rounded-md overflow-hidden shadow-lg"
-          style={{
-            transform: `translate(${commandMenuPosition.left}px, 0px)`,
-          }}
-        >
-          <div className="p-2 bg-inventu-darker border-b border-inventu-gray/30">
-            <p className="text-xs text-inventu-gray">Google Workspace</p>
-          </div>
-          <div className="max-h-[200px] overflow-y-auto">
-            {GOOGLE_COMMANDS.map((cmd) => (
-              <div 
-                key={cmd.id}
-                className="flex items-center p-2 hover:bg-inventu-gray/20 cursor-pointer text-white"
-                onClick={() => insertCommand(cmd.command)}
-              >
-                {cmd.icon}
-                <div>
-                  <p className="text-sm font-medium">{cmd.name}</p>
-                  <p className="text-xs text-inventu-gray">{cmd.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {commandMenu}
     </div>
   );
 };
 
-export default MessageInput;
+export default memo(MessageInput);

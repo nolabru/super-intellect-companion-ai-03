@@ -1,12 +1,13 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
-import LumaParamsButton, { LumaParams, defaultLumaParams } from './LumaParamsButton';
+import { LumaParams, defaultLumaParams } from './LumaParamsButton';
 import { canModelGenerateImages } from './ModelSelector';
 import FilePreview from './chat/FilePreview';
 import ImageGenerationTip from './chat/ImageGenerationTip';
 import MessageInput from './chat/MessageInput';
+import { useGenerationParams } from '@/hooks/useGenerationParams';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: string[], params?: any) => void;
@@ -26,6 +27,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [lumaParams, setLumaParams] = useState<LumaParams>(defaultLumaParams);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { params: generationParams, updateParams } = useGenerationParams({
+    mode,
+    model
+  });
+
   const isImageGenerationModel = mode === 'image' && model && canModelGenerateImages(model);
   
   // Clear files when mode changes
@@ -34,14 +40,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
     setFilePreviewUrls([]);
   }, [mode]);
 
-  const handleSendMessage = async () => {
+  // Optimized sendMessage function with useCallback
+  const handleSendMessage = useCallback(async () => {
     if (message.trim() || (files.length > 0 && mode !== 'text')) {
       try {
         setIsSending(true);
         const fileUrls = await uploadFiles();
         
         // Include Luma parameters if using a Luma model
-        const params = model.includes('luma') ? lumaParams : undefined;
+        const params = model.includes('luma') ? lumaParams : generationParams;
         
         onSendMessage(
           message.trim() || `[${mode} anexado]`, 
@@ -68,15 +75,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
         description: "Por favor, insira uma mensagem ou anexe um arquivo compatível com o modo selecionado.",
       });
     }
-  };
+  }, [message, files, mode, model, lumaParams, generationParams, onSendMessage]);
 
-  const handleAttachment = () => {
+  const handleAttachment = useCallback(() => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
-  };
+  }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -120,9 +127,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  };
+  }, [mode]);
 
-  const removeFile = (index: number) => {
+  const removeFile = useCallback((index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
     
     // Release URL
@@ -131,20 +138,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
     
     setFilePreviewUrls(prev => prev.filter((_, i) => i !== index));
-  };
+  }, [filePreviewUrls]);
 
   // Function to upload files (simulation)
   const uploadFiles = async (): Promise<string[]> => {
-    // In a real implementation, you would send the files to a server or storage service
-    // and return the URLs of the uploaded files.
-    // For now, we'll just simulate this by returning the local file URLs
-    
     return filePreviewUrls;
   };
 
-  const handleLumaParamsChange = (params: LumaParams) => {
+  const handleLumaParamsChange = useCallback((params: LumaParams) => {
     setLumaParams(params);
-  };
+  }, []);
 
   return (
     <div className="relative w-full space-y-3">
@@ -207,4 +210,4 @@ const ChatInput: React.FC<ChatInputProps> = ({
   );
 };
 
-export default ChatInput;
+export default memo(ChatInput);

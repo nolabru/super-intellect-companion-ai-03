@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useTouchDevice } from '@/hooks/useTouchDevice';
 import AppHeader from '@/components/AppHeader';
 import ChatInput from '@/components/ChatInput';
 import ConversationSidebar from '@/components/ConversationSidebar';
@@ -20,9 +22,11 @@ const Index: React.FC = () => {
   const [activeMode, setActiveMode] = useState<ChatMode>('text');
   const [leftModel, setLeftModel] = useState('gpt-4o');
   const [rightModel, setRightModel] = useState('claude-3-opus');
-  const [sidebarOpen, setSidebarOpen] = useState(!useIsMobile());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [generationParams, setGenerationParams] = useState<any>({});
+  
   const isMobile = useIsMobile();
+  const isTouchDevice = useTouchDevice();
   
   const { loading: authLoading } = useAuth();
   const { 
@@ -36,33 +40,35 @@ const Index: React.FC = () => {
   
   const { conversationId } = useParams<{ conversationId: string }>();
 
+  // Initialize sidebar state based on screen size
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
+
+  // Sync URL conversationId with state
   useEffect(() => {
     if (conversationId && conversationId !== currentConversationId) {
-      console.log(`[Index] ID da conversa na URL: ${conversationId}, atualizando estado`);
       setCurrentConversationId(conversationId);
     }
   }, [conversationId, currentConversationId, setCurrentConversationId]);
 
+  // Auto-select appropriate models when mode changes
   useEffect(() => {
     const availableModels = getModelsByMode(activeMode).map(model => model.id);
     
-    if (availableModels.length === 0) {
-      console.error(`Nenhum modelo disponível para o modo ${activeMode}`);
-      return;
-    }
+    if (availableModels.length === 0) return;
     
     if (!availableModels.includes(leftModel)) {
       setLeftModel(availableModels[0]);
-      console.log(`Modelo esquerdo atualizado para ${availableModels[0]} devido à mudança para o modo ${activeMode}`);
     }
     
     if (!availableModels.includes(rightModel)) {
       const differentModel = availableModels.find(m => m !== leftModel) || availableModels[0];
       setRightModel(differentModel);
-      console.log(`Modelo direito atualizado para ${differentModel} devido à mudança para o modo ${activeMode}`);
     }
   }, [activeMode, leftModel]);
 
+  // Prevent comparing the same model
   useEffect(() => {
     if (comparing && leftModel === rightModel) {
       const availableModels = getModelsByMode(activeMode).map(model => model.id);
@@ -70,20 +76,24 @@ const Index: React.FC = () => {
       
       if (differentModel) {
         setRightModel(differentModel);
-        console.log(`Modelo direito atualizado para ${differentModel} para evitar comparação com o mesmo modelo`);
       }
     }
   }, [comparing, leftModel, rightModel, activeMode]);
 
+  // Force linked mode on mobile
   useEffect(() => {
     if (isMobile && comparing) {
       setIsLinked(true);
     }
   }, [isMobile, comparing]);
 
-  const handleSendMessage = async (content: string, files?: string[], params?: any, targetModel?: string) => {
-    console.log(`Enviando mensagem "${content}" no modo ${activeMode} para o modelo ${targetModel || leftModel}`, params);
-    
+  // Handle sending messages
+  const handleSendMessage = useCallback(async (
+    content: string, 
+    files?: string[], 
+    params?: any, 
+    targetModel?: string
+  ) => {
     const messageParams = params || generationParams;
     
     let result;
@@ -130,66 +140,80 @@ const Index: React.FC = () => {
       );
     }
     
+    // Auto-close sidebar on mobile after sending a message
+    if (isMobile && sidebarOpen) {
+      setSidebarOpen(false);
+    }
+    
     if (result && result.success && result.modeSwitch) {
       setActiveMode(result.modeSwitch as ChatMode);
-      toast.info(`Modo alterado para ${result.modeSwitch} baseado no seu pedido`);
+      toast.info(`Modo alterado para ${result.modeSwitch}`);
     }
-  };
+  }, [
+    activeMode, 
+    comparing, 
+    isLinked, 
+    leftModel, 
+    rightModel, 
+    sendMessage, 
+    generationParams,
+    isMobile,
+    sidebarOpen
+  ]);
 
-  const toggleComparing = () => {
+  const toggleComparing = useCallback(() => {
     setComparing(!comparing);
     if (!comparing) {
       setIsLinked(true);
     }
-  };
+  }, [comparing]);
 
-  const toggleLink = () => {
+  const toggleLink = useCallback(() => {
     if (isMobile) return; // Prevent toggling on mobile
     setIsLinked(!isLinked);
-  };
+  }, [isMobile, isLinked]);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen(prev => !prev);
+  }, []);
 
   const availableModels = getModelsByMode(activeMode).map(model => model.id);
 
-  const handleModeChange = (newMode: ChatMode) => {
-    console.log(`Modo alterado de ${activeMode} para ${newMode}`);
+  const handleModeChange = useCallback((newMode: ChatMode) => {
     setActiveMode(newMode);
-  };
+  }, []);
 
-  const handleLeftModelChange = (model: string) => {
-    console.log(`Modelo esquerdo alterado para ${model}`);
+  const handleLeftModelChange = useCallback((model: string) => {
     setLeftModel(model);
     
+    // If comparing, make sure the other model is different
     if (comparing && model === rightModel) {
+      const availableModels = getModelsByMode(activeMode).map(m => m.id);
       const differentModel = availableModels.find(m => m !== model);
       if (differentModel) {
-        console.log(`Modelo direito atualizado automaticamente para ${differentModel}`);
         setRightModel(differentModel);
       }
     }
-  };
+  }, [comparing, rightModel, activeMode]);
 
-  const handleRightModelChange = (model: string) => {
-    console.log(`Modelo direito alterado para ${model}`);
+  const handleRightModelChange = useCallback((model: string) => {
     setRightModel(model);
     
+    // If the selected model is the same as the left model, change the left model
     if (model === leftModel) {
+      const availableModels = getModelsByMode(activeMode).map(m => m.id);
       const differentModel = availableModels.find(m => m !== model);
       if (differentModel) {
-        console.log(`Modelo esquerdo atualizado automaticamente para ${differentModel}`);
         setLeftModel(differentModel);
       }
     }
-  };
+  }, [leftModel, activeMode]);
 
-  const handleParamsChange = (params: any) => {
-    console.log('Parâmetros atualizados:', params);
+  const handleParamsChange = useCallback((params: any) => {
     setGenerationParams(params);
-  };
+  }, []);
 
+  // Mobile-specific comparison header
   const MobileComparisonHeader = () => {
     if (!comparing || !isMobile) return null;
     
@@ -202,7 +226,7 @@ const Index: React.FC = () => {
                 mode={activeMode}
                 selectedModel={leftModel}
                 onChange={handleLeftModelChange}
-                availableModels={getModelsByMode(activeMode).map(model => model.id)}
+                availableModels={availableModels}
                 className="w-full"
               />
             </div>
@@ -211,7 +235,7 @@ const Index: React.FC = () => {
                 mode={activeMode}
                 selectedModel={rightModel}
                 onChange={handleRightModelChange}
-                availableModels={getModelsByMode(activeMode).map(model => model.id)}
+                availableModels={availableModels}
                 className="w-full"
               />
             </div>
@@ -224,35 +248,53 @@ const Index: React.FC = () => {
     );
   };
 
+  const isLoading = authLoading || messagesLoading;
+
   return (
-    <div className="flex flex-col h-[100vh] w-full overflow-hidden bg-inventu-darker">
+    <div className={cn(
+      "flex flex-col h-[100vh] w-full overflow-hidden bg-inventu-darker",
+      isTouchDevice && "touch-action-pan-y" // Enable native scrolling on touch devices
+    )}>
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
       
       <div className="flex-1 flex overflow-hidden relative">
-        {(sidebarOpen || !isMobile) && (
-          <div className={cn(
-            isMobile ? "fixed inset-0 z-40" : "w-64 flex-shrink-0",
-            "bg-black/50"
-          )}>
+        {/* Sidebar with overlay on mobile */}
+        {(sidebarOpen) && (
+          <>
+            {/* Mobile overlay backdrop */}
+            {isMobile && (
+              <div 
+                className="fixed inset-0 z-30 bg-black/60"
+                onClick={toggleSidebar}
+              />
+            )}
+            
+            {/* Sidebar content */}
             <div className={cn(
-              "h-full",
-              isMobile ? "w-64 bg-inventu-darker" : ""
+              isMobile ? "fixed left-0 top-0 bottom-0 z-40 w-64" : "w-64 flex-shrink-0",
+              "h-full bg-inventu-darker transition-transform",
+              isMobile && !sidebarOpen && "-translate-x-full"
             )}>
               <ConversationSidebar 
                 onToggleSidebar={toggleSidebar} 
                 isOpen={true} 
               />
             </div>
-          </div>
+          </>
         )}
         
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className={cn(
+          "flex-1 flex flex-col overflow-hidden",
+          "transition-all duration-300",
+          sidebarOpen && !isMobile && "ml-64"
+        )}>
           <MobileComparisonHeader />
 
           <div className={cn(
             "flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0",
             "bg-inventu-dark",
-            "md:rounded-xl md:mx-4 md:my-2"
+            "md:rounded-xl md:mx-4 md:my-2",
+            isMobile ? "mx-0 my-0" : ""
           )}>
             {comparing ? (
               <ComparisonView
@@ -261,9 +303,9 @@ const Index: React.FC = () => {
                 rightModel={rightModel}
                 activeMode={activeMode}
                 isLinked={isLinked}
-                availableModels={getModelsByMode(activeMode).map(model => model.id)}
+                availableModels={availableModels}
                 isMobile={isMobile}
-                loading={authLoading || messagesLoading}
+                loading={isLoading}
                 initialLoadDone={initialLoadDone}
                 handleLeftModelChange={handleLeftModelChange}
                 handleRightModelChange={handleRightModelChange}
@@ -273,15 +315,18 @@ const Index: React.FC = () => {
               <SingleChatView
                 messages={messages}
                 model={leftModel}
-                availableModels={getModelsByMode(activeMode).map(model => model.id)}
+                availableModels={availableModels}
                 onModelChange={handleLeftModelChange}
-                loading={authLoading || messagesLoading}
+                loading={isLoading}
                 initialLoadDone={initialLoadDone}
               />
             )}
           </div>
           
-          <div className="sticky bottom-0 z-30 border-t border-inventu-gray/30 bg-inventu-dark/95 backdrop-blur-lg">
+          <div className={cn(
+            "sticky bottom-0 z-30 border-t border-inventu-gray/30",
+            "bg-inventu-dark/95 backdrop-blur-lg"
+          )}>
             <ChatControls
               activeMode={activeMode}
               comparing={comparing}
@@ -295,7 +340,10 @@ const Index: React.FC = () => {
             />
             
             {(!comparing || isLinked || isMobile) && (
-              <div className="px-2 pb-safe mb-1">
+              <div className={cn(
+                "px-2 mb-1",
+                isMobile ? "pb-6" : "pb-2" // Extra padding on mobile for better touch area
+              )}>
                 <ChatInput 
                   onSendMessage={handleSendMessage} 
                   mode={activeMode}
@@ -309,5 +357,28 @@ const Index: React.FC = () => {
     </div>
   );
 };
+
+// Custom CSS for touch devices
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    .touch-action-pan-y {
+      touch-action: pan-y;
+    }
+    
+    /* Increase hit targets on touch devices */
+    @media (pointer: coarse) {
+      button {
+        min-height: 44px;
+        min-width: 44px;
+      }
+      
+      input, select, textarea {
+        font-size: 16px; /* Prevents iOS zoom on input focus */
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
 
 export default Index;
