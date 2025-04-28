@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +14,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const PostDetail: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -147,7 +149,7 @@ const PostDetail: React.FC = () => {
           title="Detalhes da Publicação"
         />
         
-        <main className="flex-1">
+        <main className="flex-1 overflow-hidden">
           {/* Back button */}
           <div className="sticky top-16 z-10 px-4 py-2 bg-inventu-darker border-b border-white/5">
             <Button
@@ -161,57 +163,60 @@ const PostDetail: React.FC = () => {
             </Button>
           </div>
           
-          {/* Content container */}
-          <div className={cn(
-            "mx-auto w-full max-w-md pb-safe",
-            isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8"
-          )}>
-            {isLoadingPost ? (
-              <NewsletterPostSkeleton />
-            ) : post ? (
-              <NewsletterPost 
-                post={post} 
-                onDelete={handleDeletePost}
-              />
-            ) : (
-              <div className="text-center p-8 text-white/60">
-                <p>Publicação não encontrada</p>
-              </div>
-            )}
-            
-            {post && !isLoadingPost && (
-              <div className="mt-4 bg-inventu-dark/80 backdrop-blur-sm p-4 rounded-xl border border-white/10">
-                <div className="flex items-center mb-4">
-                  <MessageCircle className="h-5 w-5 mr-2 text-inventu-blue" />
-                  <h2 className="text-lg font-medium text-white">
-                    Comentários ({post.comments_count || 0})
-                  </h2>
+          {/* Use ScrollArea for better scrolling */}
+          <ScrollArea className="h-[calc(100vh-7rem)]">
+            {/* Content container */}
+            <div className={cn(
+              "mx-auto w-full max-w-md pb-safe",
+              isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8"
+            )}>
+              {isLoadingPost ? (
+                <NewsletterPostSkeleton />
+              ) : post ? (
+                <NewsletterPost 
+                  post={post} 
+                  onDelete={handleDeletePost}
+                />
+              ) : (
+                <div className="text-center p-8 text-white/60">
+                  <p>Publicação não encontrada</p>
                 </div>
-                
-                {isLoadingComments ? (
-                  <CommentsListSkeleton />
-                ) : (
-                  <CommentsList 
-                    comments={comments}
-                    onCommentDeleted={handleCommentDeleted}
-                  />
-                )}
-                
-                {user && (
-                  <CommentInput 
-                    onSubmit={handleAddComment}
-                    disabled={!user}
-                  />
-                )}
-                
-                {!user && (
-                  <div className="mt-4 p-3 bg-inventu-darker/50 rounded-lg text-sm text-center text-white/70">
-                    Faça login para adicionar um comentário
+              )}
+              
+              {post && !isLoadingPost && (
+                <div className="mt-4 bg-inventu-dark/80 backdrop-blur-sm p-4 rounded-xl border border-white/10">
+                  <div className="flex items-center mb-4">
+                    <MessageCircle className="h-5 w-5 mr-2 text-inventu-blue" />
+                    <h2 className="text-lg font-medium text-white">
+                      Comentários ({post.comments_count || 0})
+                    </h2>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
+                  
+                  {isLoadingComments ? (
+                    <CommentsListSkeleton />
+                  ) : (
+                    <CommentsList 
+                      comments={comments}
+                      onCommentDeleted={handleCommentDeleted}
+                    />
+                  )}
+                  
+                  {user && (
+                    <CommentInput 
+                      onSubmit={handleAddComment}
+                      disabled={!user}
+                    />
+                  )}
+                  
+                  {!user && (
+                    <div className="mt-4 p-3 bg-inventu-darker/50 rounded-lg text-sm text-center text-white/70">
+                      Faça login para adicionar um comentário
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </main>
       </div>
     </div>

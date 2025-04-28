@@ -11,6 +11,7 @@ import { Loader2, Newspaper } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const NewsFeed: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -111,7 +112,7 @@ const NewsFeed: React.FC = () => {
           title="Feed de Notícias"
         />
         
-        <main className="flex-1">
+        <main className="flex-1 overflow-hidden">
           {/* Mobile Title */}
           {isMobile && (
             <div className={cn(
@@ -132,37 +133,40 @@ const NewsFeed: React.FC = () => {
             </div>
           )}
 
-          {/* Content container with padding optimized for both mobile and desktop */}
-          <div className={cn(
-            "mx-auto w-full max-w-md pb-safe",
-            isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8"
-          )}>
-            {!isMobile && (
-              <h1 className="text-2xl font-bold mb-6 text-white">Feed de Notícias</h1>
-            )}
-            
-            {isLoading ? (
-              <div className="space-y-6">
-                {[1, 2, 3].map(i => <NewsletterPostSkeleton key={i} />)}
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center p-8 text-white/60">
-                <Newspaper className="mx-auto h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg">Nenhuma publicação ainda</p>
-                <p className="text-sm">Volte mais tarde para novidades</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {posts.map(post => (
-                  <NewsletterPost 
-                    key={post.id} 
-                    post={post} 
-                    onDelete={handleDeletePost}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Use ScrollArea for better scrolling */}
+          <ScrollArea className="h-[calc(100vh-4rem)]">
+            {/* Content container with padding optimized for both mobile and desktop */}
+            <div className={cn(
+              "mx-auto w-full max-w-md pb-safe",
+              isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8"
+            )}>
+              {!isMobile && (
+                <h1 className="text-2xl font-bold mb-6 text-white">Feed de Notícias</h1>
+              )}
+              
+              {isLoading ? (
+                <div className="space-y-6">
+                  {[1, 2, 3].map(i => <NewsletterPostSkeleton key={i} />)}
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="text-center p-8 text-white/60">
+                  <Newspaper className="mx-auto h-12 w-12 mb-4 opacity-30" />
+                  <p className="text-lg">Nenhuma publicação ainda</p>
+                  <p className="text-sm">Volte mais tarde para novidades</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {posts.map(post => (
+                    <NewsletterPost 
+                      key={post.id} 
+                      post={post} 
+                      onDelete={handleDeletePost}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </main>
       </div>
     </div>
