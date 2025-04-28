@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +19,6 @@ const Auth: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Verificar se o usuário já está autenticado
   useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
@@ -32,7 +30,6 @@ const Auth: React.FC = () => {
     checkSession();
   }, [navigate]);
 
-  // Processar redirecionamentos de autenticação
   useEffect(() => {
     const handleAuthRedirect = async () => {
       const params = new URLSearchParams(window.location.search);
@@ -44,20 +41,16 @@ const Auth: React.FC = () => {
         return;
       }
 
-      // Verifique se há sinais de autenticação OAuth bem-sucedida
       if (hashParams.has('access_token') || params.has('provider')) {
         console.log("[Auth] Detectada autenticação OAuth bem-sucedida");
         
         try {
-          // Aguardar a sessão ser estabelecida
           setLoading(true);
           
-          // Wait a bit to ensure authentication is processed properly
           setTimeout(async () => {
             const { data } = await supabase.auth.getSession();
             
             if (data.session) {
-              // Log session details (without sensitive info) for debugging
               console.log("[Auth] Login successful, session established:", {
                 userId: data.session.user?.id,
                 hasUser: !!data.session.user,
@@ -65,16 +58,13 @@ const Auth: React.FC = () => {
                 expiresAt: data.session.expires_at
               });
               
-              // Check if it's a Google login
               if (params.has('provider') && params.get('provider') === 'google') {
                 console.log('[Auth] Google login detected, waiting for tokens to be processed...');
                 
-                // Wait longer for Google tokens to be processed by database triggers
                 toast.success('Login successful', { 
                   description: 'Setting up your Google access...' 
                 });
                 
-                // Redirect to home page - token processing is handled by GoogleAuthContext
                 setTimeout(() => {
                   navigate('/');
                 }, 5000);
@@ -99,7 +89,6 @@ const Auth: React.FC = () => {
           setLoading(false);
         }
       } else {
-        // Not an OAuth redirect, just regular page load
         setLoading(false);
       }
     };
@@ -147,7 +136,6 @@ const Auth: React.FC = () => {
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
-      // Usar URL de redirecionamento correto
       const redirectTo = window.location.origin + '/auth';
       console.log(`[Auth] Login Google - URL de redirecionamento: ${redirectTo}`);
       
@@ -165,7 +153,6 @@ const Auth: React.FC = () => {
 
       if (error) throw error;
       
-      // Manter estado de carregamento até que o redirecionamento aconteça
       toast.info('Redirecionando para login do Google...');
     } catch (error: any) {
       console.error('[Auth] Erro no login Google:', error);
@@ -270,12 +257,10 @@ const Auth: React.FC = () => {
           </div>
           
           <div className="mt-6 text-xs text-center text-inventu-gray/70">
-            Ao continuar com o Google, você concede acesso para que nosso assistente possa:
+            Ao continuar com o Google, você autoriza nosso app a:
             <ul className="mt-2 list-disc list-inside text-left">
-              <li>Criar e ler arquivos no Google Drive</li>
-              <li>Criar e gerenciar eventos no Google Calendar</li>
-              <li>Criar e editar planilhas no Google Sheets</li>
-              <li>Enviar emails através do seu Gmail (quando necessário)</li>
+              <li>Acessar seu nome e email para autenticação</li>
+              <li>Criar uma conta vinculada ao seu perfil Google</li>
             </ul>
           </div>
         </div>
