@@ -3,7 +3,7 @@ export interface ChatModel {
   id: string;
   displayName: string;
   provider: string;
-  modes: ('text' | 'image' | 'video' | 'audio')[];
+  modes: ('text' | 'image' | 'video' | 'audio' | 'call')[];
   capabilities?: {
     imageGeneration?: boolean;
   };
@@ -14,7 +14,7 @@ export const AVAILABLE_MODELS: ChatModel[] = [
     id: 'gpt-4o',
     displayName: 'GPT-4o',
     provider: 'openai',
-    modes: ['text', 'image', 'audio'],
+    modes: ['text', 'image', 'audio', 'call'],
     capabilities: {
       imageGeneration: true
     }
