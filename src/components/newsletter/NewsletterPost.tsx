@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
@@ -70,7 +71,8 @@ const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
 
       if (result.success && result.conversationId) {
         toast.success('Discussão criada com sucesso');
-        navigate(`/${result.conversationId}`);
+        // Corrigindo a rota para usar o formato correto "/c/:conversationId"
+        navigate(`/c/${result.conversationId}`);
       } else {
         throw new Error('Falha ao criar discussão');
       }
