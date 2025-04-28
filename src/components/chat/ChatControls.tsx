@@ -43,13 +43,13 @@ const ChatControls: React.FC<ChatControlsProps> = ({
           <div className="flex items-center gap-2">
             <CompareModelsButton 
               isComparing={comparing} 
-              onToggle={onToggleCompare} 
+              onToggleCompare={onToggleCompare} 
             />
             
             {comparing && (
               <LinkToggleButton 
                 isLinked={isLinked} 
-                onToggle={onToggleLink} 
+                onToggleLink={onToggleLink} 
                 disabled={isMobile}
               />
             )}

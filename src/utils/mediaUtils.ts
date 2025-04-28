@@ -100,3 +100,36 @@ export function getChatModeLabel(mode: ChatMode): string {
       return 'Desconhecido';
   }
 }
+
+/**
+ * Extracts media URL from a message content if present
+ * @param content Message content that might contain a media URL
+ * @returns The extracted media URL or null
+ */
+export function extractMediaUrl(content: string): string | null {
+  if (!content) return null;
+  
+  // Check for URL patterns in the content
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const matches = content.match(urlRegex);
+  
+  if (matches && matches.length > 0) {
+    // Return the first URL found
+    return matches[0];
+  }
+  
+  return null;
+}
+
+/**
+ * Cleans message content by removing media URLs
+ * @param content Original message content
+ * @returns Cleaned message content
+ */
+export function cleanMessageContent(content: string): string {
+  if (!content) return '';
+  
+  // Remove URLs from the content
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return content.replace(urlRegex, '').trim();
+}

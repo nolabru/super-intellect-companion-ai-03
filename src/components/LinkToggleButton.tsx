@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-interface LinkToggleButtonProps {
+export interface LinkToggleButtonProps {
   isLinked: boolean;
   onToggleLink: () => void;
+  disabled?: boolean;
 }
 
-const LinkToggleButton: React.FC<LinkToggleButtonProps> = ({ isLinked, onToggleLink }) => {
+const LinkToggleButton: React.FC<LinkToggleButtonProps> = ({ isLinked, onToggleLink, disabled }) => {
   const isMobile = useIsMobile();
   
   if (isMobile) return null;
@@ -18,6 +19,7 @@ const LinkToggleButton: React.FC<LinkToggleButtonProps> = ({ isLinked, onToggleL
   return (
     <Button
       onClick={onToggleLink}
+      disabled={disabled}
       className={cn(
         "bg-transparent border flex items-center gap-2 rounded-xl",
         isLinked 

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
 import { LumaParams, defaultLumaParams } from './LumaParamsButton';
+import LumaParamsButton from './LumaParamsButton';
 import { canModelGenerateImages } from './ModelSelector';
 import FilePreview from './chat/FilePreview';
 import ImageGenerationTip from './chat/ImageGenerationTip';

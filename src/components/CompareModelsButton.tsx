@@ -4,9 +4,9 @@ import { MessagesSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-interface CompareModelsButtonProps {
-  onToggleCompare: () => void;
+export interface CompareModelsButtonProps {
   isComparing: boolean;
+  onToggleCompare: () => void;
 }
 
 const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ onToggleCompare, isComparing }) => {

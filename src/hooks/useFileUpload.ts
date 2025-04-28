@@ -57,7 +57,6 @@ export function useFileUpload({ mode, maxFileSizeMB = 10 }: UseFileUploadProps) 
       isValidFile = true;
     } else if (mode === 'text') {
       toast({
-        title: "Alerta",
         description: "Envio de arquivos não disponível no modo texto."
       });
       return;
