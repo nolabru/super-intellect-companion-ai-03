@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,7 +88,7 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
       aspectRatio: "16:9"
     };
     
-    // FIX: Pass the referenceImageUrl as part of the options object
+    // Pass the referenceImageUrl as part of the options object
     const result = await generateVideo(prompt, selectedModel, params, {
       referenceUrl: referenceImageUrl || undefined
     });
