@@ -1,10 +1,11 @@
+
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { apiframeService } from '@/services/apiframeService';
 import { aiService } from '@/services/aiService';
 import { MediaGenerationResult } from '@/services/mediaService';
 import { UseMediaGenerationOptions, GenerationTask } from '@/types/mediaGeneration';
-import { ApiframeMediaType, ApiframeModel } from '@/types/apiframeGeneration';
+import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 
 export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -21,8 +22,8 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
   const generateMedia = useCallback(async (
     prompt: string,
     mediaType: ApiframeMediaType,
-    model: ApiframeModel,
-    params: Record<string, any> = {},
+    model: string | ApiframeModel,
+    params: ApiframeParams = {},
     referenceUrl?: string
   ): Promise<MediaGenerationResult> => {
     if (isGenerating) {
@@ -44,16 +45,16 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
       let result;
       
       if (mediaType === 'image') {
-        result = await apiframeService.generateImage(prompt, model as string, params);
+        result = await apiframeService.generateImage(prompt, model as ApiframeModel, params);
       } else if (mediaType === 'video') {
-        result = await apiframeService.generateVideo(prompt, model as string, params, referenceUrl);
+        result = await apiframeService.generateVideo(prompt, model as ApiframeModel, params, referenceUrl);
       } else if (mediaType === 'audio') {
-        result = await apiframeService.generateAudio(prompt, model as string, params);
+        result = await apiframeService.generateAudio(prompt, model as ApiframeModel, params);
       } else {
         throw new Error(`Unsupported media type: ${mediaType}`);
       }
       
-      if (!result.success) {
+      if (!result.success && !result.taskId) {
         throw new Error(result.error || 'Failed to generate media');
       }
       
@@ -139,7 +140,11 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
             }
             
             setIsGenerating(false);
-            return status;
+            return {
+              success: true,
+              taskId,
+              mediaUrl: status.mediaUrl
+            };
           } else if (status.error) {
             // Task failed
             clearInterval(poll);

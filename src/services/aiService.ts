@@ -1,9 +1,9 @@
-
 import { tokenService } from './tokenService';
 import { openRouterService, OpenRouterChatMessage, OpenRouterChatParams } from './openRouterService';
 import { apiframeService } from './apiframeService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { ApiframeModel } from '@/types/apiframeGeneration';
 
 // Define the types of AI models we can interact with
 export type AIModelType = 'openrouter' | 'apiframe' | 'local';
@@ -55,6 +55,7 @@ export interface MediaGenerationResult {
   mediaUrl?: string;
   taskId?: string;
   error?: string;
+  status?: string;
 }
 
 /**
@@ -275,26 +276,49 @@ export const aiService = {
       
       // Route to appropriate service based on model ID and media type
       if (apiframeService.isApiKeyConfigured()) {
+        let result;
+        
         switch (params.type) {
           case 'image':
-            return await apiframeService.generateImage(
+            result = await apiframeService.generateImage(
               params.prompt, 
-              params.modelId, 
+              params.modelId as ApiframeModel, 
               params.additionalParams || {}
             );
+            return {
+              success: true,
+              taskId: result.taskId,
+              status: result.status,
+              mediaUrl: result.mediaUrl,
+              error: result.error
+            };
           case 'video':
-            return await apiframeService.generateVideo(
+            result = await apiframeService.generateVideo(
               params.prompt, 
-              params.modelId, 
+              params.modelId as ApiframeModel, 
               params.additionalParams || {}, 
               params.referenceUrl
             );
+            return {
+              success: true,
+              taskId: result.taskId,
+              status: result.status,
+              mediaUrl: result.mediaUrl,
+              error: result.error
+            };
           case 'audio':
-            return await apiframeService.generateAudio(
+            result = await apiframeService.generateAudio(
               params.prompt, 
-              params.modelId, 
+              params.modelId as ApiframeModel, 
               params.additionalParams || {}
             );
+            return {
+              success: true,
+              taskId: result.taskId,
+              status: result.status,
+              mediaUrl: result.mediaUrl,
+              error: result.error
+            };
           default:
             throw new Error(`Unsupported media type: ${params.type}`);
         }
@@ -303,7 +327,10 @@ export const aiService = {
       throw new Error(`No configuration found for ${params.type} generation`);
     } catch (err) {
       console.error(`[AIService] Error generating ${params.type}:`, err);
-      throw err;
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err)
+      };
     }
   },
   
@@ -320,11 +347,15 @@ export const aiService = {
         success: true,
         taskId: result.taskId,
         mediaUrl: result.mediaUrl,
-        error: result.error
+        error: result.error,
+        status: result.status
       };
     } catch (err) {
       console.error('[AIService] Error checking task status:', err);
-      throw err;
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : String(err)
+      };
     }
   }
 };
