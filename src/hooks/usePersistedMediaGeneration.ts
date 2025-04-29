@@ -6,6 +6,7 @@ import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { useMediaCache, CachedMedia } from '@/hooks/useMediaCache';
 import { Task as TaskManagerTask } from '@/hooks/useTaskManager';
 import { Task as ApiframeTask } from '@/hooks/apiframe/useTaskState';
+import { useMediaTelemetry } from '@/hooks/useMediaTelemetry';
 
 interface PersistedMediaGenerationOptions {
   showToasts?: boolean;
@@ -14,6 +15,7 @@ interface PersistedMediaGenerationOptions {
   onError?: (error: string) => void;
   useCaching?: boolean;
   skipCacheForModels?: string[];
+  useTelemetry?: boolean;
 }
 
 /**
@@ -26,11 +28,21 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     onComplete,
     onError,
     useCaching = true,
-    skipCacheForModels = []
+    skipCacheForModels = [],
+    useTelemetry = true
   } = options;
   
   const [persistedTaskId, setPersistedTaskId] = useState<string | null>(null);
   const [usedCachedMedia, setUsedCachedMedia] = useState<boolean>(false);
+  
+  // Add telemetry
+  const { 
+    trackGeneration, 
+    trackCacheEvent, 
+    startMeasurement 
+  } = useMediaTelemetry({
+    enabled: useTelemetry
+  });
   
   const {
     persistTask,
@@ -76,6 +88,18 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
         });
       }
       
+      // Track generation completion
+      if (useTelemetry && currentTask) {
+        trackGeneration(
+          'complete',
+          currentTask.type as any,
+          currentTask.model,
+          currentTask.id,
+          { mediaUrl },
+          currentTask.metadata?.generationTime
+        );
+      }
+      
       // Cache the media if it's not from cache already
       if (useCaching && currentTask && !usedCachedMedia) {
         cacheMedia(
@@ -101,6 +125,17 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
         });
       }
       
+      // Track generation error
+      if (useTelemetry && currentTask) {
+        trackGeneration(
+          'error',
+          currentTask.type as any,
+          currentTask.model,
+          currentTask.id,
+          { error }
+        );
+      }
+      
       if (onError) {
         onError(error);
       }
@@ -117,12 +152,20 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     params: any = {},
     referenceUrl?: string
   ) => {
+    // Start measuring generation time
+    const endMeasurement = useTelemetry ? startMeasurement('media_generation') : null;
+    
     // Check cache first if enabled
     if (useCaching && isCacheInitialized && !skipCacheForModels.includes(model)) {
       const cachedMedia = findCachedMedia(prompt, model, params);
       
       if (cachedMedia && cachedMedia.url) {
         console.log(`[usePersistedMediaGeneration] Using cached media:`, cachedMedia);
+        
+        // Track cache hit
+        if (useTelemetry) {
+          trackCacheEvent('hit', type, model, prompt);
+        }
         
         // Create a persisted task for the cached media
         const taskId = uuidv4(); // Generate a fake task ID
@@ -154,8 +197,21 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
           onComplete(cachedMedia.url, id);
         }
         
+        // Finish measuring
+        if (endMeasurement) {
+          endMeasurement({ cacheHit: true, type, model }, type);
+        }
+        
         return id;
+      } else if (useTelemetry) {
+        // Track cache miss
+        trackCacheEvent('miss', type, model, prompt);
       }
+    }
+    
+    // Track generation start
+    if (useTelemetry) {
+      trackGeneration('start', type, model, '', { prompt, params, referenceUrl });
     }
     
     // Generate the media with the base hook if no cache hit
@@ -179,12 +235,40 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     
     setPersistedTaskId(id);
     
+    // Add generation time tracking
+    if (currentTask) {
+      currentTask.metadata = {
+        ...currentTask.metadata,
+        generationStartTime: Date.now()
+      };
+    }
+    
     return id;
-  }, [generateMediaBase, persistTask, useCaching, findCachedMedia, isCacheInitialized, skipCacheForModels, onProgress, onComplete]);
+  }, [
+    generateMediaBase, 
+    persistTask, 
+    useCaching, 
+    findCachedMedia, 
+    isCacheInitialized, 
+    skipCacheForModels, 
+    onProgress, 
+    onComplete, 
+    trackGeneration,
+    trackCacheEvent,
+    startMeasurement,
+    useTelemetry
+  ]);
   
   // Update persisted task when currentTask changes
   useEffect(() => {
     if (persistedTaskId && currentTask && !usedCachedMedia) {
+      // Calculate generation time if completed
+      if (currentTask.status === 'completed' && 
+          currentTask.metadata?.generationStartTime && 
+          !currentTask.metadata?.generationTime) {
+        currentTask.metadata.generationTime = Date.now() - currentTask.metadata.generationStartTime;
+      }
+      
       // Map the TaskManager Task to the format expected by updateTaskFromStatus
       const apiframeTaskFormat: Partial<ApiframeTask> = {
         taskId: currentTask.id, // Use id from TaskManager as taskId

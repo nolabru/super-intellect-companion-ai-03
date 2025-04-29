@@ -17,6 +17,7 @@ import AdminPanel from "./pages/AdminPanel";
 import NewsFeed from "./pages/NewsFeed";
 import PostDetail from "./pages/PostDetail";
 import ServicesConfig from "./pages/ServicesConfig";
+import MediaAnalytics from "./pages/MediaAnalytics";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/feed" element={<NewsFeed />} />
                 <Route path="/feed/:postId" element={<PostDetail />} />
                 <Route path="/services" element={<ServicesConfig />} />
+                <Route path="/analytics" element={<MediaAnalytics />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
