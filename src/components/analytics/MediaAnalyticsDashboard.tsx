@@ -107,8 +107,10 @@ const MediaAnalyticsDashboard = () => {
     } else if (period === 'all') {
       // For "all", include days from the oldest generation to today
       if (data.length > 0) {
+        // Fix: Convert date strings to timestamps for comparison
         const dates = data.map(item => new Date(item.created_at).getTime());
         const oldestDate = new Date(Math.min(...dates));
+        // Fix: Use getTime() for calculating the difference in milliseconds
         const diffTime = Math.abs(today.getTime() - oldestDate.getTime());
         daysToInclude = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       }
@@ -134,10 +136,10 @@ const MediaAnalyticsDashboard = () => {
       date,
       count
     })).sort((a, b) => {
-      // Convert string dates to timestamps for comparison
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dateA.getTime() - dateB.getTime();
+      // Fix: Convert string dates to timestamps for comparison
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return dateA - dateB;
     });
     
     return result;

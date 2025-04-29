@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   MessageSquare,
   Newspaper,
+  BarChart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   const navigateToHome = () => {
     navigate('/');
+  };
+
+  const navigateToAnalytics = () => {
+    navigate('/analytics');
   };
 
   return (
@@ -92,6 +97,17 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
             </div>
           </Button>
         ))}
+        
+        <Button
+          variant="ghost"
+          className="w-full justify-start mb-1 text-white/70 hover:text-white hover:bg-white/10"
+          onClick={navigateToAnalytics}
+        >
+          <div className="flex items-center">
+            <BarChart className="h-5 w-5" />
+            {isOpen && <span className="ml-3">Analytics</span>}
+          </div>
+        </Button>
         
         <Button
           variant="ghost"

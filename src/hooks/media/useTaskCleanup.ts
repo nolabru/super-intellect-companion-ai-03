@@ -1,6 +1,7 @@
 
 import { useEffect, useRef } from 'react';
 import { UseMediaGenerationOptions } from '@/types/mediaGeneration';
+import { trackMediaEvent } from '@/services/mediaAnalyticsService';
 
 export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
   const abortControllers = useRef<Record<string, AbortController>>({});
@@ -17,6 +18,15 @@ export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
         }
       });
       
+      // Track cancellation events for any active tasks
+      Object.keys(abortControllers.current).forEach(taskId => {
+        trackMediaEvent({
+          eventType: 'generation_canceled',
+          mediaType: 'image', // Default type, ideally we'd store the actual type
+          taskId
+        });
+      });
+      
       // Clear all intervals
       Object.values(statusCheckIntervals.current).forEach(intervalId => {
         clearInterval(intervalId);
@@ -29,4 +39,3 @@ export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
     statusCheckIntervals: statusCheckIntervals.current
   };
 }
-

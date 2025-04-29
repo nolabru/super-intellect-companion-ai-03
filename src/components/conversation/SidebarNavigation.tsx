@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Newspaper, Image, Brain, Coins } from 'lucide-react';
+import { Newspaper, Image, Brain, Coins, BarChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,6 +30,11 @@ const SidebarNavigation: React.FC = () => {
       path: '/feed', 
       label: 'Newsletter',
       icon: <Newspaper className="h-4 w-4 mr-2" />
+    },
+    { 
+      path: '/analytics', 
+      label: 'Analytics',
+      icon: <BarChart className="h-4 w-4 mr-2" />
     },
   ];
   
