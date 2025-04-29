@@ -75,45 +75,6 @@ export type Database = {
         }
         Relationships: []
       }
-      media_analytics: {
-        Row: {
-          created_at: string | null
-          details: Json | null
-          duration: number | null
-          event_type: string
-          id: string
-          media_type: string | null
-          metadata: Json | null
-          model_id: string | null
-          task_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          details?: Json | null
-          duration?: number | null
-          event_type: string
-          id?: string
-          media_type?: string | null
-          metadata?: Json | null
-          model_id?: string | null
-          task_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          details?: Json | null
-          duration?: number | null
-          event_type?: string
-          id?: string
-          media_type?: string | null
-          metadata?: Json | null
-          model_id?: string | null
-          task_id?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       media_gallery: {
         Row: {
           created_at: string
