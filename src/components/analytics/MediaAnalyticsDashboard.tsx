@@ -25,7 +25,7 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
   userId,
   className
 }) => {
-  // Date range for filtering
+  // Date range for filtering - use a proper calculation for 7 days ago
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
     to: new Date()

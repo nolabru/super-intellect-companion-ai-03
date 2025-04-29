@@ -217,12 +217,16 @@ export const mediaTelemetryService = {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       
+      // Get Supabase URL and key using available properties
+      const supabaseUrl = "https://vygluorjwehcdigzxbaa.supabase.co";
+      const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Z2x1b3Jqd2VoY2RpZ3p4YmFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwNDI2NjcsImV4cCI6MjA1OTYxODY2N30.uuV_JYIUKuv1rV3-MicDiTT28azOWdhJoVjpHMfzVGg";
+      
       // Construct URL using the project URL
-      const url = `${supabase.supabaseUrl}/rest/v1/media_analytics?${params.toString()}&order=created_at.desc`;
+      const url = `${supabaseUrl}/rest/v1/media_analytics?${params.toString()}&order=created_at.desc`;
       
       const response = await fetch(url, {
         headers: {
-          'apikey': supabase.supabaseKey,
+          'apikey': supabaseKey,
           'Authorization': token ? `Bearer ${token}` : '',
           'Content-Type': 'application/json'
         }
