@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
@@ -132,7 +131,7 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
         const dateA = new Date(currentYear, parseInt(datePartsA[0], 10) - 1, parseInt(datePartsA[1], 10));
         const dateB = new Date(currentYear, parseInt(datePartsB[0], 10) - 1, parseInt(datePartsB[1], 10));
         
-        // Compare the timestamps (numeric values) of the dates
+        // Use getTime() to get numeric values for comparison
         return dateA.getTime() - dateB.getTime();
       });
   };
