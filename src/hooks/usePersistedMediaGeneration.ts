@@ -115,13 +115,22 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     // Map the TaskManager Task to the format expected by updateTaskFromStatus
     const apiframeTaskFormat: Partial<ApiframeTask> = {
       taskId: currentTask.id, // Use id from TaskManager as taskId
-      status: currentTask.status,
+      status: mapTaskStatus(currentTask.status), // Map the status to compatible format
       progress: currentTask.progress || 0,
       mediaUrl: currentTask.result, // Map result to mediaUrl
       error: currentTask.error
     };
     
     updateTaskFromStatus(persistedTaskId, apiframeTaskFormat as ApiframeTask);
+  }
+  
+  // Helper function to map TaskManager status to ApiframeTask status
+  function mapTaskStatus(status: TaskManagerTask['status']): ApiframeTask['status'] {
+    // Convert "canceled" to "failed" since ApiframeTask doesn't have "canceled"
+    if (status === 'canceled') {
+      return 'failed';
+    }
+    return status;
   }
   
   return {
