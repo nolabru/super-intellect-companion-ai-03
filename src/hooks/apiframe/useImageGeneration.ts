@@ -22,7 +22,7 @@ export function useImageGeneration() {
       const apiframeModel = getApiframeModelId(model) as ApiframeImageModel;
       console.log(`[useImageGeneration] Mapped model ID: ${apiframeModel}`);
       
-      // Double-check we're properly calling the correct function with the right parameters
+      // Use the refactored generateMedia method
       const result = await apiframeGeneration.generateMedia(prompt, 'image', apiframeModel, params);
       console.log('[useImageGeneration] Generation result:', result);
       return result;

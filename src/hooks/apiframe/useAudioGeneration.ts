@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { useApiframeGeneration } from '../useApiframeGeneration';
 import { ApiframeParams, ApiframeAudioModel } from '@/types/apiframeGeneration';
@@ -21,7 +22,7 @@ export function useAudioGeneration() {
       const apiframeModel = getApiframeModelId(model) as ApiframeAudioModel;
       console.log(`[useAudioGeneration] Mapped model ID: ${apiframeModel}`);
       
-      // Call the generateMedia function with the correct parameters
+      // Use the refactored generateMedia method
       const result = await apiframeGeneration.generateMedia(
         prompt, 
         'audio', 

@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { useApiframeGeneration } from '../useApiframeGeneration';
 import { ApiframeParams, ApiframeVideoModel } from '@/types/apiframeGeneration';
@@ -22,7 +23,7 @@ export function useVideoGeneration() {
       const apiframeModel = getApiframeModelId(model) as ApiframeVideoModel;
       console.log(`[useVideoGeneration] Mapped model ID: ${apiframeModel}`);
       
-      // Call the generateMedia function with the correct parameters
+      // Use the refactored generateMedia method
       const result = await apiframeGeneration.generateMedia(
         prompt, 
         'video', 

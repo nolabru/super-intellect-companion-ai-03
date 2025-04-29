@@ -35,7 +35,7 @@ export function useAudioStreamGeneration() {
         }
       };
       
-      // Call the generateMedia function with the correct parameters
+      // Use the refactored generateMedia method
       const result = await apiframeGeneration.generateMedia(
         prompt, 
         'audio', 

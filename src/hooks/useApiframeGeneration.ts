@@ -1,12 +1,15 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { apiframeService } from '@/services/apiframeService';
 import { aiService } from '@/services/aiService';
 import { MediaGenerationResult } from '@/services/mediaService';
 import { UseMediaGenerationOptions, GenerationTask } from '@/types/mediaGeneration';
 import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 
+/**
+ * Hook for media generation using APIframe services
+ * @param options Configuration options for media generation
+ */
 export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentTask, setCurrentTask] = useState<GenerationTask | null>(null);
@@ -19,6 +22,9 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
     autoSaveToGallery = false 
   } = options;
 
+  /**
+   * Generate media (image, video, audio) using APIframe services
+   */
   const generateMedia = useCallback(async (
     prompt: string,
     mediaType: ApiframeMediaType,
@@ -41,18 +47,14 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
         onProgress(0);
       }
       
-      // Use the appropriate service based on media type
-      let result;
-      
-      if (mediaType === 'image') {
-        result = await apiframeService.generateImage(prompt, model as ApiframeModel, params);
-      } else if (mediaType === 'video') {
-        result = await apiframeService.generateVideo(prompt, model as ApiframeModel, params, referenceUrl);
-      } else if (mediaType === 'audio') {
-        result = await apiframeService.generateAudio(prompt, model as ApiframeModel, params);
-      } else {
-        throw new Error(`Unsupported media type: ${mediaType}`);
-      }
+      // Use aiService to handle the generation
+      const result = await aiService.generateMedia({
+        modelId: model.toString(),
+        prompt,
+        type: mediaType,
+        additionalParams: params,
+        referenceUrl
+      });
       
       if (!result.success && !result.taskId) {
         throw new Error(result.error || 'Failed to generate media');
@@ -113,8 +115,8 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
         try {
           updateProgress();
           
-          // Check the status
-          const status = await apiframeService.checkTaskStatus(taskId);
+          // Check the status using aiService
+          const status = await aiService.checkMediaTaskStatus(taskId);
           console.log(`[useApiframeGeneration] Task status:`, status);
           
           if (status.mediaUrl) {
@@ -192,6 +194,9 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
     }
   }, [isGenerating, pollingInterval, showToasts, onProgress, onComplete]);
   
+  /**
+   * Cancel the current generation task
+   */
   const cancelTask = useCallback(async (): Promise<boolean> => {
     if (!currentTask?.taskId) {
       return false;
@@ -204,8 +209,8 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
         setPollingInterval(null);
       }
       
-      // Cancel the task
-      const result = await apiframeService.cancelTask(currentTask.taskId);
+      // Cancel the task using aiService
+      const result = await aiService.cancelMediaTask(currentTask.taskId);
       
       // Reset state
       setIsGenerating(false);
@@ -227,12 +232,18 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
     }
   }, [currentTask, pollingInterval, showToasts]);
 
+  /**
+   * Configure APIframe API key
+   */
   const configureApiKey = useCallback((key: string): boolean => {
-    return apiframeService.setApiKey(key);
+    return aiService.configureApiframeKey(key);
   }, []);
 
+  /**
+   * Check if APIframe API key is configured
+   */
   const isApiKeyConfigured = useCallback((): boolean => {
-    return apiframeService.isApiKeyConfigured();
+    return aiService.isApiframeKeyConfigured();
   }, []);
   
   return {

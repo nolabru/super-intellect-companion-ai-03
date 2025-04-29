@@ -1,3 +1,4 @@
+
 import { tokenService } from './tokenService';
 import { openRouterService, OpenRouterChatMessage, OpenRouterChatParams } from './openRouterService';
 import { apiframeService } from './apiframeService';
@@ -357,5 +358,33 @@ export const aiService = {
         error: err instanceof Error ? err.message : String(err)
       };
     }
+  },
+
+  /**
+   * Cancel a media generation task
+   */
+  async cancelMediaTask(taskId: string): Promise<boolean> {
+    try {
+      console.log(`[AIService] Cancelling task ${taskId}`);
+      
+      return await apiframeService.cancelTask(taskId);
+    } catch (err) {
+      console.error('[AIService] Error cancelling task:', err);
+      return false;
+    }
+  },
+
+  /**
+   * Configure APIframe API key
+   */
+  configureApiframeKey(key: string): boolean {
+    return apiframeService.setApiKey(key);
+  },
+
+  /**
+   * Check if APIframe API key is configured
+   */
+  isApiframeKeyConfigured(): boolean {
+    return apiframeService.isApiKeyConfigured();
   }
 };
