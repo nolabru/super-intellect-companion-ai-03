@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
+import { usePersistedMediaGeneration } from '@/hooks/usePersistedMediaGeneration';
 import MediaModelSelector from './MediaModelSelector';
 import MediaProgress from './MediaProgress';
 import MediaPreview from './MediaPreview';
@@ -34,14 +34,15 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   const [params, setParams] = useState<Record<string, any>>({});
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
 
-  // Use our unified media generation hook
+  // Use our persisted media generation hook
   const {
     generateMedia,
     cancelGeneration,
     isGenerating,
     generatedMedia,
-    currentTask
-  } = useUnifiedMediaGeneration({
+    currentTask,
+    persistedTask
+  } = usePersistedMediaGeneration({
     showToasts: true,
     onComplete: (mediaUrl) => {
       if (onMediaGenerated) {
@@ -49,6 +50,10 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
       }
     }
   });
+
+  // Use the persisted task for display if available
+  const activeTask = persistedTask || currentTask;
+  const taskProgress = activeTask?.progress || 0;
 
   const handleGenerate = async () => {
     if (!prompt.trim() && !referenceUrl) return;
@@ -73,7 +78,15 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
     setReferenceUrl(url);
   };
 
-  const mediaUrl = generatedMedia?.url;
+  // Get the media URL from generated media or persisted task
+  const mediaUrl = generatedMedia?.url || persistedTask?.mediaUrl;
+
+  // Reset form when media type changes
+  useEffect(() => {
+    setPrompt('');
+    setParams({});
+    setReferenceUrl(null);
+  }, [mediaType]);
 
   return (
     <Card className="w-full max-w-3xl">
@@ -122,9 +135,9 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
           />
         </div>
         
-        {isGenerating && currentTask && (
+        {isGenerating && activeTask && (
           <MediaProgress
-            progress={currentTask.progress}
+            progress={taskProgress}
             type={mediaType}
             onCancel={cancelGeneration}
           />
