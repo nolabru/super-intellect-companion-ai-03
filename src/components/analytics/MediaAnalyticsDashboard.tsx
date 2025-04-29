@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
@@ -74,7 +73,6 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
     fetchData();
   }, [dateRange, mediaType, userId]);
   
-  // Process data for charts
   const generateMediaTypeDistribution = () => {
     const counts = analyticsData.reduce((acc, item) => {
       const mediaType = item.media_type || 'unknown';
