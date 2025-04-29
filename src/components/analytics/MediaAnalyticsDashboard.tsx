@@ -127,9 +127,11 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
         
         // Create dates using current year since we only have month and day
         const currentYear = new Date().getFullYear();
-        const dateA = new Date(currentYear, parseInt(datePartsA[0]) - 1, parseInt(datePartsA[1]));
-        const dateB = new Date(currentYear, parseInt(datePartsB[0]) - 1, parseInt(datePartsB[1]));
+        // Parse the month and day parts as numbers and create proper Date objects
+        const dateA = new Date(currentYear, parseInt(datePartsA[0], 10) - 1, parseInt(datePartsA[1], 10));
+        const dateB = new Date(currentYear, parseInt(datePartsB[0], 10) - 1, parseInt(datePartsB[1], 10));
         
+        // Compare the timestamps (numeric values) of the dates
         return dateA.getTime() - dateB.getTime();
       });
   };
