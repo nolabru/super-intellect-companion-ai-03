@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/popover";
 
 interface DateRangePickerProps {
-  value: DateRange;
-  onValueChange: (value: DateRange) => void;
+  value: DateRange | undefined;
+  onValueChange: (value: DateRange | undefined) => void;
   className?: string;
   align?: "start" | "center" | "end";
   calendarClassName?: string;

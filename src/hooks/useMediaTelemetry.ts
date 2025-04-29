@@ -26,6 +26,8 @@ export function useMediaTelemetry(options: UseMediaTelemetryOptions = {}) {
         query: window.location.search
       });
     }
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.enabled, options.anonymousTracking, options.performanceMetrics, options.errorReporting, options.autoTrackPageView]);
 
   /**

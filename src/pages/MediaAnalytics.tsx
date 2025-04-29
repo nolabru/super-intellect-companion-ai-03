@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 const MediaAnalytics: React.FC = () => {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   
   // Handle unauthorized access
-  if (!isLoading && !user) {
+  if (!user) {
     return (
       <Layout>
         <div className="container py-8">

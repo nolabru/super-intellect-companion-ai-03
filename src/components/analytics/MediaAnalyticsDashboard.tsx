@@ -12,6 +12,7 @@ import { DateRangePicker } from '@/components/ui/date-range-picker';
 import { mediaTelemetryService } from '@/services/mediaTelemetryService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
@@ -25,7 +26,7 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
   className
 }) => {
   // Date range for filtering
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
     to: new Date()
   });
@@ -49,8 +50,8 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
       
       try {
         const filters: any = {
-          startDate: dateRange.from,
-          endDate: dateRange.to
+          startDate: dateRange?.from,
+          endDate: dateRange?.to
         };
         
         if (mediaType !== 'all') {

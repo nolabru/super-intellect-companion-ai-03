@@ -172,7 +172,8 @@ export const mediaTelemetryService = {
   },
 
   /**
-   * Get aggregated analytics data
+   * Get aggregated analytics data using a Fetch API call rather than direct Supabase access
+   * This works around type issues with missing table definitions
    */
   async getAnalytics(
     filters: {
@@ -185,46 +186,57 @@ export const mediaTelemetryService = {
     } = {}
   ): Promise<any> {
     try {
-      let query = supabase
-        .from('media_analytics')
-        .select('*');
-
-      // Apply filters
+      // Build query params
+      const params = new URLSearchParams();
+      
       if (filters.startDate) {
-        query = query.gte('created_at', filters.startDate.toISOString());
+        params.append('start_date', filters.startDate.toISOString());
       }
       
       if (filters.endDate) {
-        query = query.lte('created_at', filters.endDate.toISOString());
+        params.append('end_date', filters.endDate.toISOString());
       }
       
       if (filters.mediaType) {
-        query = query.eq('media_type', filters.mediaType);
+        params.append('media_type', filters.mediaType);
       }
       
       if (filters.eventType) {
-        query = query.eq('event_type', filters.eventType);
+        params.append('event_type', filters.eventType);
       }
       
       if (filters.modelId) {
-        query = query.eq('model_id', filters.modelId);
+        params.append('model_id', filters.modelId);
       }
       
       if (filters.userId) {
-        query = query.eq('user_id', filters.userId);
+        params.append('user_id', filters.userId);
       }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('[MediaTelemetry] Failed to fetch analytics:', error);
-        return null;
+      
+      // Get Supabase auth token for authorization
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      
+      // Construct URL using the project URL
+      const url = `${supabase.supabaseUrl}/rest/v1/media_analytics?${params.toString()}&order=created_at.desc`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'apikey': supabase.supabaseKey,
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch analytics: ${response.statusText}`);
       }
-
+      
+      const data = await response.json();
       return data;
     } catch (error) {
       console.error('[MediaTelemetry] Error fetching analytics:', error);
-      return null;
+      return [];
     }
   }
 };

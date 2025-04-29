@@ -199,7 +199,7 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
         
         // Finish measuring
         if (endMeasurement) {
-          endMeasurement({ cacheHit: true, type, model }, type);
+          endMeasurement({ cacheHit: true, type, model });
         }
         
         return id;
@@ -256,7 +256,8 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     trackGeneration,
     trackCacheEvent,
     startMeasurement,
-    useTelemetry
+    useTelemetry,
+    currentTask
   ]);
   
   // Update persisted task when currentTask changes
