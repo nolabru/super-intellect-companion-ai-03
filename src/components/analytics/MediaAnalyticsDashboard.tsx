@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
@@ -120,7 +119,12 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
         date: format(new Date(date), 'MM/dd'),
         ...counts
       }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a, b) => {
+        // Convert strings to dates for proper comparison
+        const dateA = new Date(date);
+        const dateB = new Date(date);
+        return dateA.getTime() - dateB.getTime();
+      });
   };
   
   const renderSkeleton = () => (
