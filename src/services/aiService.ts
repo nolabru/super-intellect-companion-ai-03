@@ -1,12 +1,15 @@
+
 import { tokenService } from './tokenService';
 import { openRouterService, OpenRouterChatMessage, OpenRouterChatParams } from './openRouterService';
 import { apiframeService } from './apiframeService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
+// Define the types of AI models we can interact with
 export type AIModelType = 'openrouter' | 'apiframe' | 'local';
 export type AIModelRole = 'chat' | 'image' | 'video' | 'audio';
 
+// Information about an AI model
 export interface AIModelInfo {
   id: string;
   name: string;
@@ -17,6 +20,7 @@ export interface AIModelInfo {
   tokensPerRequest?: number;
 }
 
+// Parameters for chat completions
 export interface ChatCompletionParams {
   modelId: string;
   messages: OpenRouterChatMessage[];
@@ -25,6 +29,7 @@ export interface ChatCompletionParams {
   stream?: boolean;
 }
 
+// Result from a chat completion
 export interface ChatCompletionResult {
   text: string;
   modelId: string;
@@ -33,6 +38,23 @@ export interface ChatCompletionResult {
     completionTokens: number;
     totalTokens: number;
   };
+}
+
+// Parameters for media generation
+export interface MediaGenerationParams {
+  modelId: string;
+  prompt: string;
+  type: 'image' | 'video' | 'audio';
+  additionalParams?: Record<string, any>;
+  referenceUrl?: string;
+}
+
+// Result from media generation
+export interface MediaGenerationResult {
+  success: boolean;
+  mediaUrl?: string;
+  taskId?: string;
+  error?: string;
 }
 
 /**
@@ -224,6 +246,84 @@ export const aiService = {
       throw new Error(`Streaming not supported for model: ${params.modelId}`);
     } catch (err) {
       console.error('[AIService] Error in streamChatCompletion:', err);
+      throw err;
+    }
+  },
+
+  /**
+   * Generate media (image, video, audio) using appropriate service
+   */
+  async generateMedia(
+    params: MediaGenerationParams
+  ): Promise<MediaGenerationResult> {
+    try {
+      console.log(`[AIService] Generating ${params.type} with model ${params.modelId}`);
+
+      // Check if user has enough tokens
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (userId) {
+        const tokenCheck = await tokenService.hasEnoughTokens(userId, params.modelId, params.type);
+        
+        if (!tokenCheck.hasEnough) {
+          toast.error('Not enough tokens', {
+            description: `This operation requires ${tokenCheck.required} tokens. You have ${tokenCheck.remaining} remaining.`
+          });
+          
+          throw new Error('Not enough tokens for this operation');
+        }
+      }
+      
+      // Route to appropriate service based on model ID and media type
+      if (apiframeService.isApiKeyConfigured()) {
+        switch (params.type) {
+          case 'image':
+            return await apiframeService.generateImage(
+              params.prompt, 
+              params.modelId, 
+              params.additionalParams || {}
+            );
+          case 'video':
+            return await apiframeService.generateVideo(
+              params.prompt, 
+              params.modelId, 
+              params.additionalParams || {}, 
+              params.referenceUrl
+            );
+          case 'audio':
+            return await apiframeService.generateAudio(
+              params.prompt, 
+              params.modelId, 
+              params.additionalParams || {}
+            );
+          default:
+            throw new Error(`Unsupported media type: ${params.type}`);
+        }
+      }
+      
+      throw new Error(`No configuration found for ${params.type} generation`);
+    } catch (err) {
+      console.error(`[AIService] Error generating ${params.type}:`, err);
+      throw err;
+    }
+  },
+  
+  /**
+   * Check the status of a media generation task
+   */
+  async checkMediaTaskStatus(taskId: string): Promise<MediaGenerationResult> {
+    try {
+      console.log(`[AIService] Checking status of task ${taskId}`);
+      
+      const result = await apiframeService.checkTaskStatus(taskId);
+      
+      return {
+        success: true,
+        taskId: result.taskId,
+        mediaUrl: result.mediaUrl,
+        error: result.error
+      };
+    } catch (err) {
+      console.error('[AIService] Error checking task status:', err);
       throw err;
     }
   }

@@ -1,302 +1,241 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { apiframeService } from '@/services/apiframeService';
-import { UseMediaGenerationOptions, ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
-import { useTaskState } from './apiframe/useTaskState';
-import { useTaskCleanup } from './apiframe/useTaskCleanup';
-import { calculateProgress } from '@/utils/apiframeProgress';
+import { aiService } from '@/services/aiService';
+import { MediaGenerationResult } from '@/services/mediaService';
+import { UseMediaGenerationOptions, GenerationTask } from '@/types/mediaGeneration';
+import { ApiframeMediaType, ApiframeModel } from '@/types/apiframeGeneration';
 
-/**
- * Hook for generating media through APIframe.ai
- */
 export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean>(apiframeService.isApiKeyConfigured());
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentTask, setCurrentTask] = useState<GenerationTask | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   
-  const {
-    tasks,
-    currentTaskId,
-    currentTask,
-    updateTask,
-    registerTask,
-    clearTasks
-  } = useTaskState();
-  
-  const { abortControllers, statusCheckIntervals } = useTaskCleanup(options);
-
-  const configureApiKey = useCallback((apiKey: string): boolean => {
-    const result = apiframeService.setApiKey(apiKey);
-    setApiKeyConfigured(result);
-    return result;
-  }, []);
-
-  const isApiKeyConfigured = useCallback((): boolean => {
-    return apiframeService.isApiKeyConfigured();
-  }, []);
+  const { 
+    showToasts = true, 
+    onProgress, 
+    onComplete, 
+    autoSaveToGallery = false 
+  } = options;
 
   const generateMedia = useCallback(async (
     prompt: string,
     mediaType: ApiframeMediaType,
     model: ApiframeModel,
-    params: ApiframeParams = {},
+    params: Record<string, any> = {},
     referenceUrl?: string
-  ) => {
-    try {
-      console.log(`[useApiframeGeneration] Starting ${mediaType} generation with model ${model}`);
-      
-      if (!isApiKeyConfigured()) {
-        toast.error('API key da APIframe não configurada', {
-          description: 'Configure sua chave de API nas configurações'
-        });
-        return {
-          success: false,
-          error: 'API key not configured'
-        };
+  ): Promise<MediaGenerationResult> => {
+    if (isGenerating) {
+      if (showToasts) {
+        toast.error('Another generation is already in progress');
       }
-      
+      throw new Error('Another generation is already in progress');
+    }
+
+    try {
       setIsGenerating(true);
       
-      if (options.showToasts !== false) {
-        toast.info(`Iniciando geração de ${mediaType === 'image' ? 'imagem' : mediaType === 'video' ? 'vídeo' : 'áudio'}...`);
+      // Start the progress indicator
+      if (onProgress) {
+        onProgress(0);
       }
       
-      // Create controller for possible cancelation
-      const controller = new AbortController();
-      
+      // Use the appropriate service based on media type
       let result;
-      try {
-        if (mediaType === 'image') {
-          result = await apiframeService.generateImage(prompt, model, params);
-        } else if (mediaType === 'video') {
-          result = await apiframeService.generateVideo(prompt, model, params, referenceUrl);
-        } else {
-          result = await apiframeService.generateAudio(prompt, model, params, referenceUrl);
-        }
-      } catch (err) {
-        console.error(`[useApiframeGeneration] Error in APIframe service call:`, err);
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        
-        if (options.showToasts !== false) {
-          toast.error(`Erro ao gerar ${mediaType}`, { description: errorMsg });
-        }
-        
-        return {
-          success: false,
-          error: errorMsg
-        };
+      
+      if (mediaType === 'image') {
+        result = await apiframeService.generateImage(prompt, model as string, params);
+      } else if (mediaType === 'video') {
+        result = await apiframeService.generateVideo(prompt, model as string, params, referenceUrl);
+      } else if (mediaType === 'audio') {
+        result = await apiframeService.generateAudio(prompt, model as string, params);
+      } else {
+        throw new Error(`Unsupported media type: ${mediaType}`);
       }
       
-      if (result && result.taskId) {
-        const taskId = result.taskId;
-        abortControllers[taskId] = controller;
-        
-        // Map API status to our allowed status values
-        const taskStatus = mapApiStatus(result.status || 'pending');
-        
-        registerTask(taskId, {
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate media');
+      }
+      
+      const taskId = result.taskId;
+      if (!taskId) {
+        throw new Error('No task ID received');
+      }
+      
+      // Update the current task
+      setCurrentTask({
+        taskId,
+        progress: 0,
+        status: 'pending'
+      });
+      
+      if (showToasts) {
+        toast.success('Generation started', {
+          description: `Your ${mediaType} is being generated. This might take a moment.`
+        });
+      }
+      
+      // If we already have a mediaUrl in the result, we can return it
+      if (result.mediaUrl) {
+        setCurrentTask({
           taskId,
-          progress: 0,
-          status: taskStatus,
-          mediaUrl: result.mediaUrl,
-          error: result.error
+          progress: 100,
+          status: 'completed',
+          mediaUrl: result.mediaUrl
         });
         
-        if (taskStatus === 'completed' && result.mediaUrl) {
-          handleTaskCompletion(taskId, result.mediaUrl);
-          return {
-            success: true,
-            mediaUrl: result.mediaUrl,
-            taskId: result.taskId
-          };
+        if (onProgress) onProgress(100);
+        if (onComplete) onComplete(result);
+        
+        setIsGenerating(false);
+        return result;
+      }
+      
+      // Otherwise, set up polling for the task status
+      let progress = 10;
+      const updateProgress = () => {
+        // Simulate progress until we get the real status
+        if (progress < 90) {
+          progress += 5;
+          if (onProgress) onProgress(progress);
+          setCurrentTask(prev => prev ? { ...prev, progress } : null);
         }
-        
-        // Set up status polling for pending tasks
-        setupStatusPolling(taskId);
-        
-        return {
-          success: true,
-          taskId: result.taskId
-        };
+      };
+      
+      // Clear any existing polling
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
       }
       
-      const errorMsg = 'Nenhum ID de tarefa retornado pela API';
-      console.error(`[useApiframeGeneration] ${errorMsg}`);
+      // Set up polling
+      const poll = setInterval(async () => {
+        try {
+          updateProgress();
+          
+          // Check the status
+          const status = await apiframeService.checkTaskStatus(taskId);
+          console.log(`[useApiframeGeneration] Task status:`, status);
+          
+          if (status.mediaUrl) {
+            // Task completed successfully
+            clearInterval(poll);
+            setPollingInterval(null);
+            
+            if (onProgress) onProgress(100);
+            
+            setCurrentTask({
+              taskId,
+              progress: 100,
+              status: 'completed',
+              mediaUrl: status.mediaUrl
+            });
+            
+            if (onComplete) {
+              onComplete({
+                success: true,
+                mediaUrl: status.mediaUrl,
+                taskId
+              });
+            }
+            
+            setIsGenerating(false);
+            return status;
+          } else if (status.error) {
+            // Task failed
+            clearInterval(poll);
+            setPollingInterval(null);
+            setIsGenerating(false);
+            
+            setCurrentTask({
+              taskId,
+              progress: 0,
+              status: 'failed',
+              error: status.error
+            });
+            
+            throw new Error(status.error);
+          }
+        } catch (err) {
+          console.error(`[useApiframeGeneration] Error polling task status:`, err);
+          
+          clearInterval(poll);
+          setPollingInterval(null);
+          setIsGenerating(false);
+          
+          throw err;
+        }
+      }, 3000);
       
-      if (options.showToasts !== false) {
-        toast.error(`Erro ao iniciar geração: ${errorMsg}`);
-      }
+      setPollingInterval(poll);
       
+      // Return the initial result
       return {
-        success: false,
-        error: errorMsg
+        success: true,
+        taskId,
       };
     } catch (err) {
-      console.error('[useApiframeGeneration] Error generating media:', err);
-      
-      if (options.showToasts !== false) {
-        toast.error(`Erro ao gerar mídia: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
-      }
-      
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'Erro desconhecido'
-      };
-    } finally {
+      console.error(`[useApiframeGeneration] Error generating ${mediaType}:`, err);
       setIsGenerating(false);
-    }
-  }, [isApiKeyConfigured, options, registerTask]);
-
-  // Helper function to map API status strings to our allowed status values
-  const mapApiStatus = (status: string): 'pending' | 'processing' | 'completed' | 'failed' => {
-    switch (status) {
-      case 'completed':
-      case 'succeeded':
-        return 'completed';
-      case 'processing':
-        return 'processing';
-      case 'failed':
-      case 'error':
-        return 'failed';
-      default:
-        return 'pending';
-    }
-  };
-
-  const handleTaskCompletion = useCallback((taskId: string, mediaUrl: string) => {
-    updateTask(taskId, {
-      progress: 100,
-      status: 'completed',
-      mediaUrl
-    });
-    
-    if (options.onProgress) {
-      options.onProgress(100);
-    }
-    
-    if (options.onComplete) {
-      options.onComplete({
-        success: true,
-        mediaUrl,
-        taskId
-      });
-    }
-    
-    if (options.showToasts !== false) {
-      toast.success('Mídia gerada com sucesso!');
-    }
-  }, [options, updateTask]);
-
-  const setupStatusPolling = useCallback((taskId: string) => {
-    const checkStatusInterval = setInterval(async () => {
-      if (abortControllers[taskId]?.signal.aborted) {
-        clearInterval(statusCheckIntervals[taskId]);
-        delete statusCheckIntervals[taskId];
-        return;
-      }
-
-      try {
-        const statusResult = await apiframeService.checkTaskStatus(taskId);
-        
-        // Map API status to our allowed status values
-        const mappedStatus = mapApiStatus(statusResult.status || 'pending');
-        
-        updateTask(taskId, {
-          status: mappedStatus,
-          mediaUrl: statusResult.mediaUrl,
-          error: statusResult.error,
-          progress: calculateProgress(tasks[taskId]?.progress || 0, mappedStatus)
+      
+      if (showToasts) {
+        toast.error(`Error generating ${mediaType}`, {
+          description: err instanceof Error ? err.message : 'Unknown error'
         });
-        
-        if (options.onProgress) {
-          options.onProgress(
-            mappedStatus === 'completed' ? 100 : 
-            calculateProgress(tasks[taskId]?.progress || 0, mappedStatus)
-          );
-        }
-        
-        if (mappedStatus === 'completed' || mappedStatus === 'failed') {
-          clearInterval(statusCheckIntervals[taskId]);
-          delete statusCheckIntervals[taskId];
-          
-          if (mappedStatus === 'completed' && statusResult.mediaUrl) {
-            handleTaskCompletion(taskId, statusResult.mediaUrl);
-          } else if (options.showToasts !== false) {
-            toast.error(`Erro ao gerar mídia: ${statusResult.error || 'Erro desconhecido'}`);
-          }
-        }
-      } catch (err) {
-        console.error('[useApiframeGeneration] Error in status check:', err);
       }
-    }, 3000);
+      
+      throw err;
+    }
+  }, [isGenerating, pollingInterval, showToasts, onProgress, onComplete]);
+  
+  const cancelTask = useCallback(async (): Promise<boolean> => {
+    if (!currentTask?.taskId) {
+      return false;
+    }
     
-    statusCheckIntervals[taskId] = checkStatusInterval as unknown as number;
-    
-    // Auto-clear interval after 10 minutes
-    setTimeout(() => {
-      if (statusCheckIntervals[taskId]) {
-        clearInterval(statusCheckIntervals[taskId]);
-        delete statusCheckIntervals[taskId];
-        
-        updateTask(taskId, {
-          status: 'failed',
-          error: 'Timeout: Task took too long to complete'
-        });
-        
-        if (options.showToasts !== false) {
-          toast.error('Tempo esgotado para geração de mídia', {
-            description: 'A tarefa demorou muito tempo e será verificada em segundo plano'
-          });
-        }
-      }
-    }, 10 * 60 * 1000);
-  }, [tasks, options, updateTask]);
-
-  const cancelTask = useCallback(async (taskId: string): Promise<boolean> => {
     try {
-      if (!taskId) return false;
-      
-      console.log(`[useApiframeGeneration] Cancelling task: ${taskId}`);
-      
-      if (abortControllers[taskId]) {
-        abortControllers[taskId].abort();
-        delete abortControllers[taskId];
+      // Clear polling
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
       }
       
-      if (statusCheckIntervals[taskId]) {
-        clearInterval(statusCheckIntervals[taskId]);
-        delete statusCheckIntervals[taskId];
-      }
+      // Cancel the task
+      const result = await apiframeService.cancelTask(currentTask.taskId);
       
-      const result = await apiframeService.cancelTask(taskId);
+      // Reset state
+      setIsGenerating(false);
+      setCurrentTask(prev => prev ? { ...prev, status: 'failed', error: 'Canceled by user' } : null);
       
-      if (result) {
-        updateTask(taskId, {
-          status: 'failed',
-          error: 'Tarefa cancelada pelo usuário'
-        });
-        
-        if (options.showToasts !== false) {
-          toast.info('Tarefa de geração cancelada');
-        }
+      if (showToasts) {
+        toast.info('Generation canceled');
       }
       
       return result;
     } catch (err) {
-      console.error('[useApiframeGeneration] Error cancelling task:', err);
+      console.error('[useApiframeGeneration] Error canceling task:', err);
+      
+      if (showToasts) {
+        toast.error('Failed to cancel generation');
+      }
+      
       return false;
     }
-  }, [options, updateTask]);
+  }, [currentTask, pollingInterval, showToasts]);
 
+  const configureApiKey = useCallback((key: string): boolean => {
+    return apiframeService.setApiKey(key);
+  }, []);
+
+  const isApiKeyConfigured = useCallback((): boolean => {
+    return apiframeService.isApiKeyConfigured();
+  }, []);
+  
   return {
     generateMedia,
     cancelTask,
-    clearTasks,
-    configureApiKey,
-    isApiKeyConfigured,
     isGenerating,
-    tasks,
     currentTask,
-    apiKeyConfigured
+    configureApiKey,
+    isApiKeyConfigured
   };
 }
