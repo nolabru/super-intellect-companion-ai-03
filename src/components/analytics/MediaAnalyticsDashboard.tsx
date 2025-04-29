@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
@@ -120,16 +121,22 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
         ...counts
       }))
       .sort((a, b) => {
-        // Convert MM/dd format strings to Date objects for proper comparison
+        // Parse the date strings into month and day components
         const datePartsA = a.date.split('/');
         const datePartsB = b.date.split('/');
         
-        // Create dates using current year since we only have month and day
+        // Create proper Date objects for comparison
         const currentYear = new Date().getFullYear();
         
-        // Parse the month and day parts as numbers and create proper Date objects
-        const dateA = new Date(currentYear, parseInt(datePartsA[0], 10) - 1, parseInt(datePartsA[1], 10));
-        const dateB = new Date(currentYear, parseInt(datePartsB[0], 10) - 1, parseInt(datePartsB[1], 10));
+        // Parse strings to numbers using parseInt with radix
+        const monthA = parseInt(datePartsA[0], 10);
+        const dayA = parseInt(datePartsA[1], 10);
+        const monthB = parseInt(datePartsB[0], 10);
+        const dayB = parseInt(datePartsB[1], 10);
+        
+        // Create Date objects for comparison
+        const dateA = new Date(currentYear, monthA - 1, dayA);
+        const dateB = new Date(currentYear, monthB - 1, dayB);
         
         // Use getTime() to get numeric values for comparison
         return dateA.getTime() - dateB.getTime();
