@@ -121,9 +121,15 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
         ...counts
       }))
       .sort((a, b) => {
-        // Convert strings to dates for proper comparison
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
+        // Convert MM/dd format strings to Date objects for proper comparison
+        const datePartsA = a.date.split('/');
+        const datePartsB = b.date.split('/');
+        
+        // Create dates using current year since we only have month and day
+        const currentYear = new Date().getFullYear();
+        const dateA = new Date(currentYear, parseInt(datePartsA[0]) - 1, parseInt(datePartsA[1]));
+        const dateB = new Date(currentYear, parseInt(datePartsB[0]) - 1, parseInt(datePartsB[1]));
+        
         return dateA.getTime() - dateB.getTime();
       });
   };
