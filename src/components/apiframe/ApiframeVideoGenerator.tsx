@@ -87,7 +87,10 @@ const ApiframeVideoGenerator: React.FC<ApiframeVideoGeneratorProps> = ({ onVideo
       aspectRatio: "16:9"
     };
     
-    const result = await generateVideo(prompt, selectedModel, params, referenceImageUrl || undefined);
+    // FIX: Pass the referenceImageUrl as part of the options object
+    const result = await generateVideo(prompt, selectedModel, params, {
+      referenceUrl: referenceImageUrl || undefined
+    });
     
     if (result.success && result.mediaUrl) {
       setGeneratedVideo(result.mediaUrl);
