@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
@@ -121,8 +122,8 @@ const MediaAnalyticsDashboard: React.FC<MediaAnalyticsDashboardProps> = ({
       }))
       .sort((a, b) => {
         // Convert strings to dates for proper comparison
-        const dateA = new Date(date);
-        const dateB = new Date(date);
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
         return dateA.getTime() - dateB.getTime();
       });
   };

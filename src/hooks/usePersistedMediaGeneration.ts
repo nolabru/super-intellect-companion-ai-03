@@ -1,4 +1,3 @@
-
 import { useCallback, useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
@@ -199,7 +198,7 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
         
         // Finish measuring
         if (endMeasurement) {
-          endMeasurement({ cacheHit: true, type, model });
+          endMeasurement();
         }
         
         return id;
