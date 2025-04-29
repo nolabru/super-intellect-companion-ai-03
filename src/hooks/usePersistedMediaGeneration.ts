@@ -6,6 +6,8 @@ import { useMediaPersistence } from '@/hooks/useMediaPersistence';
 import { useMediaCache, CachedMedia } from '@/hooks/useMediaCache';
 import { Task as TaskManagerTask } from '@/hooks/useTaskManager';
 import { Task as ApiframeTask } from '@/hooks/apiframe/useTaskState';
+import { trackMediaEvent } from '@/services/mediaAnalyticsService';
+import { MediaType } from '@/services/mediaAnalyticsService';
 
 interface PersistedMediaGenerationOptions {
   showToasts?: boolean;
@@ -31,6 +33,7 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
   
   const [persistedTaskId, setPersistedTaskId] = useState<string | null>(null);
   const [usedCachedMedia, setUsedCachedMedia] = useState<boolean>(false);
+  const [generationStartTime, setGenerationStartTime] = useState<Record<string, number>>({});
   
   const {
     persistTask,
@@ -76,6 +79,28 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
         });
       }
       
+      // Track successful generation completion
+      if (currentTask) {
+        const taskId = currentTask.id;
+        const mediaType = currentTask.type as MediaType;
+        const startTime = generationStartTime[taskId];
+        const duration = startTime ? Date.now() - startTime : undefined;
+        
+        if (!usedCachedMedia) {
+          trackMediaEvent({
+            eventType: 'generation_completed',
+            mediaType,
+            taskId,
+            modelId: currentTask.model,
+            duration,
+            metadata: {
+              mediaUrl,
+              ...currentTask.metadata
+            }
+          });
+        }
+      }
+      
       // Cache the media if it's not from cache already
       if (useCaching && currentTask && !usedCachedMedia) {
         cacheMedia(
@@ -98,6 +123,17 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
         updatePersistedTask(persistedTaskId, { 
           status: 'failed',
           error
+        });
+      }
+      
+      // Track generation error
+      if (currentTask) {
+        trackMediaEvent({
+          eventType: 'generation_failed',
+          mediaType: currentTask.type as MediaType,
+          taskId: currentTask.id,
+          modelId: currentTask.model,
+          details: { error }
         });
       }
       
@@ -146,6 +182,18 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
           progress: 100
         });
         
+        // Track cache use
+        trackMediaEvent({
+          eventType: 'cache_used',
+          mediaType: type,
+          modelId: model,
+          metadata: {
+            prompt,
+            params,
+            cachedAt: cachedMedia.timestamp
+          }
+        });
+        
         if (onProgress) {
           onProgress(100);
         }
@@ -166,6 +214,25 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
       params,
       referenceUrl
     );
+    
+    // Record generation start time
+    setGenerationStartTime(prev => ({
+      ...prev,
+      [taskId]: Date.now()
+    }));
+    
+    // Track generation start
+    trackMediaEvent({
+      eventType: 'generation_started',
+      mediaType: type,
+      taskId,
+      modelId: model,
+      metadata: {
+        prompt,
+        params,
+        referenceUrl
+      }
+    });
     
     // Persist the task
     const id = persistTask(
@@ -207,6 +274,24 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     return status;
   }
   
+  // Function to cancel ongoing generation and track the cancellation
+  const cancelPersistedGeneration = useCallback(() => {
+    if (currentTask) {
+      trackMediaEvent({
+        eventType: 'generation_canceled',
+        mediaType: currentTask.type as MediaType,
+        taskId: currentTask.id,
+        modelId: currentTask.model,
+        metadata: {
+          reason: 'User canceled',
+          startTime: generationStartTime[currentTask.id]
+        }
+      });
+    }
+    
+    return cancelGeneration();
+  }, [cancelGeneration, currentTask, generationStartTime]);
+  
   return {
     generateMedia,
     generateImage: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
@@ -215,7 +300,7 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
       generateMedia('video', prompt, model, params, referenceUrl),
     generateAudio: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
       generateMedia('audio', prompt, model, params, referenceUrl),
-    cancelGeneration,
+    cancelGeneration: cancelPersistedGeneration,
     isGenerating,
     currentTask,
     persistedTask: persistedTaskId ? getCurrentTask() : null,

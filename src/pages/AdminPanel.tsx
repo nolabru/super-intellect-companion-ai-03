@@ -1,104 +1,62 @@
-
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
 import AdminOverview from '@/components/admin/AdminOverview';
 import AdminUserManagement from '@/components/admin/AdminUserManagement';
 import AdminPlansManagement from '@/components/admin/AdminPlansManagement';
 import AdminModelsManagement from '@/components/admin/AdminModelsManagement';
+import AdminPostsManagement from '@/components/admin/AdminPostsManagement';
 import AdminStats from '@/components/admin/AdminStats';
 import AdminSystemSettings from '@/components/admin/AdminSystemSettings';
-import AdminPostsManagement from '@/components/admin/AdminPostsManagement';
+import AdminAnalytics from '@/components/admin/AdminAnalytics';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
+import { useNavigate } from 'react-router-dom';
 
 const AdminPanel: React.FC = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeSection, setActiveSection] = useState<string>('overview');
-  const { user, loading, isAdmin } = useAuth();
+  const [isOpen, setIsOpen] = useState(true);
+  const [activeSection, setActiveSection] = useState('overview');
+  const { isAdmin, loading } = useAdminCheck();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (isAdmin && user) {
-      toast.success(`Bem-vindo, ${user.email?.split('@')[0]}!`, {
-        description: 'Você está no Painel Administrativo',
-        duration: 3000,
-      });
-    }
-  }, [isAdmin, user]);
-
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        toast.error('Você precisa estar logado para acessar esta página');
-        navigate('/auth');
-        return;
-      }
-      
-      if (!isAdmin) {
-        toast.error('Você não tem permissão para acessar o painel administrativo');
-        navigate('/');
-        return;
-      }
-    }
-  }, [user, loading, isAdmin, navigate]);
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
-  const renderActiveSection = () => {
-    switch (activeSection) {
-      case 'overview':
-        return <AdminOverview />;
-      case 'users':
-        return <AdminUserManagement />;
-      case 'plans':
-        return <AdminPlansManagement />;
-      case 'models':
-        return <AdminModelsManagement />;
-      case 'stats':
-        return <AdminStats />;
-      case 'settings':
-        return <AdminSystemSettings />;
-      case 'posts':
-        return <AdminPostsManagement />;
-      default:
-        return <AdminOverview />;
-    }
-  };
-
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-inventu-darker">
-        <Loader2 className="h-8 w-8 animate-spin text-inventu-blue" />
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
   if (!isAdmin) {
+    navigate('/');
     return null;
   }
 
+  const toggleSidebar = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleSectionChange = (section: string) => {
+    setActiveSection(section);
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-inventu-darker">
-      <AdminHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
-      
-      <div className="flex flex-1 overflow-hidden">
-        <AdminSidebar 
-          isOpen={sidebarOpen} 
-          onToggleSidebar={toggleSidebar}
-          activeSection={activeSection}
-          onSectionChange={setActiveSection}
-        />
-        
-        <div className="flex-1 overflow-auto p-2 md:p-4 lg:p-6">
-          <div className="mx-auto max-w-7xl">
-            {renderActiveSection()}
-          </div>
-        </div>
+    <div className="flex h-screen bg-inventu-dark text-white">
+      <AdminSidebar
+        isOpen={isOpen}
+        onToggleSidebar={toggleSidebar}
+        activeSection={activeSection}
+        onSectionChange={handleSectionChange}
+      />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader />
+
+        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+          {activeSection === 'overview' && <AdminOverview />}
+          {activeSection === 'users' && <AdminUserManagement />}
+          {activeSection === 'plans' && <AdminPlansManagement />}
+          {activeSection === 'posts' && <AdminPostsManagement />}
+          {activeSection === 'models' && <AdminModelsManagement />}
+          {activeSection === 'stats' && <AdminStats />}
+          {activeSection === 'analytics' && <AdminAnalytics />}
+          {activeSection === 'settings' && <AdminSystemSettings />}
+        </main>
       </div>
     </div>
   );

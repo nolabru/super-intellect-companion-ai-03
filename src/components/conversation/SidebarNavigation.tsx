@@ -1,14 +1,15 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Newspaper, Image, Brain, Coins, BarChart } from 'lucide-react';
+import { Newspaper, Image, Brain, Coins, BarChart, LineChart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
 
 const SidebarNavigation: React.FC = () => {
   const location = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useAdminCheck();
   
   const routes = [
     { 
@@ -34,7 +35,7 @@ const SidebarNavigation: React.FC = () => {
     { 
       path: '/analytics', 
       label: 'Analytics',
-      icon: <BarChart className="h-4 w-4 mr-2" />
+      icon: <LineChart className="h-4 w-4 mr-2" />
     },
   ];
   

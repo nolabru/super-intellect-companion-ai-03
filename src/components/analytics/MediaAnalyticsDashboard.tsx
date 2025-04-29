@@ -6,6 +6,11 @@ import { format, subDays } from 'date-fns';
 import TokenUsageChart from '@/components/TokenUsageChart';
 import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BadgeHelp, Filter } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 interface AnalyticsData {
   totalGenerations: number;
@@ -31,10 +36,11 @@ const MediaAnalyticsDashboard = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [dailyGenerations, setDailyGenerations] = useState<DailyGeneration[]>([]);
+  const [mediaTypeFilter, setMediaTypeFilter] = useState<string[]>(['image', 'video', 'audio']);
 
   useEffect(() => {
     fetchAnalyticsData();
-  }, [period]);
+  }, [period, mediaTypeFilter]);
 
   const fetchAnalyticsData = async () => {
     setIsLoading(true);
@@ -58,25 +64,30 @@ const MediaAnalyticsDashboard = () => {
       if (startDate) {
         query = query.gte('created_at', startDate.toISOString());
       }
+
+      if (mediaTypeFilter.length > 0 && mediaTypeFilter.length < 3) {
+        query = query.in('media_type', mediaTypeFilter);
+      }
       
       const { data, error } = await query;
       
       if (error) throw error;
       
       // Process data
-      const imageGenerations = data.filter(item => item.media_type === 'image').length;
-      const videoGenerations = data.filter(item => item.media_type === 'video').length;
-      const audioGenerations = data.filter(item => item.media_type === 'audio').length;
+      const filteredData = data || [];
+      const imageGenerations = filteredData.filter(item => item.media_type === 'image').length;
+      const videoGenerations = filteredData.filter(item => item.media_type === 'video').length;
+      const audioGenerations = filteredData.filter(item => item.media_type === 'audio').length;
       
       // Calculate generations by model
       const mediaByModel: Record<string, number> = {};
-      data.forEach(item => {
+      filteredData.forEach(item => {
         const modelId = item.model_id || 'unknown';
         mediaByModel[modelId] = (mediaByModel[modelId] || 0) + 1;
       });
       
       setAnalyticsData({
-        totalGenerations: data.length,
+        totalGenerations: filteredData.length,
         imageGenerations,
         videoGenerations,
         audioGenerations,
@@ -84,7 +95,7 @@ const MediaAnalyticsDashboard = () => {
       });
       
       // Generate daily generations data
-      const dailyData = generateDailyGenerations(data);
+      const dailyData = generateDailyGenerations(filteredData);
       setDailyGenerations(dailyData);
       
     } catch (error) {
@@ -107,7 +118,7 @@ const MediaAnalyticsDashboard = () => {
     } else if (period === 'all') {
       // For "all", include days from the oldest generation to today
       if (data.length > 0) {
-        // Fix: Convert date strings to timestamps for comparison
+        // Fix: properly convert dates to timestamps for comparison
         const dates = data.map(item => new Date(item.created_at).getTime());
         const oldestDate = new Date(Math.min(...dates));
         // Fix: Use getTime() for calculating the difference in milliseconds
@@ -136,7 +147,7 @@ const MediaAnalyticsDashboard = () => {
       date,
       count
     })).sort((a, b) => {
-      // Fix: Convert string dates to timestamps for comparison
+      // Fix: Always use getTime() for date comparisons to ensure numeric comparison
       const dateA = new Date(a.date).getTime();
       const dateB = new Date(b.date).getTime();
       return dateA - dateB;
@@ -156,6 +167,16 @@ const MediaAnalyticsDashboard = () => {
     }));
   };
 
+  const handleMediaTypeFilterChange = (type: string, checked: boolean) => {
+    setMediaTypeFilter(prev => {
+      if (checked) {
+        return [...prev, type];
+      } else {
+        return prev.filter(t => t !== type);
+      }
+    });
+  };
+
   return (
     <div className="space-y-8">
       <Card>
@@ -165,7 +186,48 @@ const MediaAnalyticsDashboard = () => {
             Overview of media generation activities
           </CardDescription>
           
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex gap-2">
+                    <Filter className="h-4 w-4" />
+                    Filters
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56">
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm">Media Type</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="filter-image" 
+                          checked={mediaTypeFilter.includes('image')} 
+                          onCheckedChange={(checked) => handleMediaTypeFilterChange('image', checked === true)}
+                        />
+                        <Label htmlFor="filter-image">Images</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="filter-video" 
+                          checked={mediaTypeFilter.includes('video')} 
+                          onCheckedChange={(checked) => handleMediaTypeFilterChange('video', checked === true)}
+                        />
+                        <Label htmlFor="filter-video">Videos</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="filter-audio" 
+                          checked={mediaTypeFilter.includes('audio')} 
+                          onCheckedChange={(checked) => handleMediaTypeFilterChange('audio', checked === true)}
+                        />
+                        <Label htmlFor="filter-audio">Audio</Label>
+                      </div>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
             <Tabs defaultValue={period} onValueChange={(value) => setPeriod(value as any)}>
               <TabsList>
                 <TabsTrigger value="7days">7 Days</TabsTrigger>
@@ -220,7 +282,23 @@ const MediaAnalyticsDashboard = () => {
               
               <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle>Generations by Model</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    Generations by Model
+                    <div className="relative">
+                      <Popover>
+                        <PopoverTrigger>
+                          <BadgeHelp className="h-4 w-4 text-muted-foreground" />
+                        </PopoverTrigger>
+                        <PopoverContent>
+                          <p className="text-sm">
+                            This table shows the distribution of media generations by model.
+                            The percentage column indicates what portion of total generations
+                            each model represents.
+                          </p>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Table>

@@ -11,7 +11,8 @@ import {
   ChevronLeft,
   MessageSquare,
   Newspaper,
-  BarChart
+  BarChart,
+  LineChart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
     { id: 'models', label: 'Modelos', icon: <Cpu className="h-5 w-5" /> },
     { id: 'posts', label: 'Newsletter', icon: <Newspaper className="h-5 w-5" /> },
     { id: 'stats', label: 'Estatísticas', icon: <BarChart3 className="h-5 w-5" /> },
+    { id: 'analytics', label: 'Media Analytics', icon: <LineChart className="h-5 w-5" /> },
     { id: 'settings', label: 'Configurações', icon: <Settings className="h-5 w-5" /> }
   ];
 
