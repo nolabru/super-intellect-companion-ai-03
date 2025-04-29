@@ -3,6 +3,8 @@ import { useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
 import { useMediaPersistence } from '@/hooks/useMediaPersistence';
+import { Task as TaskManagerTask } from '@/hooks/useTaskManager';
+import { Task as ApiframeTask } from '@/hooks/apiframe/useTaskState';
 
 interface PersistedMediaGenerationOptions {
   showToasts?: boolean;
@@ -110,7 +112,16 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
   
   // Update persisted task when currentTask changes
   if (persistedTaskId && currentTask) {
-    updateTaskFromStatus(persistedTaskId, currentTask);
+    // Map the TaskManager Task to the format expected by updateTaskFromStatus
+    const apiframeTaskFormat: Partial<ApiframeTask> = {
+      taskId: currentTask.id, // Use id from TaskManager as taskId
+      status: currentTask.status,
+      progress: currentTask.progress || 0,
+      mediaUrl: currentTask.result, // Map result to mediaUrl
+      error: currentTask.error
+    };
+    
+    updateTaskFromStatus(persistedTaskId, apiframeTaskFormat as ApiframeTask);
   }
   
   return {
