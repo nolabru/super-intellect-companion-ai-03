@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import OptimizedMediaLoader from './OptimizedMediaLoader';
 
 interface MediaPreviewProps {
   mediaUrl: string;
@@ -56,15 +57,11 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
   if (mediaType === 'image') {
     return (
       <div className="border rounded-md overflow-hidden">
-        {isMediaLoading && (
-          <div className="w-full h-48 flex items-center justify-center bg-muted/20">
-            <div className="animate-pulse">Loading image...</div>
-          </div>
-        )}
-        <img
+        <OptimizedMediaLoader
           src={mediaUrl}
-          alt="Generated"
-          className={`w-full h-auto object-contain ${isMediaLoading ? 'hidden' : ''}`}
+          alt="Generated image"
+          type="image"
+          className="w-full h-auto object-contain"
           onLoad={handleMediaLoaded}
           onError={handleMediaError}
         />
@@ -76,19 +73,14 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
     return (
       <div className="border rounded-md overflow-hidden">
         <AspectRatio ratio={16 / 9} className="bg-black">
-          <video
+          <OptimizedMediaLoader
             src={mediaUrl}
-            controls
+            type="video"
             className="w-full h-full object-contain"
-            onLoadedData={handleMediaLoaded}
+            onLoad={handleMediaLoaded}
             onError={handleMediaError}
           />
         </AspectRatio>
-        {isMediaLoading && (
-          <div className="w-full h-full absolute top-0 left-0 flex items-center justify-center bg-muted/20">
-            <div className="animate-pulse">Loading video...</div>
-          </div>
-        )}
       </div>
     );
   }
@@ -96,18 +88,13 @@ const MediaPreview: React.FC<MediaPreviewProps> = ({
   if (mediaType === 'audio') {
     return (
       <div className="border rounded-md overflow-hidden p-4">
-        <audio
+        <OptimizedMediaLoader
           src={mediaUrl}
-          controls
+          type="audio"
           className="w-full"
-          onLoadedData={handleMediaLoaded}
+          onLoad={handleMediaLoaded}
           onError={handleMediaError}
         />
-        {isMediaLoading && (
-          <div className="w-full h-12 flex items-center justify-center bg-muted/20 mt-2">
-            <div className="animate-pulse">Loading audio...</div>
-          </div>
-        )}
       </div>
     );
   }

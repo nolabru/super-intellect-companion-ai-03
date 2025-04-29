@@ -1,71 +1,113 @@
 
-import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import { useState, useCallback, useEffect } from 'react';
+import { mediaCompressionService } from '@/services/mediaCompressionService';
 
-interface UseMediaLoadingOptions {
-  onMediaLoaded?: () => void;
-  onMediaError?: (error: Error) => void;
-  showToasts?: boolean;
+interface MediaLoadingOptions {
+  shouldCompress?: boolean;
+  maxWidthOrHeight?: number;
+  quality?: number;
+  autoRetry?: boolean;
+  maxRetries?: number;
+  retryDelay?: number;
 }
 
-export const useMediaLoading = (mediaUrl: string | null, options: UseMediaLoadingOptions = {}) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+/**
+ * Hook for handling media loading states, errors, and optimization
+ */
+export function useMediaLoading(
+  mediaUrl: string | null, 
+  options: MediaLoadingOptions = {}
+) {
+  const {
+    shouldCompress = false,
+    maxWidthOrHeight = 1024,
+    quality = 0.8,
+    autoRetry = true,
+    maxRetries = 2,
+    retryDelay = 2000
+  } = options;
 
-  useEffect(() => {
-    if (mediaUrl) {
-      setIsLoading(true);
-      setHasError(false);
-      setRetryCount(0);
-    }
-  }, [mediaUrl]);
-
-  const handleMediaLoaded = () => {
+  const [isLoading, setIsLoading] = useState<boolean>(!!mediaUrl);
+  const [hasError, setHasError] = useState<boolean>(false);
+  const [optimizedUrl, setOptimizedUrl] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState<number>(0);
+  
+  // Handle media load success
+  const handleMediaLoaded = useCallback(() => {
     setIsLoading(false);
     setHasError(false);
-    if (options.onMediaLoaded) {
-      options.onMediaLoaded();
-    }
-  };
-
-  const handleMediaError = (e: React.SyntheticEvent<HTMLElement>) => {
-    console.error('Media loading error:', e);
+    setRetryCount(0);
+  }, []);
+  
+  // Handle media load error
+  const handleMediaError = useCallback(() => {
     setIsLoading(false);
     setHasError(true);
-
-    if (options.showToasts !== false) {
-      toast.error('Erro ao carregar mídia');
+    
+    // Auto-retry if enabled and under max retry count
+    if (autoRetry && retryCount < maxRetries) {
+      const nextRetryCount = retryCount + 1;
+      setRetryCount(nextRetryCount);
+      
+      setTimeout(() => {
+        console.log(`[useMediaLoading] Auto-retrying (attempt ${nextRetryCount}/${maxRetries})...`);
+        setIsLoading(true);
+        setHasError(false);
+        // Force browser to reload by adding a cache-busting parameter
+        setOptimizedUrl(mediaUrl ? `${mediaUrl}?t=${Date.now()}` : null);
+      }, retryDelay);
     }
-
-    if (options.onMediaError) {
-      options.onMediaError(new Error('Failed to load media'));
-    }
-  };
-
-  const retryMediaLoad = () => {
-    if (retryCount >= 3) {
-      if (options.showToasts !== false) {
-        toast.error('Número máximo de tentativas excedido');
-      }
-      return;
-    }
-
+  }, [autoRetry, maxRetries, retryCount, retryDelay, mediaUrl]);
+  
+  // Manually retry loading
+  const retryMediaLoad = useCallback(() => {
     setIsLoading(true);
     setHasError(false);
-    setRetryCount(prev => prev + 1);
-    
-    if (options.showToasts !== false) {
-      toast.info('Tentando carregar mídia novamente...');
+    setOptimizedUrl(mediaUrl ? `${mediaUrl}?t=${Date.now()}` : null);
+  }, [mediaUrl]);
+  
+  // Optimize image if requested
+  useEffect(() => {
+    if (!mediaUrl) {
+      setIsLoading(false);
+      setHasError(false);
+      setOptimizedUrl(null);
+      return;
     }
-  };
-
+    
+    setIsLoading(true);
+    setHasError(false);
+    
+    if (shouldCompress && mediaUrl.startsWith('http') && mediaUrl.match(/\.(jpe?g|png|webp)$/i)) {
+      // Only compress image types, not videos or audio
+      mediaCompressionService.compressImage(mediaUrl, {
+        maxWidthOrHeight,
+        quality,
+        format: mediaCompressionService.detectBestFormat()
+      })
+        .then(optimized => {
+          setOptimizedUrl(optimized);
+          setIsLoading(false);
+        })
+        .catch(err => {
+          console.error('[useMediaLoading] Compression error:', err);
+          // Fall back to original URL if compression fails
+          setOptimizedUrl(mediaUrl);
+          setIsLoading(false);
+        });
+    } else {
+      // Use original URL for non-image types or when compression is disabled
+      setOptimizedUrl(mediaUrl);
+    }
+  }, [mediaUrl, shouldCompress, maxWidthOrHeight, quality]);
+  
   return {
     isLoading,
     hasError,
-    retryCount,
+    optimizedUrl: optimizedUrl || mediaUrl,
     handleMediaLoaded,
     handleMediaError,
-    retryMediaLoad
+    retryMediaLoad,
+    retryCount
   };
-};
+}
