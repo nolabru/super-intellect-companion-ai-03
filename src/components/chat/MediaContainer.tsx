@@ -3,10 +3,7 @@ import React from 'react';
 import { ChatMode } from '../ModeSelector';
 import { useMediaLoading } from '@/hooks/useMediaLoading';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
-import ImageContent from './media/ImageContent';
-import VideoContent from './media/VideoContent';
-import AudioContent from './media/AudioContent';
-import MediaErrorDisplay from './media/MediaErrorDisplay';
+import { MediaPreview } from '@/components/media/MediaPreview';
 
 interface MediaContainerProps {
   mediaUrl: string | null;
@@ -41,58 +38,14 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     }
   };
 
-  if (hasError) {
-    return (
-      <MediaErrorDisplay 
-        onRetry={retryMediaLoad}
-        onOpenInNewTab={openInNewTab}
-        mediaUrl={mediaUrl}
-        mode={mode}
-      />
-    );
-  }
-
   if (!mediaUrl) return null;
 
-  switch (mode) {
-    case 'image':
-      return (
-        <ImageContent
-          src={mediaUrl}
-          onLoad={handleMediaLoaded}
-          onError={handleMediaError}
-          isLoading={isLoading}
-          onSaveToGallery={handleSaveToGallery}
-          onOpenInNewTab={openInNewTab}
-          saving={saving}
-        />
-      );
-    case 'video':
-      return (
-        <VideoContent
-          src={mediaUrl}
-          onLoad={handleMediaLoaded}
-          onError={handleMediaError}
-          isLoading={isLoading}
-          onSaveToGallery={handleSaveToGallery}
-          onOpenInNewTab={openInNewTab}
-          saving={saving}
-        />
-      );
-    case 'audio':
-      return (
-        <AudioContent
-          src={mediaUrl}
-          onLoad={handleMediaLoaded}
-          onError={handleMediaError}
-          isLoading={isLoading}
-          onSaveToGallery={handleSaveToGallery}
-          saving={saving}
-        />
-      );
-    default:
-      return null;
-  }
+  return (
+    <MediaPreview
+      mediaUrl={mediaUrl}
+      mediaType={mode as 'image' | 'video' | 'audio'}
+    />
+  );
 };
 
 export default MediaContainer;

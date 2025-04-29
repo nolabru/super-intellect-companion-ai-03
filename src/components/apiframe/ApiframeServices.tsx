@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Image, Film, AudioLines, Settings } from 'lucide-react';
-import ApiframeImageGenerator from './ApiframeImageGenerator';
-import ApiframeVideoGenerator from './ApiframeVideoGenerator';
-import ApiframeAudioGenerator from './ApiframeAudioGenerator';
+import ImageGenerator from '../media/ImageGenerator';
+import VideoGenerator from '../media/VideoGenerator';
+import AudioGenerator from '../media/AudioGenerator';
 import ApiframeConfig from './ApiframeConfig';
 import { apiframeService } from '@/services/apiframeService';
 
@@ -53,15 +53,15 @@ const ApiframeServices: React.FC<ApiframeServicesProps> = ({
       
       <div className="mt-4">
         <TabsContent value="image">
-          <ApiframeImageGenerator onImageGenerated={handleMediaGenerated('image')} />
+          <ImageGenerator onImageGenerated={handleMediaGenerated('image')} />
         </TabsContent>
         
         <TabsContent value="video">
-          <ApiframeVideoGenerator onVideoGenerated={handleMediaGenerated('video')} />
+          <VideoGenerator onVideoGenerated={handleMediaGenerated('video')} />
         </TabsContent>
         
         <TabsContent value="audio">
-          <ApiframeAudioGenerator onAudioGenerated={handleMediaGenerated('audio')} />
+          <AudioGenerator onAudioGenerated={handleMediaGenerated('audio')} />
         </TabsContent>
         
         <TabsContent value="settings">
