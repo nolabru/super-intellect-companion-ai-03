@@ -3,7 +3,7 @@ import React from 'react';
 import { ChatMode } from '../ModeSelector';
 import { useMediaLoading } from '@/hooks/useMediaLoading';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
-import { MediaPreview } from '@/components/media/MediaPreview';
+import MediaPreview from '@/components/media/MediaPreview';
 
 interface MediaContainerProps {
   mediaUrl: string | null;
