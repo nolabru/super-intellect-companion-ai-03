@@ -51,9 +51,8 @@ serve(async (req) => {
     console.log('Prompt:', prompt);
     console.log('Params:', params);
 
-    // UPDATED: Use the correct API URL based on APIframe documentation
-    // Changed from "/create" to "/v1/image/generate" as this is a common endpoint pattern
-    const apiUrl = "https://api.apiframe.pro/v1/image/generate";
+    // FIXED: Use the correct API URL
+    const apiUrl = "https://api.apiframe.pro/create";
     
     // Create proper API request payload
     const apiData = {
@@ -68,27 +67,17 @@ serve(async (req) => {
 
     // Add debugging
     console.log("[apiframe-image] Sending request to:", apiUrl);
-    console.log("[apiframe-image] Request payload:", JSON.stringify(apiData).substring(0, 500));
-    console.log("[apiframe-image] Using API key:", APIFRAME_API_KEY.substring(0, 8) + "...");
+    console.log("[apiframe-image] Request payload:", JSON.stringify(apiData).substring(0, 200) + "...");
     
     // Create task in APIframe with proper error handling
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
-        'Accept': 'application/json'
+        'Authorization': APIFRAME_API_KEY
       },
       body: JSON.stringify(apiData)
     });
-
-    // Log detailed response information
-    console.log(`[apiframe-image] Response status: ${response.status} ${response.statusText}`);
-    
-    // Log response headers for debugging
-    const headersLog = {};
-    response.headers.forEach((value, key) => { headersLog[key] = value });
-    console.log(`[apiframe-image] Response headers:`, JSON.stringify(headersLog));
 
     // Check if response is valid before attempting to parse JSON
     if (!response.ok) {
@@ -107,75 +96,14 @@ serve(async (req) => {
         // If not parsable as JSON, use the status text
       }
       
-      // Try alternative endpoint if first one fails
-      if (response.status === 404) {
-        console.log("[apiframe-image] 404 error, trying alternative endpoint...");
-        const altApiUrl = "https://api.apiframe.pro/create"; // Try the original endpoint as fallback
-        
-        console.log("[apiframe-image] Sending request to alternative URL:", altApiUrl);
-        
-        const altResponse = await fetch(altApiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${APIFRAME_API_KEY}`,
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify(apiData)
-        });
-        
-        console.log(`[apiframe-image] Alt response status: ${altResponse.status} ${altResponse.statusText}`);
-        
-        if (!altResponse.ok) {
-          const altErrorText = await altResponse.text();
-          console.error('[apiframe-image] Error response from alternative endpoint:', altErrorText.substring(0, 500));
-          throw new Error(`API error on both endpoints. Primary: ${errorMessage}, Fallback: ${altResponse.status} ${altResponse.statusText}`);
-        }
-        
-        // Handle success on alternative endpoint
-        const altData = await altResponse.json();
-        console.log('[apiframe-image] Alternative endpoint response:', JSON.stringify(altData).substring(0, 500));
-        
-        if (!altData.task_id) {
-          throw new Error("No task ID returned from APIframe (alternative endpoint)");
-        }
-        
-        // Create task record
-        const { error: insertError } = await supabase
-          .from('apiframe_tasks')
-          .insert({
-            task_id: altData.task_id,
-            model: model || 'stable-diffusion-xl',
-            prompt,
-            media_type: 'image',
-            params,
-            status: 'pending'
-          });
-        
-        if (insertError) {
-          console.error('[apiframe-image] Error creating task record:', insertError);
-        }
-        
-        return new Response(
-          JSON.stringify({
-            taskId: altData.task_id,
-            status: 'pending',
-            message: 'Task created successfully (using alternative endpoint)'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
       throw new Error(errorMessage);
     }
 
     // Handle successful response
     const data = await response.json();
-    console.log('[apiframe-image] APIframe response:', JSON.stringify(data).substring(0, 500));
+    console.log('[apiframe-image] APIframe response:', JSON.stringify(data).substring(0, 200) + "...");
 
-    // Different APIs may return the task ID in different formats
-    const taskId = data.task_id || data.taskId || data.id;
-    if (!taskId) {
+    if (!data.task_id) {
       throw new Error("No task ID returned from APIframe");
     }
 
@@ -183,7 +111,7 @@ serve(async (req) => {
     const { error: insertError } = await supabase
       .from('apiframe_tasks')
       .insert({
-        task_id: taskId,
+        task_id: data.task_id,
         model: model || 'stable-diffusion-xl',
         prompt,
         media_type: 'image',
@@ -197,7 +125,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        taskId: taskId,
+        taskId: data.task_id,
         status: 'pending',
         message: 'Task created successfully'
       }),
