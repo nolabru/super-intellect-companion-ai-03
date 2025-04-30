@@ -1,10 +1,10 @@
-
 import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 import { supabase } from '@/integrations/supabase/client';
 import { getCircuitBreaker, CircuitState } from '@/utils/circuitBreaker';
 import { toast } from 'sonner';
 
-let apiKey: string | null = null;
+// Global flag to indicate that the API key is globally configured on the server
+const isGlobalApiKeyConfigured = true;
 
 // Create circuit breakers for each operation type
 const imageCircuitBreaker = getCircuitBreaker('apiframe-image', {
@@ -65,39 +65,14 @@ const statusCircuitBreaker = getCircuitBreaker('apiframe-status', {
 
 export const apiframeService = {
   setApiKey(key: string): boolean {
-    if (!key || key.trim() === '') {
-      console.error('[apiframeService] Invalid API key provided');
-      return false;
-    }
-    
-    apiKey = key;
-    try {
-      // Store securely in localStorage for persistence across sessions
-      localStorage.setItem('apiframe_api_key', key);
-      
-      // Reset circuit breakers when API key is changed
-      imageCircuitBreaker.reset();
-      videoCircuitBreaker.reset();
-      audioCircuitBreaker.reset();
-      statusCircuitBreaker.reset();
-      
-      return true;
-    } catch (err) {
-      console.error('[apiframeService] Error storing API key:', err);
-      return false;
-    }
+    // We don't need to store the API key anymore since we're using a global key
+    // But we'll keep this method for backward compatibility
+    return true;
   },
   
   isApiKeyConfigured(): boolean {
-    // Try to load from localStorage if not in memory
-    if (!apiKey) {
-      try {
-        apiKey = localStorage.getItem('apiframe_api_key');
-      } catch (err) {
-        console.error('[apiframeService] Error loading API key from localStorage:', err);
-      }
-    }
-    return apiKey !== null && apiKey.trim() !== '';
+    // Always return true since we're using a global API key
+    return isGlobalApiKeyConfigured;
   },
   
   async generateImage(
@@ -108,17 +83,14 @@ export const apiframeService = {
     try {
       console.log(`[apiframeService] Generating image with model ${model} and prompt: ${prompt}`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
+      // No need to check if API key is configured since we're using a global key
       return await imageCircuitBreaker.execute(async () => {
         const { data, error } = await supabase.functions.invoke('apiframe-generate-image', {
           body: { 
             prompt, 
             model, 
-            params,
-            apiKey 
+            params
+            // No longer sending API key in the request body
           }
         });
         
@@ -144,18 +116,15 @@ export const apiframeService = {
     try {
       console.log(`[apiframeService] Generating video with model ${model} and prompt: ${prompt}`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
+      // No need to check if API key is configured since we're using a global key
       return await videoCircuitBreaker.execute(async () => {
         const { data, error } = await supabase.functions.invoke('apiframe-generate-video', {
           body: { 
             prompt, 
             model, 
             params,
-            apiKey,
             referenceImageUrl 
+            // No longer sending API key in the request body
           }
         });
         
@@ -181,18 +150,15 @@ export const apiframeService = {
     try {
       console.log(`[apiframeService] Generating audio with model ${model} and prompt: ${prompt}`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
+      // No need to check if API key is configured since we're using a global key
       return await audioCircuitBreaker.execute(async () => {
         const { data, error } = await supabase.functions.invoke('apiframe-generate-audio', {
           body: { 
             prompt, 
             model, 
             params,
-            apiKey,
             referenceUrl 
+            // No longer sending API key in the request body
           }
         });
         
@@ -213,15 +179,12 @@ export const apiframeService = {
     try {
       console.log(`[apiframeService] Checking status for task ${taskId}`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
+      // No need to check if API key is configured since we're using a global key
       return await statusCircuitBreaker.execute(async () => {
         const { data, error } = await supabase.functions.invoke('apiframe-check-status', {
           body: { 
-            taskId,
-            apiKey 
+            taskId
+            // No longer sending API key in the request body
           }
         });
         
@@ -245,14 +208,11 @@ export const apiframeService = {
     try {
       console.log(`[apiframeService] Cancelling task ${taskId}`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
+      // No need to check if API key is configured since we're using a global key
       const { data, error } = await supabase.functions.invoke('apiframe-task-cancel', {
         body: { 
-          taskId,
-          apiKey 
+          taskId
+          // No longer sending API key in the request body
         }
       });
       
@@ -302,13 +262,3 @@ export const apiframeService = {
     console.log('[apiframeService] All circuit breakers have been reset');
   }
 };
-
-// Initialize API key from localStorage on module load
-try {
-  const storedKey = localStorage.getItem('apiframe_api_key');
-  if (storedKey) {
-    apiKey = storedKey;
-  }
-} catch (err) {
-  console.error('[apiframeService] Error loading API key from localStorage:', err);
-}

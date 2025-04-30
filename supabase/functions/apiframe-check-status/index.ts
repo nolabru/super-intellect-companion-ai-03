@@ -1,11 +1,11 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -15,6 +15,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Define the APIframe API URL
 const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
 
+// Set the global API key that will work for all users
+const GLOBAL_APIFRAME_API_KEY = 'b0a5c230-6f6f-4d2b-bb61-4be15184dd63';
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -23,17 +26,14 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { taskId, apiKey } = await req.json();
+    const { taskId } = await req.json();
     
-    // Get API key from request or environment variable
-    const APIFRAME_API_KEY = apiKey || Deno.env.get('APIFRAME_API_KEY');
+    // Use the global API key
+    const APIFRAME_API_KEY = GLOBAL_APIFRAME_API_KEY;
 
-    if (!taskId || !APIFRAME_API_KEY) {
+    if (!taskId) {
       return new Response(
-        JSON.stringify({ 
-          error: 'Missing required parameters', 
-          status: 'failed' 
-        }),
+        JSON.stringify({ error: 'Task ID is required' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -43,7 +43,7 @@ serve(async (req) => {
 
     console.log(`Checking status for task ${taskId}`);
 
-    // Call APIframe API to check task status
+    // Call APIframe API
     const response = await fetch(`${APIFRAME_API_URL}/tasks/${taskId}`, {
       method: 'GET',
       headers: {
@@ -53,50 +53,13 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      // Check if it's because the task doesn't exist (for connection testing)
-      const isConnTest = taskId.startsWith('test-connection-') || taskId.startsWith('verify-');
-      
-      if (isConnTest && response.status === 404) {
-        // For test connections, a 404 is actually okay, means the API key works
-        return new Response(
-          JSON.stringify({ 
-            status: 'not_found', 
-            message: 'Connection test successful, API key is valid' 
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-      
-      let errorText;
-      try {
-        const errorData = await response.json();
-        errorText = JSON.stringify(errorData);
-      } catch (e) {
-        errorText = await response.text();
-      }
-      
-      console.error(`Error from APIframe: ${errorText}`);
-      
-      // If it's an authentication error and we're testing the connection
-      if (isConnTest && (response.status === 401 || response.status === 403)) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Invalid or unauthorized API key', 
-            status: 'unauthorized'
-          }),
-          { 
-            status: 401, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
+      const errorData = await response.json();
+      console.error('Error from APIframe:', errorData);
       
       return new Response(
         JSON.stringify({ 
-          error: `Error from APIframe: ${errorText}`, 
-          status: 'failed'
+          error: errorData.message || 'Error checking task status', 
+          status: 'failed' 
         }),
         { 
           status: response.status, 
@@ -108,40 +71,24 @@ serve(async (req) => {
     // Process successful response
     const data = await response.json();
     
-    // Update task in database if needed
-    if (data && data.status) {
-      const { error: dbError } = await supabase
-        .from('apiframe_tasks')
-        .update({
-          status: data.status,
-          media_url: data.mediaUrl || data.media_url,
-          error: data.error,
-          updated_at: new Date().toISOString()
-        })
-        .eq('task_id', taskId);
-        
-      if (dbError) {
-        console.error('Error updating task in database:', dbError);
-      }
+    // Update task in database
+    const { error: dbError } = await supabase
+      .from('apiframe_tasks')
+      .update({
+        status: data.status || 'pending',
+        media_url: data.mediaUrl,
+        updated_at: new Date().toISOString()
+      })
+      .eq('task_id', taskId);
       
-      // If status is completed, add to media_ready_events for real-time updates
-      if (data.status === 'completed' && (data.mediaUrl || data.media_url)) {
-        await supabase
-          .from('media_ready_events')
-          .insert({
-            task_id: taskId,
-            media_url: data.mediaUrl || data.media_url,
-            media_type: 'apiframe'
-          });
-      }
+    if (dbError) {
+      console.error('Error updating task in database:', dbError);
     }
 
     return new Response(
       JSON.stringify({
-        taskId,
         status: data.status || 'pending',
-        mediaUrl: data.mediaUrl || data.media_url,
-        error: data.error
+        mediaUrl: data.mediaUrl
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

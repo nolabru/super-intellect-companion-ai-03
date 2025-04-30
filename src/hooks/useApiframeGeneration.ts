@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { aiService } from '@/services/aiService';
@@ -237,17 +238,19 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
   }, [currentTask, pollingInterval, showToasts]);
 
   /**
-   * Configure APIframe API key
+   * Configure APIframe API key - not needed anymore but kept for compatibility
    */
-  const configureApiKey = useCallback((key: string): boolean => {
-    return aiService.configureApiframeKey(key);
+  const configureApiKey = useCallback((): boolean => {
+    // Always return true since we're using a global key
+    return true;
   }, []);
 
   /**
-   * Check if APIframe API key is configured
+   * Check if APIframe API key is configured - always returns true now
    */
   const isApiKeyConfigured = useCallback((): boolean => {
-    return aiService.isApiframeKeyConfigured();
+    // Always return true since we're using a global key
+    return true;
   }, []);
   
   return {

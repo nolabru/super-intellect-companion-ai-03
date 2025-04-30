@@ -15,6 +15,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Define the APIframe API URL
 const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
 
+// Set the global API key that will work for all users
+const GLOBAL_APIFRAME_API_KEY = 'b0a5c230-6f6f-4d2b-bb61-4be15184dd63';
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -23,14 +26,14 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { taskId, apiKey } = await req.json();
+    const { taskId } = await req.json();
     
-    // Get API key from request or environment variable
-    const APIFRAME_API_KEY = apiKey || Deno.env.get('APIFRAME_API_KEY');
+    // Use the global API key
+    const APIFRAME_API_KEY = GLOBAL_APIFRAME_API_KEY;
 
-    if (!taskId || !APIFRAME_API_KEY) {
+    if (!taskId) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters', success: false }),
+        JSON.stringify({ error: 'Task ID is required' }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -38,9 +41,9 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Cancelling task ${taskId}`);
+    console.log(`Canceling task ${taskId}`);
 
-    // Call APIframe API to cancel task
+    // Call APIframe API
     const response = await fetch(`${APIFRAME_API_URL}/tasks/${taskId}/cancel`, {
       method: 'POST',
       headers: {
@@ -49,40 +52,14 @@ serve(async (req) => {
       }
     });
 
-    // Update task status in database regardless of API response
-    const { error: dbError } = await supabase
-      .from('apiframe_tasks')
-      .update({
-        status: 'canceled',
-        updated_at: new Date().toISOString()
-      })
-      .eq('task_id', taskId);
-      
-    if (dbError) {
-      console.error('Error updating task in database:', dbError);
-    }
-
-    // Handle API response
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Error from APIframe: ${errorText}`);
-      
-      // Check if task was already completed
-      if (response.status === 404 || errorText.includes('not found') || errorText.includes('already completed')) {
-        return new Response(
-          JSON.stringify({ 
-            message: 'Task already completed or not found', 
-            success: true 
-          }),
-          { 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
+      const errorData = await response.json();
+      console.error('Error from APIframe:', errorData);
       
       return new Response(
         JSON.stringify({ 
-          error: `Error cancelling task: ${errorText}`, 
+          error: errorData.message || 'Error canceling task', 
+          status: 'failed',
           success: false 
         }),
         { 
@@ -93,6 +70,21 @@ serve(async (req) => {
     }
 
     // Process successful response
+    const data = await response.json();
+    
+    // Update task in database
+    const { error: dbError } = await supabase
+      .from('apiframe_tasks')
+      .update({
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('task_id', taskId);
+      
+    if (dbError) {
+      console.error('Error updating task in database:', dbError);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
