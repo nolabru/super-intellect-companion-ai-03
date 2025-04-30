@@ -12,10 +12,10 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Get the APIframe API key from environment variables
-const APIFRAME_API_KEY = Deno.env.get('APIFRAME_API_KEY');
+// Get the APIframe API key from environment variables - updated to use consistent name
+const APIFRAME_API_KEY = Deno.env.get('API_FRAME');
 if (!APIFRAME_API_KEY) {
-  console.error('[apiframe-check-status] APIFRAME_API_KEY not configured in environment variables');
+  console.error('[apiframe-check-status] API_FRAME not configured in environment variables');
 }
 
 // Define the correct APIframe API URL for status checks

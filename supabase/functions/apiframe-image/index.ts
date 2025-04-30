@@ -19,10 +19,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get APIframe API key
-    const APIFRAME_API_KEY = Deno.env.get("APIFRAME_API_KEY");
+    // Get APIframe API key - updated to use consistent name
+    const APIFRAME_API_KEY = Deno.env.get("API_FRAME");
     if (!APIFRAME_API_KEY) {
-      throw new Error("APIFRAME_API_KEY is not configured");
+      throw new Error("API_FRAME is not configured");
     }
 
     // Parse request body
@@ -148,7 +148,7 @@ serve(async (req) => {
             model: model || 'stable-diffusion-xl',
             prompt,
             media_type: 'image',
-            params,
+            params: params || {},
             status: 'pending'
           });
         
