@@ -7,6 +7,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Define API endpoints to try - for better compatibility
+const API_ENDPOINTS = [
+  "https://api.apiframe.ai/v1/tasks/status",
+  "https://api.apiframe.pro/v1/tasks/status",
+  "https://api.apiframe.pro/fetch"
+];
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -69,54 +76,118 @@ serve(async (req) => {
       }
     }
 
-    // Check status with APIframe API
-    console.log(`[apiframe-task-status] Checking status with APIframe API`);
+    // Try each endpoint until one works
+    let apiResponse = null;
+    let apiData = null;
+    let successfulEndpoint = null;
+    let errorMessages = [];
     
-    // Updated to use the correct endpoint and POST method
-    const apiResponse = await fetch(`https://api.apiframe.pro/fetch`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": APIFRAME_API_KEY
-      },
-      body: JSON.stringify({ task_id: taskId })
-    });
-
-    if (!apiResponse.ok) {
-      const errorText = await apiResponse.text();
-      console.error(`[apiframe-task-status] APIframe API error:`, errorText);
-      throw new Error(`APIframe API error: ${apiResponse.statusText}`);
+    for (const endpoint of API_ENDPOINTS) {
+      try {
+        console.log(`[apiframe-task-status] Trying endpoint: ${endpoint}`);
+        
+        // Use consistent payload format, but adapt based on endpoint
+        const requestPayload = endpoint.includes('/fetch') 
+          ? { task_id: taskId }
+          : { taskId: taskId };
+        
+        apiResponse = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${APIFRAME_API_KEY}`,
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(requestPayload)
+        });
+        
+        console.log(`[apiframe-task-status] Response from ${endpoint}: ${apiResponse.status} ${apiResponse.statusText}`);
+        
+        if (apiResponse.ok) {
+          const contentType = apiResponse.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            apiData = await apiResponse.json();
+            successfulEndpoint = endpoint;
+            console.log(`[apiframe-task-status] Successfully used endpoint: ${endpoint}`);
+            console.log(`[apiframe-task-status] Response data:`, JSON.stringify(apiData).substring(0, 200));
+            break;
+          } else {
+            const textResponse = await apiResponse.text();
+            console.error(`[apiframe-task-status] Received non-JSON response from ${endpoint}:`, textResponse.substring(0, 500));
+            errorMessages.push(`Endpoint ${endpoint} returned non-JSON response`);
+          }
+        } else {
+          const errorText = await apiResponse.text();
+          console.error(`[apiframe-task-status] Error from ${endpoint}:`, errorText.substring(0, 500));
+          errorMessages.push(`Endpoint ${endpoint} error: ${apiResponse.status} ${apiResponse.statusText}`);
+        }
+      } catch (endpointError) {
+        console.error(`[apiframe-task-status] Error with endpoint ${endpoint}:`, endpointError);
+        errorMessages.push(`Network error with ${endpoint}: ${endpointError.message}`);
+      }
+    }
+    
+    // If no endpoints worked
+    if (!successfulEndpoint) {
+      console.error(`[apiframe-task-status] All API endpoints failed. Errors:`, errorMessages.join('; '));
+      throw new Error(`Failed to check task status: ${errorMessages.join('; ')}`);
     }
 
-    const apiData = await apiResponse.json();
     console.log(`[apiframe-task-status] APIframe response:`, JSON.stringify(apiData).substring(0, 200) + "...");
     
-    // Map APIframe status to our format
+    // Map APIframe status to our format - handle multiple possible response formats
     let status = apiData.status;
     let mediaUrl = null;
     let errorMessage = null;
+    let percentage = apiData.percentage || 0;
 
-    if (apiData.task_id) {
-      // If we have image_urls, the task is completed
+    // Handle various response formats to extract image URLs
+    if (apiData.task_id || apiData.taskId || apiData.id) {
+      // Check for image_urls array
       if (apiData.image_urls && apiData.image_urls.length > 0) {
         status = "completed";
         mediaUrl = apiData.image_urls[0];
-      } else if (apiData.status === "succeeded") {
+      } 
+      // Check for singular image_url
+      else if (apiData.image_url) {
         status = "completed";
-        // Check for different types of media URLs
-        if (apiData.image_url) {
-          mediaUrl = apiData.image_url;
-        } else if (apiData.video_url) {
-          mediaUrl = apiData.video_url;
-        } else if (apiData.audio_url) {
-          mediaUrl = apiData.audio_url;
+        mediaUrl = apiData.image_url;
+      }
+      // Check for video_url
+      else if (apiData.video_url) {
+        status = "completed";
+        mediaUrl = apiData.video_url;
+      }
+      // Check for audio_url
+      else if (apiData.audio_url) {
+        status = "completed";
+        mediaUrl = apiData.audio_url;
+      }
+      // Check for assets structure (used by some providers)
+      else if (apiData.assets) {
+        if (apiData.assets.image) {
+          status = "completed";
+          mediaUrl = apiData.assets.image;
+        } else if (apiData.assets.video) {
+          status = "completed";
+          mediaUrl = apiData.assets.video;
+        } else if (apiData.assets.audio) {
+          status = "completed";
+          mediaUrl = apiData.assets.audio;
         }
-      } else if (apiData.status === "failed") {
+      }
+      
+      // Handle status text mapping
+      if (apiData.status === "succeeded" || apiData.status === "success" || apiData.status === "complete") {
+        status = "completed";
+      } else if (apiData.status === "failed" || apiData.status === "failure" || apiData.status === "error") {
         status = "failed";
-        errorMessage = apiData.error?.message || "Task failed";
-      } else if (apiData.status === "processing") {
+        errorMessage = apiData.error?.message || apiData.message || apiData.error || "Task failed";
+      } else if (apiData.status === "processing" || apiData.status === "in_progress") {
         status = "processing";
-      } else {
+        // Try to get percentage from different fields
+        percentage = apiData.percentage || apiData.progress || apiData.completion || 0;
+      } else if (apiData.status === "pending" || apiData.status === "queued" || apiData.status === "waiting") {
         status = "pending";
       }
 
@@ -144,7 +215,8 @@ serve(async (req) => {
         status,
         mediaUrl,
         error: errorMessage,
-        percentage: apiData.percentage || 0
+        percentage,
+        endpoint: successfulEndpoint
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

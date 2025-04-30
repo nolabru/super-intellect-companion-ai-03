@@ -18,10 +18,12 @@ if (!APIFRAME_API_KEY) {
   console.error('[apiframe-generate-image] APIFRAME_API_KEY not configured in environment variables');
 }
 
-// Define the APIframe API URLs - Try both potential endpoints
+// Define the APIframe API URLs - Use API version in URL for better future compatibility
 const API_ENDPOINTS = [
-  "https://api.apiframe.pro/v1/image/generate",  // Updated endpoint based on common API patterns
-  "https://api.apiframe.pro/create"              // Original endpoint as fallback
+  "https://api.apiframe.ai/v1/images/generate",
+  "https://api.apiframe.pro/v1/images/generate",
+  "https://api.apiframe.pro/v1/image/generate",
+  "https://api.apiframe.pro/create"
 ];
 
 serve(async (req) => {
@@ -46,7 +48,7 @@ serve(async (req) => {
 
     console.log(`[apiframe-generate-image] Generating image with model ${model} and prompt: ${prompt.substring(0, 100)}...`);
 
-    // Prepare standardized request payload
+    // Prepare standardized request payload - use consistent key naming based on common API standards
     const apiData = {
       model,
       prompt,
@@ -54,7 +56,8 @@ serve(async (req) => {
       width: params?.width || 768,
       height: params?.height || 768,
       num_inference_steps: params?.steps || 30,
-      guidance_scale: params?.guidanceScale || 7.5
+      guidance_scale: params?.guidanceScale || 7.5,
+      seed: params?.seed || Math.floor(Math.random() * 2147483647)
     };
 
     console.log(`[apiframe-generate-image] Request payload:`, JSON.stringify(apiData).substring(0, 500));
@@ -63,6 +66,7 @@ serve(async (req) => {
     let response = null;
     let responseData = null;
     let successfulEndpoint = null;
+    let errorMessages = [];
     
     for (const endpoint of API_ENDPOINTS) {
       try {
@@ -80,29 +84,64 @@ serve(async (req) => {
         
         console.log(`[apiframe-generate-image] Response from ${endpoint}: ${response.status} ${response.statusText}`);
         
+        // Log response headers for debugging
+        const headersLog = {};
+        response.headers.forEach((value, key) => { headersLog[key] = value });
+        console.log(`[apiframe-generate-image] Response headers:`, JSON.stringify(headersLog));
+        
         if (response.ok) {
-          responseData = await response.json();
-          successfulEndpoint = endpoint;
-          console.log(`[apiframe-generate-image] Successfully used endpoint: ${endpoint}`);
-          break;
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            responseData = await response.json();
+            successfulEndpoint = endpoint;
+            console.log(`[apiframe-generate-image] Successfully used endpoint: ${endpoint}`);
+            console.log(`[apiframe-generate-image] Response data:`, JSON.stringify(responseData).substring(0, 500));
+            break;
+          } else {
+            const textResponse = await response.text();
+            console.error(`[apiframe-generate-image] Received non-JSON response from ${endpoint}:`, textResponse.substring(0, 500));
+            errorMessages.push(`Endpoint ${endpoint} returned non-JSON response`);
+          }
         } else {
           const errorText = await response.text();
           console.error(`[apiframe-generate-image] Error from ${endpoint}:`, errorText.substring(0, 500));
+          errorMessages.push(`Endpoint ${endpoint} error: ${response.status} ${response.statusText}`);
+          
+          try {
+            // Try to parse error as JSON for more details
+            const errorJson = JSON.parse(errorText);
+            console.error(`[apiframe-generate-image] Parsed error from ${endpoint}:`, JSON.stringify(errorJson).substring(0, 500));
+            errorMessages.push(`Message: ${errorJson.error || errorJson.message || 'Unknown error'}`);
+          } catch (parseErr) {
+            // If not JSON, use text as is
+            errorMessages.push(`Raw error: ${errorText.substring(0, 200)}`);
+          }
         }
       } catch (endpointError) {
         console.error(`[apiframe-generate-image] Error with endpoint ${endpoint}:`, endpointError);
+        errorMessages.push(`Network error with ${endpoint}: ${endpointError.message}`);
       }
     }
     
     // If no endpoints worked
     if (!successfulEndpoint) {
-      throw new Error("All API endpoints failed. Check API key and try again later.");
+      console.error(`[apiframe-generate-image] All API endpoints failed. Errors:`, errorMessages.join('; '));
+      
+      // Check for common issues
+      if (errorMessages.some(msg => msg.includes('401') || msg.includes('Authentication'))) {
+        throw new Error("Authentication failed. Please verify your API key is valid and has sufficient permissions.");
+      } else if (errorMessages.some(msg => msg.includes('429') || msg.includes('Too Many'))) {
+        throw new Error("Rate limit exceeded. Please try again later.");
+      } else {
+        throw new Error(`All API endpoints failed. Please verify API documentation for correct endpoints. Errors: ${errorMessages.join('; ')}`);
+      }
     }
 
-    // Get task ID from response
+    // Get task ID from response using different possible field names
     const taskId = responseData.task_id || responseData.taskId || responseData.id;
     
     if (!taskId) {
+      console.error(`[apiframe-generate-image] No task ID in response:`, JSON.stringify(responseData).substring(0, 500));
       throw new Error("No task ID returned from APIframe");
     }
     
@@ -129,7 +168,7 @@ serve(async (req) => {
         taskId: taskId,
         status: 'pending',
         message: 'Task created successfully',
-        endpoint: successfulEndpoint // Include which endpoint worked
+        endpoint: successfulEndpoint
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -141,7 +180,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Internal server error',
-        stack: error.stack
+        stack: error.stack,
+        hint: "Verifique se a API key está correta e se tem permissões suficientes para o modelo escolhido."
       }),
       { 
         status: 500, 

@@ -1,14 +1,16 @@
 
 type ModelMapping = Record<string, string>;
 
-// Mapping for image models - UPDATED with the latest model IDs based on APIframe documentation
+// Updated mapping for image models based on APIframe.ai documentation
 const imageModelMapping: ModelMapping = {
-  'sdxl': 'stable-diffusion-xl', // Updated from "stability-sd-xl"
-  'sdxl-turbo': 'stable-diffusion-xl-turbo', // Updated from "stability-sd-xl-turbo"
+  'sdxl': 'stable-diffusion-xl', 
+  'sdxl-turbo': 'stable-diffusion-xl-turbo',
   'kandinsky': 'kandinsky-2.2',
   'deepfloyd': 'deepfloyd-if',
-  'dalle-3': 'dall-e-3', // Updated from "openai-dalle-3"
+  'dalle-3': 'dall-e-3',
   'midjourney': 'midjourney-v6',
+  'sd-3': 'stable-diffusion-3', // Added newer model
+  'pixel-art': 'pixel-art-xl',  // Added specialty model
 };
 
 // Mapping for video models
