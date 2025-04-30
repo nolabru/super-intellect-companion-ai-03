@@ -34,3 +34,6 @@ enabled = true
 [functions]
 [functions.admin-update-tokens]
 verify_jwt = true
+[functions.apiframe-generate-audio]
+verify_jwt = false
+

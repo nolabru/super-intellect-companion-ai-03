@@ -30,7 +30,14 @@ serve(async (req) => {
 
     if (!prompt || !model || !APIFRAME_API_KEY) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ 
+          error: 'Missing required parameters', 
+          details: {
+            prompt: !prompt ? 'Missing' : 'Provided',
+            model: !model ? 'Missing' : 'Provided',
+            apiKey: !APIFRAME_API_KEY ? 'Missing' : 'Provided'
+          }
+        }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -57,14 +64,16 @@ serve(async (req) => {
       body: JSON.stringify(payload)
     });
 
+    const responseData = await response.json();
+    
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error from APIframe:', errorData);
+      console.error('Error from APIframe:', responseData);
       
       return new Response(
         JSON.stringify({ 
-          error: errorData.message || 'Error generating audio', 
-          status: 'failed' 
+          error: responseData.message || 'Error generating audio', 
+          status: 'failed',
+          details: responseData
         }),
         { 
           status: response.status, 
@@ -74,18 +83,18 @@ serve(async (req) => {
     }
 
     // Process successful response
-    const data = await response.json();
+    console.log('APIframe response:', JSON.stringify(responseData));
     
     // Store task in database
     const { error: dbError } = await supabase
       .from('apiframe_tasks')
       .insert({
-        task_id: data.taskId,
+        task_id: responseData.taskId,
         prompt,
         model,
         media_type: 'audio',
         params: params || {},
-        status: data.status || 'pending'
+        status: responseData.status || 'pending'
       });
       
     if (dbError) {
@@ -94,9 +103,9 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        taskId: data.taskId,
-        status: data.status || 'pending',
-        mediaUrl: data.mediaUrl
+        taskId: responseData.taskId,
+        status: responseData.status || 'pending',
+        mediaUrl: responseData.mediaUrl
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -106,7 +115,10 @@ serve(async (req) => {
     console.error('Error in apiframe-generate-audio function:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        stack: error.stack
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

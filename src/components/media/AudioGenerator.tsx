@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import UnifiedMediaGenerator from './UnifiedMediaGenerator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 
-// Updated audio models data from APIframe
+// Updated audio models data
 const AUDIO_MODELS = [
   { id: 'elevenlabs-v2', name: 'ElevenLabs v2' },
   { id: 'openai-tts-1', name: 'OpenAI TTS-1' },
@@ -64,13 +65,12 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
     }
   };
   
-  // Update the selected voice whenever the model changes
   useEffect(() => {
     handleModelChange(selectedModel);
   }, []);
   
   const ParamControls = () => {
-    // Only show voice selector for TTS models
+    // Only show voice selector and sliders for TTS models
     if (!['elevenlabs-v2', 'openai-tts-1', 'coqui-xtts'].includes(selectedModel)) {
       return (
         <div className="text-sm text-muted-foreground italic">
@@ -82,23 +82,57 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
     }
     
     return (
-      <div className="space-y-2">
-        <Label htmlFor="voiceSelector">Voice</Label>
-        <Select
-          value={selectedVoice}
-          onValueChange={setSelectedVoice}
-        >
-          <SelectTrigger id="voiceSelector">
-            <SelectValue placeholder="Select a voice" />
-          </SelectTrigger>
-          <SelectContent>
-            {(VOICES[selectedModel as keyof typeof VOICES] || []).map((voice) => (
-              <SelectItem key={voice.id} value={voice.id}>
-                {voice.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="voiceSelector">Voice</Label>
+          <Select
+            value={selectedVoice}
+            onValueChange={setSelectedVoice}
+          >
+            <SelectTrigger id="voiceSelector">
+              <SelectValue placeholder="Select a voice" />
+            </SelectTrigger>
+            <SelectContent>
+              {(VOICES[selectedModel as keyof typeof VOICES] || []).map((voice) => (
+                <SelectItem key={voice.id} value={voice.id}>
+                  {voice.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {selectedModel === 'elevenlabs-v2' && (
+          <>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="stability-slider">Stability: {stability.toFixed(2)}</Label>
+              </div>
+              <Slider
+                id="stability-slider"
+                min={0}
+                max={1}
+                step={0.01}
+                value={[stability]}
+                onValueChange={(value) => setStability(value[0])}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="clarity-slider">Clarity: {clarity.toFixed(2)}</Label>
+              </div>
+              <Slider
+                id="clarity-slider"
+                min={0}
+                max={1}
+                step={0.01}
+                value={[clarity]}
+                onValueChange={(value) => setClarity(value[0])}
+              />
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -115,7 +149,12 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
         voice: selectedVoice,
         stability,
         clarity,
-        modelType: ['musicgen', 'audiogen'].includes(selectedModel) ? 'music' : 'speech'
+        modelType: ['musicgen', 'audiogen'].includes(selectedModel) ? 'music' : 'speech',
+        // Importante: parâmetros específicos para TTS
+        voice_id: selectedModel === 'elevenlabs-v2' ? selectedVoice : undefined,
+        similarity_boost: selectedModel === 'elevenlabs-v2' ? clarity : undefined,
+        speed: selectedModel === 'openai-tts-1' ? 1.0 : undefined,
+        language: selectedModel === 'coqui-xtts' ? 'pt' : undefined
       }}
     />
   );

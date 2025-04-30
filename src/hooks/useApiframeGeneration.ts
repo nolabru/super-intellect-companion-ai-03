@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { aiService } from '@/services/aiService';
@@ -47,6 +46,8 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
         onProgress(0);
       }
       
+      console.log(`[useApiframeGeneration] Starting ${mediaType} generation with model: ${model}`, { params });
+      
       // Use aiService to handle the generation
       const result = await aiService.generateMedia({
         modelId: model.toString(),
@@ -56,8 +57,10 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
         referenceUrl
       });
       
+      console.log(`[useApiframeGeneration] Generation result:`, result);
+      
       if (!result.success && !result.taskId) {
-        throw new Error(result.error || 'Failed to generate media');
+        throw new Error(result.error || `Failed to generate ${mediaType}`);
       }
       
       const taskId = result.taskId;
@@ -116,6 +119,7 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
           updateProgress();
           
           // Check the status using aiService
+          console.log(`[useApiframeGeneration] Polling status for task ${taskId}...`);
           const status = await aiService.checkMediaTaskStatus(taskId);
           console.log(`[useApiframeGeneration] Task status:`, status);
           
