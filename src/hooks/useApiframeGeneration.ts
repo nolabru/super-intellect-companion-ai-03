@@ -239,6 +239,7 @@ export function useApiframeGeneration(options: UseMediaGenerationOptions = {}) {
 
   /**
    * Configure APIframe API key - not needed anymore but kept for compatibility
+   * Updated to take no parameters since we're using a global key
    */
   const configureApiKey = useCallback((): boolean => {
     // Always return true since we're using a global key
