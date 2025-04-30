@@ -24,10 +24,13 @@ serve(async (req) => {
   try {
     // Parse request body
     const { taskId, apiKey } = await req.json();
+    
+    // Get API key from request or environment variable
+    const APIFRAME_API_KEY = apiKey || Deno.env.get('APIFRAME_API_KEY');
 
-    if (!taskId || !apiKey) {
+    if (!taskId || !APIFRAME_API_KEY) {
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ error: 'Missing required parameters', success: false }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -37,37 +40,20 @@ serve(async (req) => {
 
     console.log(`Cancelling task ${taskId}`);
 
-    // Call APIframe API
+    // Call APIframe API to cancel task
     const response = await fetch(`${APIFRAME_API_URL}/tasks/${taskId}/cancel`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
         'Content-Type': 'application/json'
       }
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error from APIframe:', errorData);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: errorData.message || 'Error cancelling task'
-        }),
-        { 
-          status: response.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    // Update task in database
+    // Update task status in database regardless of API response
     const { error: dbError } = await supabase
       .from('apiframe_tasks')
       .update({
-        status: 'failed',
-        error: 'Task cancelled by user',
+        status: 'canceled',
         updated_at: new Date().toISOString()
       })
       .eq('task_id', taskId);
@@ -76,9 +62,41 @@ serve(async (req) => {
       console.error('Error updating task in database:', dbError);
     }
 
+    // Handle API response
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Error from APIframe: ${errorText}`);
+      
+      // Check if task was already completed
+      if (response.status === 404 || errorText.includes('not found') || errorText.includes('already completed')) {
+        return new Response(
+          JSON.stringify({ 
+            message: 'Task already completed or not found', 
+            success: true 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          error: `Error cancelling task: ${errorText}`, 
+          success: false 
+        }),
+        { 
+          status: response.status, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Process successful response
     return new Response(
       JSON.stringify({
-        success: true
+        success: true,
+        message: 'Task cancelled successfully'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -88,10 +106,7 @@ serve(async (req) => {
     console.error('Error in apiframe-task-cancel function:', error);
     
     return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: error.message || 'Internal server error' 
-      }),
+      JSON.stringify({ error: error.message || 'Internal server error', success: false }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

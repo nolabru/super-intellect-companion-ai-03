@@ -6,18 +6,18 @@ import { toast } from 'sonner';
 
 let apiKey: string | null = null;
 
-// Criar circuit breakers para cada tipo de operação
+// Create circuit breakers for each operation type
 const imageCircuitBreaker = getCircuitBreaker('apiframe-image', {
   failureThreshold: 3,
-  resetTimeout: 30000, // 30 segundos
+  resetTimeout: 30000, // 30 seconds
   onStateChange: (from, to) => {
     if (to === CircuitState.OPEN) {
-      toast.warning('Serviço de geração de imagens indisponível temporariamente', {
-        description: 'Tentativa automática de reconexão em 30 segundos',
+      toast.warning('Image generation service temporarily unavailable', {
+        description: 'Automatic reconnection attempt in 30 seconds',
         duration: 5000
       });
     } else if (from === CircuitState.OPEN && to === CircuitState.CLOSED) {
-      toast.success('Serviço de geração de imagens restaurado', {
+      toast.success('Image generation service restored', {
         duration: 3000
       });
     }
@@ -25,16 +25,16 @@ const imageCircuitBreaker = getCircuitBreaker('apiframe-image', {
 });
 
 const videoCircuitBreaker = getCircuitBreaker('apiframe-video', {
-  failureThreshold: 2, // Mais sensível para vídeos por ser mais intensivo
-  resetTimeout: 45000, // 45 segundos
+  failureThreshold: 2, // More sensitive for videos as they're more resource-intensive
+  resetTimeout: 45000, // 45 seconds
   onStateChange: (from, to) => {
     if (to === CircuitState.OPEN) {
-      toast.warning('Serviço de geração de vídeos indisponível temporariamente', {
-        description: 'Tentativa automática de reconexão em 45 segundos',
+      toast.warning('Video generation service temporarily unavailable', {
+        description: 'Automatic reconnection attempt in 45 seconds',
         duration: 5000
       });
     } else if (from === CircuitState.OPEN && to === CircuitState.CLOSED) {
-      toast.success('Serviço de geração de vídeos restaurado', {
+      toast.success('Video generation service restored', {
         duration: 3000
       });
     }
@@ -43,15 +43,15 @@ const videoCircuitBreaker = getCircuitBreaker('apiframe-video', {
 
 const audioCircuitBreaker = getCircuitBreaker('apiframe-audio', {
   failureThreshold: 3,
-  resetTimeout: 30000, // 30 segundos
+  resetTimeout: 30000, // 30 seconds
   onStateChange: (from, to) => {
     if (to === CircuitState.OPEN) {
-      toast.warning('Serviço de geração de áudio indisponível temporariamente', {
-        description: 'Tentativa automática de reconexão em 30 segundos',
+      toast.warning('Audio generation service temporarily unavailable', {
+        description: 'Automatic reconnection attempt in 30 seconds',
         duration: 5000
       });
     } else if (from === CircuitState.OPEN && to === CircuitState.CLOSED) {
-      toast.success('Serviço de geração de áudio restaurado', {
+      toast.success('Audio generation service restored', {
         duration: 3000
       });
     }
@@ -59,8 +59,8 @@ const audioCircuitBreaker = getCircuitBreaker('apiframe-audio', {
 });
 
 const statusCircuitBreaker = getCircuitBreaker('apiframe-status', {
-  failureThreshold: 5, // Mais tolerante para verificações de status
-  resetTimeout: 20000 // 20 segundos
+  failureThreshold: 5, // More tolerant for status checks
+  resetTimeout: 20000 // 20 seconds
 });
 
 export const apiframeService = {
@@ -283,7 +283,7 @@ export const apiframeService = {
       .subscribe();
   },
   
-  // Métodos para obter o estado dos circuit breakers
+  // Methods to get circuit breaker state
   getCircuitState(type: 'image' | 'video' | 'audio' | 'status'): CircuitState {
     switch (type) {
       case 'image': return imageCircuitBreaker.getState();
@@ -293,7 +293,7 @@ export const apiframeService = {
     }
   },
   
-  // Método para resetar manualmente os circuit breakers
+  // Method to manually reset circuit breakers
   resetCircuitBreakers(): void {
     imageCircuitBreaker.reset();
     videoCircuitBreaker.reset();

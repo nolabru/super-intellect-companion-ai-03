@@ -24,8 +24,11 @@ serve(async (req) => {
   try {
     // Parse request body
     const { prompt, model, params, apiKey } = await req.json();
+    
+    // Get API key from request or environment variable
+    const APIFRAME_API_KEY = apiKey || Deno.env.get('APIFRAME_API_KEY');
 
-    if (!prompt || !model || !apiKey) {
+    if (!prompt || !model || !APIFRAME_API_KEY) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { 
@@ -48,7 +51,7 @@ serve(async (req) => {
     const response = await fetch(`${APIFRAME_API_URL}/images/generate`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)

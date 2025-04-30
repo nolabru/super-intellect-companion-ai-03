@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +32,7 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
 
   const handleSaveConfig = () => {
     if (!apiKey.trim()) {
-      toast.error('Chave de API é obrigatória');
+      toast.error('API key is required');
       return;
     }
 
@@ -39,13 +40,13 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
     
     if (result) {
       setIsConfigured(true);
-      toast.success('Chave de API do APIframe configurada com sucesso');
+      toast.success('APIframe API key configured successfully');
       
       if (onConfigChange) {
         onConfigChange(true);
       }
     } else {
-      toast.error('Falha ao configurar a chave de API do APIframe');
+      toast.error('Failed to configure APIframe API key');
     }
   };
 
@@ -55,7 +56,7 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
     try {
       // Test connection by checking the status of a non-existent task
       // This will validate if the API key is correct
-      toast.info('Testando conexão com o APIframe...');
+      toast.info('Testing connection to APIframe...');
       
       // Use a dummy task ID to test the connection
       const dummyTaskId = 'test-connection-' + Date.now();
@@ -63,24 +64,24 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
       try {
         await apiframeService.checkTaskStatus(dummyTaskId);
         // If we get here without an error, the API key is valid
-        toast.success('Conexão com o APIframe bem-sucedida');
+        toast.success('Successfully connected to APIframe');
       } catch (error) {
         // Check if the error is due to invalid API key or just a 404 for the task
         const errorMessage = error instanceof Error ? error.message : String(error);
         
-        if (errorMessage.includes('unauthorized') || 
-            errorMessage.includes('invalid key') || 
-            errorMessage.includes('forbidden')) {
-          toast.error('Chave de API inválida');
+        if (errorMessage.includes("unauthorized") || 
+            errorMessage.includes("invalid key") || 
+            errorMessage.includes("forbidden")) {
+          toast.error('Invalid API key');
         } else {
           // If we get a 404 or other error, it means the API key is valid
           // but the task doesn't exist (which is expected)
-          toast.success('Conexão com o APIframe bem-sucedida');
+          toast.success('Successfully connected to APIframe');
         }
       }
     } catch (error) {
-      console.error('Erro ao testar conexão com o APIframe:', error);
-      toast.error('Falha na conexão com o APIframe');
+      console.error('Error testing connection to APIframe:', error);
+      toast.error('Failed to connect to APIframe');
     } finally {
       setIsTesting(false);
     }
@@ -91,10 +92,10 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
           <Settings className="h-5 w-5" />
-          <span>Configuração do APIframe</span>
+          <span>APIframe Configuration</span>
         </CardTitle>
         <CardDescription>
-          Configure sua chave de API do APIframe para habilitar recursos de geração de mídia
+          Configure your APIframe API key to enable media generation features
         </CardDescription>
       </CardHeader>
       
@@ -103,35 +104,35 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
           {isConfigured ? (
             <Alert className="bg-green-500/10 border-green-500/50">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertTitle>Chave de API Configurada</AlertTitle>
+              <AlertTitle>API Key Configured</AlertTitle>
               <AlertDescription>
-                Sua chave de API do APIframe está configurada. Você pode substituí-la abaixo, se necessário.
+                Your APIframe API key is configured. You can replace it below if needed.
               </AlertDescription>
             </Alert>
           ) : (
             <Alert className="bg-amber-500/10 border-amber-500/50">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <AlertTitle>Chave de API Necessária</AlertTitle>
+              <AlertTitle>API Key Required</AlertTitle>
               <AlertDescription>
-                Para usar os recursos de geração de mídia do APIframe, você precisa configurar sua chave de API.
+                To use APIframe media generation features, you need to configure your API key.
               </AlertDescription>
             </Alert>
           )}
           
           <div className="space-y-2">
             <Label htmlFor="apiKey" className="flex items-center gap-2">
-              <KeyRound className="h-4 w-4" /> Chave de API do APIframe
+              <KeyRound className="h-4 w-4" /> APIframe API Key
             </Label>
             <Input
               id="apiKey"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Digite sua chave de API do APIframe"
+              placeholder="Enter your APIframe API key"
               className="font-mono"
             />
             <p className="text-xs text-muted-foreground">
-              Obtenha sua chave de API no <a href="https://apiframe.ai/dashboard/api-keys" target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">Painel do APIframe</a>
+              Get your API key from the <a href="https://apiframe.ai/dashboard/api-keys" target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">APIframe Dashboard</a>
             </p>
           </div>
         </div>
@@ -146,12 +147,12 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
           {isTesting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Testando...
+              Testing...
             </>
-          ) : 'Testar Conexão'}
+          ) : 'Test Connection'}
         </Button>
         <Button onClick={handleSaveConfig}>
-          {isConfigured ? 'Atualizar Chave de API' : 'Salvar Chave de API'}
+          {isConfigured ? 'Update API Key' : 'Save API Key'}
         </Button>
       </CardFooter>
     </Card>
