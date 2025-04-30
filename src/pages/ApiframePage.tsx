@@ -3,21 +3,93 @@ import React, { useState, useEffect } from 'react';
 import ApiframeServices from '@/components/apiframe/ApiframeServices';
 import { apiframeService } from '@/services/apiframeService';
 import { Button } from '@/components/ui/button';
-import { Wand2, Settings } from 'lucide-react';
+import { Wand2, Settings, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const ApiframePage: React.FC = () => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
+  const [isChecking, setIsChecking] = useState<boolean>(true);
   const navigate = useNavigate();
   
   useEffect(() => {
     // Check if APIframe is configured on mount
-    setIsConfigured(apiframeService.isApiKeyConfigured());
+    const checkApiKey = async () => {
+      try {
+        setIsChecking(true);
+        const configured = apiframeService.isApiKeyConfigured();
+        setIsConfigured(configured);
+        
+        // If configured, try to verify the API key silently
+        if (configured) {
+          try {
+            // Silently test the connection using a non-existent task ID
+            // This will validate if the API key is correct
+            const dummyTaskId = 'verify-' + Date.now();
+            await apiframeService.checkTaskStatus(dummyTaskId);
+          } catch (error) {
+            console.log('API key verification attempted - normal to see errors for non-existent tasks');
+            // We don't show errors here as this is just a verification check
+          }
+        }
+      } catch (error) {
+        console.error('Error checking APIframe configuration:', error);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    
+    checkApiKey();
   }, []);
 
   const handleConfigClick = () => {
     navigate('/services-config');
   };
+  
+  const handleTestConfig = async () => {
+    try {
+      toast.info('Testing connection to APIframe...');
+      
+      // Use a dummy task ID to test the connection
+      const dummyTaskId = 'test-connection-' + Date.now();
+      
+      try {
+        await apiframeService.checkTaskStatus(dummyTaskId);
+        // If we get here without an error, the API key is valid
+        toast.success('Successfully connected to APIframe');
+      } catch (error) {
+        // Check if the error is due to invalid API key or just a 404 for the task
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (errorMessage.includes("unauthorized") || 
+            errorMessage.includes("invalid key") || 
+            errorMessage.includes("forbidden")) {
+          toast.error('Invalid API key');
+        } else {
+          // If we get a 404 or other error, it means the API key is valid
+          // but the task doesn't exist (which is expected)
+          toast.success('Successfully connected to APIframe');
+        }
+      }
+    } catch (error) {
+      console.error('Error testing connection to APIframe:', error);
+      toast.error('Failed to connect to APIframe');
+    }
+  };
+
+  if (isChecking) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-col items-center justify-center p-10">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Checking APIframe Configuration</h2>
+          <p className="text-center text-muted-foreground">
+            Please wait while we verify your APIframe.ai configuration...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -45,6 +117,26 @@ const ApiframePage: React.FC = () => {
         </div>
       ) : (
         <div className="mt-6">
+          <div className="flex justify-end mb-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleTestConfig} 
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Test Connection
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleConfigClick} 
+              className="flex items-center gap-2 ml-2"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Button>
+          </div>
           <ApiframeServices />
         </div>
       )}

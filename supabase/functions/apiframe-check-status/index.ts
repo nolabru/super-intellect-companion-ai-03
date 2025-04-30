@@ -54,7 +54,7 @@ serve(async (req) => {
 
     if (!response.ok) {
       // Check if it's because the task doesn't exist (for connection testing)
-      const isConnTest = taskId.startsWith('test-connection-');
+      const isConnTest = taskId.startsWith('test-connection-') || taskId.startsWith('verify-');
       
       if (isConnTest && response.status === 404) {
         // For test connections, a 404 is actually okay, means the API key works
@@ -78,6 +78,20 @@ serve(async (req) => {
       }
       
       console.error(`Error from APIframe: ${errorText}`);
+      
+      // If it's an authentication error and we're testing the connection
+      if (isConnTest && (response.status === 401 || response.status === 403)) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid or unauthorized API key', 
+            status: 'unauthorized'
+          }),
+          { 
+            status: 401, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
       
       return new Response(
         JSON.stringify({ 
