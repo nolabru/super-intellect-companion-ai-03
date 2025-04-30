@@ -9,12 +9,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ImageParameters as ImageParamsType } from '@/types/parameters';
+import { AVAILABLE_MODELS } from '@/constants';
 
-const IMAGE_MODELS = [
-  { id: 'sdxl', name: 'Stable Diffusion XL' },
-  { id: 'kandinsky', name: 'Kandinsky' },
-  { id: 'deepfloyd', name: 'DeepFloyd' }
-];
+// Get APIFrame image models from available models
+const IMAGE_MODELS = AVAILABLE_MODELS
+  .filter(model => model.provider === 'apiframe' && model.modes.includes('image'))
+  .map(model => ({ id: model.id, name: model.displayName }));
 
 const STYLES = [
   { id: 'photographic', name: 'Fotográfico' },

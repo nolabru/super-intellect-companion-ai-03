@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import {
@@ -11,6 +10,16 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VideoParameters as VideoParamsType } from '@/types/parameters';
 import { Type, ImageIcon } from 'lucide-react';
+import { AVAILABLE_MODELS } from '@/constants';
+
+// Get APIFrame video models from available models
+const VIDEO_MODELS = AVAILABLE_MODELS
+  .filter(model => model.provider === 'apiframe' && model.modes.includes('video'))
+  .map(model => ({ 
+    id: model.id, 
+    name: model.displayName,
+    requiresReference: model.id.includes('-img') || model.id.includes('image')
+  }));
 
 interface VideoParametersProps {
   model: string;
@@ -52,6 +61,25 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Modelo</Label>
+        <Select
+          value={params.model}
+          onValueChange={(value) => handleParamChange('model', value)}
+        >
+          <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
+            <SelectValue placeholder="Selecione um modelo" />
+          </SelectTrigger>
+          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
+            {VIDEO_MODELS.map((model) => (
+              <SelectItem key={model.id} value={model.id}>
+                {model.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="space-y-2">
         <Label>Tipo de Geração</Label>
         <RadioGroup 

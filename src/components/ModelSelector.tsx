@@ -39,7 +39,8 @@ export const getProviderDisplayName = (provider: string): string => {
     'ideogram': 'Ideogram',
     'minimax': 'MiniMax',
     'elevenlabs': 'ElevenLabs',
-    'luma': 'Luma AI'
+    'luma': 'Luma AI',
+    'apiframe': 'APIframe'
   };
   
   return providerNames[provider] || provider;
@@ -60,6 +61,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     ? AVAILABLE_MODELS.filter(model => availableModels.includes(model.id))
     : getModelsByMode(mode);
 
+  // Group models by provider
+  const modelsByProvider: Record<string, ChatModel[]> = {};
+  
+  models.forEach(model => {
+    if (!modelsByProvider[model.provider]) {
+      modelsByProvider[model.provider] = [];
+    }
+    modelsByProvider[model.provider].push(model);
+  });
+
   return (
     <Select
       value={selectedModel}
@@ -76,11 +87,19 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       >
         <SelectValue placeholder="Selecione um modelo" />
       </SelectTrigger>
-      <SelectContent className="bg-inventu-darker/95 backdrop-blur-lg border-white/10">
-        {models.map((model) => (
-          <SelectItem key={model.id} value={model.id}>
-            {model.displayName}
-          </SelectItem>
+      <SelectContent className="bg-inventu-darker/95 backdrop-blur-lg border-white/10 max-h-[60vh]">
+        {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
+          <React.Fragment key={provider}>
+            <div className="px-2 py-1.5 text-xs font-medium text-white/60">
+              {getProviderDisplayName(provider)}
+            </div>
+            {providerModels.map((model) => (
+              <SelectItem key={model.id} value={model.id}>
+                {model.displayName}
+              </SelectItem>
+            ))}
+            <div className="my-1 border-t border-white/10"></div>
+          </React.Fragment>
         ))}
       </SelectContent>
     </Select>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,22 +9,23 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { AudioParameters as AudioParamsType } from '@/types/parameters';
+import { AVAILABLE_MODELS } from '@/constants';
 
-const VOICE_MODELS = [
-  { id: 'elevenlabs', name: 'ElevenLabs' },
-  { id: 'openai', name: 'OpenAI' },
-  { id: 'coqui', name: 'Coqui TTS' }
-];
+// Get APIFrame audio models from available models
+const AUDIO_MODELS = AVAILABLE_MODELS
+  .filter(model => model.provider === 'apiframe' && model.modes.includes('audio'))
+  .map(model => ({ id: model.id, name: model.displayName }));
 
+// Keep the voice options for different models
 const VOICES = [
-  { id: 'alloy', name: 'Alloy', model: 'openai' },
-  { id: 'echo', name: 'Echo', model: 'openai' },
-  { id: 'fable', name: 'Fable', model: 'openai' },
-  { id: 'onyx', name: 'Onyx', model: 'openai' },
-  { id: 'nova', name: 'Nova', model: 'openai' },
-  { id: 'sarah', name: 'Sarah', model: 'elevenlabs' },
-  { id: 'thomas', name: 'Thomas', model: 'elevenlabs' },
-  { id: 'nicole', name: 'Nicole', model: 'elevenlabs' }
+  { id: 'alloy', name: 'Alloy', model: 'openai-tts-1' },
+  { id: 'echo', name: 'Echo', model: 'openai-tts-1' },
+  { id: 'fable', name: 'Fable', model: 'openai-tts-1' },
+  { id: 'onyx', name: 'Onyx', model: 'openai-tts-1' },
+  { id: 'nova', name: 'Nova', model: 'openai-tts-1' },
+  { id: 'sarah', name: 'Sarah', model: 'elevenlabs-v2' },
+  { id: 'thomas', name: 'Thomas', model: 'elevenlabs-v2' },
+  { id: 'nicole', name: 'Nicole', model: 'elevenlabs-v2' }
 ];
 
 interface AudioParametersProps {
@@ -80,7 +80,7 @@ const AudioParameters: React.FC<AudioParametersProps> = ({
             <SelectValue placeholder="Selecione um modelo" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            {VOICE_MODELS.map((model) => (
+            {AUDIO_MODELS.map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 {model.name}
               </SelectItem>
