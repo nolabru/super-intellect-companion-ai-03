@@ -44,7 +44,4 @@ verify_jwt = false
 verify_jwt = false
 [functions.apiframe-image]
 verify_jwt = false
-[functions.apiframe-task-status]
-verify_jwt = false
-[functions.apiframe-generate-video]
-verify_jwt = false
+

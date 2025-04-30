@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -72,7 +71,6 @@ serve(async (req) => {
     // Check status with APIframe API
     console.log(`[apiframe-task-status] Checking status with APIframe API`);
     
-    // Updated to use the correct endpoint and POST method
     const apiResponse = await fetch(`https://api.apiframe.pro/fetch`, {
       method: "POST",
       headers: {
@@ -89,7 +87,6 @@ serve(async (req) => {
     }
 
     const apiData = await apiResponse.json();
-    console.log(`[apiframe-task-status] APIframe response:`, JSON.stringify(apiData).substring(0, 200) + "...");
     
     // Map APIframe status to our format
     let status = apiData.status;

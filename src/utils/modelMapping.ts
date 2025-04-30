@@ -8,7 +8,7 @@ const imageModelMapping: ModelMapping = {
   'kandinsky': 'kandinsky-2.2',
   'deepfloyd': 'deepfloyd-if',
   'dalle-3': 'openai-dalle-3',
-  'midjourney': 'midjourney-v6', // Using the correct API model ID for midjourney
+  'midjourney': 'midjourney',
 };
 
 // Mapping for video models
@@ -37,14 +37,12 @@ const audioModelMapping: ModelMapping = {
  * Maps UI model ID to APIframe model ID
  */
 export function getApiframeModelId(modelId: string): string {
-  // Add logging to debug model mapping
-  const mappedId = imageModelMapping[modelId] || 
-                   videoModelMapping[modelId] || 
-                   audioModelMapping[modelId] || 
-                   modelId;
-  
-  console.log(`[modelMapping] Mapped model ID '${modelId}' to '${mappedId}'`);
-  return mappedId;
+  return (
+    imageModelMapping[modelId] || 
+    videoModelMapping[modelId] || 
+    audioModelMapping[modelId] || 
+    modelId
+  );
 }
 
 /**

@@ -1,3 +1,4 @@
+
 import { useTaskManager, Task } from '@/hooks/useTaskManager';
 import { useApiframeGeneration } from '@/hooks/useApiframeGeneration';
 import { useMediaGeneration } from '@/hooks/useMediaGeneration';
@@ -300,8 +301,7 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
     // Service configuration methods
     configureApiKey: (key: string, service: 'apiframe' | 'piapi' = 'apiframe') => {
       if (service === 'apiframe') {
-        // The apiframeService.configureApiKey no longer accepts parameters
-        return apiframeService.configureApiKey();
+        return apiframeService.configureApiKey(key);
       } else {
         return piapiService.configureApiKey(key);
       }

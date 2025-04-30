@@ -12,14 +12,11 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Get the APIframe API key from environment variables
-const APIFRAME_API_KEY = Deno.env.get('APIFRAME_API_KEY');
-if (!APIFRAME_API_KEY) {
-  console.error('[apiframe-generate-image] APIFRAME_API_KEY not configured in environment variables');
-}
+// Define the APIframe API URL
+const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
 
-// Define the correct APIframe API URL - Updated to use the correct endpoint
-const APIFRAME_API_URL = "https://api.apiframe.pro/create";
+// Set the global API key that will work for all users
+const GLOBAL_APIFRAME_API_KEY = 'b0a5c230-6f6f-4d2b-bb61-4be15184dd63';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -31,6 +28,9 @@ serve(async (req) => {
     // Parse request body
     const { prompt, model, params } = await req.json();
     
+    // Use the global API key instead of requesting it from the user or environment
+    const APIFRAME_API_KEY = GLOBAL_APIFRAME_API_KEY;
+
     if (!prompt || !model) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
@@ -41,100 +41,75 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[apiframe-generate-image] Generating image with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`Generating image with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
 
-    // Prepare standardized request payload
-    const apiData = {
-      model,
+    // Prepare request payload
+    const payload = {
       prompt,
-      negative_prompt: params?.negativePrompt || "",
-      width: params?.width || 768,
-      height: params?.height || 768
+      model: model,
+      ...params
     };
 
-    console.log(`[apiframe-generate-image] Sending request to ${APIFRAME_API_URL} with API key: ${APIFRAME_API_KEY?.substring(0, 8)}...`);
-    console.log(`[apiframe-generate-image] Request payload:`, JSON.stringify(apiData).substring(0, 200) + "...");
-    
-    // Call APIframe API with enhanced error logging
-    const response = await fetch(APIFRAME_API_URL, {
+    // Call APIframe API
+    const response = await fetch(`${APIFRAME_API_URL}/images/generate`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': APIFRAME_API_KEY,
-        'Accept': 'application/json'
+        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(apiData)
+      body: JSON.stringify(payload)
     });
 
-    console.log(`[apiframe-generate-image] Response status: ${response.status} ${response.statusText}`);
-    
-    // For debugging - log response headers
-    const headersLog = {};
-    response.headers.forEach((value, key) => { headersLog[key] = value });
-    console.log(`[apiframe-generate-image] Response headers:`, headersLog);
-    
-    // Check if response is valid before attempting to parse JSON
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[apiframe-generate-image] Error response from APIframe:', response.status, response.statusText);
-      console.error('[apiframe-generate-image] Error response body:', errorText.substring(0, 500));
+      const errorData = await response.json();
+      console.error('Error from APIframe:', errorData);
       
-      let errorMessage = `API error: ${response.status} ${response.statusText}`;
-      try {
-        // Try to parse as JSON to get more specific error
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.error) {
-          errorMessage = errorJson.error.message || errorMessage;
+      return new Response(
+        JSON.stringify({ 
+          error: errorData.message || 'Error generating image', 
+          status: 'failed' 
+        }),
+        { 
+          status: response.status, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
-      } catch {
-        // If not parsable as JSON, use the status text
-      }
-      
-      throw new Error(errorMessage);
+      );
     }
 
-    // Handle successful response
+    // Process successful response
     const data = await response.json();
-    console.log('[apiframe-generate-image] APIframe response:', JSON.stringify(data).substring(0, 200) + "...");
-
-    if (!data.task_id) {
-      throw new Error("No task ID returned from APIframe");
-    }
     
     // Store task in database
     const { error: dbError } = await supabase
       .from('apiframe_tasks')
       .insert({
-        task_id: data.task_id,
+        task_id: data.taskId,
         prompt,
         model,
         media_type: 'image',
         params: params || {},
-        status: 'pending'
+        status: data.status || 'pending'
       });
       
     if (dbError) {
-      console.error('[apiframe-generate-image] Error storing task in database:', dbError);
+      console.error('Error storing task in database:', dbError);
     }
 
     return new Response(
       JSON.stringify({
-        taskId: data.task_id,
-        status: 'pending',
-        message: 'Task created successfully'
+        taskId: data.taskId,
+        status: data.status || 'pending',
+        mediaUrl: data.mediaUrl
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error) {
-    console.error('[apiframe-generate-image] Error:', error);
+    console.error('Error in apiframe-generate-image function:', error);
     
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Internal server error',
-        stack: error.stack
-      }),
+      JSON.stringify({ error: error.message || 'Internal server error' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
