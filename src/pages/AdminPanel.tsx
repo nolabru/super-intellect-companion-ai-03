@@ -10,6 +10,7 @@ import AdminPostsManagement from '@/components/admin/AdminPostsManagement';
 import AdminStats from '@/components/admin/AdminStats';
 import AdminSystemSettings from '@/components/admin/AdminSystemSettings';
 import AdminAnalytics from '@/components/admin/AdminAnalytics';
+import AdminTokensManagement from '@/components/admin/AdminTokensManagement';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useNavigate } from 'react-router-dom';
 
@@ -57,6 +58,7 @@ const AdminPanel: React.FC = () => {
           {activeSection === 'plans' && <AdminPlansManagement />}
           {activeSection === 'posts' && <AdminPostsManagement />}
           {activeSection === 'models' && <AdminModelsManagement />}
+          {activeSection === 'tokens' && <AdminTokensManagement />}
           {activeSection === 'stats' && <AdminStats />}
           {activeSection === 'analytics' && <AdminAnalytics />}
           {activeSection === 'settings' && <AdminSystemSettings />}

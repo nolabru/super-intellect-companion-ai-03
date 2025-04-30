@@ -1,21 +1,13 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  BarChart3,
-  Cpu,
-  Home,
-  Settings,
-  Shield,
-  Users,
-  ChevronLeft,
-  MessageSquare,
-  Newspaper,
-  BarChart,
-  LineChart
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { 
+  ChevronLeft, ChevronRight, 
+  LayoutDashboard, Users, CreditCard, 
+  LineChart, BarChart3, FileText, Settings,
+  Package, Coins
+} from 'lucide-react';
 
 interface AdminSidebarProps {
   isOpen: boolean;
@@ -28,101 +20,63 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isOpen,
   onToggleSidebar,
   activeSection,
-  onSectionChange
+  onSectionChange,
 }) => {
-  const navigate = useNavigate();
-
-  const sidebarItems = [
-    { id: 'overview', label: 'Visão Geral', icon: <Home className="h-5 w-5" /> },
+  const navItems = [
+    { id: 'overview', label: 'Visão Geral', icon: <LayoutDashboard className="h-5 w-5" /> },
     { id: 'users', label: 'Usuários', icon: <Users className="h-5 w-5" /> },
-    { id: 'plans', label: 'Planos', icon: <Shield className="h-5 w-5" /> },
-    { id: 'models', label: 'Modelos', icon: <Cpu className="h-5 w-5" /> },
-    { id: 'posts', label: 'Newsletter', icon: <Newspaper className="h-5 w-5" /> },
-    { id: 'stats', label: 'Estatísticas', icon: <BarChart3 className="h-5 w-5" /> },
-    { id: 'analytics', label: 'Media Analytics', icon: <LineChart className="h-5 w-5" /> },
-    { id: 'settings', label: 'Configurações', icon: <Settings className="h-5 w-5" /> }
+    { id: 'plans', label: 'Planos', icon: <CreditCard className="h-5 w-5" /> },
+    { id: 'models', label: 'Modelos', icon: <Package className="h-5 w-5" /> },
+    { id: 'posts', label: 'Publicações', icon: <FileText className="h-5 w-5" /> },
+    { id: 'tokens', label: 'Tokens', icon: <Coins className="h-5 w-5" /> },
+    { id: 'stats', label: 'Estatísticas', icon: <LineChart className="h-5 w-5" /> },
+    { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-5 w-5" /> },
+    { id: 'settings', label: 'Configurações', icon: <Settings className="h-5 w-5" /> },
   ];
 
-  const handleSectionClick = (sectionId: string) => {
-    onSectionChange(sectionId);
-  };
-
-  const navigateToHome = () => {
-    navigate('/');
-  };
-
-  const navigateToAnalytics = () => {
-    navigate('/analytics');
-  };
-
   return (
-    <div className={cn(
-      "h-full bg-inventu-dark border-r border-white/10 overflow-y-auto",
-      isOpen ? "w-64" : "w-16"
-    )}>
-      <div className="p-4 flex justify-between items-center">
-        <div className={cn(
-          "flex items-center gap-2 overflow-hidden whitespace-nowrap transition-all",
-          isOpen ? "w-auto" : "w-0"
-        )}>
-          <div className="bg-inventu-blue rounded-full p-1 flex-shrink-0">
-            <Shield className="h-4 w-4 text-white" />
-          </div>
-          <h2 className="font-bold text-white">Admin Panel</h2>
-        </div>
+    <aside
+      className={cn(
+        "bg-inventu-darker h-screen flex flex-col border-r border-r-white/10 transition-all duration-300 ease-in-out",
+        isOpen ? "w-64" : "w-16"
+      )}
+    >
+      <div className="flex items-center justify-between p-4 h-16 border-b border-b-white/10">
+        {isOpen && <h1 className="font-bold text-xl">Admin</h1>}
         <Button
           variant="ghost"
-          size="sm"
-          className="text-white/70 hover:bg-white/10 hover:text-white"
+          size="icon"
           onClick={onToggleSidebar}
+          className="h-8 w-8 rounded-full"
         >
-          <ChevronLeft className={cn("h-5 w-5", !isOpen && "rotate-180")} />
+          {isOpen ? (
+            <ChevronLeft className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
         </Button>
       </div>
-
-      <nav className="mt-4 space-y-1 px-2">
-        {sidebarItems.map(item => (
-          <Button
-            key={item.id}
-            variant="ghost"
-            className={cn(
-              "w-full justify-start mb-1",
-              activeSection === item.id
-                ? "bg-inventu-blue/20 text-inventu-blue"
-                : "text-white/70 hover:text-white hover:bg-white/10"
-            )}
-            onClick={() => handleSectionClick(item.id)}
-          >
-            <div className="flex items-center">
-              {item.icon}
-              {isOpen && <span className="ml-3">{item.label}</span>}
-            </div>
-          </Button>
-        ))}
-        
-        <Button
-          variant="ghost"
-          className="w-full justify-start mb-1 text-white/70 hover:text-white hover:bg-white/10"
-          onClick={navigateToAnalytics}
-        >
-          <div className="flex items-center">
-            <BarChart className="h-5 w-5" />
-            {isOpen && <span className="ml-3">Analytics</span>}
-          </div>
-        </Button>
-        
-        <Button
-          variant="ghost"
-          className="w-full justify-start mb-1 text-white/70 hover:text-white hover:bg-white/10 mt-4"
-          onClick={navigateToHome}
-        >
-          <div className="flex items-center">
-            <MessageSquare className="h-5 w-5" />
-            {isOpen && <span className="ml-3">Voltar ao Chat</span>}
-          </div>
-        </Button>
+      
+      <nav className="flex-1 overflow-y-auto p-2">
+        <ul className="space-y-1">
+          {navItems.map((item) => (
+            <li key={item.id}>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3",
+                  activeSection === item.id ? "bg-inventu-blue text-white" : "text-white/70 hover:text-white"
+                )}
+                onClick={() => onSectionChange(item.id)}
+              >
+                {item.icon}
+                {isOpen && <span>{item.label}</span>}
+              </Button>
+            </li>
+          ))}
+        </ul>
       </nav>
-    </div>
+    </aside>
   );
 };
 
