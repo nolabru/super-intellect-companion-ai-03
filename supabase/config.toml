@@ -36,4 +36,6 @@ enabled = true
 verify_jwt = true
 [functions.apiframe-generate-audio]
 verify_jwt = false
+[functions.apiframe-generate-image]
+verify_jwt = false
 

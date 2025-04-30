@@ -15,6 +15,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Define the APIframe API URL
 const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
 
+// Set the global API key that will work for all users
+const GLOBAL_APIFRAME_API_KEY = 'b0a5c230-6f6f-4d2b-bb61-4be15184dd63';
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -23,12 +26,12 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { prompt, model, params, apiKey } = await req.json();
+    const { prompt, model, params } = await req.json();
     
-    // Get API key from request or environment variable
-    const APIFRAME_API_KEY = apiKey || Deno.env.get('APIFRAME_API_KEY');
+    // Use the global API key instead of requesting it from the user or environment
+    const APIFRAME_API_KEY = GLOBAL_APIFRAME_API_KEY;
 
-    if (!prompt || !model || !APIFRAME_API_KEY) {
+    if (!prompt || !model) {
       return new Response(
         JSON.stringify({ error: 'Missing required parameters' }),
         { 
