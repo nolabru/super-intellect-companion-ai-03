@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -26,7 +25,7 @@ serve(async (req) => {
     const { prompt, model, params, apiKey, referenceImageUrl } = await req.json();
     
     // Get API key from request or environment variable
-    const APIFRAME_API_KEY = apiKey || Deno.env.get('APIFRAME_API_KEY');
+    const APIFRAME_API_KEY = Deno.env.get('API FRAME') || Deno.env.get('APIFRAME_API_KEY');
 
     if (!prompt || !model || !APIFRAME_API_KEY) {
       return new Response(

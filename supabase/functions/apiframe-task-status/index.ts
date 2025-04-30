@@ -21,11 +21,11 @@ serve(async (req) => {
   }
 
   try {
-    // Verify API key
-    const APIFRAME_API_KEY = Deno.env.get("APIFRAME_API_KEY");
+    // Verify API key - updated to use new key name
+    const APIFRAME_API_KEY = Deno.env.get("API FRAME");
     if (!APIFRAME_API_KEY) {
-      console.error("[apiframe-task-status] APIFRAME_API_KEY not configured");
-      throw new Error("APIFRAME_API_KEY not configured");
+      console.error("[apiframe-task-status] API FRAME not configured");
+      throw new Error("API FRAME not configured");
     }
 
     // Initialize Supabase client

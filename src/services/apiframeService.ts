@@ -1,9 +1,11 @@
+
 import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 import { supabase } from '@/integrations/supabase/client';
 import { getCircuitBreaker, CircuitState } from '@/utils/circuitBreaker';
 import { toast } from 'sonner';
 
 // Global flag to indicate that the API key is globally configured on the server
+// O nome da chave de API foi alterado para "API FRAME" no lado do servidor
 const isGlobalApiKeyConfigured = true;
 
 // Create circuit breakers for each operation type
