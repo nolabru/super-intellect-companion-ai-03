@@ -18,6 +18,7 @@ interface MediaGeneratorProps {
   onMediaGenerated?: (mediaUrl: string) => void;
   paramControls?: React.ReactNode;
   referenceUploader?: React.ReactNode;
+  additionalParams?: Record<string, any>;
 }
 
 const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
@@ -27,11 +28,11 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   defaultModel,
   onMediaGenerated,
   paramControls,
-  referenceUploader
+  referenceUploader,
+  additionalParams = {}
 }) => {
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState(defaultModel);
-  const [params, setParams] = useState<Record<string, any>>({});
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
 
   // Use our persisted media generation hook
@@ -64,6 +65,12 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
     if (modelRequiresReference && !referenceUrl) {
       return;
     }
+    
+    // Combine the additionalParams with model-specific parameters
+    const params = {
+      ...additionalParams,
+      modelId: selectedModel,
+    };
 
     generateMedia(
       mediaType,
@@ -84,7 +91,6 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   // Reset form when media type changes
   useEffect(() => {
     setPrompt('');
-    setParams({});
     setReferenceUrl(null);
   }, [mediaType]);
 

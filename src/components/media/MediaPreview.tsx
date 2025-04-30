@@ -1,110 +1,69 @@
 
-import React, { useState } from 'react';
+import React from 'react';
+import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, RefreshCw } from 'lucide-react';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-import OptimizedMediaLoader from './OptimizedMediaLoader';
-import CacheStatusIndicator from './CacheStatusIndicator';
 
 interface MediaPreviewProps {
   mediaUrl: string;
   mediaType: 'image' | 'video' | 'audio';
-  isCached?: boolean;
-  isStale?: boolean;
 }
 
-const MediaPreview: React.FC<MediaPreviewProps> = ({
-  mediaUrl,
-  mediaType,
-  isCached = false,
-  isStale = false
-}) => {
-  const [isMediaLoading, setIsMediaLoading] = useState(true);
-  const [mediaError, setMediaError] = useState(false);
-  
-  const handleMediaLoaded = () => {
-    setIsMediaLoading(false);
-    setMediaError(false);
+const MediaPreview: React.FC<MediaPreviewProps> = ({ mediaUrl, mediaType }) => {
+  const handleDownload = () => {
+    const link = document.createElement('a');
+    link.href = mediaUrl;
+    
+    // Set filename based on media type
+    const extension = 
+      mediaType === 'image' ? 'png' :
+      mediaType === 'video' ? 'mp4' :
+      'mp3';
+    
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    link.download = `generated-${mediaType}-${timestamp}.${extension}`;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
-  
-  const handleMediaError = () => {
-    setIsMediaLoading(false);
-    setMediaError(true);
-  };
-  
-  const retryMediaLoad = () => {
-    setIsMediaLoading(true);
-    setMediaError(false);
-  };
-  
-  const openInNewTab = () => {
-    window.open(mediaUrl, '_blank');
-  };
-
-  if (mediaError) {
-    return (
-      <div className="border rounded-md p-4 flex flex-col items-center justify-center space-y-2 bg-muted/20">
-        <p className="text-sm text-muted-foreground">Failed to load {mediaType}</p>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={retryMediaLoad}>
-            <RefreshCw className="h-4 w-4 mr-1" />
-            Retry
-          </Button>
-          <Button variant="outline" size="sm" onClick={openInNewTab}>
-            <ExternalLink className="h-4 w-4 mr-1" />
-            Open in New Tab
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="relative">
-      {isCached && (
-        <div className="absolute top-2 right-2 z-10">
-          <CacheStatusIndicator isCached={isCached} isStale={isStale} />
-        </div>
-      )}
-      
-      {mediaType === 'image' && (
-        <div className="border rounded-md overflow-hidden">
-          <OptimizedMediaLoader
-            src={mediaUrl}
-            alt="Generated image"
-            type="image"
-            className="w-full h-auto object-contain"
-            onLoad={handleMediaLoaded}
-            onError={handleMediaError}
+    <div className="space-y-2">
+      <div className="border rounded-md overflow-hidden bg-black/5">
+        {mediaType === 'image' && (
+          <img 
+            src={mediaUrl} 
+            alt="Generated" 
+            className="w-full h-auto object-contain" 
           />
-        </div>
-      )}
-      
-      {mediaType === 'video' && (
-        <div className="border rounded-md overflow-hidden">
-          <AspectRatio ratio={16 / 9} className="bg-black">
-            <OptimizedMediaLoader
-              src={mediaUrl}
-              type="video"
-              className="w-full h-full object-contain"
-              onLoad={handleMediaLoaded}
-              onError={handleMediaError}
-            />
-          </AspectRatio>
-        </div>
-      )}
-      
-      {mediaType === 'audio' && (
-        <div className="border rounded-md overflow-hidden p-4">
-          <OptimizedMediaLoader
-            src={mediaUrl}
-            type="audio"
-            className="w-full"
-            onLoad={handleMediaLoaded}
-            onError={handleMediaError}
+        )}
+        
+        {mediaType === 'video' && (
+          <video 
+            src={mediaUrl} 
+            controls 
+            className="w-full h-auto" 
           />
-        </div>
-      )}
+        )}
+        
+        {mediaType === 'audio' && (
+          <div className="p-4 flex justify-center">
+            <audio src={mediaUrl} controls className="w-full" />
+          </div>
+        )}
+      </div>
+      
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleDownload}
+          className="flex items-center gap-1"
+        >
+          <Download className="h-3 w-3" />
+          Download
+        </Button>
+      </div>
     </div>
   );
 };

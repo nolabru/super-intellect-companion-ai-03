@@ -1,310 +1,234 @@
 
-import { useCallback, useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
-import { useMediaPersistence } from '@/hooks/useMediaPersistence';
-import { useMediaCache, CachedMedia } from '@/hooks/useMediaCache';
-import { Task as TaskManagerTask } from '@/hooks/useTaskManager';
-import { Task as ApiframeTask } from '@/hooks/apiframe/useTaskState';
-import { trackMediaEvent } from '@/services/mediaAnalyticsService';
-import { MediaType } from '@/services/mediaAnalyticsService';
+import { useState, useCallback, useEffect } from 'react';
+import { useApiframeGeneration } from './useApiframeGeneration';
+import { ApiframeParams } from '@/types/apiframeGeneration';
+import { getApiframeModelId } from '@/utils/modelMapping';
+import { toast } from 'sonner';
+
+interface MediaTask {
+  id: string;
+  type: 'image' | 'video' | 'audio';
+  status: string;
+  progress: number;
+  mediaUrl?: string;
+  error?: string;
+  prompt: string;
+}
 
 interface PersistedMediaGenerationOptions {
   showToasts?: boolean;
-  onProgress?: (progress: number) => void;
-  onComplete?: (mediaUrl: string, taskId: string) => void;
-  onError?: (error: string) => void;
-  useCaching?: boolean;
-  skipCacheForModels?: string[];
+  onComplete?: (mediaUrl: string) => void;
 }
 
 /**
- * Hook that combines unified media generation with persistence and caching
+ * Custom hook for handling media generation with persistence across page refreshes
  */
 export function usePersistedMediaGeneration(options: PersistedMediaGenerationOptions = {}) {
-  const {
-    showToasts = true,
-    onProgress,
-    onComplete,
-    onError,
-    useCaching = true,
-    skipCacheForModels = []
-  } = options;
+  const [generatedMedia, setGeneratedMedia] = useState<{ url: string; type: string } | null>(null);
+  const [persistedTask, setPersistedTask] = useState<MediaTask | null>(null);
   
-  const [persistedTaskId, setPersistedTaskId] = useState<string | null>(null);
-  const [usedCachedMedia, setUsedCachedMedia] = useState<boolean>(false);
-  const [generationStartTime, setGenerationStartTime] = useState<Record<string, number>>({});
+  const { showToasts = true, onComplete } = options;
   
-  const {
-    persistTask,
-    updatePersistedTask,
-    updateTaskFromStatus,
-    getCurrentTask
-  } = useMediaPersistence();
-  
-  // Use the media cache hook
-  const {
-    findCachedMedia,
-    cacheMedia,
-    isInitialized: isCacheInitialized
-  } = useMediaCache({
-    maxItems: 100,
-    expireAfterDays: 7
+  // Use the base APIframe generation hook
+  const apiframeGeneration = useApiframeGeneration({
+    showToasts: false // We'll handle toasts ourselves
   });
   
-  // Use the unified media generation hook
-  const {
-    generateMedia: generateMediaBase,
-    cancelGeneration,
-    isGenerating,
-    currentTask,
-    generatedMedia
-  } = useUnifiedMediaGeneration({
-    showToasts,
-    onProgress: (progress) => {
-      if (persistedTaskId) {
-        updatePersistedTask(persistedTaskId, { progress });
-      }
-      
-      if (onProgress) {
-        onProgress(progress);
-      }
-    },
-    onComplete: (mediaUrl) => {
-      if (persistedTaskId) {
-        updatePersistedTask(persistedTaskId, { 
-          status: 'completed',
-          mediaUrl,
-          progress: 100
-        });
-      }
-      
-      // Track successful generation completion
-      if (currentTask) {
-        const taskId = currentTask.id;
-        const mediaType = currentTask.type as MediaType;
-        const startTime = generationStartTime[taskId];
-        const duration = startTime ? Date.now() - startTime : undefined;
+  // Check for persisted task on mount
+  useEffect(() => {
+    const savedTask = localStorage.getItem('apiframe_media_task');
+    if (savedTask) {
+      try {
+        const task = JSON.parse(savedTask) as MediaTask;
+        setPersistedTask(task);
         
-        if (!usedCachedMedia) {
-          trackMediaEvent({
-            eventType: 'generation_completed',
-            mediaType,
-            taskId,
-            modelId: currentTask.model,
-            duration,
-            metadata: {
-              mediaUrl,
-              ...currentTask.metadata
-            }
+        // Check if there's a completed task to display
+        if (task.status === 'completed' && task.mediaUrl) {
+          setGeneratedMedia({
+            url: task.mediaUrl,
+            type: task.type
           });
+        } 
+        // If task is still pending or processing, check status
+        else if (task.status === 'pending' || task.status === 'processing') {
+          checkTaskStatus(task.id);
+        }
+      } catch (error) {
+        console.error('Error parsing persisted task:', error);
+        localStorage.removeItem('apiframe_media_task');
+      }
+    }
+  }, []);
+  
+  // Function to check the status of a task
+  const checkTaskStatus = useCallback(async (taskId: string) => {
+    try {
+      const result = await apiframeGeneration.checkTaskStatus(taskId);
+      
+      if (result.success) {
+        // Update persisted task
+        const updatedTask = {
+          ...persistedTask!,
+          status: result.status || 'pending',
+          progress: result.progress || 0,
+          mediaUrl: result.mediaUrl,
+          error: result.error
+        };
+        
+        setPersistedTask(updatedTask);
+        localStorage.setItem('apiframe_media_task', JSON.stringify(updatedTask));
+        
+        // If completed, update generated media
+        if (result.status === 'completed' && result.mediaUrl) {
+          setGeneratedMedia({
+            url: result.mediaUrl,
+            type: persistedTask!.type
+          });
+          
+          if (showToasts) {
+            toast.success(`${updatedTask.type.charAt(0).toUpperCase() + updatedTask.type.slice(1)} generated successfully!`);
+          }
+          
+          if (onComplete) {
+            onComplete(result.mediaUrl);
+          }
+        }
+        
+        // If still processing, check again in a few seconds
+        if (result.status === 'pending' || result.status === 'processing') {
+          setTimeout(() => checkTaskStatus(taskId), 3000);
+        }
+        
+        // If there's an error, show it
+        if (result.status === 'failed' && result.error && showToasts) {
+          toast.error(`Generation failed: ${result.error}`);
         }
       }
-      
-      // Cache the media if it's not from cache already
-      if (useCaching && currentTask && !usedCachedMedia) {
-        cacheMedia(
-          mediaUrl,
-          currentTask.type as 'image' | 'video' | 'audio',
-          currentTask.prompt,
-          currentTask.model,
-          currentTask.metadata
-        );
+    } catch (error) {
+      console.error('Error checking task status:', error);
+      if (showToasts) {
+        toast.error('Failed to check task status');
       }
-      
-      if (onComplete) {
-        onComplete(mediaUrl, persistedTaskId || '');
-      }
-      
-      setUsedCachedMedia(false);
-    },
-    onError: (error) => {
-      if (persistedTaskId) {
-        updatePersistedTask(persistedTaskId, { 
-          status: 'failed',
-          error
-        });
-      }
-      
-      // Track generation error
-      if (currentTask) {
-        trackMediaEvent({
-          eventType: 'generation_failed',
-          mediaType: currentTask.type as MediaType,
-          taskId: currentTask.id,
-          modelId: currentTask.model,
-          details: { error }
-        });
-      }
-      
-      if (onError) {
-        onError(error);
-      }
-      
-      setUsedCachedMedia(false);
     }
-  });
+  }, [apiframeGeneration, persistedTask, showToasts, onComplete]);
   
-  // Wrapper for generate media that also persists the task and checks cache
-  const generateMedia = useCallback((
+  // Main function to generate media
+  const generateMedia = useCallback(async (
     type: 'image' | 'video' | 'audio',
     prompt: string,
-    model: string,
-    params: any = {},
+    modelId: string,
+    params: ApiframeParams = {},
     referenceUrl?: string
   ) => {
-    // Check cache first if enabled
-    if (useCaching && isCacheInitialized && !skipCacheForModels.includes(model)) {
-      const cachedMedia = findCachedMedia(prompt, model, params);
-      
-      if (cachedMedia && cachedMedia.url) {
-        console.log(`[usePersistedMediaGeneration] Using cached media:`, cachedMedia);
-        
-        // Create a persisted task for the cached media
-        const taskId = uuidv4(); // Generate a fake task ID
-        
-        const id = persistTask(
-          type,
-          prompt,
-          model,
-          taskId,
-          params,
-          referenceUrl
-        );
-        
-        setPersistedTaskId(id);
-        setUsedCachedMedia(true);
-        
-        // Update the task to completed immediately
-        updatePersistedTask(id, {
-          status: 'completed',
-          mediaUrl: cachedMedia.url,
-          progress: 100
-        });
-        
-        // Track cache use
-        trackMediaEvent({
-          eventType: 'cache_used',
-          mediaType: type,
-          modelId: model,
-          metadata: {
-            prompt,
-            params,
-            cachedAt: cachedMedia.createdAt // Fixed: Using createdAt instead of timestamp
-          }
-        });
-        
-        if (onProgress) {
-          onProgress(100);
-        }
-        
-        if (onComplete) {
-          onComplete(cachedMedia.url, id);
-        }
-        
-        return id;
-      }
+    if (showToasts) {
+      toast.info(`Generating ${type}...`);
     }
     
-    // Generate the media with the base hook if no cache hit
-    const taskId = generateMediaBase(
-      type,
-      prompt,
-      model,
-      params,
-      referenceUrl
-    );
-    
-    // Record generation start time
-    setGenerationStartTime(prev => ({
-      ...prev,
-      [taskId]: Date.now()
-    }));
-    
-    // Track generation start
-    trackMediaEvent({
-      eventType: 'generation_started',
-      mediaType: type,
-      taskId,
-      modelId: model,
-      metadata: {
+    try {
+      // Map UI model ID to APIframe model ID
+      const apiframeModelId = getApiframeModelId(modelId);
+      
+      // Generate media
+      const result = await apiframeGeneration.generateMedia(
         prompt,
+        type,
+        apiframeModelId,
         params,
         referenceUrl
-      }
-    });
-    
-    // Persist the task
-    const id = persistTask(
-      type,
-      prompt,
-      model,
-      taskId,
-      params,
-      referenceUrl
-    );
-    
-    setPersistedTaskId(id);
-    
-    return id;
-  }, [generateMediaBase, persistTask, useCaching, findCachedMedia, isCacheInitialized, skipCacheForModels, onProgress, onComplete]);
-  
-  // Update persisted task when currentTask changes
-  useEffect(() => {
-    if (persistedTaskId && currentTask && !usedCachedMedia) {
-      // Map the TaskManager Task to the format expected by updateTaskFromStatus
-      const apiframeTaskFormat: Partial<ApiframeTask> = {
-        taskId: currentTask.id, // Use id from TaskManager as taskId
-        status: mapTaskStatus(currentTask.status), // Map the status to compatible format
-        progress: currentTask.progress || 0,
-        mediaUrl: currentTask.result, // Map result to mediaUrl
-        error: currentTask.error
-      };
+      );
       
-      updateTaskFromStatus(persistedTaskId, apiframeTaskFormat as ApiframeTask);
-    }
-  }, [currentTask, persistedTaskId, usedCachedMedia, updateTaskFromStatus]);
-  
-  // Helper function to map TaskManager status to ApiframeTask status
-  function mapTaskStatus(status: TaskManagerTask['status']): ApiframeTask['status'] {
-    // Convert "canceled" to "failed" since ApiframeTask doesn't have "canceled"
-    if (status === 'canceled') {
-      return 'failed';
-    }
-    return status;
-  }
-  
-  // Function to cancel ongoing generation and track the cancellation
-  const cancelPersistedGeneration = useCallback(() => {
-    if (currentTask) {
-      trackMediaEvent({
-        eventType: 'generation_canceled',
-        mediaType: currentTask.type as MediaType,
-        taskId: currentTask.id,
-        modelId: currentTask.model,
-        metadata: {
-          reason: 'User canceled',
-          startTime: generationStartTime[currentTask.id]
+      if (result.success && result.taskId) {
+        // Persist task
+        const task: MediaTask = {
+          id: result.taskId,
+          type,
+          status: result.status || 'pending',
+          progress: 0,
+          mediaUrl: result.mediaUrl,
+          error: result.error,
+          prompt
+        };
+        
+        setPersistedTask(task);
+        localStorage.setItem('apiframe_media_task', JSON.stringify(task));
+        
+        // If not immediately completed, start checking status
+        if (result.status !== 'completed') {
+          setTimeout(() => checkTaskStatus(result.taskId!), 2000);
+        } 
+        // If immediately completed, update generated media
+        else if (result.mediaUrl) {
+          setGeneratedMedia({
+            url: result.mediaUrl,
+            type
+          });
+          
+          if (showToasts) {
+            toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} generated successfully!`);
+          }
+          
+          if (onComplete) {
+            onComplete(result.mediaUrl);
+          }
         }
-      });
+        
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to generate media');
+      }
+    } catch (error) {
+      console.error(`Error generating ${type}:`, error);
+      if (showToasts) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        toast.error(`Failed to generate ${type}: ${errorMessage}`);
+      }
+      throw error;
+    }
+  }, [apiframeGeneration, checkTaskStatus, showToasts, onComplete]);
+  
+  // Cancel current generation
+  const cancelGeneration = useCallback(async () => {
+    if (!persistedTask?.id) {
+      return false;
     }
     
-    return cancelGeneration();
-  }, [cancelGeneration, currentTask, generationStartTime]);
+    try {
+      const result = await apiframeGeneration.cancelTask(persistedTask.id);
+      
+      if (result) {
+        // Clear persisted task
+        localStorage.removeItem('apiframe_media_task');
+        setPersistedTask(null);
+        
+        if (showToasts) {
+          toast.info('Generation canceled');
+        }
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error canceling task:', error);
+      if (showToasts) {
+        toast.error('Failed to cancel generation');
+      }
+      return false;
+    }
+  }, [apiframeGeneration, persistedTask, showToasts]);
+  
+  // Clear persisted media
+  const clearMedia = useCallback(() => {
+    setGeneratedMedia(null);
+    setPersistedTask(null);
+    localStorage.removeItem('apiframe_media_task');
+  }, []);
   
   return {
     generateMedia,
-    generateImage: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('image', prompt, model, params, referenceUrl),
-    generateVideo: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('video', prompt, model, params, referenceUrl),
-    generateAudio: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('audio', prompt, model, params, referenceUrl),
-    cancelGeneration: cancelPersistedGeneration,
-    isGenerating,
-    currentTask,
-    persistedTask: persistedTaskId ? getCurrentTask() : null,
+    cancelGeneration,
+    clearMedia,
+    isGenerating: apiframeGeneration.isGenerating || (persistedTask?.status === 'pending' || persistedTask?.status === 'processing'),
     generatedMedia,
-    usedCachedMedia,
+    currentTask: apiframeGeneration.currentTask,
+    persistedTask
   };
 }

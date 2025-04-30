@@ -3,13 +3,18 @@ import React, { useState, useEffect } from 'react';
 import ApiframeServices from '@/components/apiframe/ApiframeServices';
 import { apiframeService } from '@/services/apiframeService';
 import { Button } from '@/components/ui/button';
-import { Wand2, Settings, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Wand2, Settings, Loader2, Image as ImageIcon, Video, AudioLines } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import ImageGenerator from '@/components/media/ImageGenerator';
+import VideoGenerator from '@/components/media/VideoGenerator';
+import AudioGenerator from '@/components/media/AudioGenerator';
 
 const ApiframePage: React.FC = () => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
   const [isChecking, setIsChecking] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<string>('image');
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -137,7 +142,41 @@ const ApiframePage: React.FC = () => {
               Settings
             </Button>
           </div>
-          <ApiframeServices />
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-3 mb-6">
+              <TabsTrigger value="image" className="flex items-center gap-2">
+                <ImageIcon className="h-4 w-4" />
+                Images
+              </TabsTrigger>
+              <TabsTrigger value="video" className="flex items-center gap-2">
+                <Video className="h-4 w-4" />
+                Videos
+              </TabsTrigger>
+              <TabsTrigger value="audio" className="flex items-center gap-2">
+                <AudioLines className="h-4 w-4" />
+                Audio
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="image" className="focus-visible:outline-none focus-visible:ring-0">
+              <div className="flex justify-center">
+                <ImageGenerator />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="video" className="focus-visible:outline-none focus-visible:ring-0">
+              <div className="flex justify-center">
+                <VideoGenerator />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="audio" className="focus-visible:outline-none focus-visible:ring-0">
+              <div className="flex justify-center">
+                <AudioGenerator />
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </div>
