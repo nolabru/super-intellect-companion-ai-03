@@ -63,9 +63,17 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
   // Function to check the status of a task
   const checkTaskStatus = useCallback(async (taskId: string) => {
     try {
-      const result = await apiframeGeneration.checkTaskStatus(taskId);
-      
-      if (result.success) {
+      // FIX: Replace checkTaskStatus with the correct method from aiService
+      // We need to check the current task status
+      if (apiframeGeneration.currentTask && apiframeGeneration.currentTask.taskId === taskId) {
+        const result = {
+          success: true,
+          status: apiframeGeneration.currentTask.status === 'completed' ? 'completed' : 'processing',
+          progress: apiframeGeneration.currentTask.progress,
+          mediaUrl: apiframeGeneration.currentTask.mediaUrl,
+          error: apiframeGeneration.currentTask.error
+        };
+        
         // Update persisted task
         const updatedTask = {
           ...persistedTask!,
@@ -103,6 +111,12 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
         if (result.status === 'failed' && result.error && showToasts) {
           toast.error(`Generation failed: ${result.error}`);
         }
+      } else {
+        // If we don't have the task in memory, we need to clear it from localStorage
+        // since we can't check its status
+        console.warn('Task not found in memory:', taskId);
+        localStorage.removeItem('apiframe_media_task');
+        setPersistedTask(null);
       }
     } catch (error) {
       console.error('Error checking task status:', error);
@@ -193,6 +207,7 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     }
     
     try {
+      // FIX: Use the correct cancelTask method
       const result = await apiframeGeneration.cancelTask(persistedTask.id);
       
       if (result) {
