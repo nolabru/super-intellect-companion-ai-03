@@ -190,7 +190,7 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
           metadata: {
             prompt,
             params,
-            cachedAt: cachedMedia.timestamp
+            cachedAt: cachedMedia.createdAt // Fixed: Using createdAt instead of timestamp
           }
         });
         

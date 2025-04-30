@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
@@ -45,7 +46,10 @@ const AdminPanel: React.FC = () => {
       />
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <AdminHeader />
+        <AdminHeader 
+          sidebarOpen={isOpen} 
+          onToggleSidebar={toggleSidebar}
+        />
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto">
           {activeSection === 'overview' && <AdminOverview />}
