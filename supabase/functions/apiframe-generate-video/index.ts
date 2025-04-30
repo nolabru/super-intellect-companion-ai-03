@@ -12,8 +12,9 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Define the APIframe API URL
-const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
+// Define the APIframe API URL - Updated to use the correct domain
+const APIFRAME_API_URL = 'https://api.apiframe.io/v1';
+const APIFRAME_ALT_API_URL = 'https://api.apiframe.com/v1';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -52,15 +53,46 @@ serve(async (req) => {
       payload.image_url = referenceImageUrl;
     }
 
-    // Call APIframe API
-    const response = await fetch(`${APIFRAME_API_URL}/videos/generate`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
+    // Try primary endpoint first
+    let response;
+    let apiUrl = APIFRAME_API_URL;
+    
+    try {
+      response = await fetch(`${APIFRAME_API_URL}/videos/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      // If failed with 404, try alternate endpoint
+      if (response.status === 404) {
+        console.log('Primary API endpoint failed with 404, trying alternate endpoint');
+        apiUrl = APIFRAME_ALT_API_URL;
+        response = await fetch(`${APIFRAME_ALT_API_URL}/videos/generate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+      }
+    } catch (error) {
+      console.error('Error with primary endpoint, trying alternate:', error);
+      // Try alternate URL
+      apiUrl = APIFRAME_ALT_API_URL;
+      response = await fetch(`${APIFRAME_ALT_API_URL}/videos/generate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+    }
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -101,7 +133,8 @@ serve(async (req) => {
       JSON.stringify({
         taskId: data.taskId,
         status: data.status || 'pending',
-        mediaUrl: data.mediaUrl
+        mediaUrl: data.mediaUrl,
+        apiUrl: apiUrl // Include which API URL was successfully used
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -12,8 +11,11 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Define the APIframe API URL
-const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
+// Define the APIframe API URLs - Updated to use the correct domains
+const APIFRAME_API_URLS = [
+  'https://api.apiframe.io/v1',
+  'https://api.apiframe.com/v1'
+];
 
 // Set the global API key that will work for all users - standardized name
 const GLOBAL_APIFRAME_API_KEY = Deno.env.get('API_FRAME');
@@ -70,35 +72,56 @@ serve(async (req) => {
       ...params
     };
 
-    // Call APIframe API
-    const response = await fetch(`${APIFRAME_API_URL}/audio/generate`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const responseData = await response.json();
+    // Try each API URL until one works
+    let response = null;
+    let errorData = null;
+    let successfulUrl = null;
     
-    if (!response.ok) {
-      console.error('Error from APIframe:', responseData);
-      
+    for (const apiUrl of APIFRAME_API_URLS) {
+      try {
+        console.log(`Trying API URL: ${apiUrl}/audio/generate`);
+        
+        response = await fetch(`${apiUrl}/audio/generate`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        // If this succeeds, break the loop
+        if (response.ok) {
+          successfulUrl = apiUrl;
+          console.log(`Successfully used API URL: ${apiUrl}`);
+          break;
+        }
+        
+        // Otherwise, log the error and continue trying
+        errorData = await response.json();
+        console.error(`Error from ${apiUrl}:`, errorData);
+      } catch (error) {
+        console.error(`Error with ${apiUrl}:`, error);
+      }
+    }
+
+    // If no API URL worked
+    if (!successfulUrl) {
       return new Response(
         JSON.stringify({ 
-          error: responseData.message || 'Error generating audio', 
+          error: 'All API endpoints failed', 
           status: 'failed',
-          details: responseData
+          details: errorData || 'Unknown error'
         }),
         { 
-          status: response.status, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
 
     // Process successful response
+    const responseData = await response.json();
     console.log('APIframe response:', JSON.stringify(responseData));
     
     // Store task in database
@@ -121,7 +144,8 @@ serve(async (req) => {
       JSON.stringify({
         taskId: responseData.taskId,
         status: responseData.status || 'pending',
-        mediaUrl: responseData.mediaUrl
+        mediaUrl: responseData.mediaUrl,
+        apiUrl: successfulUrl // Include which API URL was successfully used
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -17,12 +18,12 @@ if (!APIFRAME_API_KEY) {
   console.error('[apiframe-generate-image] API_FRAME not configured in environment variables');
 }
 
-// Define the APIframe API URLs - Use API version in URL for better future compatibility
+// Define the APIframe API URLs - Using the updated correct endpoints
 const API_ENDPOINTS = [
-  "https://api.apiframe.ai/v1/images/generate",
-  "https://api.apiframe.pro/v1/images/generate",
-  "https://api.apiframe.pro/v1/image/generate",
-  "https://api.apiframe.pro/create"
+  "https://api.apiframe.io/v1/images/generate",
+  "https://api.apiframe.com/v1/images/generate", 
+  "https://api.apiframe.io/image/generations",
+  "https://api.apiframe.com/image/generations"
 ];
 
 serve(async (req) => {
