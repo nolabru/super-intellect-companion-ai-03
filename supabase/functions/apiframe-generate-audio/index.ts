@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -63,7 +64,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating audio with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`[apiframe-generate-audio] Generating audio with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
 
     // Prepare request payload
     const payload = {
@@ -79,7 +80,7 @@ serve(async (req) => {
     
     for (const apiUrl of APIFRAME_API_URLS) {
       try {
-        console.log(`Trying API URL: ${apiUrl}/audio/generate`);
+        console.log(`[apiframe-generate-audio] Trying API URL: ${apiUrl}/audio/generate`);
         
         response = await fetch(`${apiUrl}/audio/generate`, {
           method: 'POST',
@@ -93,15 +94,15 @@ serve(async (req) => {
         // If this succeeds, break the loop
         if (response.ok) {
           successfulUrl = apiUrl;
-          console.log(`Successfully used API URL: ${apiUrl}`);
+          console.log(`[apiframe-generate-audio] Successfully used API URL: ${apiUrl}`);
           break;
         }
         
         // Otherwise, log the error and continue trying
         errorData = await response.json();
-        console.error(`Error from ${apiUrl}:`, errorData);
+        console.error(`[apiframe-generate-audio] Error from ${apiUrl}:`, errorData);
       } catch (error) {
-        console.error(`Error with ${apiUrl}:`, error);
+        console.error(`[apiframe-generate-audio] Error with ${apiUrl}:`, error);
       }
     }
 
@@ -122,7 +123,7 @@ serve(async (req) => {
 
     // Process successful response
     const responseData = await response.json();
-    console.log('APIframe response:', JSON.stringify(responseData));
+    console.log('[apiframe-generate-audio] Response:', JSON.stringify(responseData));
     
     // Store task in database
     const { error: dbError } = await supabase
@@ -137,7 +138,7 @@ serve(async (req) => {
       });
       
     if (dbError) {
-      console.error('Error storing task in database:', dbError);
+      console.error('[apiframe-generate-audio] Error storing task in database:', dbError);
     }
 
     return new Response(
@@ -152,7 +153,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in apiframe-generate-audio function:', error);
+    console.error('[apiframe-generate-audio] Error:', error);
     
     return new Response(
       JSON.stringify({ 

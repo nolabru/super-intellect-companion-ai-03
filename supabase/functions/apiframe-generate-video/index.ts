@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -12,9 +11,11 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Define the APIframe API URL - Updated to use the correct domain
-const APIFRAME_API_URL = 'https://api.apiframe.io/v1';
-const APIFRAME_ALT_API_URL = 'https://api.apiframe.com/v1';
+// Define the APIframe API URLs - Updated to use the correct domains
+const APIFRAME_API_URLS = [
+  'https://api.apiframe.io/v1',
+  'https://api.apiframe.com/v1'
+];
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -24,14 +25,34 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { prompt, model, params, apiKey, referenceImageUrl } = await req.json();
+    const { prompt, model, params, referenceImageUrl } = await req.json();
     
-    // Get API key from request or environment variable - standardized to API_FRAME
+    // Get API key from environment variable - standardized to API_FRAME
     const APIFRAME_API_KEY = Deno.env.get('API_FRAME');
 
-    if (!prompt || !model || !APIFRAME_API_KEY) {
+    if (!APIFRAME_API_KEY) {
+      console.error('[apiframe-generate-video] API_FRAME not configured');
       return new Response(
-        JSON.stringify({ error: 'Missing required parameters' }),
+        JSON.stringify({ 
+          error: 'API_FRAME not configured', 
+          details: 'Please configure the API_FRAME secret in Supabase'
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    if (!prompt || !model) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Missing required parameters', 
+          details: {
+            prompt: !prompt ? 'Missing' : 'Provided',
+            model: !model ? 'Missing' : 'Provided'
+          }
+        }),
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -39,7 +60,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating video with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`[apiframe-generate-video] Generating video with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
 
     // Prepare request payload
     const payload = {
@@ -53,25 +74,16 @@ serve(async (req) => {
       payload.image_url = referenceImageUrl;
     }
 
-    // Try primary endpoint first
-    let response;
-    let apiUrl = APIFRAME_API_URL;
+    // Try each API URL until one works
+    let response = null;
+    let errorData = null;
+    let successfulUrl = null;
     
-    try {
-      response = await fetch(`${APIFRAME_API_URL}/videos/generate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${APIFRAME_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      // If failed with 404, try alternate endpoint
-      if (response.status === 404) {
-        console.log('Primary API endpoint failed with 404, trying alternate endpoint');
-        apiUrl = APIFRAME_ALT_API_URL;
-        response = await fetch(`${APIFRAME_ALT_API_URL}/videos/generate`, {
+    for (const apiUrl of APIFRAME_API_URLS) {
+      try {
+        console.log(`[apiframe-generate-video] Trying API URL: ${apiUrl}/videos/generate`);
+        
+        response = await fetch(`${apiUrl}/videos/generate`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${APIFRAME_API_KEY}`,
@@ -79,72 +91,76 @@ serve(async (req) => {
           },
           body: JSON.stringify(payload)
         });
+        
+        // If this succeeds, break the loop
+        if (response.ok) {
+          successfulUrl = apiUrl;
+          console.log(`[apiframe-generate-video] Successfully used API URL: ${apiUrl}`);
+          break;
+        }
+        
+        // Otherwise, log the error and continue trying
+        errorData = await response.json();
+        console.error(`[apiframe-generate-video] Error from ${apiUrl}:`, errorData);
+      } catch (error) {
+        console.error(`[apiframe-generate-video] Error with ${apiUrl}:`, error);
       }
-    } catch (error) {
-      console.error('Error with primary endpoint, trying alternate:', error);
-      // Try alternate URL
-      apiUrl = APIFRAME_ALT_API_URL;
-      response = await fetch(`${APIFRAME_ALT_API_URL}/videos/generate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${APIFRAME_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
     }
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error from APIframe:', errorData);
-      
+    // If no API URL worked
+    if (!successfulUrl) {
       return new Response(
         JSON.stringify({ 
-          error: errorData.message || 'Error generating video', 
-          status: 'failed' 
+          error: 'All API endpoints failed', 
+          status: 'failed',
+          details: errorData || 'Unknown error'
         }),
         { 
-          status: response.status, 
+          status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
 
     // Process successful response
-    const data = await response.json();
+    const responseData = await response.json();
+    console.log('[apiframe-generate-video] API response:', JSON.stringify(responseData));
     
     // Store task in database
     const { error: dbError } = await supabase
       .from('apiframe_tasks')
       .insert({
-        task_id: data.taskId,
+        task_id: responseData.taskId,
         prompt,
         model,
         media_type: 'video',
         params: { ...params, referenceImageUrl },
-        status: data.status || 'pending'
+        status: responseData.status || 'pending'
       });
       
     if (dbError) {
-      console.error('Error storing task in database:', dbError);
+      console.error('[apiframe-generate-video] Error storing task in database:', dbError);
     }
 
     return new Response(
       JSON.stringify({
-        taskId: data.taskId,
-        status: data.status || 'pending',
-        mediaUrl: data.mediaUrl,
-        apiUrl: apiUrl // Include which API URL was successfully used
+        taskId: responseData.taskId,
+        status: responseData.status || 'pending',
+        mediaUrl: responseData.mediaUrl,
+        apiUrl: successfulUrl // Include which API URL was successfully used
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error) {
-    console.error('Error in apiframe-generate-video function:', error);
+    console.error('[apiframe-generate-video] Error:', error);
     
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        stack: error.stack
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
