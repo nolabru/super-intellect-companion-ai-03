@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -18,8 +18,11 @@ if (!APIFRAME_API_KEY) {
   console.error('[apiframe-generate-image] APIFRAME_API_KEY not configured in environment variables');
 }
 
-// Define the correct APIframe API URL - Updated to use the correct endpoint
-const APIFRAME_API_URL = "https://api.apiframe.pro/create";
+// Define the APIframe API URLs - Try both potential endpoints
+const API_ENDPOINTS = [
+  "https://api.apiframe.pro/v1/image/generate",  // Updated endpoint based on common API patterns
+  "https://api.apiframe.pro/create"              // Original endpoint as fallback
+];
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -41,7 +44,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[apiframe-generate-image] Generating image with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`[apiframe-generate-image] Generating image with model ${model} and prompt: ${prompt.substring(0, 100)}...`);
 
     // Prepare standardized request payload
     const apiData = {
@@ -49,63 +52,67 @@ serve(async (req) => {
       prompt,
       negative_prompt: params?.negativePrompt || "",
       width: params?.width || 768,
-      height: params?.height || 768
+      height: params?.height || 768,
+      num_inference_steps: params?.steps || 30,
+      guidance_scale: params?.guidanceScale || 7.5
     };
 
-    console.log(`[apiframe-generate-image] Sending request to ${APIFRAME_API_URL} with API key: ${APIFRAME_API_KEY?.substring(0, 8)}...`);
-    console.log(`[apiframe-generate-image] Request payload:`, JSON.stringify(apiData).substring(0, 200) + "...");
+    console.log(`[apiframe-generate-image] Request payload:`, JSON.stringify(apiData).substring(0, 500));
     
-    // Call APIframe API with enhanced error logging
-    const response = await fetch(APIFRAME_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': APIFRAME_API_KEY,
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(apiData)
-    });
-
-    console.log(`[apiframe-generate-image] Response status: ${response.status} ${response.statusText}`);
+    // Try each endpoint until one works
+    let response = null;
+    let responseData = null;
+    let successfulEndpoint = null;
     
-    // For debugging - log response headers
-    const headersLog = {};
-    response.headers.forEach((value, key) => { headersLog[key] = value });
-    console.log(`[apiframe-generate-image] Response headers:`, headersLog);
-    
-    // Check if response is valid before attempting to parse JSON
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[apiframe-generate-image] Error response from APIframe:', response.status, response.statusText);
-      console.error('[apiframe-generate-image] Error response body:', errorText.substring(0, 500));
-      
-      let errorMessage = `API error: ${response.status} ${response.statusText}`;
+    for (const endpoint of API_ENDPOINTS) {
       try {
-        // Try to parse as JSON to get more specific error
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.error) {
-          errorMessage = errorJson.error.message || errorMessage;
+        console.log(`[apiframe-generate-image] Trying endpoint: ${endpoint}`);
+        
+        response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(apiData)
+        });
+        
+        console.log(`[apiframe-generate-image] Response from ${endpoint}: ${response.status} ${response.statusText}`);
+        
+        if (response.ok) {
+          responseData = await response.json();
+          successfulEndpoint = endpoint;
+          console.log(`[apiframe-generate-image] Successfully used endpoint: ${endpoint}`);
+          break;
+        } else {
+          const errorText = await response.text();
+          console.error(`[apiframe-generate-image] Error from ${endpoint}:`, errorText.substring(0, 500));
         }
-      } catch {
-        // If not parsable as JSON, use the status text
+      } catch (endpointError) {
+        console.error(`[apiframe-generate-image] Error with endpoint ${endpoint}:`, endpointError);
       }
-      
-      throw new Error(errorMessage);
+    }
+    
+    // If no endpoints worked
+    if (!successfulEndpoint) {
+      throw new Error("All API endpoints failed. Check API key and try again later.");
     }
 
-    // Handle successful response
-    const data = await response.json();
-    console.log('[apiframe-generate-image] APIframe response:', JSON.stringify(data).substring(0, 200) + "...");
-
-    if (!data.task_id) {
+    // Get task ID from response
+    const taskId = responseData.task_id || responseData.taskId || responseData.id;
+    
+    if (!taskId) {
       throw new Error("No task ID returned from APIframe");
     }
+    
+    console.log(`[apiframe-generate-image] Task ID: ${taskId}`);
     
     // Store task in database
     const { error: dbError } = await supabase
       .from('apiframe_tasks')
       .insert({
-        task_id: data.task_id,
+        task_id: taskId,
         prompt,
         model,
         media_type: 'image',
@@ -119,9 +126,10 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        taskId: data.task_id,
+        taskId: taskId,
         status: 'pending',
-        message: 'Task created successfully'
+        message: 'Task created successfully',
+        endpoint: successfulEndpoint // Include which endpoint worked
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
