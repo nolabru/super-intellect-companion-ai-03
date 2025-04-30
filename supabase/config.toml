@@ -1,1 +1,14 @@
+
 project_id = "vygluorjwehcdigzxbaa"
+
+[functions]
+[functions.apiframe-generate-audio]
+verify_jwt = false
+[functions.apiframe-generate-image]
+verify_jwt = false
+[functions.apiframe-check-status]
+verify_jwt = false
+[functions.apiframe-task-cancel]
+verify_jwt = false
+[functions.apiframe-generate-video]
+verify_jwt = false

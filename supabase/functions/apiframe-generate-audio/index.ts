@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -14,12 +13,12 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // Define the APIframe API URLs - Updated to use the correct domains
 const APIFRAME_API_URLS = [
-  'https://api.apiframe.io/v1',
-  'https://api.apiframe.com/v1'
+  'https://api.apiframe.ai/v1/audio/generate',
+  'https://api.apiframe.com/v1/audio/generate'
 ];
 
-// Set the global API key that will work for all users - standardized name
-const GLOBAL_APIFRAME_API_KEY = Deno.env.get('API_FRAME');
+// Get the API key from environment variable - consistently using API_FRAME
+const APIFRAME_API_KEY = Deno.env.get('API_FRAME');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -31,9 +30,6 @@ serve(async (req) => {
     // Parse request body
     const { prompt, model, params } = await req.json();
     
-    // Use the global API key instead of requesting it from the user or environment
-    const APIFRAME_API_KEY = GLOBAL_APIFRAME_API_KEY;
-
     if (!APIFRAME_API_KEY) {
       console.error('[apiframe-generate-audio] API_FRAME not configured');
       return new Response(
@@ -80,9 +76,9 @@ serve(async (req) => {
     
     for (const apiUrl of APIFRAME_API_URLS) {
       try {
-        console.log(`[apiframe-generate-audio] Trying API URL: ${apiUrl}/audio/generate`);
+        console.log(`[apiframe-generate-audio] Trying API URL: ${apiUrl}`);
         
-        response = await fetch(`${apiUrl}/audio/generate`, {
+        response = await fetch(`${apiUrl}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${APIFRAME_API_KEY}`,

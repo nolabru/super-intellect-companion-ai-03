@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -11,11 +12,14 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Define the APIframe API URLs - Updated to use the correct domains
+// Define the APIframe API URLs - Using the correct endpoints
 const APIFRAME_API_URLS = [
-  'https://api.apiframe.io/v1',
-  'https://api.apiframe.com/v1'
+  'https://api.apiframe.ai/v1/videos/generate',
+  'https://api.apiframe.com/v1/videos/generate'
 ];
+
+// Get API key from environment variable - consistently using API_FRAME
+const APIFRAME_API_KEY = Deno.env.get('API_FRAME');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -27,9 +31,6 @@ serve(async (req) => {
     // Parse request body
     const { prompt, model, params, referenceImageUrl } = await req.json();
     
-    // Get API key from environment variable - standardized to API_FRAME
-    const APIFRAME_API_KEY = Deno.env.get('API_FRAME');
-
     if (!APIFRAME_API_KEY) {
       console.error('[apiframe-generate-video] API_FRAME not configured');
       return new Response(
@@ -83,7 +84,7 @@ serve(async (req) => {
       try {
         console.log(`[apiframe-generate-video] Trying API URL: ${apiUrl}/videos/generate`);
         
-        response = await fetch(`${apiUrl}/videos/generate`, {
+        response = await fetch(`${apiUrl}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${APIFRAME_API_KEY}`,

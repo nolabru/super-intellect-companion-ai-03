@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -11,17 +12,17 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Get the APIframe API key from environment variables - updated to use new key name
+// Get the APIframe API key from environment variables - consistently using API_FRAME as the variable name
 const APIFRAME_API_KEY = Deno.env.get('API_FRAME');
 if (!APIFRAME_API_KEY) {
   console.error('[apiframe-generate-image] API_FRAME not configured in environment variables');
 }
 
-// Define the APIframe API URLs - Using the updated correct endpoints
+// Define the APIframe API URLs - Using updated correct endpoints based on their documentation
 const API_ENDPOINTS = [
-  "https://api.apiframe.io/v1/images/generate",
-  "https://api.apiframe.com/v1/images/generate", 
-  "https://api.apiframe.io/image/generations",
+  "https://api.apiframe.ai/v1/images/generate",
+  "https://api.apiframe.com/v1/images/generate",
+  "https://api.apiframe.ai/image/generations",
   "https://api.apiframe.com/image/generations"
 ];
 
@@ -34,6 +35,20 @@ serve(async (req) => {
   try {
     // Parse request body
     const { prompt, model, params } = await req.json();
+    
+    if (!APIFRAME_API_KEY) {
+      console.error('[apiframe-generate-image] API_FRAME not configured');
+      return new Response(
+        JSON.stringify({ 
+          error: 'API_FRAME not configured', 
+          details: 'Please configure the API_FRAME secret in Supabase'
+        }),
+        { 
+          status: 500, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     if (!prompt || !model) {
       return new Response(
