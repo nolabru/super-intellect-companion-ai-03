@@ -12,11 +12,14 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Set the global API key that will work for all users
-const GLOBAL_APIFRAME_API_KEY = 'b0a5c230-6f6f-4d2b-bb61-4be15184dd63';
+// Get the APIframe API key from environment variables
+const APIFRAME_API_KEY = Deno.env.get('APIFRAME_API_KEY');
+if (!APIFRAME_API_KEY) {
+  console.error('[apiframe-check-status] APIFRAME_API_KEY not configured in environment variables');
+}
 
 // Define the correct APIframe API URL
-const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
+const APIFRAME_API_URL = "https://api.apiframe.ai/api/v1/task";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -73,23 +76,42 @@ serve(async (req) => {
     // Check status with APIframe API
     console.log(`[apiframe-check-status] Checking status with APIframe API`);
     
-    const apiResponse = await fetch(`${APIFRAME_API_URL}/tasks/${taskId}`, {
+    // Updated API endpoint format to use the task ID
+    const apiResponse = await fetch(`${APIFRAME_API_URL}/${taskId}`, {
       method: "GET",
       headers: {
-        'Authorization': `Bearer ${GLOBAL_APIFRAME_API_KEY}`,
+        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       }
     });
 
+    console.log(`[apiframe-check-status] Response status: ${apiResponse.status} ${apiResponse.statusText}`);
+    
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
       console.error(`[apiframe-check-status] APIframe API error (${apiResponse.status}):`, errorText);
+      
+      // If we get a 404, it might mean the task doesn't exist or is expired
+      if (apiResponse.status === 404) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Task not found or expired",
+            status: "failed",
+            details: `Task ID ${taskId} could not be found on the APIframe server`
+          }),
+          { 
+            status: 404, 
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
+      
       throw new Error(`APIframe API error: ${apiResponse.status} - ${errorText.substring(0, 100)}`);
     }
 
     const apiData = await apiResponse.json();
-    console.log(`[apiframe-check-status] APIframe response:`, apiData);
+    console.log(`[apiframe-check-status] APIframe response:`, JSON.stringify(apiData).substring(0, 200) + "...");
     
     // Map APIframe status to our format
     let status = apiData.status || 'pending';

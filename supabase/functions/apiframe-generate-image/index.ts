@@ -12,11 +12,14 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Set the global API key that will work for all users
-const GLOBAL_APIFRAME_API_KEY = 'b0a5c230-6f6f-4d2b-bb61-4be15184dd63';
+// Get the APIframe API key from environment variables
+const APIFRAME_API_KEY = Deno.env.get('APIFRAME_API_KEY');
+if (!APIFRAME_API_KEY) {
+  console.error('[apiframe-generate-image] APIFRAME_API_KEY not configured in environment variables');
+}
 
-// Define the correct APIframe API URL
-const APIFRAME_API_URL = 'https://api.apiframe.ai/v1';
+// Define the correct APIframe API URL - Updated to match the apiframe-image function
+const APIFRAME_API_URL = "https://api.apiframe.ai/api/v1/task";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -38,26 +41,39 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Generating image with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
+    console.log(`[apiframe-generate-image] Generating image with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
 
-    // Prepare request payload
-    const payload = {
-      prompt,
-      model,
-      ...params
+    // Prepare standardized request payload using the task-based format
+    const taskData = {
+      model: model,
+      task_type: "txt2img",
+      input: {
+        prompt,
+        negative_prompt: params?.negativePrompt || "",
+        width: params?.width || 768,
+        height: params?.height || 768,
+        num_inference_steps: params?.steps || 30,
+        guidance_scale: params?.guidanceScale || 7.5
+      },
+      config: {
+        webhook_config: {
+          endpoint: `${Deno.env.get("SUPABASE_URL")}/functions/v1/apiframe-media-webhook`
+        }
+      }
     };
 
-    console.log(`[apiframe-generate-image] Sending request to ${APIFRAME_API_URL}/images/generate with API key: ${GLOBAL_APIFRAME_API_KEY.substring(0, 8)}...`);
+    console.log(`[apiframe-generate-image] Sending request to ${APIFRAME_API_URL} with API key: ${APIFRAME_API_KEY?.substring(0, 8)}...`);
+    console.log(`[apiframe-generate-image] Request payload:`, JSON.stringify(taskData).substring(0, 200) + "...");
     
     // Call APIframe API with enhanced error logging
-    const response = await fetch(`${APIFRAME_API_URL}/images/generate`, {
+    const response = await fetch(APIFRAME_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GLOBAL_APIFRAME_API_KEY}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
         'Accept': 'application/json'
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(taskData)
     });
 
     console.log(`[apiframe-generate-image] Response status: ${response.status} ${response.statusText}`);
@@ -67,50 +83,44 @@ serve(async (req) => {
     response.headers.forEach((value, key) => { headersLog[key] = value });
     console.log(`[apiframe-generate-image] Response headers:`, headersLog);
     
-    // Try to get response body for error analysis
-    let responseBody;
-    try {
-      // Try to get as JSON first
-      responseBody = await response.json();
-      console.log(`[apiframe-generate-image] Response body:`, responseBody);
-    } catch (jsonError) {
-      // If not JSON, get as text
-      const responseText = await response.text();
-      console.log(`[apiframe-generate-image] Response is not JSON. Text content (first 500 chars):`, responseText.substring(0, 500));
-      throw new Error(`API returned invalid JSON response. Status: ${response.status}. Text: ${responseText.substring(0, 200)}`);
-    }
-
+    // Check if response is valid before attempting to parse JSON
     if (!response.ok) {
-      console.error('[apiframe-generate-image] Error from APIframe:', responseBody);
+      const errorText = await response.text();
+      console.error('[apiframe-generate-image] Error response from APIframe:', response.status, response.statusText);
+      console.error('[apiframe-generate-image] Error response body:', errorText.substring(0, 500));
       
-      return new Response(
-        JSON.stringify({ 
-          error: (responseBody && responseBody.message) ? responseBody.message : `Error generating image: ${response.status} ${response.statusText}`, 
-          status: 'failed',
-          details: responseBody
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      let errorMessage = `API error: ${response.status} ${response.statusText}`;
+      try {
+        // Try to parse as JSON to get more specific error
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error) {
+          errorMessage = errorJson.error.message || errorMessage;
         }
-      );
+      } catch {
+        // If not parsable as JSON, use the status text
+      }
+      
+      throw new Error(errorMessage);
     }
 
-    // Process successful response
-    if (!responseBody.taskId) {
-      throw new Error('No taskId in response');
+    // Handle successful response
+    const data = await response.json();
+    console.log('[apiframe-generate-image] APIframe response:', JSON.stringify(data).substring(0, 200) + "...");
+
+    if (!data.task_id) {
+      throw new Error("No task ID returned from APIframe");
     }
     
     // Store task in database
     const { error: dbError } = await supabase
       .from('apiframe_tasks')
       .insert({
-        task_id: responseBody.taskId,
+        task_id: data.task_id,
         prompt,
         model,
         media_type: 'image',
         params: params || {},
-        status: responseBody.status || 'pending'
+        status: 'pending'
       });
       
     if (dbError) {
@@ -119,9 +129,9 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        taskId: responseBody.taskId,
-        status: responseBody.status || 'pending',
-        mediaUrl: responseBody.mediaUrl
+        taskId: data.task_id,
+        status: 'pending',
+        message: 'Task created successfully'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
