@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useApiframeGeneration } from './useApiframeGeneration';
 import { ApiframeParams } from '@/types/apiframeGeneration';
@@ -207,8 +206,8 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     }
     
     try {
-      // FIX: Use the correct cancelTask method
-      const result = await apiframeGeneration.cancelTask(persistedTask.id);
+      // FIX: The cancelTask method doesn't expect any arguments
+      const result = await apiframeGeneration.cancelTask();
       
       if (result) {
         // Clear persisted task
