@@ -1,3 +1,4 @@
+
 type ModelMapping = Record<string, string>;
 
 // Mapping for image models
@@ -7,7 +8,7 @@ const imageModelMapping: ModelMapping = {
   'kandinsky': 'kandinsky-2.2',
   'deepfloyd': 'deepfloyd-if',
   'dalle-3': 'openai-dalle-3',
-  'midjourney': 'midjourney-v6', // Updated to use the correct API model ID
+  'midjourney': 'midjourney-v6', // Using the correct API model ID for midjourney
 };
 
 // Mapping for video models

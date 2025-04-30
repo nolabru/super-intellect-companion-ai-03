@@ -18,8 +18,8 @@ if (!APIFRAME_API_KEY) {
   console.error('[apiframe-generate-image] APIFRAME_API_KEY not configured in environment variables');
 }
 
-// Define the correct APIframe API URL - Updated to match the apiframe-image function
-const APIFRAME_API_URL = "https://api.apiframe.ai/api/v1/task";
+// Define the correct APIframe API URL - Updated to use the correct endpoint
+const APIFRAME_API_URL = "https://api.apiframe.pro/create";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -43,37 +43,27 @@ serve(async (req) => {
 
     console.log(`[apiframe-generate-image] Generating image with model ${model} and prompt: ${prompt.substring(0, 50)}...`);
 
-    // Prepare standardized request payload using the task-based format
-    const taskData = {
-      model: model,
-      task_type: "txt2img",
-      input: {
-        prompt,
-        negative_prompt: params?.negativePrompt || "",
-        width: params?.width || 768,
-        height: params?.height || 768,
-        num_inference_steps: params?.steps || 30,
-        guidance_scale: params?.guidanceScale || 7.5
-      },
-      config: {
-        webhook_config: {
-          endpoint: `${Deno.env.get("SUPABASE_URL")}/functions/v1/apiframe-media-webhook`
-        }
-      }
+    // Prepare standardized request payload
+    const apiData = {
+      model,
+      prompt,
+      negative_prompt: params?.negativePrompt || "",
+      width: params?.width || 768,
+      height: params?.height || 768
     };
 
     console.log(`[apiframe-generate-image] Sending request to ${APIFRAME_API_URL} with API key: ${APIFRAME_API_KEY?.substring(0, 8)}...`);
-    console.log(`[apiframe-generate-image] Request payload:`, JSON.stringify(taskData).substring(0, 200) + "...");
+    console.log(`[apiframe-generate-image] Request payload:`, JSON.stringify(apiData).substring(0, 200) + "...");
     
     // Call APIframe API with enhanced error logging
     const response = await fetch(APIFRAME_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+        'Authorization': APIFRAME_API_KEY,
         'Accept': 'application/json'
       },
-      body: JSON.stringify(taskData)
+      body: JSON.stringify(apiData)
     });
 
     console.log(`[apiframe-generate-image] Response status: ${response.status} ${response.statusText}`);

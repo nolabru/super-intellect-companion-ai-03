@@ -18,8 +18,8 @@ if (!APIFRAME_API_KEY) {
   console.error('[apiframe-check-status] APIFRAME_API_KEY not configured in environment variables');
 }
 
-// Define the correct APIframe API URL
-const APIFRAME_API_URL = "https://api.apiframe.ai/api/v1/task";
+// Define the correct APIframe API URL for status checks
+const APIFRAME_API_URL = "https://api.apiframe.pro/fetch";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -76,14 +76,15 @@ serve(async (req) => {
     // Check status with APIframe API
     console.log(`[apiframe-check-status] Checking status with APIframe API`);
     
-    // Updated API endpoint format to use the task ID
-    const apiResponse = await fetch(`${APIFRAME_API_URL}/${taskId}`, {
-      method: "GET",
+    // Updated to use the correct endpoint and POST method with task_id in the body
+    const apiResponse = await fetch(APIFRAME_API_URL, {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${APIFRAME_API_KEY}`,
+        'Authorization': APIFRAME_API_KEY,
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({ task_id: taskId })
     });
 
     console.log(`[apiframe-check-status] Response status: ${apiResponse.status} ${apiResponse.statusText}`);

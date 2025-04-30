@@ -51,40 +51,32 @@ serve(async (req) => {
     console.log('Prompt:', prompt);
     console.log('Params:', params);
 
-    // FIXED: Use the correct base API URL
-    const apiUrl = "https://api.apiframe.ai/api/v1/task";
+    // FIXED: Use the correct API URL
+    const apiUrl = "https://api.apiframe.pro/create";
     
-    // Create proper task data structure
-    const taskData = {
+    // Create proper API request payload
+    const apiData = {
       model: model || 'stable-diffusion-xl',
-      task_type: "txt2img",
-      input: {
-        prompt,
-        negative_prompt: params.negativePrompt || "",
-        width: params.width || 768,
-        height: params.height || 768,
-        num_inference_steps: params.steps || 30,
-        guidance_scale: params.guidanceScale || 7.5
-      },
-      config: {
-        webhook_config: {
-          endpoint: `${Deno.env.get("SUPABASE_URL")}/functions/v1/apiframe-media-webhook`
-        }
-      }
+      prompt,
+      negative_prompt: params.negativePrompt || "",
+      width: params.width || 768,
+      height: params.height || 768,
+      num_inference_steps: params.steps || 30,
+      guidance_scale: params.guidanceScale || 7.5
     };
 
     // Add debugging
     console.log("[apiframe-image] Sending request to:", apiUrl);
-    console.log("[apiframe-image] Request payload:", JSON.stringify(taskData).substring(0, 200) + "...");
+    console.log("[apiframe-image] Request payload:", JSON.stringify(apiData).substring(0, 200) + "...");
     
     // Create task in APIframe with proper error handling
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${APIFRAME_API_KEY}`
+        'Authorization': APIFRAME_API_KEY
       },
-      body: JSON.stringify(taskData)
+      body: JSON.stringify(apiData)
     });
 
     // Check if response is valid before attempting to parse JSON
