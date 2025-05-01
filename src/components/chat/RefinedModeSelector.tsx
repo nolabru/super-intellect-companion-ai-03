@@ -75,7 +75,6 @@ const touchFeedbackStyle = `
   .touch-feedback {
     position: relative;
     z-index: 1;
-    transform: translateZ(0);
     isolation: isolate;
     contain: strict;
   }
