@@ -259,7 +259,7 @@ const Index: React.FC = () => {
       
       <div className="flex-1 flex overflow-hidden relative">
         {/* Sidebar with overlay on mobile */}
-        {(sidebarOpen) && (
+        {sidebarOpen && (
           <>
             {/* Mobile overlay backdrop */}
             {isMobile && (
@@ -283,10 +283,12 @@ const Index: React.FC = () => {
           </>
         )}
         
+        {/* Main chat container - Modified to maintain constant width */}
         <div className={cn(
           "flex-1 flex flex-col overflow-hidden",
           "transition-all duration-300",
-          sidebarOpen && !isMobile && "ml-64"
+          // This is the key change: Instead of adding margin, we use absolute positioning for the sidebar
+          !isMobile && "w-full"
         )}>
           <MobileComparisonHeader />
 
