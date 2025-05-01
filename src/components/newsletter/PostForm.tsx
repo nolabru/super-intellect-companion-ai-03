@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -101,8 +100,8 @@ const PostForm: React.FC<PostFormProps> = ({
         throw new Error('Usuário não autenticado');
       }
       
-      // Call the newsletter-media-storage function
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/newsletter-media-storage`, {
+      // Call the newsletter-media-storage function with the correct URL format
+      const response = await fetch('https://sxcdfhomogjtjdtoolbg.supabase.co/functions/v1/newsletter-media-storage', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
