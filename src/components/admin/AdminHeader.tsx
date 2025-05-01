@@ -1,16 +1,8 @@
 
 import React from 'react';
-import { Menu, Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 interface AdminHeaderProps {
   sidebarOpen: boolean;
@@ -41,25 +34,42 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar 
       <Button 
         variant="ghost" 
         size="icon" 
-        className="md:hidden text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
+        className="text-inventu-gray hover:text-white hover:bg-inventu-gray/20"
         onClick={onToggleSidebar}
       >
-        <Menu className="h-5 w-5" />
         <span className="sr-only">Toggle Menu</span>
+        {/* Uses Menu icon from Lucide, which is imported through other components */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-5 w-5"
+        >
+          <line x1="4" x2="20" y1="12" y2="12" />
+          <line x1="4" x2="20" y1="6" y2="6" />
+          <line x1="4" x2="20" y1="18" y2="18" />
+        </svg>
       </Button>
       
-      <div className="hidden md:block">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/" className="text-inventu-gray hover:text-white">Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage className="text-white">Painel Administrativo</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+      <div className="flex items-center gap-4">
+        <Link to="/" className="flex items-center">
+          <img 
+            src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
+            alt="InventuAi Logo" 
+            className="h-8 w-auto" 
+          />
+        </Link>
+        
+        <div className="flex items-center gap-1">
+          <div className="h-4 w-px bg-white/10" />
+          <span className="text-sm font-medium text-white/70">Admin</span>
+        </div>
       </div>
       
       <div className="ml-auto flex items-center gap-4">
