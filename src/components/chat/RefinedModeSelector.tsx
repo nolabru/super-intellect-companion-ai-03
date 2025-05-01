@@ -22,10 +22,10 @@ const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({
   // Using a constant array to avoid recreation on each render
   const modes = [
     { value: 'text', icon: Text, label: 'Texto' },
-    { value: 'image', icon: Image, label: 'Imagem' },
-    { value: 'video', icon: Video, label: 'Vídeo' },
-    { value: 'audio', icon: AudioLines, label: 'Áudio' },
-    { value: 'call', icon: PhoneCall, label: 'Chamada' }
+    { value: 'image', icon: Text, label: 'Imagem' },
+    { value: 'video', icon: Text, label: 'Vídeo' },
+    { value: 'audio', icon: Text, label: 'Áudio' },
+    { value: 'call', icon: Text, label: 'Chamada' }
   ];
 
   const handleItemClick = (value: string) => {
