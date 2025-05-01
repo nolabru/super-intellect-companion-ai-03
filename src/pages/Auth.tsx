@@ -23,7 +23,16 @@ const Auth: React.FC = () => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        navigate('/');
+        // Fetch profile to ensure we have admin status
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.session.user.id)
+          .single();
+          
+        if (profileData) {
+          navigate('/');
+        }
       }
     };
     
