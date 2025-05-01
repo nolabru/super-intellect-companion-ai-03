@@ -183,13 +183,13 @@ const Auth: React.FC = () => {
                 </g>
               </svg>
             )}
-            {loading ? 'Processing...' : 'Continue with Google'}
+            {loading ? 'Processing...' : 'Continuar com o Google'}
           </Button>
           
           <div className="relative my-6">
             <Separator className="bg-inventu-gray/30" />
             <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-inventu-dark px-2 text-xs text-inventu-gray">
-              OR
+              OU
             </span>
           </div>
           
@@ -210,7 +210,7 @@ const Auth: React.FC = () => {
             
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
-                Password
+                Senha
               </label>
               <Input
                 id="password"
@@ -232,7 +232,7 @@ const Auth: React.FC = () => {
                 : null}
               {loading 
                 ? 'Processing...' 
-                : mode === 'login' ? 'Login' : 'Register'}
+                : mode === 'login' ? 'Entrar' : 'Registrar'}
             </Button>
           </form>
           
@@ -243,16 +243,19 @@ const Auth: React.FC = () => {
               className="text-inventu-blue hover:underline text-sm"
             >
               {mode === 'login'
-                ? 'Don\'t have an account? Sign up'
-                : 'Already have an account? Log in'}
+                ? 'Não tem uma conta? Cadastrar'
+                : 'Já tem uma conta? Entrar'}
             </button>
           </div>
           
           <div className="mt-6 text-xs text-center text-inventu-gray/70">
-            By continuing with Google, you authorize our app to:
+            Para continuar com o Google, você autoriza o app para:
             <ul className="mt-2 list-disc list-inside text-left">
-              <li>Access your name and email for authentication</li>
-              <li>Create a linked account to your Google profile</li>
+              <li>
+              Acessar seu nome e email para autenticação</li>
+              <li>
+                Criar uma conta conectada com seu perfil do Google
+              </li>
             </ul>
           </div>
         </div>
