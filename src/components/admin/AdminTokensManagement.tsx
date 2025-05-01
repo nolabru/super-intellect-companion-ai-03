@@ -58,7 +58,7 @@ const AdminTokensManagement: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6 animate-fade-in">
       <div>
         <h2 className="text-2xl font-bold">Gerenciamento de Tokens</h2>
         <p className="text-muted-foreground">Adicionar ou remover tokens de usuários</p>

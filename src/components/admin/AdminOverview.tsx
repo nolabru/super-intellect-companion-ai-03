@@ -52,7 +52,7 @@ const AdminOverview: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 p-6 animate-fade-in">
       <div>
         <h2 className="text-2xl font-bold mb-4">Visão Geral</h2>
         
