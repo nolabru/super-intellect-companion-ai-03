@@ -80,11 +80,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
     if (isImageGenerationModel) {
       return "Descreva sua imagem...";
     }
+    if (mode === 'video'){
+      return "Descreva seu vídeo..."
+    }
     if (mode === 'audio') {
       return "Digite seu texto...";
     }
     if (model) {
-      return "Descreva seu vídeo...";
+      return "Pergunte...";
     }
     return "Digite aqui...";
   }, [isImageGenerationModel, mode, model]);
