@@ -249,7 +249,7 @@ const Auth: React.FC = () => {
           </div>
           
           <div className="mt-6 text-xs text-center text-inventu-gray/70">
-            Para continuar com o Google, você autoriza o app para:
+            Para continuar com o Google, você autoriza o app a:
             <ul className="mt-2 list-disc list-inside text-left">
               <li>
               Acessar seu nome e email para autenticação</li>
