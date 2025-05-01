@@ -30,9 +30,9 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onParamsChange
 }) => {
   return (
-    <div className="px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10">
+    <div className="px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10 transform-gpu layout-stable">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 transform-gpu">
           <RefinedModeSelector 
             activeMode={activeMode} 
             onChange={onModeChange} 

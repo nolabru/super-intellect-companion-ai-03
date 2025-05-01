@@ -35,7 +35,7 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
   return (
     <div className={cn(
       "sticky bottom-0 z-30 border-t border-inventu-gray/30",
-      "bg-inventu-dark/95 backdrop-blur-lg"
+      "bg-inventu-dark/95 backdrop-blur-lg transform-gpu layout-stable"
     )}>
       <ChatControls
         activeMode={activeMode}
@@ -51,7 +51,7 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
       
       {(!comparing || isLinked || isMobile) && (
         <div className={cn(
-          "px-2 mb-1",
+          "px-2 mb-1 transform-gpu",
           isMobile ? "pb-6" : "pb-2" // Extra padding on mobile for better touch area
         )}>
           <ChatInput 
