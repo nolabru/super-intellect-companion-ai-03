@@ -42,7 +42,7 @@ const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({
       onValueChange={(value) => value && onChange(value as ChatMode)}
       className={cn(
         "flex items-center p-1 rounded-2xl bg-white/5 backdrop-blur-xl",
-        "border border-white/10 gap-1",
+        "border border-white/10 gap-1 contain-layout contain-paint will-change-auto",
         isTouchDevice ? "min-h-[3rem]" : "",
         className
       )}
@@ -59,8 +59,9 @@ const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({
             "data-[state=on]:bg-white/10 data-[state=on]:text-white",
             "data-[state=on]:shadow-inner data-[state=on]:shadow-white/5",
             isTouchDevice ? "min-w-[3rem] min-h-[2.75rem]" : "",
-            isTouchDevice ? "touch-ripple transform-stable" : "hover:bg-white/5",
+            isTouchDevice ? "touch-feedback" : "hover:bg-white/5",
           )}
+          style={{ transformOrigin: 'center' }}
         >
           <Icon size={isTouchDevice ? 20 : 18} />
         </ToggleGroupItem>
@@ -69,49 +70,26 @@ const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({
   );
 };
 
-// Add custom CSS class for touch feedback with improved stability
-const touchRippleStyle = `
-  .touch-ripple {
+// Add custom CSS for touch feedback with opacity change instead of scale
+const touchFeedbackStyle = `
+  .touch-feedback {
     position: relative;
-    overflow: hidden;
-    transform: translateZ(0); /* Create new stacking context */
-  }
-  
-  .touch-ripple::after {
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 70%);
-    opacity: 0;
-    top: 0;
-    left: 0;
-    transform: scale(2);
-    transition: opacity 0.5s, transform 0.5s;
-    pointer-events: none;
-  }
-  
-  .touch-ripple:active::after {
-    opacity: 0.3;
-    transform: scale(0);
-    transition: 0s;
-  }
-  
-  .transform-stable {
-    transform-origin: center;
-    will-change: transform;
+    z-index: 1;
     transform: translateZ(0);
+    isolation: isolate;
+    contain: strict;
   }
   
-  .transform-stable:active {
-    transform: scale(0.95) translateZ(0);
+  .touch-feedback:active {
+    opacity: 0.7;
+    transition: opacity 0.1s ease;
   }
 `;
 
 // Add the style to the document head
 if (typeof document !== 'undefined') {
   const style = document.createElement('style');
-  style.textContent = touchRippleStyle;
+  style.textContent = touchFeedbackStyle;
   document.head.appendChild(style);
 }
 

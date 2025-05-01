@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -236,6 +237,30 @@
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
   }
+  
+  /* Touch interaction optimization */
+  .touch-optimized {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    isolation: isolate;
+    contain: layout paint style;
+  }
+  
+  /* Better button press effect */
+  .press-effect {
+    transition: opacity 0.15s ease;
+  }
+  
+  .press-effect:active {
+    opacity: 0.7;
+  }
+  
+  /* Prevent layout shift */
+  .prevent-shift {
+    contain: strict;
+    transform: translateZ(0);
+    isolation: isolate;
+  }
 }
 
 @layer utilities {
@@ -431,6 +456,10 @@
     will-change: opacity;
   }
   
+  .will-change-auto {
+    will-change: auto;
+  }
+  
   .transform-preserve-3d {
     transform-style: preserve-3d;
   }
@@ -462,4 +491,32 @@
   .contain-size {
     contain: size;
   }
+  
+  .contain-style {
+    contain: style;
+  }
+  
+  /* Better touch interaction for UI elements */
+  .no-tap-highlight {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .use-opacity-feedback:active {
+    opacity: 0.7;
+    transition: opacity 0.1s ease;
+  }
+  
+  /* Transform isolation utilities */
+  .isolate-transform {
+    isolation: isolate;
+    z-index: 1;
+  }
+  
+  /* Hardware acceleration helpers */
+  .hardware-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
 }
+

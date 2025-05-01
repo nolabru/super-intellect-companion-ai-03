@@ -5,6 +5,7 @@ import CompareModelsButton from '../CompareModelsButton';
 import LinkToggleButton from '../LinkToggleButton';
 import ParametersManager from './parameters/ParametersManager';
 import { ChatMode } from '../ModeSelector';
+import { cn } from '@/lib/utils';
 
 interface ChatControlsProps {
   activeMode: ChatMode;
@@ -30,9 +31,15 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onParamsChange
 }) => {
   return (
-    <div className="px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10 transform-gpu layout-stable">
+    <div className={cn(
+      "px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10",
+      "contain-layout contain-paint transform-gpu will-change-auto"
+    )}>
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 transform-gpu">
+        <div className={cn(
+          "flex items-center gap-3 transform-gpu",
+          "contain-layout contain-paint"
+        )}>
           <RefinedModeSelector 
             activeMode={activeMode} 
             onChange={onModeChange} 
