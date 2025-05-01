@@ -30,7 +30,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar 
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-inventu-gray/30 bg-inventu-dark px-4 md:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-inventu-gray/30 bg-inventu-dark px-4 md:px-6 w-full">
       <Button 
         variant="ghost" 
         size="icon" 
@@ -38,7 +38,6 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar 
         onClick={onToggleSidebar}
       >
         <span className="sr-only">Toggle Menu</span>
-        {/* Uses Menu icon from Lucide, which is imported through other components */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="24"
@@ -57,20 +56,13 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar 
         </svg>
       </Button>
       
-      <div className="flex items-center gap-4">
-        <Link to="/" className="flex items-center">
-          <img 
-            src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
-            alt="InventuAi Logo" 
-            className="h-8 w-auto" 
-          />
-        </Link>
-        
-        <div className="flex items-center gap-1">
-          <div className="h-4 w-px bg-white/10" />
-          <span className="text-sm font-medium text-white/70">Admin</span>
-        </div>
-      </div>
+      <Link to="/" className="flex items-center">
+        <img 
+          src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
+          alt="InventuAi Logo" 
+          className="h-8 w-auto" 
+        />
+      </Link>
       
       <div className="ml-auto flex items-center gap-4">
         <div className="relative hidden md:flex items-center">
