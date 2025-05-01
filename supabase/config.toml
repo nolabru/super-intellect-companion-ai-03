@@ -6,3 +6,9 @@ verify_jwt = true
 
 [functions.increment-post-view]
 verify_jwt = true
+
+[functions.user-tokens]
+verify_jwt = true
+
+[functions.ai-chat]
+verify_jwt = true

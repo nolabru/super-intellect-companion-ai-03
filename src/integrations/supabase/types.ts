@@ -57,6 +57,30 @@ export type Database = {
         }
         Relationships: []
       }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       media_ready_events: {
         Row: {
           created_at: string
@@ -87,11 +111,57 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          files: string[] | null
+          id: string
+          media_url: string | null
+          mode: string
+          model: string | null
+          sender: string
+          timestamp: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          files?: string[] | null
+          id: string
+          media_url?: string | null
+          mode: string
+          model?: string | null
+          sender: string
+          timestamp?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          files?: string[] | null
+          id?: string
+          media_url?: string | null
+          mode?: string
+          model?: string | null
+          sender?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       newsletter_posts: {
         Row: {
+          author_id: string | null
           content: string
           created_at: string
           id: string
+          is_published: boolean | null
           like_count: number | null
           media_type: string | null
           media_url: string | null
@@ -103,9 +173,11 @@ export type Database = {
           view_count: number | null
         }
         Insert: {
+          author_id?: string | null
           content: string
           created_at?: string
           id?: string
+          is_published?: boolean | null
           like_count?: number | null
           media_type?: string | null
           media_url?: string | null
@@ -117,9 +189,11 @@ export type Database = {
           view_count?: number | null
         }
         Update: {
+          author_id?: string | null
           content?: string
           created_at?: string
           id?: string
+          is_published?: boolean | null
           like_count?: number | null
           media_type?: string | null
           media_url?: string | null
@@ -180,6 +254,67 @@ export type Database = {
         }
         Relationships: []
       }
+      post_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "newsletter_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "newsletter_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -198,6 +333,27 @@ export type Database = {
           id?: string
           is_admin?: boolean | null
           username?: string | null
+        }
+        Relationships: []
+      }
+      token_consumption_rates: {
+        Row: {
+          id: string
+          mode: string
+          model_id: string
+          tokens_per_request: number
+        }
+        Insert: {
+          id?: string
+          mode: string
+          model_id: string
+          tokens_per_request?: number
+        }
+        Update: {
+          id?: string
+          mode?: string
+          model_id?: string
+          tokens_per_request?: number
         }
         Relationships: []
       }
@@ -264,11 +420,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          next_reset_date: string | null
+          tokens_remaining: number
+          tokens_used: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          next_reset_date?: string | null
+          tokens_remaining?: number
+          tokens_used?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          next_reset_date?: string | null
+          tokens_remaining?: number
+          tokens_used?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_and_update_token_balance: {
+        Args: { p_user_id: string; p_model_id: string; p_mode: string }
+        Returns: boolean
+      }
       increment_counter: {
         Args: { row_id: string; increment_amount: number }
         Returns: number
