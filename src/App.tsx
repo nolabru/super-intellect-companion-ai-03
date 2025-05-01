@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +19,7 @@ import PostDetail from "./pages/PostDetail";
 import ServicesConfig from "./pages/ServicesConfig";
 import Analytics from "./pages/Analytics";
 import CreatePost from "./pages/CreatePost";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,9 +43,24 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/c/:conversationId" element={<Index />} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/gallery" element={<MediaGallery />} />
-                <Route path="/memory" element={<UserMemory />} />
-                <Route path="/tokens" element={<TokensPlans />} />
+                
+                {/* Rotas protegidas que exigem autenticação */}
+                <Route path="/gallery" element={
+                  <ProtectedRoute>
+                    <MediaGallery />
+                  </ProtectedRoute>
+                } />
+                <Route path="/memory" element={
+                  <ProtectedRoute>
+                    <UserMemory />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tokens" element={
+                  <ProtectedRoute>
+                    <TokensPlans />
+                  </ProtectedRoute>
+                } />
+                
                 <Route path="/admin" element={<AdminPanel />} />
                 <Route path="/feed" element={<NewsFeed />} />
                 <Route path="/feed/new" element={<CreatePost />} />
