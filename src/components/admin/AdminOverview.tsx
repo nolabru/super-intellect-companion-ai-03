@@ -54,7 +54,7 @@ const AdminOverview: React.FC = () => {
   return (
     <div className="space-y-6 p-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold mb-4">Visão Geral</h2>
+        <h2 className="font-bold mb-4" style={{ fontSize: "1.5rem" }}>Visão Geral</h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((card, index) => (

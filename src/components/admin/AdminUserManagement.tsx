@@ -202,7 +202,7 @@ const AdminUserManagement: React.FC = () => {
     <div className="space-y-6 p-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Gerenciamento de Usuários</h2>
+          <h2 className="font-bold" style={{ fontSize: "1.5rem" }}>Gerenciamento de Usuários</h2>
           <p className="text-muted-foreground">Visualize e gerencie os usuários do sistema</p>
         </div>
         
