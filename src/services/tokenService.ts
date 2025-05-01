@@ -69,9 +69,25 @@ export const tokenService = {
         throw new Error(`Error getting token balance: ${error.message}`);
       }
       
-      if (!data || !data.tokens) {
+      if (!data) {
         console.error('[tokenService] Invalid response:', data);
         throw new Error('Invalid response from token service');
+      }
+      
+      // Check if tokens were consolidated (multiple records cleaned up)
+      if (data.consolidated) {
+        console.log('[tokenService] Token records were consolidated');
+        // Clear the cache to ensure fresh data
+        this.clearBalanceCache();
+      }
+      
+      if (!data.tokens) {
+        console.error('[tokenService] No token data in response:', data);
+        return {
+          tokensRemaining: 0,
+          tokensUsed: 0,
+          nextResetDate: null
+        };
       }
       
       const balance = {
@@ -88,7 +104,12 @@ export const tokenService = {
       return balance;
     } catch (err) {
       console.error('[tokenService] Error getting token balance:', err);
-      throw err;
+      // Return a default object instead of throwing to avoid breaking the UI
+      return {
+        tokensRemaining: 0,
+        tokensUsed: 0,
+        nextResetDate: null
+      };
     }
   },
   

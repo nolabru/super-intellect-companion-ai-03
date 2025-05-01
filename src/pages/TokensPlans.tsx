@@ -11,7 +11,7 @@ import {
   CardContent, 
   CardFooter 
 } from '@/components/ui/card';
-import { Loader2, Coins, Clock } from 'lucide-react';
+import { Loader2, Coins, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -21,31 +21,43 @@ const TokensPlans = () => {
   const [loading, setLoading] = useState(true);
   const [tokenInfo, setTokenInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   
-  useEffect(() => {
-    const loadTokenInfo = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
+  const loadTokenInfo = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Clear cache if retrying
+      if (retryCount > 0) {
+        tokenService.clearBalanceCache();
       }
       
-      try {
-        setLoading(true);
-        const balance = await tokenService.getUserTokenBalance(user.id);
-        setTokenInfo(balance);
-        setError(null);
-      } catch (err) {
-        console.error('Error loading token information:', err);
-        setError('Error loading token information. Please try again later.');
-        toast.error('Error loading token information');
-      } finally {
-        setLoading(false);
+      const balance = await tokenService.getUserTokenBalance(user.id);
+      setTokenInfo(balance);
+      setError(null);
+      
+      // Show success toast if retrying was successful
+      if (retryCount > 0) {
+        toast.success('Token information refreshed successfully');
       }
-    };
-    
+    } catch (err) {
+      console.error('Error loading token information:', err);
+      setError('Error loading token information. Please try again later.');
+      toast.error('Error loading token information');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     loadTokenInfo();
-  }, [user]);
+  }, [user, retryCount]);
   
   // Format reset date
   const formatResetDate = (dateString: string | null) => {
@@ -63,6 +75,10 @@ const TokensPlans = () => {
   const getDaysUntilReset = () => {
     if (!tokenInfo?.nextResetDate) return null;
     return tokenService.getDaysUntilReset(tokenInfo.nextResetDate);
+  };
+  
+  const handleRefresh = () => {
+    setRetryCount(prev => prev + 1);
   };
   
   if (!user) {
@@ -84,7 +100,23 @@ const TokensPlans = () => {
     <div className="min-h-screen bg-inventu-darker">
       <AppHeader />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold text-white mb-6">Token Management</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-white">Token Management</h1>
+          <Button 
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={loading}
+            className="flex items-center gap-1"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Refresh
+          </Button>
+        </div>
         
         {loading ? (
           <Card className="bg-inventu-dark border-inventu-gray/30">
@@ -103,7 +135,7 @@ const TokensPlans = () => {
                 <Button 
                   variant="outline" 
                   className="mt-4"
-                  onClick={() => window.location.reload()}
+                  onClick={handleRefresh}
                 >
                   Retry
                 </Button>

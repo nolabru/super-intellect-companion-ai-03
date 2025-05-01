@@ -15,6 +15,7 @@ const TokenDisplay = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showLowAlert, setShowLowAlert] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -26,6 +27,12 @@ const TokenDisplay = () => {
       }
 
       try {
+        // Retry with cache clearing if we've had issues before
+        if (retryCount > 0) {
+          console.log('Clearing token cache before retry attempt');
+          tokenService.clearBalanceCache();
+        }
+
         const balance = await tokenService.getUserTokenBalance(user.id);
         setTokenInfo(balance);
         setError(false);
@@ -45,6 +52,9 @@ const TokenDisplay = () => {
       } catch (err) {
         console.error('Error fetching tokens:', err);
         setError(true);
+        
+        // If we encounter an error, increment retry counter to clear cache on next attempt
+        setRetryCount(prev => prev + 1);
       } finally {
         setLoading(false);
       }
@@ -56,7 +66,7 @@ const TokenDisplay = () => {
     const intervalId = setInterval(fetchTokenInfo, 60000);
     
     return () => clearInterval(intervalId);
-  }, [user, navigate, showLowAlert]);
+  }, [user, navigate, showLowAlert, retryCount]);
 
   // Format reset date
   const formatResetDate = (dateString: string | null) => {
@@ -82,6 +92,15 @@ const TokenDisplay = () => {
       navigate('/tokens');
     }
   };
+  
+  // Retry fetching tokens on error click
+  const handleErrorClick = () => {
+    if (error) {
+      tokenService.clearBalanceCache();
+      setLoading(true);
+      setRetryCount(prev => prev + 1);
+    }
+  };
 
   if (loading) {
     return (
@@ -94,9 +113,13 @@ const TokenDisplay = () => {
 
   if (error) {
     return (
-      <div className="flex items-center text-xs text-red-300 px-2 py-1 rounded">
+      <div 
+        className="flex items-center text-xs text-red-300 px-2 py-1 rounded cursor-pointer hover:bg-red-900/30"
+        onClick={handleErrorClick}
+        title="Click to retry"
+      >
         <AlertTriangle size={14} className="mr-1 opacity-70" />
-        <span className="animate-pulse">Error</span>
+        <span>Retry</span>
       </div>
     );
   }

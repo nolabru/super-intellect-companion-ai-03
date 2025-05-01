@@ -106,7 +106,111 @@ serve(async (req) => {
       );
     }
 
-    // Update the user's tokens
+    // First check if there are multiple records for this user
+    const { data: existingTokens, error: countError } = await supabase
+      .from('user_tokens')
+      .select('id')
+      .eq('user_id', targetUser.id);
+      
+    if (countError) {
+      console.error("Error checking existing tokens:", countError);
+      return new Response(
+        JSON.stringify({ error: "Error checking token records" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
+    // If multiple records exist, clean them up and create a single unified record
+    if (existingTokens && existingTokens.length > 1) {
+      console.log(`Found ${existingTokens.length} token records for user ${targetUser.id}. Cleaning up...`);
+      
+      // Get full data of all records
+      const { data: fullTokenData, error: fullDataError } = await supabase
+        .from('user_tokens')
+        .select('*')
+        .eq('user_id', targetUser.id);
+      
+      if (fullDataError || !fullTokenData) {
+        console.error("Error fetching full token data:", fullDataError);
+        return new Response(
+          JSON.stringify({ error: "Error fetching token records" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Calculate total tokens from all records
+      const totalExistingTokens = fullTokenData.reduce((sum, record) => sum + (record.tokens_remaining || 0), 0);
+      const totalUsedTokens = fullTokenData.reduce((sum, record) => sum + (record.tokens_used || 0), 0);
+      
+      // Delete all records except the oldest one
+      const sortedRecords = fullTokenData.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+      
+      const oldestRecord = sortedRecords[0];
+      const recordsToDelete = sortedRecords.slice(1).map(r => r.id);
+      
+      // Delete the extra records
+      if (recordsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('user_tokens')
+          .delete()
+          .in('id', recordsToDelete);
+          
+        if (deleteError) {
+          console.error("Error deleting duplicate records:", deleteError);
+          return new Response(
+            JSON.stringify({ error: "Error cleaning up duplicate token records" }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+      }
+      
+      // Update the remaining record with the new token amount and combined used tokens
+      const { data: updatedData, error: updateError } = await supabase
+        .from('user_tokens')
+        .update({
+          tokens_remaining: tokens, // Set to the new amount specified by admin
+          tokens_used: totalUsedTokens,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', oldestRecord.id)
+        .select();
+      
+      if (updateError) {
+        console.error("Error updating consolidated token record:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update token record after consolidation" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: `Successfully consolidated and updated token balance for user ${email} to ${tokens} tokens`,
+          data: updatedData
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
+    // If only one or no records exist, proceed with normal update/insert logic
+    // Try to update the existing record
     const { data: tokenData, error: updateError } = await supabase
       .from('user_tokens')
       .update({
@@ -120,7 +224,7 @@ serve(async (req) => {
       console.error("Error updating tokens:", updateError);
       
       // If no record exists, create one
-      if (updateError.code === 'PGRST116') {
+      if (updateError.code === 'PGRST116' || !existingTokens || existingTokens.length === 0) {
         const { data: newTokenData, error: insertError } = await supabase
           .from('user_tokens')
           .insert([{ 

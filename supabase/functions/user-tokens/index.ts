@@ -62,6 +62,117 @@ serve(async (req) => {
     
     // Get token balance
     if (action === 'balance') {
+      // First check if there are multiple records for this user
+      const { data: existingTokens, error: countError } = await supabase
+        .from('user_tokens')
+        .select('id')
+        .eq('user_id', userId);
+        
+      if (countError) {
+        console.error("Error checking existing tokens:", countError);
+        return new Response(
+          JSON.stringify({ error: "Error checking token records" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // If multiple records exist, clean them up and create a single unified record
+      if (existingTokens && existingTokens.length > 1) {
+        console.log(`Found ${existingTokens.length} token records for user ${userId}. Consolidating...`);
+        
+        // Get full data of all records
+        const { data: fullTokenData, error: fullDataError } = await supabase
+          .from('user_tokens')
+          .select('*')
+          .eq('user_id', userId);
+        
+        if (fullDataError || !fullTokenData) {
+          console.error("Error fetching full token data:", fullDataError);
+          return new Response(
+            JSON.stringify({ error: "Error fetching token records" }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+        
+        // Calculate total tokens from all records
+        const totalRemainingTokens = fullTokenData.reduce((sum, record) => sum + (record.tokens_remaining || 0), 0);
+        const totalUsedTokens = fullTokenData.reduce((sum, record) => sum + (record.tokens_used || 0), 0);
+        
+        // Find the most recent reset date
+        let latestResetDate = null;
+        for (const record of fullTokenData) {
+          if (record.next_reset_date) {
+            if (!latestResetDate || new Date(record.next_reset_date) > new Date(latestResetDate)) {
+              latestResetDate = record.next_reset_date;
+            }
+          }
+        }
+        
+        // Delete all records except the oldest one
+        const sortedRecords = fullTokenData.sort((a, b) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        
+        const oldestRecord = sortedRecords[0];
+        const recordsToDelete = sortedRecords.slice(1).map(r => r.id);
+        
+        // Delete the extra records
+        if (recordsToDelete.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('user_tokens')
+            .delete()
+            .in('id', recordsToDelete);
+            
+          if (deleteError) {
+            console.error("Error deleting duplicate records:", deleteError);
+            return new Response(
+              JSON.stringify({ error: "Error cleaning up duplicate token records" }),
+              {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            );
+          }
+        }
+        
+        // Update the remaining record with consolidated data
+        const { data: updatedData, error: updateError } = await supabase
+          .from('user_tokens')
+          .update({
+            tokens_remaining: totalRemainingTokens,
+            tokens_used: totalUsedTokens,
+            next_reset_date: latestResetDate,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', oldestRecord.id)
+          .select();
+        
+        if (updateError) {
+          console.error("Error updating consolidated token record:", updateError);
+          return new Response(
+            JSON.stringify({ error: "Failed to update token record after consolidation" }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+        
+        return new Response(
+          JSON.stringify({ tokens: updatedData[0], consolidated: true }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Standard case - try to get the single record
       const { data: tokenData, error: tokenError } = await supabase
         .from('user_tokens')
         .select('tokens_remaining, tokens_used, next_reset_date')
@@ -69,10 +180,20 @@ serve(async (req) => {
         .single();
       
       if (tokenError) {
-        console.error("Error retrieving token balance:", tokenError);
+        console.log("Token query error:", tokenError);
         
         // If no record exists, create one
         if (tokenError.code === 'PGRST116') {
+          console.log("Multiple records found, should not happen after cleanup");
+          return new Response(
+            JSON.stringify({ error: "Inconsistent token records found" }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        } else if (tokenError.code === 'PGRST104') {
+          // No record found, create one
           const { data: newTokenData, error: insertError } = await supabase
             .from('user_tokens')
             .insert([{ user_id: userId }])
@@ -98,15 +219,15 @@ serve(async (req) => {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             }
           );
+        } else {
+          return new Response(
+            JSON.stringify({ error: "Failed to retrieve token balance" }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
         }
-        
-        return new Response(
-          JSON.stringify({ error: "Failed to retrieve token balance" }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
       }
       
       return new Response(
