@@ -57,7 +57,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar 
         </svg>
       </Button>
       
-      <div className="flex items-center">
+      <div className="flex items-center gap-4">
         <Link to="/" className="flex items-center">
           <img 
             src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
@@ -65,6 +65,11 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar 
             className="h-8 w-auto" 
           />
         </Link>
+        
+        <div className="flex items-center gap-1">
+          <div className="h-4 w-px bg-white/10" />
+          <span className="text-sm font-medium text-white/70">Admin</span>
+        </div>
       </div>
       
       <div className="ml-auto flex items-center gap-4">
