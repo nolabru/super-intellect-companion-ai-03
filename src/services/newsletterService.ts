@@ -313,25 +313,33 @@ export const newsletterAdminService = {
       return null;
     }
 
-    // Ensure content is not undefined
+    // Ensure required fields are not undefined
+    if (!post.title) {
+      toast.error('O título não pode estar vazio');
+      return null;
+    }
+    
     if (!post.content) {
       toast.error('O conteúdo não pode estar vazio');
       return null;
     }
 
+    // Set both author_id and user_id to ensure RLS policy works properly
     const { data, error } = await supabase
       .from('newsletter_posts')
       .insert({
         ...post,
         author_id: user.id,
-        content: post.content // Ensure content is explicitly set
+        user_id: user.id, // Important: Set this to match the RLS policy
+        title: post.title,
+        content: post.content
       })
       .select()
       .single();
 
     if (error) {
       console.error('Error creating post:', error);
-      toast.error('Erro ao criar publicação');
+      toast.error('Erro ao criar publicação: ' + error.message);
       return null;
     }
 

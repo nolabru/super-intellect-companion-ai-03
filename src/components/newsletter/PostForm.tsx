@@ -1,6 +1,8 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -32,6 +34,7 @@ const PostForm: React.FC<PostFormProps> = ({
   title = "Nova Publicação"
 }) => {
   const { isAdmin, loading: adminCheckLoading } = useAdminCheck();
+  const [postTitle, setPostTitle] = useState(initialData?.title || '');
   const [content, setContent] = useState(initialData?.content || '');
   const [mediaType, setMediaType] = useState<'none' | 'image' | 'video'>(initialData?.media_type as any || 'none');
   const [mediaFile, setMediaFile] = useState<File | null>(null);
@@ -146,6 +149,11 @@ const PostForm: React.FC<PostFormProps> = ({
       return;
     }
     
+    if (!postTitle.trim()) {
+      toast.error('O título da publicação não pode estar vazio');
+      return;
+    }
+    
     if (!content.trim()) {
       toast.error('O conteúdo da publicação não pode estar vazio');
       return;
@@ -163,6 +171,7 @@ const PostForm: React.FC<PostFormProps> = ({
       }
       
       await onSubmit({
+        title: postTitle,
         content,
         media_type: mediaType,
         media_url: finalMediaUrl || null,
@@ -170,6 +179,7 @@ const PostForm: React.FC<PostFormProps> = ({
       
       // Reset form after successful submission if it's a new post
       if (!initialData) {
+        setPostTitle('');
         setContent('');
         setMediaType('none');
         setMediaFile(null);
@@ -201,6 +211,18 @@ const PostForm: React.FC<PostFormProps> = ({
       
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="postTitle" className="text-white">Título</Label>
+            <Input
+              id="postTitle"
+              placeholder="Título da publicação"
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              className="bg-inventu-darker/80 border-white/10 text-white"
+              required
+            />
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="content" className="text-white">Conteúdo</Label>
             <Textarea
