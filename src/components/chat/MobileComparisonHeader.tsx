@@ -1,11 +1,12 @@
 
 import React from 'react';
 import ModelSelector from '../ModelSelector';
+import { ChatMode } from '@/components/ModeSelector';
 
 interface MobileComparisonHeaderProps {
   comparing: boolean;
   isMobile: boolean;
-  activeMode: string;
+  activeMode: ChatMode;
   leftModel: string;
   rightModel: string;
   availableModels: string[];
