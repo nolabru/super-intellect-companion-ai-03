@@ -23,7 +23,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     )}>
       <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={onToggleSidebar} />
       
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {children}
       </div>
     </div>

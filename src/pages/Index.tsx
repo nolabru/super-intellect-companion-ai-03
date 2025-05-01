@@ -56,41 +56,45 @@ const Index: React.FC = () => {
       onToggleSidebar={toggleSidebar} 
       isTouchDevice={isTouchDevice}
     >
-      <ChatSidebar 
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={toggleSidebar}
-        isMobile={isMobile}
-      />
-      
-      <ChatContent 
-        comparing={comparing}
-        isLinked={isLinked}
-        activeMode={activeMode}
-        leftModel={leftModel}
-        rightModel={rightModel}
-        messages={messages}
-        availableModels={availableModels}
-        isMobile={isMobile}
-        loading={isLoading}
-        initialLoadDone={initialLoadDone}
-        handleLeftModelChange={handleLeftModelChange}
-        handleRightModelChange={handleRightModelChange}
-        handleSendMessage={handleSendMessage}
-      />
-      
-      <ChatFooter 
-        activeMode={activeMode}
-        comparing={comparing}
-        isLinked={isLinked}
-        isMobile={isMobile}
-        leftModel={leftModel}
-        rightModel={rightModel}
-        onModeChange={handleModeChange}
-        onToggleCompare={toggleComparing}
-        onToggleLink={toggleLink}
-        onParamsChange={handleParamsChange}
-        onSendMessage={handleSendMessage}
-      />
+      <div className="flex flex-1 overflow-hidden">
+        <ChatSidebar 
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={toggleSidebar}
+          isMobile={isMobile}
+        />
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ChatContent 
+            comparing={comparing}
+            isLinked={isLinked}
+            activeMode={activeMode}
+            leftModel={leftModel}
+            rightModel={rightModel}
+            messages={messages}
+            availableModels={availableModels}
+            isMobile={isMobile}
+            loading={isLoading}
+            initialLoadDone={initialLoadDone}
+            handleLeftModelChange={handleLeftModelChange}
+            handleRightModelChange={handleRightModelChange}
+            handleSendMessage={handleSendMessage}
+          />
+          
+          <ChatFooter 
+            activeMode={activeMode}
+            comparing={comparing}
+            isLinked={isLinked}
+            isMobile={isMobile}
+            leftModel={leftModel}
+            rightModel={rightModel}
+            onModeChange={handleModeChange}
+            onToggleCompare={toggleComparing}
+            onToggleLink={toggleLink}
+            onParamsChange={handleParamsChange}
+            onSendMessage={handleSendMessage}
+          />
+        </div>
+      </div>
     </MainLayout>
   );
 };

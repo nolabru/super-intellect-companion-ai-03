@@ -39,12 +39,7 @@ const ChatContent: React.FC<ChatContentProps> = ({
   handleSendMessage
 }) => {
   return (
-    <div className={cn(
-      "flex-1 flex flex-col overflow-hidden",
-      "transition-all duration-300",
-      // Use full width instead of margin for constant width
-      !isMobile && "w-full"
-    )}>
+    <div className="flex-1 overflow-hidden flex flex-col">
       <MobileComparisonHeader
         comparing={comparing}
         isMobile={isMobile}
