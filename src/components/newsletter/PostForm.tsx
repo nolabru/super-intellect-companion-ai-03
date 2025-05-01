@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -87,29 +88,40 @@ const PostForm: React.FC<PostFormProps> = ({
 
     setIsUploading(true);
     try {
-      const fileExt = mediaFile.name.split('.').pop();
-      const filePath = `newsletter/${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      // Create form data for the file upload
+      const formData = new FormData();
+      formData.append('file', mediaFile);
+      formData.append('mediaType', mediaType);
       
-      const { error: uploadError, data } = await supabase.storage
-        .from('media')
-        .upload(filePath, mediaFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        throw uploadError;
+      // Get the session token for authorization
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      if (!token) {
+        throw new Error('Usuário não autenticado');
       }
-
-      if (!data?.path) {
-        throw new Error('Erro ao obter URL do arquivo após upload');
+      
+      // Call the newsletter-media-storage function
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/newsletter-media-storage`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao fazer upload da mídia');
       }
-
-      const { data: urlData } = supabase.storage
-        .from('media')
-        .getPublicUrl(data.path);
-
-      return urlData.publicUrl;
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Erro ao fazer upload da mídia');
+      }
+      
+      return data.mediaUrl;
     } catch (error) {
       console.error('Error uploading media:', error);
       toast.error('Erro ao fazer upload do arquivo. Verifique sua conexão e tente novamente.');

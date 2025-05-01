@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +7,7 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import NewsletterPost, { NewsletterPostSkeleton } from '@/components/newsletter/NewsletterPost';
 import { newsletterService } from '@/services/newsletterService';
 import { PostWithStats } from '@/types/newsletter';
-import { Loader2, Newspaper } from 'lucide-react';
+import { Loader2, Newspaper, PlusCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -78,7 +79,8 @@ const NewsFeed: React.FC = () => {
       </div>;
   }
 
-  return <div className="flex min-h-screen w-full bg-inventu-darker">
+  return (
+    <div className="flex min-h-screen w-full bg-inventu-darker">
       {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
         </div>}
@@ -93,16 +95,21 @@ const NewsFeed: React.FC = () => {
         <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Newsletter" />
         
         <main className="flex-1 overflow-hidden">
-          {isMobile}
-
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className={cn("mx-auto w-full max-w-md pb-safe", isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8")}>
-              {!isMobile && <div className="flex items-center justify-between mb-6">
-                  <h1 className="text-2xl font-bold text-white">Newsletter</h1>
-                  {isAdmin && <Button variant="default" onClick={() => navigate('/feed/new')} className="bg-inventu-blue hover:bg-inventu-blue/80">
-                      Nova Publicação
-                    </Button>}
-                </div>}
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-white">Newsletter</h1>
+                {isAdmin && (
+                  <Button 
+                    variant="default" 
+                    onClick={() => navigate('/feed/new')} 
+                    className="bg-inventu-blue hover:bg-inventu-blue/80 flex items-center"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nova Publicação
+                  </Button>
+                )}
+              </div>
               
               {isLoading ? <div className="space-y-6">
                   {[1, 2, 3].map(i => <NewsletterPostSkeleton key={i} />)}
@@ -117,7 +124,8 @@ const NewsFeed: React.FC = () => {
           </ScrollArea>
         </main>
       </div>
-    </div>;
+    </div>
+  );
 };
 
 export default NewsFeed;
