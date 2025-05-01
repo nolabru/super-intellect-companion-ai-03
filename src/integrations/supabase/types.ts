@@ -9,13 +9,249 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      apiframe_tasks: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          media_type: string
+          media_url: string | null
+          model: string
+          params: Json | null
+          percentage: number | null
+          prompt: string | null
+          status: string
+          task_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          media_type: string
+          media_url?: string | null
+          model: string
+          params?: Json | null
+          percentage?: number | null
+          prompt?: string | null
+          status?: string
+          task_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          media_type?: string
+          media_url?: string | null
+          model?: string
+          params?: Json | null
+          percentage?: number | null
+          prompt?: string | null
+          status?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      media_ready_events: {
+        Row: {
+          created_at: string
+          id: string
+          media_type: string
+          media_url: string
+          model: string
+          prompt: string | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_type: string
+          media_url: string
+          model: string
+          prompt?: string | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          model?: string
+          prompt?: string | null
+          task_id?: string
+        }
+        Relationships: []
+      }
+      newsletter_posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          like_count: number | null
+          media_type: string | null
+          media_url: string | null
+          published_at: string | null
+          share_count: number | null
+          title: string
+          updated_at: string
+          user_id: string
+          view_count: number | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          like_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          published_at?: string | null
+          share_count?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+          view_count?: number | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          like_count?: number | null
+          media_type?: string | null
+          media_url?: string | null
+          published_at?: string | null
+          share_count?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      piapi_tasks: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          media_type: string
+          media_url: string | null
+          model: string
+          params: Json | null
+          percentage: number | null
+          prompt: string | null
+          status: string
+          task_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          media_type: string
+          media_url?: string | null
+          model: string
+          params?: Json | null
+          percentage?: number | null
+          prompt?: string | null
+          status?: string
+          task_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          media_type?: string
+          media_url?: string | null
+          model?: string
+          params?: Json | null
+          percentage?: number | null
+          prompt?: string | null
+          status?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_google_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: number
+          id: string
+          refresh_token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: number
+          id?: string
+          refresh_token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: number
+          id?: string
+          refresh_token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_memory: {
+        Row: {
+          created_at: string
+          id: string
+          key_name: string
+          source: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key_name: string
+          source: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key_name?: string
+          source?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_counter: {
+        Args: { row_id: string; increment_amount: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

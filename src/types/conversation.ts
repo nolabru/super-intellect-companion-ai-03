@@ -8,6 +8,7 @@ export interface ConversationType {
   title: string;
   updated_at: string;
   user_id: string;
+  created_at?: string;
 }
 
 // Interface for API response

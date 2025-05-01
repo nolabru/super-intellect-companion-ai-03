@@ -1,10 +1,41 @@
 
+// Define types based on the database structure we defined in the client
 import { Database } from '@/integrations/supabase/types';
 
-export type NewsletterPost = Database['public']['Tables']['newsletter_posts']['Row'];
-export type PostLike = Database['public']['Tables']['post_likes']['Row'];
-export type PostComment = Database['public']['Tables']['post_comments']['Row'];
+// Define base types from the database
+export type NewsletterPost = {
+  id: string;
+  title: string;
+  content: string;
+  user_id: string;
+  published_at: string | null;
+  media_url: string | null;
+  media_type: 'none' | 'image' | 'video' | 'audio' | null;
+  view_count: number | null;
+  like_count: number | null;
+  share_count: number | null;
+  created_at: string;
+  updated_at: string;
+  is_published?: boolean;
+  author_id?: string;
+};
 
+export type PostLike = {
+  id: string;
+  user_id: string;
+  post_id: string;
+  created_at: string;
+};
+
+export type PostComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+};
+
+// Enhanced types with additional fields
 export interface PostWithStats extends NewsletterPost {
   likes_count?: number;
   comments_count?: number;

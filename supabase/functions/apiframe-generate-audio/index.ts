@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -122,19 +123,20 @@ serve(async (req) => {
     console.log('[apiframe-generate-audio] Response:', JSON.stringify(responseData));
     
     // Store task in database
-    const { error: dbError } = await supabase
-      .from('apiframe_tasks')
-      .insert({
-        task_id: responseData.taskId,
-        prompt,
-        model,
-        media_type: 'audio',
-        params: params || {},
-        status: responseData.status || 'pending'
-      });
-      
-    if (dbError) {
+    try {
+      await supabase
+        .from('apiframe_tasks')
+        .insert({
+          task_id: responseData.taskId,
+          prompt,
+          model,
+          media_type: 'audio',
+          params: params || {},
+          status: responseData.status || 'pending'
+        });
+    } catch (dbError) {
       console.error('[apiframe-generate-audio] Error storing task in database:', dbError);
+      // Continue even if database storage fails
     }
 
     return new Response(

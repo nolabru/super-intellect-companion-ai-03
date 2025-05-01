@@ -1,1 +1,8 @@
+
 project_id = "sxcdfhomogjtjdtoolbg"
+
+[functions.apiframe-generate-audio]
+verify_jwt = true
+
+[functions.increment-post-view]
+verify_jwt = true

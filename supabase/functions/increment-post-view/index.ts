@@ -1,64 +1,82 @@
 
-// Import Supabase client with the correct Deno URL pattern
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.6';
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+// Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
+    // Parse request body
     const { post_id } = await req.json();
     
     if (!post_id) {
       return new Response(
-        JSON.stringify({ error: 'post_id is required' }),
+        JSON.stringify({ 
+          error: 'Missing post_id parameter'
+        }),
         { 
-          status: 400,
+          status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
-    
-    // Initialize Supabase client with the service role key
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Update view count in a transaction-safe way
-    const { error } = await supabase
-      .from('newsletter_posts')
-      .update({ view_count: supabase.rpc('increment_counter', { row_id: post_id, increment_amount: 1 }) })
-      .eq('id', post_id);
-    
+
+    console.log(`[increment-post-view] Incrementing view count for post: ${post_id}`);
+
+    // Update the view_count for the post
+    const { data, error } = await supabase.rpc('increment_counter', {
+      row_id: post_id,
+      increment_amount: 1
+    });
+
     if (error) {
-      console.error('Error incrementing view count:', error);
-      return new Response(
-        JSON.stringify({ error: error.message }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
+      console.error('[increment-post-view] Error incrementing view count:', error);
+      throw error;
     }
-    
+
+    // Update the post with the new view count
+    const { error: updateError } = await supabase
+      .from('newsletter_posts')
+      .update({ view_count: data || 1 })
+      .eq('id', post_id);
+
+    if (updateError) {
+      console.error('[increment-post-view] Error updating post:', updateError);
+      throw updateError;
+    }
+
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({
+        success: true,
+        new_count: data
+      }),
       { 
-        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error) {
-    console.error('Error in increment-post-view:', error);
+    console.error('[increment-post-view] Error:', error);
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        stack: error.stack
+      }),
       { 
-        status: 500,
+        status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
