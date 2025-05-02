@@ -1,9 +1,10 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import { NewsletterPost } from '@/types/newsletter';
+import { NewsletterPost, PostWithStats, CommentWithUser } from '@/types/newsletter';
 import { PostgrestError } from '@supabase/supabase-js';
 
 interface PaginatedPosts {
-  data: NewsletterPost[];
+  data: PostWithStats[];
   totalCount: number;
 }
 
@@ -18,13 +19,17 @@ export const newsletterService = {
    */
   async createPost(postData: Partial<NewsletterPost>): Promise<NewsletterPost | null> {
     try {
+      const user = supabase.auth.getUser ? (await supabase.auth.getUser()).data.user : null;
+      const userId = user?.id;
+      
       const { data, error } = await supabase
         .from('newsletter_posts')
         .insert([
           {
             ...postData,
-            author_id: supabase.auth.currentUser?.id,
-            user_id: supabase.auth.currentUser?.id,
+            author_id: userId,
+            content: postData.content || '',
+            title: postData.title || '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }
@@ -103,7 +108,7 @@ export const newsletterService = {
    * @param id The ID of the post to get
    * @returns The newsletter post, or null if not found
    */
-  async getPostById(id: string): Promise<NewsletterPost | null> {
+  async getPostById(id: string): Promise<PostWithStats | null> {
     try {
       const { data, error } = await supabase
         .from('newsletter_posts')
@@ -204,10 +209,10 @@ export const newsletterService = {
         return { data: [], totalCount: 0 };
       }
 
-      const posts = data ? data.map(this.mapPostToFrontend) : [];
+      const posts = data ? data.map(post => this.mapPostToFrontend(post)) : [];
       const totalCount = count || 0;
 
-      return { data: posts, totalCount };
+      return { data: posts as PostWithStats[], totalCount };
     } catch (err) {
       console.error('Error fetching posts:', err);
       return { data: [], totalCount: 0 };
@@ -237,10 +242,10 @@ export const newsletterService = {
         return { data: [], totalCount: 0 };
       }
 
-      const posts = data ? data.map(this.mapPostToFrontend) : [];
+      const posts = data ? data.map(post => this.mapPostToFrontend(post)) : [];
       const totalCount = count || 0;
 
-      return { data: posts, totalCount };
+      return { data: posts as PostWithStats[], totalCount };
     } catch (err) {
       console.error('Error fetching published posts:', err);
       return { data: [], totalCount: 0 };
@@ -262,7 +267,7 @@ export const newsletterService = {
       let { data, error, count } = await supabase
         .from('newsletter_posts')
         .select('*', { count: 'exact' })
-        .eq('user_id', userId)
+        .eq('author_id', userId)
         .order('created_at', { ascending: false })
         .range(startIndex, endIndex);
 
@@ -271,10 +276,10 @@ export const newsletterService = {
         return { data: [], totalCount: 0 };
       }
 
-      const posts = data ? data.map(this.mapPostToFrontend) : [];
+      const posts = data ? data.map(post => this.mapPostToFrontend(post)) : [];
       const totalCount = count || 0;
 
-      return { data: posts, totalCount };
+      return { data: posts as PostWithStats[], totalCount };
     } catch (err) {
       console.error('Error fetching posts by user:', err);
       return { data: [], totalCount: 0 };
@@ -300,7 +305,7 @@ export const newsletterService = {
       let { data, error, count } = await supabase
         .from('newsletter_posts')
         .select('*', { count: 'exact' })
-        .eq('user_id', userId)
+        .eq('author_id', userId)
         .eq('is_published', true)
         .order('published_at', { ascending: false })
         .range(startIndex, endIndex);
@@ -310,10 +315,10 @@ export const newsletterService = {
         return { data: [], totalCount: 0 };
       }
 
-      const posts = data ? data.map(this.mapPostToFrontend) : [];
+      const posts = data ? data.map(post => this.mapPostToFrontend(post)) : [];
       const totalCount = count || 0;
 
-      return { data: posts, totalCount };
+      return { data: posts as PostWithStats[], totalCount };
     } catch (err) {
       console.error('Error fetching published posts by user:', err);
       return { data: [], totalCount: 0 };
@@ -375,7 +380,7 @@ export const newsletterService = {
       const { count, error } = await supabase
         .from('newsletter_posts')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
+        .eq('author_id', userId);
 
       if (error) {
         console.error('Error fetching total posts count by user:', error);
@@ -399,7 +404,7 @@ export const newsletterService = {
       const { count, error } = await supabase
         .from('newsletter_posts')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
+        .eq('author_id', userId)
         .eq('is_published', true);
 
       if (error) {
@@ -415,28 +420,10 @@ export const newsletterService = {
   },
 
   /**
-   * Maps a database post to a frontend post
-   * @param post The database post to map
-   * @returns The mapped frontend post
+   * Increments the view count for a post
+   * @param postId The ID of the post to increment the view count for
+   * @returns A promise that resolves when the view count has been incremented
    */
-  private mapPostToFrontend(post: any): NewsletterPost {
-    return {
-      id: post.id,
-      title: post.title,
-      content: post.content,
-      authorId: post.author_id,
-      userId: post.user_id,
-      isPublished: post.is_published,
-      publishedAt: post.published_at,
-      mediaType: post.media_type,
-      mediaUrl: post.media_url,
-      viewCount: post.view_count,
-      likeCount: post.like_count,
-      shareCount: post.share_count,
-      createdAt: post.created_at,
-      updatedAt: post.updated_at
-    };
-  },
   async incrementViewCount(postId: string): Promise<void> {
     try {
       const { error } = await supabase.rpc('increment_view_count', {
@@ -450,6 +437,12 @@ export const newsletterService = {
       console.error('Error incrementing view count:', err);
     }
   },
+  
+  /**
+   * Increments the like count for a post
+   * @param postId The ID of the post to increment the like count for
+   * @returns A promise that resolves when the like count has been incremented
+   */
   async incrementLikeCount(postId: string): Promise<void> {
     try {
       const { error } = await supabase.rpc('increment_like_count', {
@@ -463,6 +456,12 @@ export const newsletterService = {
       console.error('Error incrementing like count:', err);
     }
   },
+  
+  /**
+   * Increments the share count for a post
+   * @param postId The ID of the post to increment the share count for
+   * @returns A promise that resolves when the share count has been incremented
+   */
   async incrementShareCount(postId: string): Promise<void> {
     try {
       const { error } = await supabase.rpc('increment_share_count', {
@@ -476,6 +475,12 @@ export const newsletterService = {
       console.error('Error incrementing share count:', err);
     }
   },
+  
+  /**
+   * Gets popular posts ordered by view count
+   * @param limit The maximum number of posts to return
+   * @returns A list of popular posts
+   */
   async getPopularPosts(limit: number = 5): Promise<NewsletterPost[]> {
     try {
       const { data, error } = await supabase
@@ -490,12 +495,18 @@ export const newsletterService = {
         return [];
       }
 
-      return data ? data.map(this.mapPostToFrontend) : [];
+      return data ? data.map(post => this.mapPostToFrontend(post)) as NewsletterPost[] : [];
     } catch (err) {
       console.error('Error fetching popular posts:', err);
       return [];
     }
   },
+  
+  /**
+   * Gets recent posts ordered by published date
+   * @param limit The maximum number of posts to return
+   * @returns A list of recent posts
+   */
   async getRecentPosts(limit: number = 5): Promise<NewsletterPost[]> {
     try {
       const { data, error } = await supabase
@@ -510,12 +521,20 @@ export const newsletterService = {
         return [];
       }
 
-      return data ? data.map(this.mapPostToFrontend) : [];
+      return data ? data.map(post => this.mapPostToFrontend(post)) as NewsletterPost[] : [];
     } catch (err) {
       console.error('Error fetching recent posts:', err);
       return [];
     }
   },
+  
+  /**
+   * Gets posts by search term
+   * @param searchTerm The search term to filter posts by
+   * @param page The page number to get
+   * @param pageSize The number of posts per page
+   * @returns An object containing the posts and the total count
+   */
   async getPostsBySearchTerm(searchTerm: string, page: number = 1, pageSize: number = 10): Promise<PaginatedPosts> {
     try {
       const startIndex = (page - 1) * pageSize;
@@ -533,15 +552,21 @@ export const newsletterService = {
         return { data: [], totalCount: 0 };
       }
 
-      const posts = data ? data.map(this.mapPostToFrontend) : [];
+      const posts = data ? data.map(post => this.mapPostToFrontend(post)) : [];
       const totalCount = count || 0;
 
-      return { data: posts, totalCount };
+      return { data: posts as PostWithStats[], totalCount };
     } catch (err) {
       console.error('Error fetching posts by search term:', err);
       return { data: [], totalCount: 0 };
     }
   },
+  
+  /**
+   * Gets the total number of posts by search term
+   * @param searchTerm The search term to filter posts by
+   * @returns The total number of posts matching the search term
+   */
   async getTotalPostsCountBySearchTerm(searchTerm: string): Promise<number> {
     try {
       const { count, error } = await supabase
@@ -560,6 +585,14 @@ export const newsletterService = {
       return 0;
     }
   },
+  
+  /**
+   * Gets posts by category
+   * @param category The category to filter posts by
+   * @param page The page number to get
+   * @param pageSize The number of posts per page
+   * @returns An object containing the posts and the total count
+   */
   async getPostsByCategory(category: string, page: number = 1, pageSize: number = 10): Promise<PaginatedPosts> {
     try {
       const startIndex = (page - 1) * pageSize;
@@ -577,15 +610,21 @@ export const newsletterService = {
         return { data: [], totalCount: 0 };
       }
 
-      const posts = data ? data.map(this.mapPostToFrontend) : [];
+      const posts = data ? data.map(post => this.mapPostToFrontend(post)) : [];
       const totalCount = count || 0;
 
-      return { data: posts, totalCount };
+      return { data: posts as PostWithStats[], totalCount };
     } catch (err) {
       console.error('Error fetching posts by category:', err);
       return { data: [], totalCount: 0 };
     }
   },
+  
+  /**
+   * Gets the total number of posts by category
+   * @param category The category to filter posts by
+   * @returns The total number of posts in the category
+   */
   async getTotalPostsCountByCategory(category: string): Promise<number> {
     try {
       const { count, error } = await supabase
@@ -604,76 +643,144 @@ export const newsletterService = {
       return 0;
     }
   },
+
+  // Add comment-related methods
+  async addComment(postId: string, content: string): Promise<CommentWithUser | null> {
+    try {
+      const user = supabase.auth.getUser ? (await supabase.auth.getUser()).data.user : null;
+      const userId = user?.id;
+      
+      if (!userId) {
+        console.error('User not authenticated');
+        return null;
+      }
+      
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({
+          post_id: postId,
+          user_id: userId,
+          content,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding comment:', error);
+        return null;
+      }
+
+      // Add user information to the comment
+      const userInfo = await this.getUserInfo(userId);
+      
+      return {
+        ...data,
+        user: userInfo
+      };
+    } catch (err) {
+      console.error('Error adding comment:', err);
+      return null;
+    }
+  },
+  
+  async getComments(postId: string): Promise<CommentWithUser[]> {
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching comments:', error);
+        return [];
+      }
+
+      // Get user info for each comment
+      const commentsWithUsers: CommentWithUser[] = [];
+      
+      for (const comment of data || []) {
+        const userInfo = await this.getUserInfo(comment.user_id);
+        commentsWithUsers.push({
+          ...comment,
+          user: userInfo
+        });
+      }
+
+      return commentsWithUsers;
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+      return [];
+    }
+  },
+  
+  async deleteComment(commentId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('post_comments')
+        .delete()
+        .eq('id', commentId);
+
+      if (error) {
+        console.error('Error deleting comment:', error);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      return false;
+    }
+  },
+  
+  // Helper methods
+  async getUserInfo(userId: string): Promise<{ username?: string; avatar_url?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user info:', error);
+        return {};
+      }
+
+      return data || {};
+    } catch (err) {
+      console.error('Error fetching user info:', err);
+      return {};
+    }
+  },
+  
   /**
    * Maps a database post to a frontend post
    * @param post The database post to map
    * @returns The mapped frontend post
    */
-  mapPostToFrontend(post: any): NewsletterPost {
+  mapPostToFrontend(post: any): PostWithStats {
     return {
-      id: post.id,
-      title: post.title || '', // Add fallback for missing title
-      content: post.content,
-      authorId: post.author_id,
-      userId: post.user_id || post.author_id, // Use author_id as fallback for missing user_id
-      isPublished: post.is_published,
-      publishedAt: post.published_at,
-      // Cast media_type to the correct type or default to 'none'
-      mediaType: (post.media_type as "none" | "image" | "video" | "audio") || 'none',
-      mediaUrl: post.media_url || null,
-      viewCount: post.view_count || 0,
-      likeCount: post.like_count || 0, // Add fallback for missing like_count
-      shareCount: post.share_count || 0, // Add fallback for missing share_count
-      createdAt: post.created_at || post.published_at, // Use published_at as fallback
-      updatedAt: post.updated_at
+      id: post.id || '',
+      title: post.title || '',
+      content: post.content || '',
+      user_id: post.author_id || '',
+      author_id: post.author_id || '',
+      published_at: post.published_at || null,
+      media_url: post.media_url || null,
+      media_type: (post.media_type as "none" | "image" | "video" | "audio") || 'none',
+      view_count: post.view_count || 0,
+      like_count: post.like_count || 0,
+      share_count: post.share_count || 0,
+      created_at: post.created_at || post.published_at || new Date().toISOString(),
+      updated_at: post.updated_at || new Date().toISOString(),
+      is_published: post.is_published || false,
+      likes_count: post.likes_count || 0,
+      comments_count: post.comments_count || 0,
+      user_has_liked: post.user_has_liked || false
     };
-  },
-  /**
-   * Maps a database post to a frontend post
-   * @param post The database post to map
-   * @returns The mapped frontend post
-   */
-  mapPostToFrontend(post: any): NewsletterPost {
-    return {
-      id: post.id,
-      title: post.title || '', // Add fallback for missing title
-      content: post.content,
-      authorId: post.author_id,
-      userId: post.user_id || post.author_id, // Use author_id as fallback for missing user_id
-      isPublished: post.is_published,
-      publishedAt: post.published_at,
-      // Cast media_type to the correct type or default to 'none'
-      mediaType: (post.media_type as "none" | "image" | "video" | "audio") || 'none',
-      mediaUrl: post.media_url || null,
-      viewCount: post.view_count || 0,
-      likeCount: post.like_count || 0, // Add fallback for missing like_count
-      shareCount: post.share_count || 0, // Add fallback for missing share_count
-      createdAt: post.created_at || post.published_at, // Use published_at as fallback
-      updatedAt: post.updated_at
-    };
-  },
-  /**
-   * Maps a database post to a frontend post
-   * @param post The database post to map
-   * @returns The mapped frontend post
-   */
-  mapPostToFrontend(post: any): NewsletterPost {
-    return {
-      id: post.id,
-      title: post.title || '', // Add fallback for missing title
-      content: post.content,
-      authorId: post.author_id,
-      userId: post.user_id || post.author_id, // Use author_id as fallback for missing user_id
-      isPublished: post.is_published,
-      publishedAt: post.published_at,
-      // Cast media_type to the correct type or default to 'none'
-      mediaType: (post.media_type as "none" | "image" | "video" | "audio") || 'none',
-      mediaUrl: post.media_url || null,
-      viewCount: post.view_count || 0,
-      likeCount: post.like_count || 0, // Add fallback for missing like_count
-      shareCount: post.share_count || 0, // Add fallback for missing share_count
-      createdAt: post.created_at || post.published_at, // Use published_at as fallback
-      updatedAt: post.updated_at
-    };
-  },
+  }
 };
+
+// Export the newsletter admin service that contains the same methods
+export const newsletterAdminService = newsletterService;

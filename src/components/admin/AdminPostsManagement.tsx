@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,16 +9,18 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import { NewsletterPost } from '@/components/newsletter/NewsletterPost';
 import { cn } from '@/lib/utils';
+
 const AdminPostsManagement: React.FC = () => {
   const [posts, setPosts] = useState<PostWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('create');
+
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         setIsLoading(true);
         const postsData = await newsletterService.getPosts();
-        setPosts(postsData);
+        setPosts(postsData.data);
       } catch (error) {
         console.error('Error fetching posts:', error);
         toast.error('Erro ao carregar publicações');
@@ -25,8 +28,10 @@ const AdminPostsManagement: React.FC = () => {
         setIsLoading(false);
       }
     };
+
     fetchPosts();
   }, []);
+
   const handleCreatePost = async (postData: any) => {
     try {
       const newPost = await newsletterAdminService.createPost(postData);
@@ -47,6 +52,7 @@ const AdminPostsManagement: React.FC = () => {
       toast.error('Erro ao criar publicação');
     }
   };
+
   const handleDeletePost = async (postId: string) => {
     try {
       const success = await newsletterAdminService.deletePost(postId);
@@ -59,6 +65,7 @@ const AdminPostsManagement: React.FC = () => {
       toast.error('Erro ao excluir publicação');
     }
   };
+
   return <Card className="border border-white/10 bg-inventu-dark/90">
       <CardHeader>
         <CardTitle className="text-white text-2xl">Gerenciamento de Publicações</CardTitle>
@@ -91,4 +98,5 @@ const AdminPostsManagement: React.FC = () => {
       </CardContent>
     </Card>;
 };
+
 export default AdminPostsManagement;

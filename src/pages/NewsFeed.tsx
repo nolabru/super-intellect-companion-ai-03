@@ -45,7 +45,7 @@ const NewsFeed: React.FC = () => {
       try {
         setIsLoading(true);
         const postsData = await newsletterService.getPosts();
-        setPosts(postsData);
+        setPosts(postsData.data);
       } catch (error) {
         console.error('Error fetching posts:', error);
         toast.error('Erro ao carregar publicações');
@@ -58,7 +58,7 @@ const NewsFeed: React.FC = () => {
 
   const handleDeletePost = async (postId: string) => {
     try {
-      const success = await newsletterService.deleteComment(postId);
+      const success = await newsletterService.deletePost(postId);
       if (success) {
         setPosts(posts.filter(post => post.id !== postId));
         toast.success('Publicação excluída com sucesso');

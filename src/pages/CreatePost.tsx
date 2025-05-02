@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import AppHeader from '@/components/AppHeader';
 import PostForm from '@/components/newsletter/PostForm';
-import { newsletterAdminService } from '@/services/newsletterService';
+import { newsletterService } from '@/services/newsletterService';
 import { NewsletterPost } from '@/types/newsletter';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { Loader2 } from 'lucide-react';
@@ -16,7 +16,7 @@ const CreatePost: React.FC = () => {
 
   const handleCreatePost = async (postData: Partial<NewsletterPost>) => {
     try {
-      const newPost = await newsletterAdminService.createPost(postData);
+      const newPost = await newsletterService.createPost(postData);
       if (newPost) {
         toast.success('Publicação criada com sucesso!');
         navigate('/feed');

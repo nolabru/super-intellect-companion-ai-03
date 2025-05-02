@@ -96,7 +96,7 @@ const PostDetail: React.FC = () => {
 
   const handleDeletePost = async (postId: string) => {
     try {
-      const success = await newsletterService.deleteComment(postId);
+      const success = await newsletterService.deletePost(postId);
       if (success) {
         toast.success('Publicação excluída com sucesso');
         navigate('/feed');
