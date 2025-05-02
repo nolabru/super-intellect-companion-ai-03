@@ -167,7 +167,7 @@ const AdminUserManagement: React.FC = () => {
           <h2 style={{
           fontSize: "1.5rem"
         }} className="text-2xl font-medium text-left">Gerenciamento de Usuários</h2>
-          <p className="text-muted-foreground">Visualize e gerencie os usuários do sistema</p>
+          <p className="text-sm text-white text-left font-normal">Visualize e gerencie os usuários do sistema</p>
         </div>
         
         <div className="flex gap-2 self-end sm:self-auto">
