@@ -10,4 +10,7 @@ export interface MediaItem {
   model_id?: string;
   prompt?: string;
   metadata?: Record<string, any>;
+  // Add the missing properties
+  media_url?: string;
+  media_type?: 'image' | 'video' | 'audio';
 }

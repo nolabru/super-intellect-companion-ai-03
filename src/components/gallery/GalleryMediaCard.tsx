@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { MediaItem } from '@/types/gallery';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { AudioLines, Calendar, Image, MessageSquare, Video, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
   Dialog,
   DialogContent,
@@ -64,7 +66,8 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
   };
 
   const getTypeIcon = () => {
-    switch (item.media_type) {
+    const mediaType = item.media_type || item.type;
+    switch (mediaType) {
       case 'image':
         return <Image className="h-5 w-5 text-blue-400" />;
       case 'video':
@@ -91,6 +94,9 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
     const commonClasses = small 
       ? "h-full w-full object-cover"
       : "max-h-96 max-w-full mx-auto";
+    
+    const mediaUrl = item.media_url || item.url;
+    const mediaType = item.media_type || item.type;
       
     if (mediaError) {
       return (
@@ -100,7 +106,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
       );
     }
     
-    switch (item.media_type) {
+    switch (mediaType) {
       case 'image':
         return (
           <div className={small ? "relative h-full w-full" : "relative"}>
@@ -110,7 +116,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
               </div>
             )}
             <img 
-              src={item.media_url} 
+              src={mediaUrl} 
               alt={item.prompt} 
               className={commonClasses} 
               onLoad={handleMediaLoad}
@@ -128,7 +134,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
               </div>
             )}
             <video 
-              src={item.media_url} 
+              src={mediaUrl} 
               controls={!small}
               muted={true}
               className={commonClasses}
@@ -152,7 +158,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
               <AudioLines className="h-16 w-16 text-inventu-gray" />
             ) : (
               <audio 
-                src={item.media_url} 
+                src={mediaUrl} 
                 controls 
                 className="w-full"
                 onLoadedData={handleMediaLoad}

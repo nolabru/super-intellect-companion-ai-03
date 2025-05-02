@@ -23,6 +23,14 @@ type MediaItem = {
   title?: string;
 };
 
+export type GalleryFilters = {
+  mediaType: string[];
+  dateRange: {
+    from?: Date;
+    to?: Date;
+  };
+};
+
 const MediaGallery: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();

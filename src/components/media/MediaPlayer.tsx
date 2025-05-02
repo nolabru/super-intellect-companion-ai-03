@@ -4,12 +4,19 @@ import { cn } from '@/lib/utils';
 
 interface MediaPlayerProps {
   url: string;
-  type?: 'image' | 'video' | 'audio';
+  type?: 'image' | 'video' | 'audio' | 'none';
   className?: string;
 }
 
 export const MediaPlayer: React.FC<MediaPlayerProps> = ({ url, type = 'image', className }) => {
   if (!url) return null;
+  
+  if (type === 'none') {
+    // If type is 'none', just show a placeholder
+    return <div className={cn("w-full h-full bg-black/20 flex items-center justify-center", className)}>
+      Media not available
+    </div>;
+  }
 
   if (type === 'image') {
     return (
