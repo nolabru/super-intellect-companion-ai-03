@@ -59,14 +59,14 @@ const AdminOverview: React.FC = () => {
       <div>
         <h2 style={{
         fontSize: "1.5rem"
-      }} className="mb-4 text-2xl font-medium">Visão Geral</h2>
+      }} className="mb-4 text-2xl font-medium text-white text-left">Visão Geral</h2>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {statsCards.map((card, index) => <Card key={index} className="overflow-hidden border-border/40 backdrop-blur-sm bg-card/80">
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start bg-transparent">
                   <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                  <card.icon className="h-4 w-4 text-muted-foreground" />
+                  <card.icon className="h-4 w-4 text-muted-foreground bg-transparent" />
                 </div>
               </CardHeader>
               <CardContent>
@@ -84,8 +84,8 @@ const AdminOverview: React.FC = () => {
         <Card className="col-span-1 border-border/40 backdrop-blur-sm bg-card/80">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle>Usuários Recentes</CardTitle>
-              <CardDescription>Últimos usuários registrados</CardDescription>
+              <CardTitle className="text-left text-base">Usuários Recentes</CardTitle>
+              <CardDescription className="text-justify">Últimos usuários registrados</CardDescription>
             </div>
             <Button variant="ghost" size="sm" className="flex items-center gap-1">
               Ver todos
