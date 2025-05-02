@@ -24,8 +24,16 @@ serve(async (req) => {
       throw new Error("Prompt is required");
     }
     
-    // Determine which API endpoint and parameters to use based on the model
-    let apiUrl = "https://api.apiframe.ai/v1/images/generate";
+    // Updated API endpoint URLs to use the correct paths
+    let apiUrl = "https://api.apiframe.com/v1/image";
+    
+    // Check if we're using v2 models
+    const isV2Model = model === 'sdxl' || model === 'stable-diffusion-xl' || model === 'kandinsky';
+    if (isV2Model) {
+      // For v2 models, use the appropriate endpoint
+      apiUrl = "https://api.apiframe.com/v2/image";
+    }
+    
     let requestData = {
       model: model || "dall-e-3", // Default to DALL-E 3
       prompt: prompt,
@@ -44,6 +52,7 @@ serve(async (req) => {
     console.log(`[apiframe-generate-image] Generating image with model: ${requestData.model}`);
     console.log(`[apiframe-generate-image] Prompt: ${prompt}`);
     console.log(`[apiframe-generate-image] API Key available: ${!!APIFRAME_API_KEY}`);
+    console.log(`[apiframe-generate-image] Using API URL: ${apiUrl}`);
     
     // Call the APIframe API
     const response = await fetch(apiUrl, {

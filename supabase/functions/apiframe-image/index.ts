@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -50,11 +51,12 @@ serve(async (req) => {
     console.log('Prompt:', prompt);
     console.log('Params:', params);
 
-    // Try multiple API endpoints to increase chance of success
+    // Try multiple API endpoints to increase chance of success - UPDATED ENDPOINTS
     const apiEndpoints = [
-      "https://api.apiframe.ai/v1/images/generate",
-      "https://api.apiframe.com/v1/images/generate",
-      "https://api.apiframe.io/v1/images/generate"
+      "https://api.apiframe.com/v2/image",
+      "https://api.apiframe.com/v1/image",
+      "https://api.apiframe.ai/v2/image",
+      "https://api.apiframe.ai/v1/image"
     ];
 
     let response = null;
