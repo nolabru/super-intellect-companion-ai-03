@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -131,9 +132,10 @@ const MediaGallery: React.FC = () => {
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", 
         !isMobile && sidebarOpen && "pl-64")}>
         <MainLayout 
-          title="Galeria de Mídia"
           sidebarOpen={sidebarOpen} 
           onToggleSidebar={toggleSidebar}
+          title="Galeria de Mídias"
+          showHeader={true}
         >
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-6">

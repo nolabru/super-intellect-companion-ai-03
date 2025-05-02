@@ -16,20 +16,7 @@ const CreatePost: React.FC = () => {
 
   const handleCreatePost = async (postData: Partial<NewsletterPost>) => {
     try {
-      // Make sure title and content are defined
-      if (!postData.title || !postData.content) {
-        toast.error('Título e conteúdo são obrigatórios');
-        return;
-      }
-      
-      const newPost = await newsletterAdminService.createPost({
-        title: postData.title,
-        content: postData.content,
-        mediaUrl: postData.media_url || undefined,
-        mediaType: postData.media_type || undefined,
-        isPublished: postData.is_published
-      });
-      
+      const newPost = await newsletterAdminService.createPost(postData);
       if (newPost) {
         toast.success('Publicação criada com sucesso!');
         navigate('/feed');

@@ -5,7 +5,6 @@ import UserMenu from '../UserMenu';
 import { ModeToggle } from '../ModeToggle';
 import { Button } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
-import TokenDisplay from '../TokenDisplay';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -46,13 +45,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({
         </div>
         
         <div className="flex items-center gap-2">
-          <TokenDisplay />
           <ModeToggle />
           <UserMenu />
         </div>
       </MainHeader>
       
-      {/* Conteúdo principal com padding padronizado de 24px */}
+      {/* Conteúdo principal com padding padronizado */}
       <div className="flex-1 p-6">
         {title && !onToggleSidebar && (
           <h1 className="text-xl font-medium text-white mb-6">{title}</h1>
