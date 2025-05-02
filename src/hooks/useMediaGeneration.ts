@@ -1,209 +1,284 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { 
-  MediaGenerationParams, 
-  MediaGenerationResult, 
-  MediaGenerationTask, 
-  MediaServiceOptions
-} from '@/types/mediaGeneration';
-import { supabase } from '@/integrations/supabase/client';
+import piapiDirectService, {
+  PiapiMediaType,
+  PiapiModel,
+  PiapiParams,
+  hasPiapiApiKey,
+  initPiapiService
+} from '@/services/piapiDirectService';
+import { UseMediaGenerationOptions } from '@/types/mediaGeneration';
+import { useTaskState } from './media/useTaskState';
+import { useTaskCleanup } from './media/useTaskCleanup';
+import { calculateProgress } from '@/utils/mediaProgress';
 
-export function useMediaGeneration(options: MediaServiceOptions = { showToasts: true }) {
-  const { showToasts, onTaskUpdate } = options;
+export function useMediaGeneration(options: UseMediaGenerationOptions = {}) {
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState<boolean>(hasPiapiApiKey());
+  
+  const {
+    tasks,
+    currentTaskId,
+    currentTask,
+    updateTask,
+    registerTask,
+    clearTasks
+  } = useTaskState();
+  
+  const { abortControllers, statusCheckIntervals } = useTaskCleanup(options);
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [currentTask, setCurrentTask] = useState<MediaGenerationTask | null>(null);
-  const [taskProgress, setTaskProgress] = useState<number>(0);
-  const [generatedMediaUrl, setGeneratedMediaUrl] = useState<string | null>(null);
+  const configureApiKey = useCallback((apiKey: string): boolean => {
+    const result = initPiapiService(apiKey);
+    setApiKeyConfigured(result);
+    return result;
+  }, []);
 
-  // Verificar status da tarefa periodicamente
-  const checkTaskStatus = useCallback(async (
-    taskId: string,
-    type: 'image' | 'video' | 'audio'
-  ): Promise<MediaGenerationTask | null> => {
-    try {
-      const { data, error } = await supabase.from('piapi_tasks')
-        .select('*')
-        .eq('task_id', taskId)
-        .single();
+  const isApiKeyConfigured = useCallback((): boolean => {
+    return hasPiapiApiKey();
+  }, []);
 
-      if (error) {
-        console.error('Erro ao verificar status da tarefa:', error);
-        return null;
-      }
-
-      if (!data) return null;
-
-      const task: MediaGenerationTask = {
-        taskId: data.task_id,
-        type,
-        status: data.status as 'pending' | 'processing' | 'completed' | 'failed' | 'canceled',
-        prompt: data.prompt || '',
-        model: data.model,
-        progress: data.percentage || 0,
-        mediaUrl: data.media_url,
-        error: data.error,
-        metadata: data.params,
-        createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at)
-      };
-
-      // Atualizar estado com informações da tarefa
-      setCurrentTask(task);
-      setTaskProgress(task.progress);
-      
-      // Chamar callback externo se fornecido
-      if (onTaskUpdate) {
-        onTaskUpdate(task);
-      }
-
-      // Se concluído, definir URL de mídia e reinicializar estados
-      if (task.status === 'completed' && task.mediaUrl) {
-        setGeneratedMediaUrl(task.mediaUrl);
-        if (showToasts) {
-          toast.success(`Mídia ${type === 'image' ? 'imagem' : type === 'video' ? 'vídeo' : 'áudio'} gerada com sucesso!`);
-        }
-        setIsGenerating(false);
-      } 
-      // Se falhou, mostrar erro e reinicializar estados
-      else if (task.status === 'failed') {
-        if (showToasts) {
-          toast.error(`Falha ao gerar ${type === 'image' ? 'imagem' : type === 'video' ? 'vídeo' : 'áudio'}: ${task.error || 'Erro desconhecido'}`);
-        }
-        setIsGenerating(false);
-      }
-
-      return task;
-    } catch (error) {
-      console.error('Erro ao verificar status da tarefa:', error);
-      return null;
-    }
-  }, [onTaskUpdate, showToasts]);
-
-  // Iniciar geração de mídia
   const generateMedia = useCallback(async (
-    type: 'image' | 'video' | 'audio',
     prompt: string,
-    model: string,
-    params: MediaGenerationParams = {},
+    mediaType: PiapiMediaType,
+    model: PiapiModel,
+    params: PiapiParams = {},
     referenceUrl?: string
-  ): Promise<MediaGenerationResult> => {
+  ) => {
     try {
+      console.log(`[useMediaGeneration] Starting ${mediaType} generation with model ${model}`);
+      
+      if (!isApiKeyConfigured()) {
+        toast.error('API key da PiAPI não configurada', {
+          description: 'Configure sua chave de API nas configurações'
+        });
+        return {
+          success: false,
+          error: 'API key not configured'
+        };
+      }
+      
       setIsGenerating(true);
-      setGeneratedMediaUrl(null);
-      setTaskProgress(0);
       
-      // Criar tarefa de geração de mídia
-      const response = await supabase.functions.invoke('start-media-generation', {
-        body: { type, prompt, model, params, referenceUrl }
-      });
-      
-      if (!response.data || !response.data.success) {
-        throw new Error(response.data?.error || 'Erro desconhecido ao iniciar geração de mídia');
+      if (options.showToasts !== false) {
+        toast.info(`Iniciando geração de ${mediaType === 'image' ? 'imagem' : mediaType === 'video' ? 'vídeo' : 'áudio'}...`);
       }
-
-      const taskId = response.data.taskId;
       
-      if (!taskId) {
-        throw new Error('ID da tarefa não retornado pelo servidor');
-      }
-
-      // Inicializar tarefa atual
-      const initialTask: MediaGenerationTask = {
-        taskId,
-        type,
-        status: 'pending',
-        prompt,
-        model,
-        progress: 0,
-        metadata: params,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+      // Create controller for possible cancelation
+      const controller = new AbortController();
       
-      setCurrentTask(initialTask);
-      
-      // Iniciar monitoramento periódico
-      const interval = setInterval(async () => {
-        const updatedTask = await checkTaskStatus(taskId, type);
-        
-        // Se a tarefa estiver concluída ou falhou, interromper monitoramento
-        if (updatedTask && (updatedTask.status === 'completed' || updatedTask.status === 'failed' || updatedTask.status === 'canceled')) {
-          clearInterval(interval);
+      let result;
+      try {
+        if (mediaType === 'image') {
+          result = await piapiDirectService.generateImage(prompt, model as any, params);
+        } else if (mediaType === 'video') {
+          result = await piapiDirectService.generateVideo(prompt, model as any, params, referenceUrl);
+        } else {
+          result = await piapiDirectService.generateAudio(prompt, model as any, params, referenceUrl);
         }
-      }, 3000);
-      
-      // Limpar intervalo quando componente for desmontado
-      return { 
-        success: true,
-        taskId 
-      };
-    } catch (error) {
-      setIsGenerating(false);
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      
-      if (showToasts) {
-        toast.error(`Erro ao gerar ${type === 'image' ? 'imagem' : type === 'video' ? 'vídeo' : 'áudio'}: ${errorMessage}`);
-      }
-      
-      console.error('Erro ao iniciar geração de mídia:', error);
-      return { 
-        success: false, 
-        error: errorMessage 
-      };
-    }
-  }, [checkTaskStatus, showToasts]);
-
-  // Cancelar geração em andamento
-  const cancelGeneration = useCallback(async (): Promise<boolean> => {
-    if (!currentTask) {
-      return false;
-    }
-
-    try {
-      // Chamar função para cancelar tarefa
-      await supabase.functions.invoke('cancel-media-generation', {
-        body: { taskId: currentTask.taskId }
-      });
-
-      // Atualizar estado da tarefa atual
-      setCurrentTask(prev => {
-        if (!prev) return null;
+      } catch (err) {
+        console.error(`[useMediaGeneration] Error in PiAPI service call:`, err);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        
+        if (options.showToasts !== false) {
+          toast.error(`Erro ao gerar ${mediaType}`, { description: errorMsg });
+        }
         
         return {
-          ...prev,
-          status: 'canceled',
-          updatedAt: new Date()
+          success: false,
+          error: errorMsg
         };
-      });
-
+      }
+      
+      if (result && result.taskId) {
+        const taskId = result.taskId;
+        abortControllers[taskId] = controller;
+        
+        registerTask(taskId, {
+          taskId,
+          progress: 0,
+          status: result.status || 'pending',
+          mediaUrl: result.mediaUrl,
+          error: result.error
+        });
+        
+        if (result.status === 'completed' && result.mediaUrl) {
+          handleTaskCompletion(taskId, result.mediaUrl);
+          return {
+            success: true,
+            mediaUrl: result.mediaUrl,
+            taskId: result.taskId
+          };
+        }
+        
+        // Set up status polling for pending tasks
+        setupStatusPolling(taskId);
+        
+        return {
+          success: true,
+          taskId: result.taskId
+        };
+      }
+      
+      const errorMsg = 'Nenhum ID de tarefa retornado pela API';
+      console.error(`[useMediaGeneration] ${errorMsg}`);
+      
+      if (options.showToasts !== false) {
+        toast.error(`Erro ao iniciar geração: ${errorMsg}`);
+      }
+      
+      return {
+        success: false,
+        error: errorMsg
+      };
+    } catch (err) {
+      console.error('[useMediaGeneration] Error generating media:', err);
+      
+      if (options.showToasts !== false) {
+        toast.error(`Erro ao gerar mídia: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      }
+      
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Erro desconhecido'
+      };
+    } finally {
       setIsGenerating(false);
+    }
+  }, [isApiKeyConfigured, options, registerTask]);
+
+  const handleTaskCompletion = useCallback((taskId: string, mediaUrl: string) => {
+    updateTask(taskId, {
+      progress: 100,
+      status: 'completed',
+      mediaUrl
+    });
+    
+    if (options.onProgress) {
+      options.onProgress(100);
+    }
+    
+    if (options.onComplete) {
+      options.onComplete({
+        success: true,
+        mediaUrl,
+        taskId
+      });
+    }
+    
+    if (options.showToasts !== false) {
+      toast.success('Mídia gerada com sucesso!');
+    }
+  }, [options, updateTask]);
+
+  const setupStatusPolling = useCallback((taskId: string) => {
+    const checkStatusInterval = setInterval(async () => {
+      if (abortControllers[taskId]?.signal.aborted) {
+        clearInterval(statusCheckIntervals[taskId]);
+        delete statusCheckIntervals[taskId];
+        return;
+      }
+
+      try {
+        const statusResult = await piapiDirectService.checkTaskStatus(taskId);
+        
+        updateTask(taskId, {
+          status: statusResult.status,
+          mediaUrl: statusResult.mediaUrl,
+          error: statusResult.error,
+          progress: calculateProgress(tasks[taskId]?.progress || 0, statusResult.status)
+        });
+        
+        if (options.onProgress) {
+          options.onProgress(
+            statusResult.status === 'completed' ? 100 : 
+            calculateProgress(tasks[taskId]?.progress || 0, statusResult.status)
+          );
+        }
+        
+        if (statusResult.status === 'completed' || statusResult.status === 'failed') {
+          clearInterval(statusCheckIntervals[taskId]);
+          delete statusCheckIntervals[taskId];
+          
+          if (statusResult.status === 'completed' && statusResult.mediaUrl) {
+            handleTaskCompletion(taskId, statusResult.mediaUrl);
+          } else if (options.showToasts !== false) {
+            toast.error(`Erro ao gerar mídia: ${statusResult.error || 'Erro desconhecido'}`);
+          }
+        }
+      } catch (err) {
+        console.error('[useMediaGeneration] Error in status check:', err);
+      }
+    }, 3000);
+    
+    statusCheckIntervals[taskId] = checkStatusInterval as unknown as number;
+    
+    // Auto-clear interval after 10 minutes
+    setTimeout(() => {
+      if (statusCheckIntervals[taskId]) {
+        clearInterval(statusCheckIntervals[taskId]);
+        delete statusCheckIntervals[taskId];
+        
+        updateTask(taskId, {
+          status: 'failed',
+          error: 'Timeout: Task took too long to complete'
+        });
+        
+        if (options.showToasts !== false) {
+          toast.error('Tempo esgotado para geração de mídia', {
+            description: 'A tarefa demorou muito tempo e será verificada em segundo plano'
+          });
+        }
+      }
+    }, 10 * 60 * 1000);
+  }, [tasks, options, updateTask]);
+
+  const cancelTask = useCallback(async (taskId: string): Promise<boolean> => {
+    try {
+      if (!taskId) return false;
       
-      if (showToasts) {
-        toast.info('Geração de mídia cancelada');
+      console.log(`[useMediaGeneration] Cancelling task: ${taskId}`);
+      
+      if (abortControllers[taskId]) {
+        abortControllers[taskId].abort();
+        delete abortControllers[taskId];
       }
       
-      return true;
-    } catch (error) {
-      console.error('Erro ao cancelar geração:', error);
-      
-      if (showToasts) {
-        toast.error('Erro ao cancelar geração de mídia');
+      if (statusCheckIntervals[taskId]) {
+        clearInterval(statusCheckIntervals[taskId]);
+        delete statusCheckIntervals[taskId];
       }
       
+      const result = await piapiDirectService.cancelTask(taskId);
+      
+      if (result) {
+        updateTask(taskId, {
+          status: 'failed',
+          error: 'Tarefa cancelada pelo usuário'
+        });
+        
+        if (options.showToasts !== false) {
+          toast.info('Tarefa de geração cancelada');
+        }
+      }
+      
+      return result;
+    } catch (err) {
+      console.error('[useMediaGeneration] Error cancelling task:', err);
       return false;
     }
-  }, [currentTask, showToasts]);
+  }, [options, updateTask]);
 
-  // Dados de retorno do hook
   return {
-    isGenerating,
-    taskProgress,
-    currentTask,
-    generatedMediaUrl,
     generateMedia,
-    cancelGeneration,
-    checkTaskStatus
+    cancelTask,
+    clearTasks,
+    configureApiKey,
+    isApiKeyConfigured,
+    isGenerating,
+    tasks,
+    currentTask,
+    apiKeyConfigured
   };
 }
+

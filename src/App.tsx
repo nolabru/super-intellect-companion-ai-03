@@ -61,28 +61,12 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 
-                <Route path="/admin" element={
-                  <ProtectedRoute>
-                    <AdminPanel />
-                  </ProtectedRoute>
-                } />
-                
+                <Route path="/admin" element={<AdminPanel />} />
                 <Route path="/feed" element={<NewsFeed />} />
                 <Route path="/feed/new" element={<CreatePost />} />
                 <Route path="/post/:id" element={<PostDetail />} />
-                <Route path="/services" element={
-                  <ProtectedRoute>
-                    <ServicesConfig />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Restringir acesso à página de analytics apenas para usuários autenticados */}
-                <Route path="/analytics" element={
-                  <ProtectedRoute>
-                    <Analytics />
-                  </ProtectedRoute>
-                } />
-                
+                <Route path="/services" element={<ServicesConfig />} />
+                <Route path="/analytics" element={<Analytics />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

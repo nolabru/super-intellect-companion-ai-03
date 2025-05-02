@@ -1,165 +1,199 @@
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { ApiframeMediaType, MediaGenerationResult } from '@/types/apiframeGeneration';
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-
-interface MediaTask {
+// Define the Media Task structure
+export interface MediaTask {
   id: string;
+  taskId: string;
   type: 'image' | 'video' | 'audio';
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  url?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'canceled';
+  progress: number;
   prompt: string;
   model: string;
-  createdAt: Date;
+  mediaUrl?: string;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+  parameters?: Record<string, any>;
+  referenceUrl?: string;
 }
 
-interface MediaContextType {
-  tasks: MediaTask[];
-  isLoading: boolean;
-  fetchMediaTasks: () => Promise<void>;
-  deleteMediaTask: (id: string) => Promise<boolean>;
+// Define the Media Context state
+interface MediaState {
+  tasks: Record<string, MediaTask>;
+  currentTaskId?: string;
+  recentTasks: string[]; // Array of task IDs sorted by most recent
 }
 
-// Criar contexto com valores padrão
-const MediaContext = createContext<MediaContextType>({
-  tasks: [],
-  isLoading: false,
-  fetchMediaTasks: async () => {},
-  deleteMediaTask: async () => false
-});
+// Define action types
+type MediaAction = 
+  | { type: 'REGISTER_TASK'; task: MediaTask }
+  | { type: 'UPDATE_TASK'; taskId: string; updates: Partial<MediaTask> }
+  | { type: 'SET_CURRENT_TASK'; taskId?: string }
+  | { type: 'CLEAR_TASK'; taskId: string }
+  | { type: 'LOAD_STATE'; state: MediaState }
+  | { type: 'CLEAR_ALL_TASKS' };
 
-// Hook personalizado para usar o contexto
-export const useMediaContext = () => useContext(MediaContext);
+// Initial state
+const initialState: MediaState = {
+  tasks: {},
+  currentTaskId: undefined,
+  recentTasks: []
+};
 
-export const MediaProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [tasks, setTasks] = useState<MediaTask[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+// Create context
+const MediaContext = createContext<{
+  state: MediaState;
+  registerTask: (task: MediaTask) => void;
+  updateTask: (taskId: string, updates: Partial<MediaTask>) => void;
+  setCurrentTask: (taskId?: string) => void;
+  clearTask: (taskId: string) => void;
+  clearAllTasks: () => void;
+} | undefined>(undefined);
 
-  // Buscar tarefas de mídia do usuário atual
-  const fetchMediaTasks = useCallback(async () => {
+// Define the reducer
+function mediaReducer(state: MediaState, action: MediaAction): MediaState {
+  switch (action.type) {
+    case 'REGISTER_TASK': {
+      const updatedTasks = {
+        ...state.tasks,
+        [action.task.id]: action.task
+      };
+      
+      // Add to recent tasks and keep only the 20 most recent
+      const recentTasks = [action.task.id, ...state.recentTasks.filter(id => id !== action.task.id)].slice(0, 20);
+      
+      return {
+        ...state,
+        tasks: updatedTasks,
+        currentTaskId: state.currentTaskId || action.task.id,
+        recentTasks
+      };
+    }
+    
+    case 'UPDATE_TASK': {
+      if (!state.tasks[action.taskId]) {
+        return state;
+      }
+      
+      return {
+        ...state,
+        tasks: {
+          ...state.tasks,
+          [action.taskId]: {
+            ...state.tasks[action.taskId],
+            ...action.updates,
+            updatedAt: new Date().toISOString()
+          }
+        }
+      };
+    }
+    
+    case 'SET_CURRENT_TASK':
+      return {
+        ...state,
+        currentTaskId: action.taskId
+      };
+      
+    case 'CLEAR_TASK': {
+      const { [action.taskId]: removed, ...remainingTasks } = state.tasks;
+      return {
+        ...state,
+        tasks: remainingTasks,
+        currentTaskId: state.currentTaskId === action.taskId ? undefined : state.currentTaskId,
+        recentTasks: state.recentTasks.filter(id => id !== action.taskId)
+      };
+    }
+    
+    case 'LOAD_STATE':
+      return action.state;
+      
+    case 'CLEAR_ALL_TASKS':
+      return {
+        ...state,
+        tasks: {},
+        currentTaskId: undefined,
+        recentTasks: []
+      };
+      
+    default:
+      return state;
+  }
+}
+
+// Local storage keys
+const MEDIA_STATE_KEY = 'media_state';
+
+// Provider component
+export function MediaProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(mediaReducer, initialState);
+  
+  // Load state from localStorage when component mounts
+  useEffect(() => {
     try {
-      setIsLoading(true);
-      
-      // Obter usuário atual
-      const { data: userData } = await supabase.auth.getUser();
-      
-      if (!userData?.user) {
-        setTasks([]);
-        return;
+      const savedState = localStorage.getItem(MEDIA_STATE_KEY);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        dispatch({ type: 'LOAD_STATE', state: parsedState });
       }
-      
-      // Buscar tarefas do PiAPI
-      const { data: piapiData, error: piapiError } = await supabase
-        .from('piapi_tasks')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .order('created_at', { ascending: false });
-        
-      if (piapiError) {
-        console.error('Erro ao buscar tarefas PiAPI:', piapiError);
-        throw piapiError;
-      }
-      
-      // Buscar tarefas do APIFrame
-      const { data: apiframeData, error: apiframeError } = await supabase
-        .from('apiframe_tasks')
-        .select('*')
-        .eq('user_id', userData.user.id)
-        .order('created_at', { ascending: false });
-        
-      if (apiframeError) {
-        console.error('Erro ao buscar tarefas APIFrame:', apiframeError);
-        throw apiframeError;
-      }
-      
-      // Combinar e formatar os dados
-      const combinedTasks: MediaTask[] = [
-        ...(piapiData || []).map(task => ({
-          id: task.id,
-          type: task.media_type as 'image' | 'video' | 'audio',
-          status: task.status as 'pending' | 'processing' | 'completed' | 'failed',
-          url: task.media_url,
-          prompt: task.prompt || '',
-          model: task.model,
-          createdAt: new Date(task.created_at)
-        })),
-        ...(apiframeData || []).map(task => ({
-          id: task.id,
-          type: task.media_type as 'image' | 'video' | 'audio',
-          status: task.status as 'pending' | 'processing' | 'completed' | 'failed',
-          url: task.media_url,
-          prompt: task.prompt || '',
-          model: task.model,
-          createdAt: new Date(task.created_at)
-        }))
-      ];
-      
-      // Ordenar por data de criação (mais recentes primeiro)
-      combinedTasks.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      
-      setTasks(combinedTasks);
     } catch (error) {
-      console.error('Erro ao buscar tarefas de mídia:', error);
-      toast.error('Erro ao carregar histórico de mídia');
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to load media state from localStorage:', error);
     }
   }, []);
-
-  // Excluir tarefa de mídia
-  const deleteMediaTask = useCallback(async (id: string): Promise<boolean> => {
+  
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
     try {
-      // Verificar em qual tabela a tarefa existe
-      const { data: piapiTask } = await supabase
-        .from('piapi_tasks')
-        .select('id')
-        .eq('id', id)
-        .maybeSingle();
-        
-      const { data: apiframeTask } = await supabase
-        .from('apiframe_tasks')
-        .select('id')
-        .eq('id', id)
-        .maybeSingle();
-        
-      // Excluir da tabela apropriada
-      if (piapiTask) {
-        const { error } = await supabase
-          .from('piapi_tasks')
-          .delete()
-          .eq('id', id);
-          
-        if (error) throw error;
-      } else if (apiframeTask) {
-        const { error } = await supabase
-          .from('apiframe_tasks')
-          .delete()
-          .eq('id', id);
-          
-        if (error) throw error;
-      } else {
-        throw new Error('Tarefa não encontrada');
-      }
-      
-      // Atualizar estado
-      setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
-      toast.success('Item excluído com sucesso');
-      return true;
+      localStorage.setItem(MEDIA_STATE_KEY, JSON.stringify(state));
     } catch (error) {
-      console.error('Erro ao excluir tarefa de mídia:', error);
-      toast.error('Erro ao excluir item');
-      return false;
+      console.error('Failed to save media state to localStorage:', error);
     }
-  }, []);
-
-  // Carregar tarefas inicialmente
-  React.useEffect(() => {
-    fetchMediaTasks();
-  }, [fetchMediaTasks]);
-
+  }, [state]);
+  
+  // Actions
+  const registerTask = (task: MediaTask) => {
+    dispatch({ type: 'REGISTER_TASK', task });
+  };
+  
+  const updateTask = (taskId: string, updates: Partial<MediaTask>) => {
+    dispatch({ type: 'UPDATE_TASK', taskId, updates });
+  };
+  
+  const setCurrentTask = (taskId?: string) => {
+    dispatch({ type: 'SET_CURRENT_TASK', taskId });
+  };
+  
+  const clearTask = (taskId: string) => {
+    dispatch({ type: 'CLEAR_TASK', taskId });
+  };
+  
+  const clearAllTasks = () => {
+    dispatch({ type: 'CLEAR_ALL_TASKS' });
+  };
+  
+  const value = {
+    state,
+    registerTask,
+    updateTask,
+    setCurrentTask,
+    clearTask,
+    clearAllTasks
+  };
+  
   return (
-    <MediaContext.Provider value={{ tasks, isLoading, fetchMediaTasks, deleteMediaTask }}>
+    <MediaContext.Provider value={value}>
       {children}
     </MediaContext.Provider>
   );
-};
+}
+
+// Custom hook to use the context
+export function useMediaContext() {
+  const context = useContext(MediaContext);
+  
+  if (context === undefined) {
+    throw new Error('useMediaContext must be used within a MediaProvider');
+  }
+  
+  return context;
+}

@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, AlertTriangle, Check } from 'lucide-react';
 import { aiService, AIModelInfo } from '@/services/aiService';
 import { openRouterService } from '@/services/openRouterService';
+import { apiframeService } from '@/services/apiframeService';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -13,7 +14,9 @@ const AIConfigPanel: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [models, setModels] = useState<AIModelInfo[]>([]);
   const [openRouterApiKey, setOpenRouterApiKey] = useState<string>('');
+  const [apiframeApiKey, setApiframeApiKey] = useState<string>('');
   const [savingOpenRouter, setSavingOpenRouter] = useState<boolean>(false);
+  const [savingApiframe, setSavingApiframe] = useState<boolean>(false);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -57,6 +60,31 @@ const AIConfigPanel: React.FC = () => {
     }
   };
 
+  const handleSaveApiframeApiKey = async () => {
+    if (!apiframeApiKey.trim()) {
+      toast.error('Please enter a valid API key');
+      return;
+    }
+
+    setSavingApiframe(true);
+    try {
+      const success = apiframeService.setApiKey(apiframeApiKey);
+      if (success) {
+        toast.success('APIframe API key saved successfully');
+        // Reload models to update the list
+        const availableModels = await aiService.getAvailableModels();
+        setModels(availableModels);
+      } else {
+        toast.error('Failed to save APIframe API key');
+      }
+    } catch (err) {
+      console.error('Error saving APIframe API key:', err);
+      toast.error('Error saving API key');
+    } finally {
+      setSavingApiframe(false);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -93,6 +121,33 @@ const AIConfigPanel: React.FC = () => {
                 </div>
                 <div className="flex items-center text-sm mt-1">
                   {openRouterService.isApiKeyConfigured() ? (
+                    <><Check className="h-4 w-4 text-green-400 mr-1" /> API key configured</>
+                  ) : (
+                    <><AlertTriangle className="h-4 w-4 text-yellow-400 mr-1" /> API key not configured</>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-lg font-medium">APIframe API</h3>
+                <p className="text-sm text-gray-500">Access to DALL-E, Stable Diffusion, and other media generation models</p>
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="APIframe API Key" 
+                    value={apiframeApiKey} 
+                    onChange={(e) => setApiframeApiKey(e.target.value)}
+                    type="password"
+                  />
+                  <Button 
+                    onClick={handleSaveApiframeApiKey} 
+                    disabled={savingApiframe}
+                  >
+                    {savingApiframe ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                    Save
+                  </Button>
+                </div>
+                <div className="flex items-center text-sm mt-1">
+                  {apiframeService.isApiKeyConfigured() ? (
                     <><Check className="h-4 w-4 text-green-400 mr-1" /> API key configured</>
                   ) : (
                     <><AlertTriangle className="h-4 w-4 text-yellow-400 mr-1" /> API key not configured</>
