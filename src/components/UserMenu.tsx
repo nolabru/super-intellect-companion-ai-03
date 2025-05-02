@@ -20,6 +20,7 @@ import { User, LogOut, Settings } from 'lucide-react';
 const UserMenu: React.FC = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.email?.endsWith('@admin.com') || false;
 
   if (!user) {
     return (
@@ -61,13 +62,15 @@ const UserMenu: React.FC = () => {
           align="end"
           className="w-56 bg-inventu-dark/95 backdrop-blur-lg border-inventu-gray/30"
         >
-          <DropdownMenuItem
-            onClick={() => navigate('/services')}
-            className="text-white/90 hover:text-white focus:text-white cursor-pointer"
-          >
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Serviços de IA</span>
-          </DropdownMenuItem>
+          {isAdmin && (
+            <DropdownMenuItem
+              onClick={() => navigate('/services')}
+              className="text-white/90 hover:text-white focus:text-white cursor-pointer"
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Serviços de IA</span>
+            </DropdownMenuItem>
+          )}
           
           <DropdownMenuSeparator />
           

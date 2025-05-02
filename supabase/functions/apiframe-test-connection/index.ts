@@ -13,9 +13,9 @@ serve(async (req) => {
   }
   
   try {
-    const APIFRAME_API_KEY = Deno.env.get("API_FRAME");
+    const APIFRAME_API_KEY = Deno.env.get("API_FRAME_KEY");
     if (!APIFRAME_API_KEY) {
-      throw new Error("API_FRAME is not configured");
+      throw new Error("API_FRAME_KEY is not configured");
     }
     
     // Test endpoints - updated with more endpoints to try

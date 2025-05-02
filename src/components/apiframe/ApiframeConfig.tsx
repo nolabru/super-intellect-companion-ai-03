@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, LoaderCircle } from 'lucide-react';
 import { apiframeService } from '@/services/apiframeService';
+import { useAuth } from '@/contexts/AuthContext';
+import { withRetry } from '@/utils/retryOperations';
 
 interface ApiframeConfigProps {
   onConfigChange?: (isConfigured: boolean) => void;
@@ -15,13 +17,31 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
   const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'failed'>('untested');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [workingEndpoint, setWorkingEndpoint] = useState<string | null>(null);
+  const { user } = useAuth();
+  const isAdmin = user?.email?.endsWith('@admin.com') || false;
+  const testInProgress = useRef(false);
 
   const testConnection = async () => {
+    if (testInProgress.current) {
+      console.log('[ApiframeConfig] Test already in progress, skipping');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       setErrorMessage(null);
+      testInProgress.current = true;
       
-      const result = await apiframeService.testConnection();
+      const result = await withRetry(
+        async () => await apiframeService.testConnection(),
+        {
+          maxRetries: 2,
+          initialDelay: 1000,
+          onRetry: (error, attempt) => {
+            console.log(`[ApiframeConfig] Retry attempt ${attempt} after error: ${error}`);
+          }
+        }
+      );
       
       if (result.success) {
         setConnectionStatus('success');
@@ -45,6 +65,7 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
       }
     } finally {
       setIsLoading(false);
+      testInProgress.current = false;
     }
   };
 
@@ -52,6 +73,10 @@ const ApiframeConfig: React.FC<ApiframeConfigProps> = ({ onConfigChange }) => {
   useEffect(() => {
     testConnection();
   }, []);
+
+  if (!isAdmin) {
+    return null;
+  }
 
   return (
     <Card className="w-full">

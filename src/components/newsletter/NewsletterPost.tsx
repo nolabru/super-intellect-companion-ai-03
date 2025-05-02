@@ -1,250 +1,231 @@
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
+import { Link } from 'react-router-dom';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Heart, MessageCircle, MoreVertical, Trash2, MessageSquare } from 'lucide-react';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { PostWithStats } from '@/types/newsletter';
-import { newsletterService } from '@/services/newsletterService';
-import { discussionService } from '@/services/discussionService';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MediaPlayer } from '@/components/media/MediaPlayer';
 import { useAuth } from '@/contexts/AuthContext';
-import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+import { PostWithStats } from '@/types/newsletter';
+import { Calendar, Trash2, MessageSquare, Eye, Heart, Share, MoreHorizontal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface NewsletterPostProps {
   post: PostWithStats;
-  onDelete?: (postId: string) => void;
+  onDelete?: (postId: string) => Promise<void>;
 }
 
-const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
-  const [isLiked, setIsLiked] = useState(post.user_has_liked);
-  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
-  const [isCreatingDiscussion, setIsCreatingDiscussion] = useState(false);
-  const navigate = useNavigate();
-  const { isAdmin } = useAuth();
-  const [likeInProgress, setLikeInProgress] = useState(false);
+export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
+  const { user } = useAuth();
+  const isAdmin = user?.email?.endsWith('@admin.com') || false;
+  
+  const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
+  const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false);
 
-  const handleLike = async () => {
-    if (likeInProgress) return;
-    
-    setLikeInProgress(true);
-    try {
-      const result = await newsletterService.likePost(post.id);
-      setIsLiked(result);
-      setLikesCount(prevCount => result ? prevCount + 1 : prevCount - 1);
-    } finally {
-      setLikeInProgress(false);
-    }
-  };
+  const {
+    id,
+    title,
+    content,
+    created_at,
+    updated_at,
+    media_url,
+    media_type,
+    user_id,
+    author
+  } = post;
 
-  const handleViewComments = () => {
-    navigate(`/feed/${post.id}`);
-  };
-
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (onDelete) {
-      onDelete(post.id);
+      await onDelete(id);
+      setConfirmDeleteDialogOpen(false);
     }
   };
 
-  const handleDiscuss = async () => {
-    if (!post || isCreatingDiscussion) return;
-    
-    setIsCreatingDiscussion(true);
+  const formatPostDate = (dateStr: string) => {
     try {
-      console.log('Creating discussion with media:', {
-        postId: post.id,
-        mediaUrl: post.media_url,
-        mediaType: post.media_type
-      });
-
-      const result = await discussionService.createDiscussionFromPost(
-        post.id,
-        post.content,
-        `Discussão: ${post.content.substring(0, 30)}...`,
-        post.media_url || undefined,
-        post.media_type !== 'none' ? post.media_type : undefined
-      );
-
-      if (result.success && result.conversationId) {
-        toast.success('Discussão criada com sucesso');
-        navigate(`/c/${result.conversationId}`);
+      // Ensure we're working with a valid date string
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        return "Data inválida";
+      }
+      
+      // Only show distance if post is less than 7 days old
+      const now = new Date();
+      const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (diffInDays < 7) {
+        return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
       } else {
-        console.error('Error details:', result.error);
-        throw new Error('Falha ao criar discussão');
+        return format(date, "d 'de' MMMM 'de' yyyy", { locale: ptBR });
       }
     } catch (error) {
-      console.error('Error starting discussion:', error);
-      toast.error('Erro ao criar discussão');
-    } finally {
-      setIsCreatingDiscussion(false);
+      console.error("Error formatting date:", error);
+      return "Data inválida";
     }
   };
 
-  const timeAgo = formatDistanceToNow(new Date(post.published_at), {
-    addSuffix: true,
-    locale: ptBR
-  });
-
   return (
-    <Card className="w-full max-w-md mx-auto border-white/10 bg-inventu-dark/80 backdrop-blur-sm shadow-md mb-4">
-      <CardHeader className="pb-2 pt-4">
+    <Card className="overflow-hidden bg-black/20 backdrop-blur-sm border-white/5">
+      <div className="p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Avatar className="h-8 w-8 border border-white/10">
-              <AvatarImage src={post.author?.avatar_url || ''} alt={post.author?.username || 'Admin'} />
-              <AvatarFallback className="bg-inventu-blue text-white">
-                {(post.author?.username || 'A').charAt(0).toUpperCase()}
-              </AvatarFallback>
+          <div className="flex items-center space-x-3">
+            <Avatar>
+              {author?.avatar_url ? (
+                <AvatarImage src={author.avatar_url} alt={author.username || 'Usuário'} />
+              ) : (
+                <AvatarFallback className="bg-inventu-blue">
+                  {author?.username ? author.username[0].toUpperCase() : 'U'}
+                </AvatarFallback>
+              )}
             </Avatar>
             <div>
-              <p className="text-sm font-medium text-white">
-                {post.author?.username || 'Administrador'}
-              </p>
-              <p className="text-xs text-white/60">{timeAgo}</p>
+              <p className="text-sm font-medium">{author?.username || 'Usuário'}</p>
+              <div className="flex items-center text-xs text-white/50">
+                <Calendar className="mr-1 h-3 w-3" />
+                <span>{formatPostDate(created_at)}</span>
+              </div>
             </div>
           </div>
           
-          {isAdmin && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-inventu-dark/90 border-white/10">
-                <DropdownMenuItem
-                  className="text-red-500 cursor-pointer focus:text-red-500 focus:bg-red-500/10"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Excluir</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {isAdmin && onDelete && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8"
+              onClick={() => setConfirmDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
           )}
         </div>
-      </CardHeader>
-      
-      <CardContent className="px-4 py-2 space-y-2">
-        <p className="text-sm text-white/90 whitespace-pre-wrap">{post.content}</p>
         
-        {post.media_url && post.media_type !== 'none' && (
-          <div className="rounded-lg overflow-hidden my-2">
-            {post.media_type === 'image' && (
-              <AspectRatio ratio={4 / 5} className="bg-inventu-darker">
-                <img
-                  src={post.media_url}
-                  alt="Post media"
-                  className="object-cover w-full h-full"
-                  loading="lazy"
+        <h3 className="mt-3 text-lg font-semibold">{title}</h3>
+        <p className="mt-1 text-sm text-white/70 whitespace-pre-wrap">{content}</p>
+        
+        {media_url && (
+          <div className="mt-3">
+            {media_type === 'image' ? (
+              <div 
+                className="relative aspect-video rounded-md overflow-hidden cursor-pointer"
+                onClick={() => setMediaDialogOpen(true)}
+              >
+                <img 
+                  src={media_url} 
+                  alt={title} 
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
-              </AspectRatio>
-            )}
-            
-            {post.media_type === 'video' && (
-              <AspectRatio ratio={4 / 5} className="bg-inventu-darker">
-                <video
-                  src={post.media_url}
-                  className="object-cover w-full h-full"
-                  controls
-                  preload="metadata"
-                />
-              </AspectRatio>
-            )}
+              </div>
+            ) : media_type === 'video' ? (
+              <div 
+                className="relative aspect-video rounded-md overflow-hidden cursor-pointer bg-black/40"
+                onClick={() => setMediaDialogOpen(true)}
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Badge className="bg-inventu-blue">Vídeo</Badge>
+                </div>
+              </div>
+            ) : media_type === 'audio' ? (
+              <div 
+                className="relative h-16 rounded-md overflow-hidden cursor-pointer bg-black/40"
+                onClick={() => setMediaDialogOpen(true)}
+              >
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Badge className="bg-inventu-blue">Áudio</Badge>
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
-      </CardContent>
-      
-      <CardFooter className="px-4 py-3 flex justify-between text-xs text-white/70">
-        <div className="flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-white/70 hover:text-white"
-            onClick={handleLike}
-            disabled={likeInProgress}
-          >
-            <Heart 
-              className={cn("h-4 w-4 mr-1", isLiked && "fill-red-500 text-red-500")} 
-            />
-            {likesCount}
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-white/70 hover:text-white"
-            onClick={handleViewComments}
-          >
-            <MessageCircle className="h-4 w-4 mr-1" />
-            {post.comments_count || 0}
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-white/70 hover:text-white"
-            onClick={handleDiscuss}
-            disabled={isCreatingDiscussion}
-          >
-            <MessageSquare className="h-4 w-4 mr-1" />
-            Discutir
-          </Button>
-        </div>
         
-        <div className="text-xs text-white/50">
-          {post.view_count || 0} visualizações
-        </div>
-      </CardFooter>
-    </Card>
-  );
-};
-
-export const NewsletterPostSkeleton = () => {
-  return (
-    <Card className="w-full max-w-md mx-auto border-white/10 bg-inventu-dark/80 backdrop-blur-sm shadow-md mb-4">
-      <CardHeader className="pb-2 pt-4">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded-full" />
-          <div className="space-y-1">
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="h-2 w-16" />
+        <div className="mt-3 flex items-center justify-between text-white/60">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <Eye className="h-4 w-4 mr-1" />
+              <span className="text-xs">{post.view_count}</span>
+            </div>
+            <div className="flex items-center">
+              <Heart className="h-4 w-4 mr-1" />
+              <span className="text-xs">{post.like_count}</span>
+            </div>
+            <div className="flex items-center">
+              <MessageSquare className="h-4 w-4 mr-1" />
+              <span className="text-xs">{post.comment_count}</span>
+            </div>
           </div>
         </div>
-      </CardHeader>
+      </div>
+
+      {/* Media dialog */}
+      <Dialog open={mediaDialogOpen} onOpenChange={setMediaDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <div className={cn(
+            "overflow-hidden",
+            media_type === 'image' || media_type === 'video' ? "aspect-video" : "h-24"
+          )}>
+            <MediaPlayer 
+              url={media_url || ''} 
+              type={media_type || 'image'} 
+              className="w-full h-full"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
       
-      <CardContent className="px-4 py-2 space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-        
-        <div className="rounded-lg overflow-hidden my-2">
-          <AspectRatio ratio={4 / 5}>
-            <Skeleton className="h-full w-full" />
-          </AspectRatio>
-        </div>
-      </CardContent>
-      
-      <CardFooter className="px-4 py-3 flex justify-between text-xs">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-4 w-10" />
-          <Skeleton className="h-4 w-10" />
-        </div>
-        <Skeleton className="h-4 w-16" />
-      </CardFooter>
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={confirmDeleteDialogOpen} onOpenChange={setConfirmDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir publicação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta publicação? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
 
-export default NewsletterPost;
+export const NewsletterPostSkeleton: React.FC = () => {
+  return (
+    <Card className="overflow-hidden bg-black/20 backdrop-blur-sm border-white/5">
+      <div className="p-4">
+        <div className="flex items-center space-x-3">
+          <div className="h-10 w-10 rounded-full bg-inventu-gray/20 animate-pulse" />
+          <div>
+            <div className="h-4 w-24 bg-inventu-gray/20 rounded animate-pulse mb-1" />
+            <div className="h-3 w-16 bg-inventu-gray/20 rounded animate-pulse" />
+          </div>
+        </div>
+        
+        <div className="mt-3 h-5 w-3/4 bg-inventu-gray/20 rounded animate-pulse" />
+        <div className="mt-2 space-y-1.5">
+          <div className="h-3 w-full bg-inventu-gray/20 rounded animate-pulse" />
+          <div className="h-3 w-11/12 bg-inventu-gray/20 rounded animate-pulse" />
+          <div className="h-3 w-4/5 bg-inventu-gray/20 rounded animate-pulse" />
+        </div>
+        
+        <div className="mt-3 h-32 w-full bg-inventu-gray/20 rounded animate-pulse" />
+        
+        <div className="mt-3 flex justify-between">
+          <div className="h-4 w-20 bg-inventu-gray/20 rounded animate-pulse" />
+          <div className="h-4 w-16 bg-inventu-gray/20 rounded animate-pulse" />
+        </div>
+      </div>
+    </Card>
+  );
+};

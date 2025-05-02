@@ -25,6 +25,8 @@ export function useConversation() {
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   // Rastrear o último ID de conversa carregado para evitar carregamentos redundantes
   const lastLoadedConversationRef = useRef<string | null>(null);
+  // Flag to prevent multiple conversation deletion operations
+  const deletingRef = useRef(false);
   
   const { 
     conversations,
@@ -220,32 +222,79 @@ export function useConversation() {
   // Excluir conversa com atualização de navegação
   const handleDeleteConversation = async (id: string) => {
     try {
-      if (id === currentConversationId) {
-        // Limpar mensagens antes de excluir a conversa atual
-        clearMessages();
-        // Resetar o ID da conversa atual e navegar para a página inicial
-        setCurrentConversationId(null);
-        navigate('/', { replace: true });
+      // Prevent multiple delete operations
+      if (deletingRef.current) {
+        console.log('[useConversation] Exclusão já em andamento, ignorando requisição');
+        return false;
       }
       
-      const result = await deleteConversation(
-        id, 
-        setLoading, 
-        removeConversation,
-        setError
-      );
+      deletingRef.current = true;
       
-      // Se esta foi a conversa atual, forçar uma atualização quando uma nova for selecionada
+      // Clear messages and reset current conversation ID first
+      clearMessages();
+      
       if (id === currentConversationId) {
+        // Resetar o ID da conversa atual
+        setCurrentConversationId(null);
         lastLoadedConversationRef.current = null;
         setInitialLoadDone(false);
+        
+        // Get next available conversation
+        const nextConversation = conversations.find(conv => conv.id !== id);
+        
+        // Delete the current conversation
+        const result = await deleteConversation(
+          id, 
+          setLoading, 
+          removeConversation,
+          setError
+        );
+        
+        if (!result) {
+          console.error('[useConversation] Falha ao excluir conversa');
+          toast.error('Erro ao excluir conversa');
+          return false;
+        }
+        
+        // Navigate to the next conversation or home page
+        if (nextConversation) {
+          console.log(`[useConversation] Navegando para próxima conversa: ${nextConversation.id}`);
+          // Use setTimeout to ensure UI updates before navigation
+          setTimeout(() => {
+            navigateToConversation(nextConversation.id);
+          }, 100);
+        } else {
+          console.log('[useConversation] Não há mais conversas, navegando para página inicial');
+          // Use setTimeout to ensure UI updates before navigation
+          setTimeout(() => {
+            navigate('/', { replace: true });
+          }, 100);
+        }
+      } else {
+        // For non-active conversations, just delete
+        const result = await deleteConversation(
+          id, 
+          setLoading, 
+          removeConversation,
+          setError
+        );
+        
+        if (!result) {
+          console.error('[useConversation] Falha ao excluir conversa');
+          toast.error('Erro ao excluir conversa');
+          return false;
+        }
       }
       
-      return result;
+      toast.success('Conversa excluída com sucesso');
+      return true;
     } catch (err) {
       console.error('[useConversation] Erro ao excluir conversa:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
+      toast.error('Erro ao excluir conversa');
       return false;
+    } finally {
+      deletingRef.current = false;
     }
   };
 

@@ -6,6 +6,7 @@ import { Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AppHeaderProps {
   sidebarOpen?: boolean;
@@ -41,11 +42,11 @@ const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar, tit
               />
             </Link>
             
-            {title && !isMobile && (
-              <div className="hidden md:block">
+            {title && (
+              <div className="md:block">
                 <div className="flex items-center gap-1">
                   <div className="h-4 w-px bg-white/10" />
-                  <span className="text-sm font-medium text-white/70">{title}</span>
+                  <span className="text-[24px] font-medium text-white/90">{title}</span>
                 </div>
               </div>
             )}
