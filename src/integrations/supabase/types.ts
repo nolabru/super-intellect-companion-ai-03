@@ -11,49 +11,43 @@ export type Database = {
     Tables: {
       apiframe_tasks: {
         Row: {
-          created_at: string
+          created_at: string | null
           error: string | null
           id: string
           media_type: string
           media_url: string | null
           model: string
           params: Json | null
-          percentage: number | null
           prompt: string | null
           status: string
           task_id: string
-          updated_at: string
-          user_id: string | null
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           error?: string | null
           id?: string
           media_type: string
           media_url?: string | null
           model: string
           params?: Json | null
-          percentage?: number | null
           prompt?: string | null
           status?: string
           task_id: string
-          updated_at?: string
-          user_id?: string | null
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           error?: string | null
           id?: string
           media_type?: string
           media_url?: string | null
           model?: string
           params?: Json | null
-          percentage?: number | null
           prompt?: string | null
           status?: string
           task_id?: string
-          updated_at?: string
-          user_id?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -68,7 +62,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          title?: string
+          title: string
           updated_at?: string
           user_id: string
         }
@@ -81,35 +75,115 @@ export type Database = {
         }
         Relationships: []
       }
-      media_ready_events: {
+      media_analytics: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          duration: number | null
+          event_type: string
+          id: string
+          media_type: string | null
+          metadata: Json | null
+          model_id: string | null
+          task_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          duration?: number | null
+          event_type: string
+          id?: string
+          media_type?: string | null
+          metadata?: Json | null
+          model_id?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          duration?: number | null
+          event_type?: string
+          id?: string
+          media_type?: string | null
+          metadata?: Json | null
+          model_id?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      media_gallery: {
         Row: {
           created_at: string
           id: string
           media_type: string
           media_url: string
-          model: string
-          prompt: string | null
-          task_id: string
+          metadata: Json | null
+          model_id: string | null
+          prompt: string
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           media_type: string
           media_url: string
-          model: string
-          prompt?: string | null
-          task_id: string
+          metadata?: Json | null
+          model_id?: string | null
+          prompt: string
+          user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           media_type?: string
           media_url?: string
-          model?: string
+          metadata?: Json | null
+          model_id?: string | null
+          prompt?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      media_ready_events: {
+        Row: {
+          created_at: string | null
+          id: string
+          media_type: string
+          media_url: string
+          model: string | null
+          prompt: string | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          media_type: string
+          media_url: string
+          model?: string | null
+          prompt?: string | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          media_type?: string
+          media_url?: string
+          model?: string | null
           prompt?: string | null
           task_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "media_ready_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "piapi_tasks"
+            referencedColumns: ["task_id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -127,7 +201,7 @@ export type Database = {
           content: string
           conversation_id: string
           files?: string[] | null
-          id: string
+          id?: string
           media_url?: string | null
           mode: string
           model?: string | null
@@ -157,123 +231,105 @@ export type Database = {
       }
       newsletter_posts: {
         Row: {
-          author_id: string | null
+          author_id: string
           content: string
-          created_at: string
           id: string
           is_published: boolean | null
-          like_count: number | null
           media_type: string | null
           media_url: string | null
           published_at: string | null
-          share_count: number | null
-          title: string
-          updated_at: string
-          user_id: string
+          updated_at: string | null
           view_count: number | null
         }
         Insert: {
-          author_id?: string | null
+          author_id: string
           content: string
-          created_at?: string
           id?: string
           is_published?: boolean | null
-          like_count?: number | null
           media_type?: string | null
           media_url?: string | null
           published_at?: string | null
-          share_count?: number | null
-          title: string
-          updated_at?: string
-          user_id: string
+          updated_at?: string | null
           view_count?: number | null
         }
         Update: {
-          author_id?: string | null
+          author_id?: string
           content?: string
-          created_at?: string
           id?: string
           is_published?: boolean | null
-          like_count?: number | null
           media_type?: string | null
           media_url?: string | null
           published_at?: string | null
-          share_count?: number | null
-          title?: string
-          updated_at?: string
-          user_id?: string
+          updated_at?: string | null
           view_count?: number | null
         }
         Relationships: []
       }
       piapi_tasks: {
         Row: {
-          created_at: string
-          error: string | null
+          created_at: string | null
           id: string
           media_type: string
           media_url: string | null
           model: string
           params: Json | null
-          percentage: number | null
           prompt: string | null
+          result: Json | null
           status: string
           task_id: string
-          updated_at: string
-          user_id: string | null
+          updated_at: string | null
         }
         Insert: {
-          created_at?: string
-          error?: string | null
+          created_at?: string | null
           id?: string
           media_type: string
           media_url?: string | null
           model: string
           params?: Json | null
-          percentage?: number | null
           prompt?: string | null
+          result?: Json | null
           status?: string
           task_id: string
-          updated_at?: string
-          user_id?: string | null
+          updated_at?: string | null
         }
         Update: {
-          created_at?: string
-          error?: string | null
+          created_at?: string | null
           id?: string
           media_type?: string
           media_url?: string | null
           model?: string
           params?: Json | null
-          percentage?: number | null
           prompt?: string | null
+          result?: Json | null
           status?: string
           task_id?: string
-          updated_at?: string
-          user_id?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
       post_comments: {
         Row: {
           content: string
-          created_at: string
+          created_at: string | null
           id: string
-          post_id: string
+          post_id: string | null
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           content: string
-          created_at?: string
+          created_at?: string | null
           id?: string
-          post_id: string
+          post_id?: string | null
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           content?: string
-          created_at?: string
+          created_at?: string | null
           id?: string
-          post_id?: string
+          post_id?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -286,23 +342,62 @@ export type Database = {
           },
         ]
       }
-      post_likes: {
+      post_discussions: {
         Row: {
+          conversation_id: string
           created_at: string
           id: string
           post_id: string
-          user_id: string
+          updated_at: string
         }
         Insert: {
+          conversation_id: string
           created_at?: string
           id?: string
           post_id: string
-          user_id: string
+          updated_at?: string
         }
         Update: {
+          conversation_id?: string
           created_at?: string
           id?: string
           post_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_discussions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_discussions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "newsletter_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -318,42 +413,54 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          created_at: string
           id: string
           is_admin: boolean | null
+          updated_at: string
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
+          created_at?: string
           id: string
           is_admin?: boolean | null
+          updated_at?: string
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
+          created_at?: string
           id?: string
           is_admin?: boolean | null
+          updated_at?: string
           username?: string | null
         }
         Relationships: []
       }
       token_consumption_rates: {
         Row: {
+          created_at: string
           id: string
           mode: string
           model_id: string
           tokens_per_request: number
+          updated_at: string
         }
         Insert: {
+          created_at?: string
           id?: string
           mode: string
           model_id: string
-          tokens_per_request?: number
+          tokens_per_request: number
+          updated_at?: string
         }
         Update: {
+          created_at?: string
           id?: string
           mode?: string
           model_id?: string
           tokens_per_request?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -392,31 +499,31 @@ export type Database = {
           created_at: string
           id: string
           key_name: string
-          source: string
+          source: string | null
           title: string | null
           updated_at: string
           user_id: string
-          value: string | null
+          value: string
         }
         Insert: {
           created_at?: string
           id?: string
           key_name: string
-          source: string
+          source?: string | null
           title?: string | null
           updated_at?: string
           user_id: string
-          value?: string | null
+          value: string
         }
         Update: {
           created_at?: string
           id?: string
           key_name?: string
-          source?: string
+          source?: string | null
           title?: string | null
           updated_at?: string
           user_id?: string
-          value?: string | null
+          value?: string
         }
         Relationships: []
       }
@@ -424,7 +531,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          next_reset_date: string | null
+          last_reset_date: string
+          next_reset_date: string
           tokens_remaining: number
           tokens_used: number
           updated_at: string
@@ -433,7 +541,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          next_reset_date?: string | null
+          last_reset_date?: string
+          next_reset_date?: string
           tokens_remaining?: number
           tokens_used?: number
           updated_at?: string
@@ -442,7 +551,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          next_reset_date?: string | null
+          last_reset_date?: string
+          next_reset_date?: string
           tokens_remaining?: number
           tokens_used?: number
           updated_at?: string
@@ -458,10 +568,6 @@ export type Database = {
       check_and_update_token_balance: {
         Args: { p_user_id: string; p_model_id: string; p_mode: string }
         Returns: boolean
-      }
-      increment_counter: {
-        Args: { row_id: string; increment_amount: number }
-        Returns: number
       }
     }
     Enums: {
