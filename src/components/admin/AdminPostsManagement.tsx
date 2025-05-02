@@ -19,10 +19,11 @@ const AdminPostsManagement: React.FC = () => {
     const fetchPosts = async () => {
       try {
         setIsLoading(true);
-        const postsData = await newsletterService.getPosts();
+        // Usar método específico para admin para garantir que todos os posts sejam carregados
+        const postsData = await newsletterAdminService.getAllPosts();
         setPosts(postsData);
       } catch (error) {
-        console.error('Error fetching posts:', error);
+        console.error('Erro ao carregar publicações:', error);
         toast.error('Erro ao carregar publicações');
       } finally {
         setIsLoading(false);
@@ -48,7 +49,7 @@ const AdminPostsManagement: React.FC = () => {
         toast.success('Publicação criada com sucesso!');
       }
     } catch (error) {
-      console.error('Error creating post:', error);
+      console.error('Erro ao criar publicação:', error);
       toast.error('Erro ao criar publicação');
     }
   };
@@ -61,7 +62,7 @@ const AdminPostsManagement: React.FC = () => {
         toast.success('Publicação excluída com sucesso');
       }
     } catch (error) {
-      console.error('Error deleting post:', error);
+      console.error('Erro ao excluir publicação:', error);
       toast.error('Erro ao excluir publicação');
     }
   };
@@ -110,6 +111,7 @@ const AdminPostsManagement: React.FC = () => {
                     key={post.id} 
                     post={post}
                     onDelete={handleDeletePost}
+                    isAdmin={true}
                   />
                 ))}
               </div>

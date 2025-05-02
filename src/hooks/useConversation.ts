@@ -1,3 +1,4 @@
+
 import { useConversationState } from './useConversationState';
 import { useConversationMessages } from './useConversationMessages';
 import { useMessageHandler } from './useMessageHandler';
@@ -69,7 +70,7 @@ export function useConversation() {
     
     // Add a delayed assistant response
     setTimeout(() => {
-      addAssistantMessage("This is a stubbed response. Messaging functionality is not fully implemented.");
+      addAssistantMessage("Esta é uma resposta de demonstração. A funcionalidade de mensagens não está totalmente implementada.");
     }, 1000);
     
     return true;
@@ -208,27 +209,24 @@ export function useConversation() {
         setCurrentConversationId(data.id);
         navigateToNewConversation(data.id);
         
-        toast.success('Nova conversa criada');
         return true;
       } else {
         console.error('[useConversation] Falha ao criar nova conversa');
-        toast.error('Erro ao criar nova conversa');
         return false;
       }
     } catch (err) {
       console.error('[useConversation] Erro ao criar nova conversa:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa');
-      toast.error('Erro ao criar nova conversa');
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  // Excluir conversa com atualização de navegação
+  // CORRIGIDO: Excluir conversa com navegação melhorada para evitar congelamento
   const handleDeleteConversation = async (id: string) => {
     try {
-      // Prevent multiple delete operations
+      // Prevenir múltiplas operações de exclusão simultâneas
       if (deletingRef.current) {
         console.log('[useConversation] Exclusão já em andamento, ignorando requisição');
         return false;
@@ -236,71 +234,59 @@ export function useConversation() {
       
       deletingRef.current = true;
       
-      // Clear messages and reset current conversation ID first
-      clearMessages();
+      // Identificar próxima conversa disponível antes de excluir
+      const nextConversation = conversations.find(conv => conv.id !== id);
+      const isCurrentConversation = id === currentConversationId;
       
-      if (id === currentConversationId) {
-        // Resetar o ID da conversa atual
+      // Limpar mensagens para resposta visual imediata
+      if (isCurrentConversation) {
+        clearMessages();
         setCurrentConversationId(null);
         lastLoadedConversationRef.current = null;
         setInitialLoadDone(false);
-        
-        // Get next available conversation
-        const nextConversation = conversations.find(conv => conv.id !== id);
-        
-        // Delete the current conversation
-        const result = await deleteConversation(
-          id, 
-          setLoading, 
-          removeConversation,
-          setError
-        );
-        
-        if (!result) {
-          console.error('[useConversation] Falha ao excluir conversa');
-          toast.error('Erro ao excluir conversa');
-          return false;
-        }
-        
-        // Navigate to the next conversation or home page
-        if (nextConversation) {
-          console.log(`[useConversation] Navegando para próxima conversa: ${nextConversation.id}`);
-          // Use setTimeout to ensure UI updates before navigation
-          setTimeout(() => {
-            navigateToConversation(nextConversation.id);
-          }, 100);
-        } else {
-          console.log('[useConversation] Não há mais conversas, navegando para página inicial');
-          // Use setTimeout to ensure UI updates before navigation
-          setTimeout(() => {
-            navigate('/', { replace: true });
-          }, 100);
-        }
-      } else {
-        // For non-active conversations, just delete
-        const result = await deleteConversation(
-          id, 
-          setLoading, 
-          removeConversation,
-          setError
-        );
-        
-        if (!result) {
-          console.error('[useConversation] Falha ao excluir conversa');
-          toast.error('Erro ao excluir conversa');
-          return false;
-        }
       }
       
-      toast.success('Conversa excluída com sucesso');
+      // Excluir a conversa do banco de dados
+      const result = await deleteConversation(
+        id, 
+        setLoading, 
+        removeConversation,
+        setError
+      );
+      
+      if (!result) {
+        console.error('[useConversation] Falha ao excluir conversa');
+        deletingRef.current = false;
+        return false;
+      }
+      
+      // Navegação após exclusão bem-sucedida
+      if (isCurrentConversation) {
+        if (nextConversation) {
+          console.log(`[useConversation] Navegando para próxima conversa: ${nextConversation.id}`);
+          navigate('/', { replace: true });
+          
+          // Aguardar que a navegação seja concluída antes de atualizar o estado
+          setTimeout(() => {
+            setCurrentConversationId(nextConversation.id);
+            navigate(`/c/${nextConversation.id}`, { replace: true });
+            deletingRef.current = false;
+          }, 50);
+        } else {
+          console.log('[useConversation] Não há mais conversas, navegando para página inicial');
+          navigate('/', { replace: true });
+          deletingRef.current = false;
+        }
+      } else {
+        deletingRef.current = false;
+      }
+      
       return true;
     } catch (err) {
       console.error('[useConversation] Erro ao excluir conversa:', err);
       setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
-      toast.error('Erro ao excluir conversa');
-      return false;
-    } finally {
       deletingRef.current = false;
+      return false;
     }
   };
 

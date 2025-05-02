@@ -19,7 +19,7 @@ export const aiService = {
       
       return response.data;
     } catch (err) {
-      console.error('Error generating AI response:', err);
+      console.error('Erro ao gerar resposta IA:', err);
       throw err;
     }
   },
@@ -45,7 +45,7 @@ export const aiService = {
         }
       ];
     } catch (error) {
-      console.error('Error fetching available models:', error);
+      console.error('Erro ao buscar modelos disponíveis:', error);
       return [];
     }
   }

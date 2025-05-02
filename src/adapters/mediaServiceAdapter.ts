@@ -1,82 +1,69 @@
 
-import { useState, useCallback } from 'react';
-import { Task } from '@/hooks/useTaskManager';
-import { toast } from 'sonner';
+import { useMediaGeneration } from '@/hooks/useMediaGeneration';
+import { useApiframeGeneration } from '@/hooks/useApiframeGeneration';
+import { MediaGenerationParams, MediaServiceOptions } from '@/types/mediaGeneration';
 
-export interface MediaServiceOptions {
-  service: 'piapi' | 'auto';
-  showToasts?: boolean;
-  onTaskUpdate?: (task: Task) => void;
-}
+// Adaptador para unificar diferentes serviços de geração de mídia
+export function useMediaServiceAdapter(provider: 'piapi' | 'apiframe', options: MediaServiceOptions = { showToasts: true }) {
+  // Hooks para os diferentes serviços
+  const piapiService = useMediaGeneration(options);
+  const apiframeService = useApiframeGeneration(options);
 
-/**
- * Adapter for various media generation services
- * Creates a standardized interface regardless of underlying service
- */
-export function useMediaServiceAdapter(options: MediaServiceOptions = { service: 'auto' }) {
-  const {
-    service = 'auto',
-    showToasts = true,
-    onTaskUpdate
-  } = options;
+  // Determinar o serviço a ser usado com base no provedor
+  const service = provider === 'piapi' ? piapiService : apiframeService;
   
-  const [tasks, setTasks] = useState<Record<string, Task>>({});
-  const [activeTasks, setActiveTasks] = useState<string[]>([]);
-  const [queue, setQueue] = useState<string[]>([]);
+  // Gerar mídia usando o serviço selecionado
+  const generateMedia = async (
+    type: 'image' | 'video' | 'audio',
+    prompt: string,
+    model: string,
+    params: MediaGenerationParams = {},
+    referenceUrl?: string
+  ) => {
+    return await service.generateMedia(prompt, type, model, params, referenceUrl);
+  };
 
-  // Main public methods
-  return {
-    // Main method to generate any type of media
-    generateMedia: (
-      type: 'image' | 'video' | 'audio',
-      prompt: string,
-      model: string,
-      params: any = {},
-      referenceUrl?: string
-    ): string => {
-      const taskId = `task_${Date.now()}`;
-      
-      if (showToasts) {
-        toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} generation started`, {
-          description: 'Your request has been queued'
-        });
-      }
-      
-      return taskId;
-    },
-    
-    // Shortcuts for specific media types
-    generateImage: (prompt: string, model: string, params?: any, referenceUrl?: string): string => 
-      `task_${Date.now()}`,
-      
-    generateVideo: (prompt: string, model: string, params?: any, referenceUrl?: string): string => 
-      `task_${Date.now()}`,
-      
-    generateAudio: (prompt: string, model: string, params?: any, referenceUrl?: string): string => 
-      `task_${Date.now()}`,
-    
-    // Task management methods
-    cancelTask: (taskId: string): boolean => true,
-    getTask: (taskId: string): Task | undefined => undefined,
-    getTaskStatus: (taskId: string): Task | undefined => undefined,
-    getAllTasks: (): Task[] => [],
-    getActiveTasks: (): Task[] => [],
-    getTaskQueue: (): string[] => [],
-    
-    // Service configuration methods
-    configureApiKey: (key: string, service: 'piapi' = 'piapi'): boolean => {
-      try {
-        localStorage.setItem('piapi_api_key', key);
-        return true;
-      } catch (error) {
-        console.error('Error setting API key:', error);
-        return false;
-      }
-    },
-    
-    isApiKeyConfigured: (service: 'piapi' = 'piapi'): boolean => {
-      const key = localStorage.getItem('piapi_api_key');
-      return !!key;
+  // Cancelar geração em andamento (apenas para PIAPI)
+  const cancelGeneration = async () => {
+    if (provider === 'piapi' && 'cancelGeneration' in service) {
+      return await piapiService.cancelGeneration();
     }
+    return false;
+  };
+
+  // Verificar status da tarefa (apenas para PIAPI)
+  const checkTaskStatus = async (taskId: string, type: 'image' | 'video' | 'audio') => {
+    if (provider === 'piapi' && 'checkTaskStatus' in piapiService) {
+      return await piapiService.checkTaskStatus(taskId, type);
+    }
+    return null;
+  };
+
+  // Configurar chave API (apenas para APIframe)
+  const configureApiKey = (apiKey: string): boolean => {
+    if (provider === 'apiframe' && 'configureApiKey' in apiframeService) {
+      return apiframeService.configureApiKey(apiKey);
+    }
+    return false;
+  };
+
+  // Verificar se a chave API está configurada (apenas para APIframe)
+  const isApiKeyConfigured = (): boolean => {
+    if (provider === 'apiframe' && 'isApiKeyConfigured' in apiframeService) {
+      return apiframeService.isApiKeyConfigured();
+    }
+    return false;
+  };
+
+  return {
+    isGenerating: service.isGenerating,
+    taskProgress: 'taskProgress' in piapiService ? piapiService.taskProgress : 0,
+    currentTask: 'currentTask' in piapiService ? piapiService.currentTask : null,
+    generatedMediaUrl: 'generatedMediaUrl' in piapiService ? piapiService.generatedMediaUrl : null,
+    generateMedia,
+    cancelGeneration,
+    checkTaskStatus,
+    configureApiKey,
+    isApiKeyConfigured
   };
 }

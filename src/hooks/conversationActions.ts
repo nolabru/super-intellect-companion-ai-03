@@ -114,7 +114,7 @@ export const createNewConversation = async (
   }
 };
 
-// Excluir conversa
+// Excluir conversa - CORRIGIDO para evitar congelamento
 export const deleteConversation = async (
   id: string,
   setLoading: (loading: boolean) => void,
@@ -142,6 +142,8 @@ export const deleteConversation = async (
     }
     
     console.log(`[conversationActions] Conversa ${id} excluída com sucesso`);
+    
+    // Primeiro atualize o estado para garantir que a UI seja atualizada
     removeConversation(id);
     toast.success('Conversa excluída com sucesso');
     return true;

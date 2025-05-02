@@ -1,191 +1,125 @@
 
-import { useCallback, useState } from 'react';
-import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Task } from '@/hooks/useTaskManager';
+import { MediaGenerationParams, MediaGenerationTask } from '@/types/mediaGeneration';
+import { supabase } from '@/integrations/supabase/client';
+import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 
 interface UnifiedMediaGenerationOptions {
-  autoRetry?: boolean;
-  maxRetries?: number;
-  retryDelay?: number;
   showToasts?: boolean;
-  onProgress?: (progress: number) => void;
   onComplete?: (mediaUrl: string) => void;
   onError?: (error: string) => void;
 }
 
-/**
- * Unified hook for generating all types of media in a consistent way
- */
 export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions = {}) {
-  const {
-    autoRetry = true,
-    maxRetries = 2,
-    retryDelay = 2000,
-    showToasts = true,
-    onProgress,
-    onComplete,
-    onError
-  } = options;
-
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
-  const [currentTask, setCurrentTask] = useState<Task | null>(null);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [generatedMedia, setGeneratedMedia] = useState<{
-    type: 'image' | 'video' | 'audio';
-    url: string;
-  } | null>(null);
+  const { showToasts = true, onComplete, onError } = options;
   
-  const mediaService = useMediaServiceAdapter({
-    service: 'auto',
-    showToasts: false,
+  // Estado
+  const [activeProvider, setActiveProvider] = useState<'piapi'>('piapi');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentTask, setCurrentTask] = useState<MediaGenerationTask | null>(null);
+  const [generatedMediaUrl, setGeneratedMediaUrl] = useState<string | null>(null);
+  
+  // Usar o adaptador de serviço de mídia
+  const mediaService = useMediaServiceAdapter(activeProvider, {
+    showToasts,
     onTaskUpdate: (task) => {
-      if (task.id !== currentTaskId) return;
-      
       setCurrentTask(task);
       
-      if (onProgress && task.progress) {
-        onProgress(task.progress);
-      }
-      
-      if (task.status === 'completed' && task.result) {
+      if (task.status === 'completed' && task.mediaUrl) {
+        setGeneratedMediaUrl(task.mediaUrl);
         setIsGenerating(false);
-        setGeneratedMedia({
-          type: task.type as any,
-          url: task.result
-        });
-        
-        if (showToasts) {
-          toast.success(`${task.type.charAt(0).toUpperCase() + task.type.slice(1)} generated successfully`);
-        }
-        
         if (onComplete) {
-          onComplete(task.result);
+          onComplete(task.mediaUrl);
         }
-      } else if (task.status === 'failed' || task.status === 'canceled') {
+      } else if (task.status === 'failed') {
         setIsGenerating(false);
-        
-        if (task.status === 'failed' && autoRetry && task.metadata?.retryCount < maxRetries) {
-          // Auto retry failed tasks
-          setTimeout(() => {
-            if (showToasts) {
-              toast.info(`Retry attempt ${(task.metadata?.retryCount || 0) + 1}/${maxRetries}`);
-            }
-            
-            retryGeneration(task);
-          }, retryDelay);
-        } else if (task.status === 'failed') {
-          if (showToasts) {
-            toast.error(`Failed to generate ${task.type}`, {
-              description: task.error || 'Unknown error'
-            });
-          }
-          
-          if (onError) {
-            onError(task.error || 'Unknown error');
-          }
+        if (onError && task.error) {
+          onError(task.error);
         }
       }
     }
   });
   
-  const retryGeneration = useCallback((task: Task) => {
-    if (!task) return;
-    
-    // Create a new task with same parameters but increment retry count
-    const newTaskId = mediaService.generateMedia(
-      task.type as any,
-      task.prompt,
-      task.model,
-      task.metadata?.params,
-      task.metadata?.referenceUrl
-    );
-    
-    setCurrentTaskId(newTaskId);
-    setIsGenerating(true);
-    
-    const newTask = mediaService.getTaskStatus(newTaskId);
-    
-    if (newTask) {
-      mediaService.getTaskStatus(newTaskId)!.metadata = {
-        ...task.metadata,
-        retryCount: (task.metadata?.retryCount || 0) + 1
-      };
-    }
-  }, [mediaService]);
-
-  const generateMedia = useCallback((
+  // Gerar mídia usando o provedor ativo
+  const generateMedia = useCallback(async (
     type: 'image' | 'video' | 'audio',
     prompt: string,
     model: string,
-    params: any = {},
+    params: MediaGenerationParams = {},
     referenceUrl?: string
   ) => {
-    setIsGenerating(true);
-    setGeneratedMedia(null);
-    
-    const taskId = mediaService.generateMedia(
-      type,
-      prompt,
-      model,
-      params,
-      referenceUrl
-    );
-    
-    setCurrentTaskId(taskId);
-    
-    // Set initial metadata
-    const task = mediaService.getTaskStatus(taskId);
-    if (task) {
-      mediaService.getTaskStatus(taskId)!.metadata = {
-        ...task.metadata,
-        retryCount: 0
-      };
-    }
-    
-    if (showToasts) {
-      toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} generation started`);
-    }
-    
-    return taskId;
-  }, [mediaService, showToasts]);
-  
-  const cancelGeneration = useCallback(() => {
-    if (!currentTaskId) return false;
-    
-    const result = mediaService.cancelTask(currentTaskId);
-    
-    if (result) {
+    try {
+      setIsGenerating(true);
+      setGeneratedMediaUrl(null);
+      
+      const result = await mediaService.generateMedia(type, prompt, model, params, referenceUrl);
+      
+      if (!result.success) {
+        setIsGenerating(false);
+        if (onError) {
+          onError(result.error || 'Erro desconhecido ao gerar mídia');
+        }
+        return result;
+      }
+      
+      return result;
+    } catch (error) {
       setIsGenerating(false);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       
       if (showToasts) {
-        toast.info('Generation canceled');
+        toast.error(`Erro ao gerar mídia: ${errorMessage}`);
       }
+      
+      if (onError) {
+        onError(errorMessage);
+      }
+      
+      console.error('Erro ao gerar mídia unificada:', error);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  }, [mediaService, onComplete, onError, showToasts]);
+  
+  // Cancelar geração em andamento
+  const cancelGeneration = useCallback(async () => {
+    try {
+      if (activeProvider === 'piapi') {
+        return await mediaService.cancelGeneration();
+      }
+      return false;
+    } catch (error) {
+      console.error('Erro ao cancelar geração:', error);
+      return false;
+    }
+  }, [activeProvider, mediaService]);
+  
+  // Trocar provedor de mídia
+  const switchProvider = useCallback((provider: 'piapi') => {
+    if (isGenerating) {
+      if (showToasts) {
+        toast.error('Não é possível trocar o provedor durante uma geração');
+      }
+      return false;
     }
     
-    return result;
-  }, [currentTaskId, mediaService, showToasts]);
+    setActiveProvider(provider);
+    return true;
+  }, [isGenerating, showToasts]);
   
   return {
-    // Main methods
-    generateMedia,
-    generateImage: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('image', prompt, model, params, referenceUrl),
-    generateVideo: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('video', prompt, model, params, referenceUrl),
-    generateAudio: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('audio', prompt, model, params, referenceUrl),
-    cancelGeneration,
-    
-    // State
+    // Estado
+    activeProvider,
     isGenerating,
     currentTask,
-    generatedMedia,
+    generatedMediaUrl,
     
-    // Config methods
-    configureApiKey: (key: string, service: 'apiframe' | 'piapi' = 'apiframe') => 
-      mediaService.configureApiKey(key, service),
-    isApiKeyConfigured: (service: 'apiframe' | 'piapi' = 'apiframe') => 
-      mediaService.isApiKeyConfigured(service)
+    // Ações
+    generateMedia,
+    cancelGeneration,
+    switchProvider
   };
 }

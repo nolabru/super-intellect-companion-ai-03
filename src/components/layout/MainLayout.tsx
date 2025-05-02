@@ -1,40 +1,60 @@
 
 import React, { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
-import AppHeader from '@/components/AppHeader';
-import { useAuth } from '@/contexts/AuthContext';
+import MainHeader from './MainHeader';
+import UserMenu from '../UserMenu';
+import { ModeToggle } from '../ModeToggle';
+import { Button } from '@/components/ui/button';
+import { Menu, X } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
+  title?: string;
   sidebarOpen?: boolean;
   onToggleSidebar?: () => void;
   isTouchDevice?: boolean;
-  title?: string;
-  showHeader?: boolean;
+  fullHeight?: boolean;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({
   children,
-  sidebarOpen = false,
+  title,
+  sidebarOpen,
   onToggleSidebar,
   isTouchDevice = false,
-  title,
-  showHeader = true
+  fullHeight = true,
 }) => {
   return (
-    <div className={cn(
-      "flex flex-col h-[100vh] w-full overflow-hidden bg-inventu-darker",
-      isTouchDevice && "touch-action-pan-y" // Enable native scrolling on touch devices
-    )}>
-      {showHeader && (
-        <AppHeader 
-          sidebarOpen={sidebarOpen} 
-          onToggleSidebar={onToggleSidebar} 
-          title={title}
-        />
-      )}
+    <div className={`flex flex-col ${fullHeight ? 'min-h-screen' : ''}`}>
+      <MainHeader>
+        <div className="flex items-center">
+          {onToggleSidebar && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleSidebar}
+              className="mr-2"
+              aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
+            >
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          )}
+          
+          {title && (
+            <h1 className="text-xl font-medium text-white">{title}</h1>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <UserMenu />
+        </div>
+      </MainHeader>
       
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      {/* Conteúdo principal com padding padronizado */}
+      <div className="flex-1 p-6">
+        {title && !onToggleSidebar && (
+          <h1 className="text-xl font-medium text-white mb-6">{title}</h1>
+        )}
         {children}
       </div>
     </div>

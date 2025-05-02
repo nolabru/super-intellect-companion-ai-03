@@ -1,6 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 import { MessageType } from '@/components/ChatMessage';
-import { toast } from 'sonner';
 import { ConversationType, DbOperationResult } from '@/types/conversation';
 
 // Save message to database - Improved with better error handling
@@ -189,7 +188,6 @@ export const createConversation = async (): Promise<DbOperationResult<Conversati
     
     if (data && data.length > 0) {
       console.log('[conversationUtils] Nova conversa criada:', data[0].id);
-      toast.success('Nova conversa criada');
       return { data: data[0], error: null, success: true };
     }
     
@@ -197,7 +195,6 @@ export const createConversation = async (): Promise<DbOperationResult<Conversati
     return { data: null, error: "Não foi possível criar a conversa", success: false };
   } catch (err) {
     console.error('[conversationUtils] Erro ao criar conversa:', err);
-    toast.error('Erro ao criar nova conversa');
     return { 
       data: null, 
       error: err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa',
@@ -239,11 +236,9 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
     }
     
     console.log(`[conversationUtils] Conversa ${id} excluída com sucesso`);
-    toast.success('Conversa excluída com sucesso');
     return { data: null, error: null, success: true };
   } catch (err) {
     console.error('[conversationUtils] Erro ao excluir conversa:', err);
-    toast.error('Erro ao excluir conversa');
     return { 
       success: false, 
       error: err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa',
@@ -275,11 +270,9 @@ export const renameConversation = async (id: string, newTitle: string): Promise<
     }
     
     console.log(`[conversationUtils] Conversa ${id} renomeada com sucesso`);
-    toast.success('Conversa renomeada com sucesso');
     return { success: true, error: null, data: null };
   } catch (err) {
     console.error('[conversationUtils] Erro ao renomear conversa:', err);
-    toast.error('Erro ao renomear conversa');
     return { 
       success: false, 
       error: err instanceof Error ? err.message : 'Erro desconhecido ao renomear conversa',

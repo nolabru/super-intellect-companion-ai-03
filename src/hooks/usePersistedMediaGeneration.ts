@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
+import { MediaGenerationTask } from '@/types/mediaGeneration';
 
 interface PersistedMediaGenerationOptions {
   showToasts?: boolean;
@@ -12,14 +13,14 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
   const { showToasts = true, onComplete, onError } = options;
   
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentTask, setCurrentTask] = useState<any | null>(null);
-  const [persistedTask, setPersistedTask] = useState<any | null>(null);
+  const [currentTask, setCurrentTask] = useState<MediaGenerationTask | null>(null);
+  const [persistedTask, setPersistedTask] = useState<MediaGenerationTask | null>(null);
   const [generatedMedia, setGeneratedMedia] = useState<{
     type: 'image' | 'video' | 'audio';
     url: string;
   } | null>(null);
   
-  // Simple stub for persisted media generation
+  // Simples stub para geração de mídia persistida
   const generateMedia = useCallback((
     type: 'image' | 'video' | 'audio',
     prompt: string,
@@ -27,18 +28,57 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
     params: any = {},
     referenceUrl?: string
   ) => {
-    if (showToasts) {
-      toast.info('Media generation is currently unavailable');
+    try {
+      setIsGenerating(true);
+      
+      // Criar tarefa simulada
+      const taskId = `task-${Date.now()}`;
+      const task: MediaGenerationTask = {
+        taskId,
+        type,
+        status: 'pending',
+        prompt,
+        model,
+        progress: 0,
+        metadata: params,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      setCurrentTask(task);
+      setPersistedTask(task);
+      
+      // Simular processamento
+      setTimeout(() => {
+        if (showToasts) {
+          toast.info('Geração de mídia não está disponível nesta versão');
+        }
+        
+        setIsGenerating(false);
+        setCurrentTask(null);
+        
+        if (onError) {
+          onError('Serviço de geração de mídia não disponível nesta versão');
+        }
+      }, 1500);
+      
+      return taskId;
+    } catch (error) {
+      setIsGenerating(false);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido na geração de mídia';
+      
+      if (showToasts) {
+        toast.error(`Erro: ${errorMessage}`);
+      }
+      
+      if (onError) {
+        onError(errorMessage);
+      }
+      
+      return null;
     }
-    
-    setIsGenerating(false);
-    
-    if (onError) {
-      onError('Media generation service is not available in this version');
-    }
-    
-    return 'task-placeholder';
-  }, [showToasts, onError]);
+  }, [onError, showToasts]);
   
   const cancelGeneration = useCallback(() => {
     setIsGenerating(false);
@@ -47,11 +87,11 @@ export function usePersistedMediaGeneration(options: PersistedMediaGenerationOpt
   }, []);
   
   return {
-    // Main methods
+    // Métodos principais
     generateMedia,
     cancelGeneration,
     
-    // State
+    // Estado
     isGenerating,
     currentTask,
     persistedTask,

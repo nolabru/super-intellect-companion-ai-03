@@ -26,75 +26,31 @@ export const useMessageSending = (
 
   const handleSendMessage = useCallback(async (
     content: string, 
-    files?: string[], 
-    params?: any, 
-    targetModel?: string
+    files?: string[]
   ) => {
-    const messageParams = params || generationParams;
-    
-    let result;
-    
-    if (comparing) {
-      if (isLinked) {
-        result = await sendMessage(
-          content, 
-          activeMode, 
-          leftModel, 
-          true, 
-          leftModel, 
-          rightModel,
-          files,
-          messageParams
-        );
-      } else {
-        if (!targetModel) {
-          console.error("Modelo alvo não especificado no modo desvinculado");
-          return;
-        }
-        
-        result = await sendMessage(
-          content,
-          activeMode,
-          targetModel,
-          true,
-          targetModel === leftModel ? leftModel : null,
-          targetModel === rightModel ? rightModel : null,
-          files,
-          messageParams
-        );
+    try {
+      // Fechar sidebar em dispositivos móveis após enviar mensagem
+      if (isMobile && sidebarOpen) {
+        setSidebarOpen(false);
       }
-    } else {
-      result = await sendMessage(
-        content, 
-        activeMode, 
-        leftModel, 
-        false,
-        leftModel, 
-        null,
-        files,
-        messageParams
-      );
+      
+      // Enviar mensagem usando a implementação simplificada
+      const result = await sendMessage(content, currentConversationId);
+      
+      if (!result) {
+        console.error("Erro ao enviar mensagem");
+        return null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error("Erro ao enviar mensagem:", error);
+      toast.error("Não foi possível enviar a mensagem");
+      return null;
     }
-    
-    // Auto-close sidebar on mobile after sending a message
-    if (isMobile && sidebarOpen) {
-      setSidebarOpen(false);
-    }
-    
-    if (result && result.success && result.modeSwitch) {
-      toast.info(`Modo alterado para ${result.modeSwitch}`);
-      return result.modeSwitch as ChatMode;
-    }
-    
-    return null;
   }, [
-    activeMode, 
-    comparing, 
-    isLinked, 
-    leftModel, 
-    rightModel, 
-    sendMessage, 
-    generationParams,
+    currentConversationId,
+    sendMessage,
     isMobile,
     sidebarOpen,
     setSidebarOpen
