@@ -1,4 +1,3 @@
-
 import { useConversationState } from './useConversationState';
 import { useConversationMessages } from './useConversationMessages';
 import { useMessageHandler } from './useMessageHandler';
@@ -61,7 +60,7 @@ export function useConversation() {
   );
 
   // Create a stubbed sendMessage handler
-  const sendMessage = async (content: string, conversationId: string | null) => {
+  const sendMessage = useCallback(async (content: string, conversationId: string | null) => {
     // Simple stub implementation
     console.log(`Sending message to conversation ${conversationId}: ${content}`);
     
@@ -74,7 +73,7 @@ export function useConversation() {
     }, 1000);
     
     return true;
-  };
+  }, [addUserMessage, addAssistantMessage]);
 
   const isSending = false;
 
