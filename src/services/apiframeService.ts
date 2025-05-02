@@ -8,7 +8,7 @@ export const apiframeService = {
   /**
    * Check if API key is configured
    */
-  isApiKeyConfigured: (): boolean => {
+  isApiKeyConfigured(): boolean {
     // We're using a server-side API key, so it's always configured
     return true;
   },
@@ -16,7 +16,7 @@ export const apiframeService = {
   /**
    * Test connection to APIframe API
    */
-  testConnection: async (): Promise<{
+  async testConnection(): Promise<{
     success: boolean;
     endpoint?: string;
     error?: string;
@@ -46,7 +46,7 @@ export const apiframeService = {
   /**
    * Generate media using APIframe
    */
-  generateMedia: async (params: any): Promise<any> {
+  async generateMedia(params: any): Promise<any> {
     const { mediaType } = params;
     let functionName = '';
     
@@ -84,7 +84,7 @@ export const apiframeService = {
   /**
    * Check media generation task status
    */
-  checkTaskStatus: async (taskId: string): Promise<any> {
+  async checkTaskStatus(taskId: string): Promise<any> {
     try {
       const response = await supabase.functions.invoke('apiframe-task-status', {
         body: { taskId }
@@ -105,7 +105,7 @@ export const apiframeService = {
   /**
    * Cancel media generation task
    */
-  cancelTask: async (taskId: string): Promise<boolean> {
+  async cancelTask(taskId: string): Promise<boolean> {
     try {
       const response = await supabase.functions.invoke('apiframe-task-cancel', {
         body: { taskId }
