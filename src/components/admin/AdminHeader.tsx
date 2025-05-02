@@ -18,9 +18,10 @@ import { Link } from 'react-router-dom';
 interface AdminHeaderProps {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  title?: string;
 }
 
-const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar }) => {
+const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar, title }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -56,13 +57,24 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ sidebarOpen, onToggleSidebar 
         </svg>
       </Button>
       
-      <Link to="/" className="flex items-center">
-        <img 
-          src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
-          alt="InventuAi Logo" 
-          className="h-8 w-auto" 
-        />
-      </Link>
+      <div className="flex items-center">
+        <Link to="/" className="flex items-center">
+          <img 
+            src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" 
+            alt="InventuAi Logo" 
+            className="h-8 w-auto" 
+          />
+        </Link>
+        
+        {title && (
+          <div className="md:block ml-4">
+            <div className="flex items-center gap-1">
+              <div className="h-4 w-px bg-white/10" />
+              <span className="text-[14px] font-medium text-white/90">{title}</span>
+            </div>
+          </div>
+        )}
+      </div>
       
       <div className="ml-auto flex items-center gap-4">
         <div className="relative hidden md:flex items-center">

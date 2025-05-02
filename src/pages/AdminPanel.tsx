@@ -37,6 +37,22 @@ const AdminPanel: React.FC = () => {
     setActiveSection(section);
   };
 
+  // Map section names to their display titles
+  const getSectionTitle = () => {
+    switch(activeSection) {
+      case 'overview': return 'Painel Administrativo';
+      case 'users': return 'Gerenciamento de Usuários';
+      case 'plans': return 'Planos e Assinaturas';
+      case 'posts': return 'Gerenciamento de Posts';
+      case 'models': return 'Modelos de IA';
+      case 'tokens': return 'Gerenciamento de Tokens';
+      case 'stats': return 'Estatísticas';
+      case 'analytics': return 'Análises';
+      case 'settings': return 'Configurações do Sistema';
+      default: return 'Painel Administrativo';
+    }
+  };
+
   return (
     <div className="flex h-screen bg-inventu-dark text-white">
       <AdminSidebar
@@ -50,6 +66,7 @@ const AdminPanel: React.FC = () => {
         <AdminHeader 
           sidebarOpen={isOpen} 
           onToggleSidebar={toggleSidebar}
+          title={getSectionTitle()}
         />
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto">

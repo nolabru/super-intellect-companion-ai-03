@@ -46,7 +46,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ sidebarOpen, onToggleSidebar, tit
               <div className="md:block">
                 <div className="flex items-center gap-1">
                   <div className="h-4 w-px bg-white/10" />
-                  <span className="text-[24px] font-medium text-white/90">{title}</span>
+                  <span className="text-[14px] font-medium text-white/90">{title}</span>
                 </div>
               </div>
             )}
