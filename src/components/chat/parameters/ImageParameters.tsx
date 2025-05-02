@@ -11,9 +11,9 @@ import {
 import { ImageParameters as ImageParamsType } from '@/types/parameters';
 import { AVAILABLE_MODELS } from '@/constants';
 
-// Get APIFrame image models from available models
+// Get image models from available models
 const IMAGE_MODELS = AVAILABLE_MODELS
-  .filter(model => model.provider === 'apiframe' && model.modes.includes('image'))
+  .filter(model => model.modes.includes('image'))
   .map(model => ({ id: model.id, name: model.displayName }));
 
 const STYLES = [
@@ -42,7 +42,7 @@ const ImageParameters: React.FC<ImageParametersProps> = ({
   initialParams 
 }) => {
   const [params, setParams] = useState<ImageParamsType>({
-    model: model || 'sdxl',
+    model: model || 'gpt-4o',
     style: initialParams?.style || 'photographic',
     aspectRatio: initialParams?.aspectRatio || '1:1'
   });
