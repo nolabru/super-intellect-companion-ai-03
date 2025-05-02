@@ -1,8 +1,10 @@
 
 export interface MediaItem {
   id: string;
-  url: string;
-  type: 'image' | 'video' | 'audio';
+  url?: string;
+  media_url?: string;
+  type?: 'image' | 'video' | 'audio';
+  media_type?: 'image' | 'video' | 'audio';
   created_at: string;
   title?: string;
   description?: string;
@@ -10,7 +12,4 @@ export interface MediaItem {
   model_id?: string;
   prompt?: string;
   metadata?: Record<string, any>;
-  // Add the missing properties
-  media_url?: string;
-  media_type?: 'image' | 'video' | 'audio';
 }

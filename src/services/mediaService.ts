@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { piapiService, PiapiMediaType, PiapiModel, PiapiParams } from './piapiService';
 import { tokenService } from './tokenService';
@@ -269,5 +268,46 @@ export const mediaService = {
       clearInterval(updateProgressInterval);
       unsubscribe();
     }, 5 * 60 * 1000); // Timeout após 5 minutos
+  }
+};
+
+/**
+ * Salva uma mídia na galeria do usuário
+ */
+export const saveToGallery = async (
+  mediaUrl: string, 
+  prompt: string, 
+  mediaType: string, 
+  modelId: string,
+  userId?: string
+): Promise<boolean> => {
+  try {
+    if (!mediaUrl) {
+      console.error('[mediaService] URL de mídia não fornecida');
+      return false;
+    }
+    
+    console.log(`[mediaService] Salvando mídia ${mediaType} na galeria`);
+    
+    const { error } = await supabase
+      .from('media_gallery')
+      .insert({
+        media_url: mediaUrl,
+        prompt,
+        media_type: mediaType,
+        model_id: modelId,
+        user_id: userId
+      });
+    
+    if (error) {
+      console.error('[mediaService] Erro ao salvar na galeria:', error);
+      return false;
+    }
+    
+    toast.success(`${mediaType === 'image' ? 'Imagem' : mediaType === 'video' ? 'Vídeo' : 'Áudio'} salvo na galeria`);
+    return true;
+  } catch (err) {
+    console.error('[mediaService] Erro ao salvar na galeria:', err);
+    return false;
   }
 };
