@@ -1,54 +1,70 @@
 
-// Define types based on the database structure we defined in the client
-import { Database } from '@/integrations/supabase/types';
-
-// Define base types from the database
-export type NewsletterPost = {
+// Define the base post type
+export interface NewsletterPost {
   id: string;
   title: string;
   content: string;
+  author_id: string | null;
   user_id: string;
-  published_at: string | null;
-  media_url: string | null;
-  media_type: 'none' | 'image' | 'video' | 'audio' | null;
-  view_count: number | null;
-  like_count: number | null;
-  share_count: number | null;
   created_at: string;
   updated_at: string;
-  is_published?: boolean;
-  author_id?: string;
-};
+  media_url?: string | null;
+  media_type?: string | null;
+  is_published: boolean;
+  published_at?: string | null;
+  view_count?: number;
+  like_count?: number;
+  share_count?: number;
+}
 
-export type PostLike = {
-  id: string;
+// Extended type with additional information
+export interface PostWithStats extends NewsletterPost {
   user_id: string;
-  post_id: string;
-  created_at: string;
-};
+  published_at: string | null;
+  view_count: number;
+  like_count: number;
+  share_count: number;
+  likes_count: number; // For backward compatibility
+  comments_count: number;
+  user_has_liked: boolean;
+}
 
-export type PostComment = {
+// Comment type
+export interface Comment {
   id: string;
   post_id: string;
   user_id: string;
   content: string;
   created_at: string;
-};
-
-// Enhanced types with additional fields
-export interface PostWithStats extends NewsletterPost {
-  likes_count?: number;
-  comments_count?: number;
-  user_has_liked?: boolean;
   author?: {
+    id: string;
     username?: string;
     avatar_url?: string;
   };
 }
 
-export type CommentWithUser = PostComment & {
-  user?: {
-    username?: string;
-    avatar_url?: string;
-  };
-};
+// Type for the newsletter service
+export interface NewsletterServiceType {
+  getPosts(): Promise<PostWithStats[]>;
+  getPostById(id: string): Promise<PostWithStats>;
+  likePost(postId: string): Promise<boolean>;
+  getComments?(postId: string): Promise<Comment[]>;
+  addComment?(postId: string, content: string): Promise<Comment>;
+  deleteComment?(commentId: string): Promise<boolean>;
+  incrementViewCount?(postId: string): Promise<boolean>;
+}
+
+// Type for the admin newsletter service
+export interface AdminNewsletterServiceType {
+  getAllPosts(): Promise<PostWithStats[]>;
+  createPost(postData: { title: string; content: string; mediaUrl?: string; mediaType?: string; isPublished?: boolean; }): Promise<PostWithStats>;
+  updatePost(postId: string, postData: Partial<PostWithStats>): Promise<PostWithStats>;
+  deletePost(postId: string): Promise<boolean>;
+}
+
+// Define the properties for the NewsletterPost component
+export interface NewsletterPostProps {
+  post: PostWithStats;
+  onDelete?: (postId: string) => void;
+  isAdmin?: boolean; // Optional prop to show admin actions
+}

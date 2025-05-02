@@ -7,19 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Clock, Trash } from 'lucide-react';
 
 const MediaHistory: React.FC = () => {
-  const { tasks, state, clearTask } = useMediaContext();
+  const { tasks, clearTask } = useMediaContext();
   
-  // Fallback if state is not properly initialized
-  if (!state || !state.recentTasks || !state.tasks) {
-    return null;
-  }
-  
-  // Get recent tasks sorted by creation time
-  const recentTasks = state.recentTasks
-    .map(id => state.tasks[id])
-    .filter(Boolean);
-  
-  if (recentTasks.length === 0) {
+  // If there are no tasks, return null
+  if (!tasks || tasks.length === 0) {
     return null;
   }
   
@@ -35,7 +26,7 @@ const MediaHistory: React.FC = () => {
       <CardContent className="p-0">
         <ScrollArea className="max-h-[300px] overflow-y-auto">
           <div className="space-y-1">
-            {recentTasks.map(task => (
+            {tasks.map(task => (
               <div 
                 key={task.id} 
                 className="flex items-center gap-2 p-3 hover:bg-muted/50"
@@ -47,8 +38,13 @@ const MediaHistory: React.FC = () => {
                   <div className="text-xs text-muted-foreground flex gap-2">
                     <span>{task.type}</span>
                     <span>•</span>
-                    <span>{task.model}</span>
-                    <span>•</span>
+                    {/* Only use task.model if it exists */}
+                    {task.model && (
+                      <>
+                        <span>{task.model}</span>
+                        <span>•</span>
+                      </>
+                    )}
                     <span>
                       {task.status === 'completed' ? 'Completed' :
                        task.status === 'failed' ? 'Failed' :

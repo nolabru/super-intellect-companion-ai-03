@@ -37,14 +37,8 @@ const AdminPostsManagement: React.FC = () => {
     try {
       const newPost = await newsletterAdminService.createPost(postData);
       if (newPost) {
-        // Add necessary fields to match PostWithStats type
-        const enhancedPost: PostWithStats = {
-          ...newPost,
-          likes_count: 0,
-          comments_count: 0,
-          user_has_liked: false
-        };
-        setPosts(prev => [enhancedPost, ...prev]);
+        // Add the new post to the existing posts array with proper typing
+        setPosts(prev => [newPost as PostWithStats, ...prev]);
         setActiveTab('manage');
         toast.success('Publicação criada com sucesso!');
       }

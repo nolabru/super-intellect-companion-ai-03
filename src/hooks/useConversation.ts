@@ -1,3 +1,4 @@
+
 import { useConversationState } from './useConversationState';
 import { useConversationMessages } from './useConversationMessages';
 import { useMessageHandler } from './useMessageHandler';
@@ -65,12 +66,19 @@ export function useConversation() {
     // Simple stub implementation
     console.log(`Sending message to conversation ${conversationId}: ${content}`);
     
-    // Add user message
-    const userMessage = addUserMessage(content);
+    // Add user message - using the existing addUserMessage from messagesState
+    const userMessage = addUserMessage(content, 'text');
     
     // Add a delayed assistant response
     setTimeout(() => {
-      addAssistantMessage("Esta é uma resposta de demonstração. A funcionalidade de mensagens não está totalmente implementada.");
+      const assistantMessage = {
+        id: `msg_${Date.now()}`,
+        content: "Esta é uma resposta de demonstração. A funcionalidade de mensagens não está totalmente implementada.",
+        sender: 'assistant',
+        timestamp: new Date().toISOString(),
+        mode: 'text'
+      };
+      addAssistantMessage(assistantMessage);
     }, 1000);
     
     return true;
@@ -310,21 +318,6 @@ export function useConversation() {
       content
     );
   };
-
-  // Create a stubbed addUserMessage handler
-  const addUserMessage = useCallback((content: string) => {
-    return { id: `msg_${Date.now()}`, content, role: 'user' as MessageType };
-  }, []);
-  
-  // Create a stubbed addAssistantMessage handler
-  const addAssistantMessage = useCallback((content: string) => {
-    return { id: `msg_${Date.now()}`, content, role: 'assistant' as MessageType };
-  }, []);
-  
-  // Create a stubbed addErrorMessage handler
-  const addErrorMessage = useCallback((content: string) => {
-    return { id: `msg_${Date.now()}`, content, role: 'error' as MessageType };
-  }, []);
   
   return {
     // Estado

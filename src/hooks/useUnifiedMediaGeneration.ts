@@ -1,125 +1,107 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { MediaGenerationParams, MediaGenerationTask } from '@/types/mediaGeneration';
-import { supabase } from '@/integrations/supabase/client';
-import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
+import { v4 as uuidv4 } from 'uuid';
+import { useMediaContext } from '@/contexts/MediaContext';
+import useMediaServiceAdapter from '@/adapters/mediaServiceAdapter';
 
-interface UnifiedMediaGenerationOptions {
-  showToasts?: boolean;
-  onComplete?: (mediaUrl: string) => void;
-  onError?: (error: string) => void;
-}
+type MediaType = 'image' | 'video' | 'audio';
 
-export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions = {}) {
-  const { showToasts = true, onComplete, onError } = options;
+export function useUnifiedMediaGeneration() {
+  const [generating, setGenerating] = useState<boolean>(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const { addTask, updateTask } = useMediaContext();
   
-  // Estado
-  const [activeProvider, setActiveProvider] = useState<'piapi'>('piapi');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [currentTask, setCurrentTask] = useState<MediaGenerationTask | null>(null);
-  const [generatedMediaUrl, setGeneratedMediaUrl] = useState<string | null>(null);
-  
-  // Usar o adaptador de serviço de mídia
-  const mediaService = useMediaServiceAdapter(activeProvider, {
-    showToasts,
-    onTaskUpdate: (task: any) => {
-      setCurrentTask(task);
-      
-      if (task.status === 'completed' && task.mediaUrl) {
-        setGeneratedMediaUrl(task.mediaUrl);
-        setIsGenerating(false);
-        if (onComplete) {
-          onComplete(task.mediaUrl);
-        }
-      } else if (task.status === 'failed') {
-        setIsGenerating(false);
-        if (onError && task.error) {
-          onError(task.error);
-        }
-      }
-    }
-  });
-  
-  // Gerar mídia usando o provedor ativo
+  // Use the media service adapter
+  const mediaService = useMediaServiceAdapter();
+
   const generateMedia = useCallback(async (
-    type: 'image' | 'video' | 'audio',
+    type: MediaType,
     prompt: string,
     model: string,
-    params: MediaGenerationParams = {},
+    params = {},
     referenceUrl?: string
   ) => {
     try {
-      setIsGenerating(true);
-      setGeneratedMediaUrl(null);
+      setGenerating(true);
+      setGenerationError(null);
       
-      const result = await mediaService.generateMedia(type, prompt, model, params, referenceUrl);
+      // Create a task in the UI before sending to API
+      const taskId = uuidv4();
+      addTask({
+        id: taskId,
+        type,
+        prompt,
+        status: 'pending',
+        model,
+        createdAt: new Date()
+      });
       
-      if (!result.success) {
-        setIsGenerating(false);
-        if (onError) {
-          onError(result.error || 'Erro desconhecido ao gerar mídia');
-        }
-        return result;
+      // Generate the media using the service adapter
+      const result = await mediaService.generateMedia(
+        type,
+        prompt,
+        model,
+        params,
+        referenceUrl
+      );
+      
+      if (result.success) {
+        // Update task with success status
+        updateTask(taskId, { 
+          status: 'completed',
+          url: result.mediaUrl
+        });
+        
+        toast.success(`${type} gerado com sucesso!`);
+        return {
+          success: true,
+          url: result.mediaUrl,
+          taskId: result.taskId
+        };
+      } else {
+        // Handle the error case - result.error might not exist if success is false
+        updateTask(taskId, { 
+          status: 'failed', 
+          error: result.success === false && typeof result.error === 'string' ? result.error : 'Erro desconhecido'
+        });
+        
+        const errorMessage = result.success === false && typeof result.error === 'string' 
+          ? result.error 
+          : `Falha ao gerar ${type}`;
+        
+        setGenerationError(errorMessage);
+        toast.error(errorMessage);
+        return { success: false };
       }
-      
-      return result;
-    } catch (error) {
-      setIsGenerating(false);
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
-      
-      if (showToasts) {
-        toast.error(`Erro ao gerar mídia: ${errorMessage}`);
-      }
-      
-      if (onError) {
-        onError(errorMessage);
-      }
-      
-      console.error('Erro ao gerar mídia unificada:', error);
-      return {
-        success: false,
-        error: errorMessage
-      };
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : 'Erro desconhecido');
+      toast.error(`Erro ao gerar ${type}: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
+      return { success: false };
+    } finally {
+      setGenerating(false);
     }
-  }, [mediaService, onComplete, onError, showToasts]);
-  
-  // Cancelar geração em andamento
-  const cancelGeneration = useCallback(async () => {
+  }, [addTask, updateTask, mediaService]);
+
+  const cancelGeneration = useCallback(async (taskId: string) => {
     try {
-      if (activeProvider === 'piapi') {
-        return await mediaService.cancelGeneration();
-      }
-      return false;
-    } catch (error) {
-      console.error('Erro ao cancelar geração:', error);
-      return false;
-    }
-  }, [activeProvider, mediaService]);
-  
-  // Trocar provedor de mídia
-  const switchProvider = useCallback((provider: 'piapi') => {
-    if (isGenerating) {
-      if (showToasts) {
-        toast.error('Não é possível trocar o provedor durante uma geração');
-      }
+      // Cancel the task in the UI first
+      updateTask(taskId, { status: 'canceled' });
+      
+      // Cancel on the API if needed (not implemented in the adapter yet)
+      // await mediaService.cancelGeneration(taskId);
+      
+      return true;
+    } catch (err) {
+      console.error('Error canceling generation:', err);
       return false;
     }
-    
-    setActiveProvider(provider);
-    return true;
-  }, [isGenerating, showToasts]);
-  
+  }, [updateTask]);
+
   return {
-    // Estado
-    activeProvider,
-    isGenerating,
-    currentTask,
-    generatedMediaUrl,
-    
-    // Ações
     generateMedia,
     cancelGeneration,
-    switchProvider
+    generating,
+    error: generationError
   };
 }
