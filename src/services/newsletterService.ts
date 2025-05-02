@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { NewsletterPost, PostWithStats, CommentWithUser } from '@/types/newsletter';
 import { toast } from 'sonner';
@@ -56,8 +57,8 @@ export const newsletterService = {
         user_id: post.user_id || post.author_id,  // Use author_id as fallback
         published_at: post.published_at,
         media_url: post.media_url,
-        media_type: post.media_type,
-        view_count: post.view_count,
+        media_type: post.media_type || 'none',
+        view_count: post.view_count || 0,
         like_count: likesCount,
         share_count: post.share_count || 0,  // Default to 0 if missing
         created_at: post.created_at,
@@ -134,11 +135,11 @@ export const newsletterService = {
       user_id: post.user_id || post.author_id,
       published_at: post.published_at,
       media_url: post.media_url,
-      media_type: post.media_type,
-      view_count: post.view_count,
+      media_type: post.media_type || 'none',
+      view_count: post.view_count || 0,
       like_count: likesCount,
       share_count: post.share_count || 0,
-      created_at: post.created_at,
+      created_at: post.created_at || new Date().toISOString(),
       updated_at: post.updated_at,
       is_published: post.is_published,
       author_id: post.author_id,
@@ -380,18 +381,18 @@ export const newsletterAdminService = {
     // Create a complete NewsletterPost object with all required fields
     const completePost: NewsletterPost = {
       id: data.id,
-      title: data.title,
+      title: data.title || '',
       content: data.content,
-      user_id: data.user_id,
-      published_at: data.published_at,
-      media_url: data.media_url,
-      media_type: data.media_type,
-      view_count: data.view_count,
+      user_id: data.user_id || data.author_id,
+      published_at: data.published_at || null,
+      media_url: data.media_url || null,
+      media_type: data.media_type || 'none',
+      view_count: data.view_count || 0,
       like_count: data.like_count || 0,
       share_count: data.share_count || 0,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      is_published: data.is_published,
+      created_at: data.created_at || new Date().toISOString(),
+      updated_at: data.updated_at || new Date().toISOString(),
+      is_published: data.is_published || true,
       author_id: data.author_id,
     };
 
@@ -435,18 +436,18 @@ export const newsletterAdminService = {
     // Create a complete NewsletterPost object with all required fields
     const completePost: NewsletterPost = {
       id: data.id,
-      title: data.title,
+      title: data.title || '',
       content: data.content,
-      user_id: data.user_id,
-      published_at: data.published_at,
-      media_url: data.media_url,
-      media_type: data.media_type,
-      view_count: data.view_count,
+      user_id: data.user_id || data.author_id,
+      published_at: data.published_at || null,
+      media_url: data.media_url || null,
+      media_type: data.media_type || 'none',
+      view_count: data.view_count || 0,
       like_count: data.like_count || 0,
       share_count: data.share_count || 0,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      is_published: data.is_published,
+      created_at: data.created_at || new Date().toISOString(),
+      updated_at: data.updated_at || new Date().toISOString(),
+      is_published: data.is_published || true,
       author_id: data.author_id,
     };
 

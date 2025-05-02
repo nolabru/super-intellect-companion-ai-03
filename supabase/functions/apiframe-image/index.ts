@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
@@ -19,10 +18,10 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get APIframe API key
-    const APIFRAME_API_KEY = Deno.env.get("API_FRAME");
+    // Get APIframe API key - Updated to use API_FRAME_KEY
+    const APIFRAME_API_KEY = Deno.env.get("API_FRAME_KEY");
     if (!APIFRAME_API_KEY) {
-      throw new Error("API_FRAME is not configured");
+      throw new Error("API_FRAME_KEY is not configured");
     }
 
     // Parse request body

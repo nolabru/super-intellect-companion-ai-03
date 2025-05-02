@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0"
 
@@ -18,8 +17,8 @@ const APIFRAME_API_URLS = [
   'https://api.apiframe.com/v1/audio/generate'
 ];
 
-// Get the API key from environment variable - consistently using API_FRAME
-const APIFRAME_API_KEY = Deno.env.get('API_FRAME');
+// Get the API key from environment variable - Updated to use API_FRAME_KEY
+const APIFRAME_API_KEY = Deno.env.get('API_FRAME_KEY');
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -32,11 +31,11 @@ serve(async (req) => {
     const { prompt, model, params } = await req.json();
     
     if (!APIFRAME_API_KEY) {
-      console.error('[apiframe-generate-audio] API_FRAME not configured');
+      console.error('[apiframe-generate-audio] API_FRAME_KEY not configured');
       return new Response(
         JSON.stringify({ 
-          error: 'API_FRAME not configured', 
-          details: 'Please configure the API_FRAME secret in Supabase'
+          error: 'API_FRAME_KEY not configured', 
+          details: 'Please configure the API_FRAME_KEY secret in Supabase'
         }),
         { 
           status: 500, 
