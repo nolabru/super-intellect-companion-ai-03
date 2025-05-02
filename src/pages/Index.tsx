@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getModelsByMode } from '@/components/ModelSelector';
@@ -113,51 +112,71 @@ const Index: React.FC = () => {
   }
 
   return (
-    <MainLayout 
-      sidebarOpen={sidebarOpen} 
-      onToggleSidebar={toggleSidebar} 
-      isTouchDevice={isTouchDevice}
-    >
-      <div className="flex flex-1 overflow-hidden">
-        <ChatSidebar 
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={toggleSidebar}
-          isMobile={isMobile}
-        />
-        
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <ChatContent 
-            comparing={comparing}
-            isLinked={isLinked}
-            activeMode={activeMode}
-            leftModel={leftModel}
-            rightModel={rightModel}
-            messages={messages}
-            availableModels={availableModels}
-            isMobile={isMobile}
-            loading={isLoading}
-            initialLoadDone={initialLoadDone}
-            handleLeftModelChange={handleLeftModelChange}
-            handleRightModelChange={handleRightModelChange}
-            handleSendMessage={handleSendMessage}
-          />
-          
-          <ChatFooter 
-            activeMode={activeMode}
-            comparing={comparing}
-            isLinked={isLinked}
-            isMobile={isMobile}
-            leftModel={leftModel}
-            rightModel={rightModel}
-            onModeChange={handleModeChange}
-            onToggleCompare={toggleComparing}
-            onToggleLink={toggleLink}
-            onParamsChange={handleParamsChange}
-            onSendMessage={handleSendMessage}
-          />
+    <div className="flex min-h-screen w-full bg-inventu-darker">
+      {!isMobile && (
+        <div className={`fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}>
+          <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
         </div>
+      )}
+
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity"
+          onClick={toggleSidebar}
+        >
+          <div 
+            className="fixed inset-y-0 left-0 z-40 w-64 transform bg-inventu-dark"
+            onClick={e => e.stopPropagation()}
+          >
+            <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
+          </div>
+        </div>
+      )}
+
+      <div className={`flex min-h-screen w-full flex-col transition-all duration-300 ${
+        !isMobile && sidebarOpen && "pl-64"
+      }`}>
+        <MainLayout 
+          sidebarOpen={sidebarOpen} 
+          onToggleSidebar={toggleSidebar} 
+          isTouchDevice={isTouchDevice}
+        >
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <ChatContent 
+              comparing={comparing}
+              isLinked={isLinked}
+              activeMode={activeMode}
+              leftModel={leftModel}
+              rightModel={rightModel}
+              messages={messages}
+              availableModels={availableModels}
+              isMobile={isMobile}
+              loading={isLoading}
+              initialLoadDone={initialLoadDone}
+              handleLeftModelChange={handleLeftModelChange}
+              handleRightModelChange={handleRightModelChange}
+              handleSendMessage={handleSendMessage}
+            />
+            
+            <ChatFooter 
+              activeMode={activeMode}
+              comparing={comparing}
+              isLinked={isLinked}
+              isMobile={isMobile}
+              leftModel={leftModel}
+              rightModel={rightModel}
+              onModeChange={handleModeChange}
+              onToggleCompare={toggleComparing}
+              onToggleLink={toggleLink}
+              onParamsChange={handleParamsChange}
+              onSendMessage={handleSendMessage}
+            />
+          </div>
+        </MainLayout>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 

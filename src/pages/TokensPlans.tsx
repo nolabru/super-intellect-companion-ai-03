@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { tokenService } from '@/services/tokenService';
@@ -17,6 +18,8 @@ import { ptBR } from 'date-fns/locale';
 import MainLayout from '@/components/layout/MainLayout';
 import ChatSidebar from '@/components/layout/ChatSidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
+import ConversationSidebar from '@/components/ConversationSidebar';
+import { cn } from '@/lib/utils';
 
 const TokensPlans = () => {
   const [loading, setLoading] = useState(true);
@@ -90,33 +93,45 @@ const TokensPlans = () => {
   
   if (!user) {
     return (
-      <MainLayout title="Token Management">
-        <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardContent className="pt-6">
-              <p className="text-center">Please log in to view your tokens.</p>
-            </CardContent>
-          </Card>
-        </div>
-      </MainLayout>
+      <div className="flex min-h-screen w-full bg-inventu-darker">
+        <MainLayout title="Token Management">
+          <div className="container mx-auto px-4 py-8">
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-center">Please log in to view your tokens.</p>
+              </CardContent>
+            </Card>
+          </div>
+        </MainLayout>
+      </div>
     );
   }
   
   return (
-    <MainLayout 
-      sidebarOpen={sidebarOpen}
-      onToggleSidebar={toggleSidebar}
-      isTouchDevice={isMobile}
-      title="Token Management"
-    >
-      <div className="flex h-full">
-        <ChatSidebar 
-          sidebarOpen={sidebarOpen} 
-          onToggleSidebar={toggleSidebar} 
-          isMobile={isMobile} 
-        />
-        
-        <div className="flex-1 overflow-y-auto">
+    <div className="flex min-h-screen w-full bg-inventu-darker">
+      {!isMobile && (
+        <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", 
+          sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
+          <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
+        </div>
+      )}
+
+      {isMobile && sidebarOpen && (
+        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity" onClick={toggleSidebar}>
+          <div className="fixed inset-y-0 left-0 z-40 w-64 transform bg-inventu-dark" onClick={e => e.stopPropagation()}>
+            <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
+          </div>
+        </div>
+      )}
+
+      <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", 
+        !isMobile && sidebarOpen && "pl-64")}>
+        <MainLayout 
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={toggleSidebar}
+          isTouchDevice={isMobile}
+          title="Token Management"
+        >
           <div className="container mx-auto px-4 py-8">
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-white">Token Management</h1>
@@ -240,9 +255,9 @@ const TokensPlans = () => {
               </Card>
             </div>
           </div>
-        </div>
+        </MainLayout>
       </div>
-    </MainLayout>
+    </div>
   );
 };
 
