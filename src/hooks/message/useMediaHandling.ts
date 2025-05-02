@@ -2,16 +2,11 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { ChatMode } from '@/components/ModeSelector';
-import { useApiframeGeneration } from '@/hooks/useApiframeGeneration';
 
 export function useMediaHandling() {
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isMediaUploading, setIsMediaUploading] = useState(false);
-  
-  const apiframeGeneration = useApiframeGeneration({
-    showToasts: false // Não queremos toasts duplicados
-  });
 
   const validateFile = (file: File, mode: ChatMode): boolean => {
     if (mode === 'image' && file.type.startsWith('image/')) {
@@ -82,6 +77,12 @@ export function useMediaHandling() {
     removeFile,
     clearFiles,
     uploadFiles,
-    mediaGeneration: apiframeGeneration // Expor funcionalidades de geração de mídia
+    // Stubbed mediaGeneration API
+    mediaGeneration: {
+      isGenerating: false,
+      generateMedia: async () => ({ success: false, error: 'Service not available' }),
+      configureApiKey: () => false,
+      isApiKeyConfigured: () => false
+    }
   };
 }

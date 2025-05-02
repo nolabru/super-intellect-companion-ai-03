@@ -1,4 +1,3 @@
-
 import { useConversationState } from './useConversationState';
 import { useConversationMessages } from './useConversationMessages';
 import { useMessageHandler } from './useMessageHandler';
@@ -60,16 +59,23 @@ export function useConversation() {
     conversations
   );
 
-  // Hook de manipulação de mensagens
-  const { sendMessage, isSending } = useMessageHandler(
-    messages,
-    setMessages,
-    conversations,
-    currentConversationId,
-    setError,
-    saveUserMessage,
-    handleTitleUpdate.bind(null, conversations, updateConversationTitle)
-  );
+  // Create a stubbed sendMessage handler
+  const sendMessage = async (content: string, conversationId: string | null) => {
+    // Simple stub implementation
+    console.log(`Sending message to conversation ${conversationId}: ${content}`);
+    
+    // Add user message
+    const userMessage = addUserMessage(content);
+    
+    // Add a delayed assistant response
+    setTimeout(() => {
+      addAssistantMessage("This is a stubbed response. Messaging functionality is not fully implemented.");
+    }, 1000);
+    
+    return true;
+  };
+
+  const isSending = false;
 
   // Função clara e explícita para carregar mensagens de uma conversa
   const loadConversationMessages = useCallback(async (conversationId: string) => {
@@ -336,6 +342,7 @@ export function useConversation() {
     
     // Ações de mensagem
     sendMessage,
+    isSending,
     clearMessages,
     addUserMessage,
     addAssistantMessage,

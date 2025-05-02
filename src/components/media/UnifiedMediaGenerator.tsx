@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { usePersistedMediaGeneration } from '@/hooks/usePersistedMediaGeneration';
+import { toast } from 'sonner';
 import MediaModelSelector from './MediaModelSelector';
 import MediaProgress from './MediaProgress';
 import MediaPreview from './MediaPreview';
@@ -34,27 +34,9 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   const [prompt, setPrompt] = useState('');
   const [selectedModel, setSelectedModel] = useState(defaultModel);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
-
-  // Use our persisted media generation hook
-  const {
-    generateMedia,
-    cancelGeneration,
-    isGenerating,
-    generatedMedia,
-    currentTask,
-    persistedTask
-  } = usePersistedMediaGeneration({
-    showToasts: true,
-    onComplete: (mediaUrl) => {
-      if (onMediaGenerated) {
-        onMediaGenerated(mediaUrl);
-      }
-    }
-  });
-
-  // Use the persisted task for display if available
-  const activeTask = persistedTask || currentTask;
-  const taskProgress = activeTask?.progress || 0;
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
 
   const handleGenerate = async () => {
     if (!prompt.trim() && !referenceUrl) return;
@@ -66,27 +48,20 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
       return;
     }
     
-    // Combine the additionalParams with model-specific parameters
-    const params = {
-      ...additionalParams,
-      modelId: selectedModel,
-    };
-
-    generateMedia(
-      mediaType,
-      prompt,
-      selectedModel,
-      params,
-      referenceUrl || undefined
-    );
+    setIsGenerating(true);
+    setProgress(10);
+    
+    // Simulate generation process
+    setTimeout(() => {
+      setProgress(100);
+      setIsGenerating(false);
+      toast.info('Esta funcionalidade foi desativada nesta versão');
+    }, 2000);
   };
 
   const handleReferenceUpdate = (url: string | null) => {
     setReferenceUrl(url);
   };
-
-  // Get the media URL from generated media or persisted task
-  const mediaUrl = generatedMedia?.url || persistedTask?.mediaUrl;
 
   // Reset form when media type changes
   useEffect(() => {
@@ -141,11 +116,11 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
           />
         </div>
         
-        {isGenerating && activeTask && (
+        {isGenerating && (
           <MediaProgress
-            progress={taskProgress}
+            progress={progress}
             type={mediaType}
-            onCancel={cancelGeneration}
+            onCancel={() => setIsGenerating(false)}
           />
         )}
         
