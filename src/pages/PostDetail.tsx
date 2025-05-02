@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import ConversationSidebar from '@/components/ConversationSidebar';
-import NewsletterPost, { NewsletterPostSkeleton } from '@/components/newsletter/NewsletterPost';
+import { NewsletterPost, NewsletterPostSkeleton } from '@/components/newsletter/NewsletterPost';
 import { CommentsList, CommentsListSkeleton } from '@/components/newsletter/CommentsList';
 import CommentInput from '@/components/newsletter/CommentInput';
 import { newsletterService } from '@/services/newsletterService';

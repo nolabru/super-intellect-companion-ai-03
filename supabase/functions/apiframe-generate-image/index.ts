@@ -43,6 +43,7 @@ serve(async (req) => {
     
     console.log(`[apiframe-generate-image] Generating image with model: ${requestData.model}`);
     console.log(`[apiframe-generate-image] Prompt: ${prompt}`);
+    console.log(`[apiframe-generate-image] API Key available: ${!!APIFRAME_API_KEY}`);
     
     // Call the APIframe API
     const response = await fetch(apiUrl, {

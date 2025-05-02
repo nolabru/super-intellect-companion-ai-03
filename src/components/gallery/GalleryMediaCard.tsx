@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { MediaItem } from '@/pages/MediaGallery';
-import { formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { MediaItem } from '@/types/gallery';
+import { Card } from '@/components/ui/card';
 import { AudioLines, Calendar, Image, MessageSquare, Video, ExternalLink, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

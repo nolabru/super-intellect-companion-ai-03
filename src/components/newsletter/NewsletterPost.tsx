@@ -154,7 +154,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
             </div>
             <div className="flex items-center">
               <MessageSquare className="h-4 w-4 mr-1" />
-              <span className="text-xs">{post.comment_count}</span>
+              <span className="text-xs">{post.comments_count || 0}</span>
             </div>
           </div>
         </div>

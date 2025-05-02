@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { MediaItem } from '@/pages/MediaGallery';
+import { MediaItem } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
 import { AlertCircle, Image } from 'lucide-react';
 

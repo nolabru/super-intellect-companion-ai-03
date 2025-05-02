@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import ConversationSidebar from '@/components/ConversationSidebar';
-import NewsletterPost, { NewsletterPostSkeleton } from '@/components/newsletter/NewsletterPost';
+import { NewsletterPost, NewsletterPostSkeleton } from '@/components/newsletter/NewsletterPost';
 import { newsletterService } from '@/services/newsletterService';
 import { PostWithStats } from '@/types/newsletter';
 import { Loader2, Newspaper, PlusCircle } from 'lucide-react';

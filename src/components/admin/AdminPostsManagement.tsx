@@ -7,7 +7,7 @@ import { newsletterAdminService, newsletterService } from '@/services/newsletter
 import { PostWithStats } from '@/types/newsletter';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import NewsletterPost from '@/components/newsletter/NewsletterPost';
+import { NewsletterPost } from '@/components/newsletter/NewsletterPost';
 import { cn } from '@/lib/utils';
 
 const AdminPostsManagement: React.FC = () => {
