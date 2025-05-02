@@ -11,6 +11,7 @@ import ChatFooter from '@/components/chat/ChatFooter';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import ConversationSidebar from '@/components/ConversationSidebar';
 
 const Index: React.FC = () => {
   const { 
