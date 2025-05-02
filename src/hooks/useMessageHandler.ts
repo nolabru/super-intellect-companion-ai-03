@@ -1,14 +1,13 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { Message, MessageRole } from '@/types/chat';
-import { ChatMode } from '@/components/ModeSelector';
+import { Message, MessageType, ChatMode } from '@/types/chat';
 import { useMediaHandling } from '@/hooks/useMediaHandling';
 
 export function useMessageHandler() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentMode, setCurrentMode] = useState<ChatMode>('text');
+  const [currentMode, setCurrentMode] = useState<ChatMode>(ChatMode.TEXT);
   const [currentModel, setCurrentModel] = useState('gpt-4o');
   
   const { 
@@ -21,12 +20,12 @@ export function useMessageHandler() {
     uploadFiles 
   } = useMediaHandling();
   
-  const addMessage = useCallback((content: string, role: MessageRole = 'user', metadata?: any) => {
+  const addMessage = useCallback((content: string, role: MessageType = 'user', metadata?: any) => {
     const newMessage: Message = {
       id: `msg_${Date.now()}`,
       content,
       role,
-      timestamp: new Date().toISOString(),
+      timestamp: Date.now(),
       ...(metadata && { metadata })
     };
     

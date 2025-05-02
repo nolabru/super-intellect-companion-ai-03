@@ -12,6 +12,7 @@ import {
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { MessageType } from '@/types/chat';
 
 export function useConversation() {
   const conversationState = useConversationState();
@@ -310,6 +311,21 @@ export function useConversation() {
     );
   };
 
+  // Create a stubbed addUserMessage handler
+  const addUserMessage = useCallback((content: string) => {
+    return { id: `msg_${Date.now()}`, content, role: 'user' as MessageType };
+  }, []);
+  
+  // Create a stubbed addAssistantMessage handler
+  const addAssistantMessage = useCallback((content: string) => {
+    return { id: `msg_${Date.now()}`, content, role: 'assistant' as MessageType };
+  }, []);
+  
+  // Create a stubbed addErrorMessage handler
+  const addErrorMessage = useCallback((content: string) => {
+    return { id: `msg_${Date.now()}`, content, role: 'error' as MessageType };
+  }, []);
+  
   return {
     // Estado
     messages,

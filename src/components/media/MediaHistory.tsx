@@ -7,7 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Clock, Trash } from 'lucide-react';
 
 const MediaHistory: React.FC = () => {
-  const { state, clearTask } = useMediaContext();
+  const { tasks, state, clearTask } = useMediaContext();
+  
+  // Fallback if state is not properly initialized
+  if (!state || !state.recentTasks || !state.tasks) {
+    return null;
+  }
   
   // Get recent tasks sorted by creation time
   const recentTasks = state.recentTasks

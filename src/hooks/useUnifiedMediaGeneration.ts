@@ -23,7 +23,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
   // Usar o adaptador de serviço de mídia
   const mediaService = useMediaServiceAdapter(activeProvider, {
     showToasts,
-    onTaskUpdate: (task) => {
+    onTaskUpdate: (task: any) => {
       setCurrentTask(task);
       
       if (task.status === 'completed' && task.mediaUrl) {

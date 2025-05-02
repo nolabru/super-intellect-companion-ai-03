@@ -1,5 +1,6 @@
 
 export type MessageType = 'user' | 'assistant' | 'system' | 'error' | 'loading';
+export type MessageRole = 'user' | 'assistant' | 'system' | 'error' | 'loading';
 
 export interface Message {
   id: string;

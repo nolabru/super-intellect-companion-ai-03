@@ -18,11 +18,12 @@ import { cn } from '@/lib/utils';
 interface NewsletterPostProps {
   post: PostWithStats;
   onDelete?: (postId: string) => Promise<void>;
+  isAdmin?: boolean;
 }
 
-export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }) => {
+export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete, isAdmin: propIsAdmin }) => {
   const { user } = useAuth();
-  const isAdmin = user?.email?.endsWith('@admin.com') || false;
+  const isAdmin = propIsAdmin || user?.email?.endsWith('@admin.com') || false;
   
   const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
   const [confirmDeleteDialogOpen, setConfirmDeleteDialogOpen] = useState(false);

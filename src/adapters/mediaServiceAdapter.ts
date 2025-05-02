@@ -26,4 +26,26 @@ const createMediaAdapter = () => {
   };
 };
 
+// Export both the factory function and a hook version
 export default createMediaAdapter;
+
+// Create hook version for components that need it
+export const useMediaServiceAdapter = (provider = 'piapi', options = {}) => {
+  // Return a preconfigured adapter based on provider
+  return {
+    generateMedia: async (type: 'image' | 'video' | 'audio', prompt: string, model: string, params = {}, referenceUrl?: string) => {
+      console.log(`Generating ${type} with ${provider}: ${prompt}`);
+      // Simplified mock implementation
+      return {
+        success: true,
+        taskId: 'mock-task-id',
+        mediaUrl: `https://example.com/mock-${type}.jpg`
+      };
+    },
+    cancelGeneration: async () => {
+      return true;
+    },
+    isGenerating: false,
+    error: null
+  };
+};

@@ -1,6 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PostWithStats, CommentWithUser } from '@/types/newsletter';
 
 // Interface para post de newsletter
 export interface Post {
@@ -15,11 +15,16 @@ export interface Post {
   is_published: boolean;
 }
 
-// Interface estendida com estatísticas
+// Interface estendida com estatísticas (this needs to match the one in types/newsletter.ts)
 export interface PostWithStats extends Post {
   likes_count: number;
   comments_count: number;
   user_has_liked: boolean;
+  user_id: string;
+  published_at: string | null;
+  view_count: number;
+  like_count: number;
+  share_count: number;
 }
 
 // Serviço para usuários regulares
@@ -199,6 +204,131 @@ export const newsletterService = {
       console.error('Erro ao processar curtida:', error);
       return false;
     }
+  },
+
+  // Add missing methods
+  async deleteComment(commentId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('post_comments')
+        .delete()
+        .eq('id', commentId);
+        
+      if (error) {
+        console.error('Erro ao excluir comentário:', error);
+        throw error;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao processar exclusão de comentário:', error);
+      return false;
+    }
+  },
+
+  async getComments(postId: string): Promise<CommentWithUser[]> {
+    try {
+      // Get comments with user profiles
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select(`
+          *,
+          profiles:user_id (username, avatar_url)
+        `)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Erro ao buscar comentários:', error);
+        throw error;
+      }
+      
+      // Format the response to match CommentWithUser type
+      return (data || []).map(item => ({
+        id: item.id,
+        post_id: item.post_id,
+        user_id: item.user_id,
+        content: item.content,
+        created_at: item.created_at,
+        user: item.profiles ? {
+          username: item.profiles.username,
+          avatar_url: item.profiles.avatar_url
+        } : undefined
+      }));
+    } catch (error) {
+      console.error('Erro ao processar comentários:', error);
+      return [];
+    }
+  },
+
+  async addComment(postId: string, content: string): Promise<CommentWithUser | null> {
+    try {
+      // Get current user info
+      const { data: userData } = await supabase.auth.getUser();
+      
+      if (!userData?.user) {
+        toast.error('Você precisa estar logado para comentar');
+        return null;
+      }
+      
+      // Add the comment
+      const { data, error } = await supabase
+        .from('post_comments')
+        .insert({
+          post_id: postId,
+          user_id: userData.user.id,
+          content
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Erro ao adicionar comentário:', error);
+        throw error;
+      }
+      
+      // Get user profile for the response
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', userData.user.id)
+        .single();
+      
+      // Format the comment with user info
+      return {
+        id: data.id,
+        post_id: data.post_id,
+        user_id: data.user_id,
+        content: data.content,
+        created_at: data.created_at,
+        user: profileData ? {
+          username: profileData.username,
+          avatar_url: profileData.avatar_url
+        } : undefined
+      };
+    } catch (error) {
+      console.error('Erro ao processar adição de comentário:', error);
+      return null;
+    }
+  },
+
+  async incrementViewCount(postId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.rpc(
+        'increment_counter',
+        { row_id: postId, increment_amount: 1 }
+      );
+      
+      if (error) {
+        console.error('Erro ao incrementar visualizações:', error);
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Erro ao processar incremento de visualizações:', error);
+      return false;
+    }
   }
 };
 
@@ -249,7 +379,7 @@ export const newsletterAdminService = {
     mediaUrl?: string;
     mediaType?: string;
     isPublished?: boolean;
-  }): Promise<Post | null> {
+  } | Partial<PostWithStats>): Promise<Post | null> {
     try {
       // Obter usuário atual
       const { data: userData, error: userError } = await supabase.auth.getUser();
@@ -258,19 +388,38 @@ export const newsletterAdminService = {
         console.error('Erro ao obter usuário:', userError);
         throw new Error('Usuário não autenticado');
       }
+
+      // Check if we're receiving the new format or old format
+      let formattedData: any;
       
-      // Inserir novo post
-      const { data, error } = await supabase
-        .from('newsletter_posts')
-        .insert({
+      if ('title' in postData && typeof postData.title === 'string') {
+        // Old format
+        formattedData = {
           title: postData.title,
           content: postData.content,
           media_url: postData.mediaUrl,
           media_type: postData.mediaType,
           is_published: postData.isPublished !== undefined ? postData.isPublished : true,
           author_id: userData.user.id,
-          user_id: userData.user.id // Garantir que o post tenha um user_id para políticas RLS
-        })
+          user_id: userData.user.id
+        };
+      } else {
+        // New format (Partial<PostWithStats>)
+        formattedData = {
+          title: postData.title || '',
+          content: postData.content || '',
+          media_url: postData.media_url,
+          media_type: postData.media_type,
+          is_published: postData.is_published !== undefined ? postData.is_published : true,
+          author_id: userData.user.id,
+          user_id: userData.user.id
+        };
+      }
+      
+      // Inserir novo post
+      const { data, error } = await supabase
+        .from('newsletter_posts')
+        .insert(formattedData)
         .select()
         .single();
       
