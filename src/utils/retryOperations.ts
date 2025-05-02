@@ -1,81 +1,65 @@
 
 /**
- * Utilitário para operações de retry com backoff exponencial
- */
-
-/**
- * Interface para opções de retry
- */
-export interface RetryOptions {
-  maxRetries: number;
-  initialDelay: number;
-  maxDelay?: number;
-  factor?: number;
-  retryCondition?: (error: any) => boolean;
-  onRetry?: (error: any, attemptNumber: number) => void;
-}
-
-/**
- * Executa uma operação com retries automáticos usando backoff exponencial
- * 
- * @param operation Função assíncrona a ser executada
- * @param options Opções de configuração dos retries
- * @returns Resultado da operação
+ * Executes an operation with retry logic
+ * @param operation The async operation to execute
+ * @param options Retry configuration options
+ * @returns The result of the operation
  */
 export async function withRetry<T>(
   operation: () => Promise<T>,
-  options: RetryOptions
+  options: {
+    maxRetries?: number;
+    initialDelay?: number;
+    factor?: number;
+    maxDelay?: number;
+    retryCondition?: (error: any) => boolean;
+    onRetry?: (error: any, attemptNumber: number) => void;
+  } = {}
 ): Promise<T> {
   const {
-    maxRetries,
-    initialDelay,
-    maxDelay = 30000,
+    maxRetries = 3,
+    initialDelay = 1000,
     factor = 2,
+    maxDelay = 10000,
     retryCondition = () => true,
-    onRetry
+    onRetry = () => {}
   } = options;
 
-  let lastError: Error | null = null;
-  
-  for (let attempt = 0; attempt < maxRetries + 1; attempt++) {
+  let lastError: any;
+  let attempt = 0;
+
+  while (attempt < maxRetries) {
     try {
       return await operation();
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+      lastError = error;
       
-      // Verificar se devemos tentar novamente
-      if (attempt >= maxRetries || !retryCondition(error)) {
-        throw lastError;
+      // Check if we should retry based on the error
+      if (!retryCondition(error) || attempt >= maxRetries - 1) {
+        break;
       }
       
-      // Calcular delay com backoff exponencial
-      const delay = Math.min(
-        initialDelay * Math.pow(factor, attempt),
-        maxDelay
-      );
+      attempt++;
       
-      // Notificar callback de retry
-      if (onRetry) {
-        onRetry(error, attempt + 1);
-      }
+      // Notify about retry
+      onRetry(error, attempt);
       
-      console.log(`Tentativa ${attempt + 1}/${maxRetries} falhou. Tentando novamente em ${delay}ms...`);
+      // Calculate delay with exponential backoff
+      const delay = Math.min(initialDelay * Math.pow(factor, attempt), maxDelay);
       
-      // Aguardar antes da próxima tentativa
+      // Wait before next attempt
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   
-  // Este ponto não deve ser alcançado, mas TypeScript exige um retorno
-  throw lastError || new Error("Operação falhou após múltiplas tentativas");
+  throw lastError;
 }
 
 /**
- * Executa uma operação com um fallback em caso de falha
- * 
- * @param primaryOperation Função principal a ser executada
- * @param fallbackOperation Função de fallback em caso de falha
- * @returns Resultado da operação (primária ou fallback)
+ * Executes a primary operation with a fallback if it fails
+ * @param primaryOperation The primary async operation to execute
+ * @param fallbackOperation The fallback async operation to execute if primary fails
+ * @returns The result of either the primary or fallback operation
  */
 export async function withFallback<T>(
   primaryOperation: () => Promise<T>,
@@ -84,7 +68,6 @@ export async function withFallback<T>(
   try {
     return await primaryOperation();
   } catch (error) {
-    console.warn('Operação primária falhou, utilizando fallback:', error);
     return await fallbackOperation(error);
   }
 }

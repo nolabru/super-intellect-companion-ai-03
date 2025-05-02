@@ -51,9 +51,9 @@ export function useVideoGeneration() {
         },
         {
           maxRetries,
-          initialDelay: 1500, // Delay inicial maior para vídeos
-          factor: 2,
-          maxDelay: 15000, // Máximo 15 segundos entre tentativas
+          initialDelay: 1000,
+          factor: 1.5,
+          maxDelay: 8000,
           retryCondition: (error) => {
             // Não tentar novamente para erros fatais
             if (
@@ -69,7 +69,7 @@ export function useVideoGeneration() {
           onRetry: (error, attemptNumber) => {
             console.log(`[useVideoGeneration] Tentativa ${attemptNumber} após erro:`, error);
             toast.error(`Falha na geração de vídeo. Tentando novamente (${attemptNumber}/${maxRetries})...`, {
-              duration: 3000,
+              duration: 2500,
               id: `retry-video-${Date.now()}`
             });
           }
@@ -87,7 +87,7 @@ export function useVideoGeneration() {
         async (error) => {
           console.warn(`[useVideoGeneration] Modelo ${model} falhou, tentando com ${fallbackModel}...`, error);
           toast.warning(`Modelo ${model} indisponível. Usando ${fallbackModel}...`, {
-            duration: 4000
+            duration: 3500
           });
           
           // Converter string model para ApiframeVideoModel (para o modelo de fallback)

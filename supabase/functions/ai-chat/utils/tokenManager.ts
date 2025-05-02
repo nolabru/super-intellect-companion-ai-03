@@ -1,41 +1,94 @@
 
-// Token manager utility for AI Chat
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.8.0';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0";
 
-// Initialize the Supabase client for the edge function
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+// Initialize the Supabase client
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-export interface TokenInfo {
-  hasEnoughTokens: boolean;
-  tokensRequired: number;
-  tokensRemaining?: number;
-  error?: string;
+/**
+ * Get default token consumption for a model and mode
+ * @param modelId The model ID
+ * @param mode The generation mode (text, image, video, audio)
+ * @returns Token consumption
+ */
+function getDefaultTokenConsumption(modelId: string, mode: string): number {
+  // Default token consumption based on model and mode
+  const defaultRates: Record<string, Record<string, number>> = {
+    "gpt-3.5-turbo": {
+      "text": 5,
+      "image": 10
+    },
+    "gpt-4": {
+      "text": 25,
+      "image": 50
+    },
+    "gpt-4o": {
+      "text": 25,
+      "image": 50
+    },
+    "gpt-4o-mini": {
+      "text": 10,
+      "image": 20
+    },
+    "claude-3-opus": {
+      "text": 30
+    },
+    "claude-3-sonnet": {
+      "text": 15
+    },
+    "claude-3-haiku": {
+      "text": 8
+    },
+    "dall-e-3": {
+      "image": 120
+    },
+    "sdxl": {
+      "image": 50
+    },
+    "midjourney": {
+      "image": 100
+    }
+  };
+
+  // First check exact model match
+  if (defaultRates[modelId] && defaultRates[modelId][mode]) {
+    return defaultRates[modelId][mode];
+  }
+
+  // For models not explicitly defined, use these defaults
+  const fallbackRates: Record<string, number> = {
+    "text": 10,
+    "image": 50,
+    "video": 150,
+    "audio": 30
+  };
+
+  return fallbackRates[mode] || 10;
 }
 
 /**
  * Check if a user has enough tokens for an operation
+ * @param userId The user ID
+ * @param modelId The model ID
+ * @param mode The generation mode
+ * @returns Object with token information
  */
 export async function checkUserTokens(
-  userId: string | undefined,
-  modelId: string,
+  userId: string, 
+  modelId: string, 
   mode: string
-): Promise<TokenInfo> {
+): Promise<{
+  hasEnoughTokens: boolean,
+  tokensRequired: number,
+  tokensRemaining: number,
+  error?: string
+}> {
   try {
-    // If no user ID, return successful response (for unauthenticated preview/testing)
-    if (!userId) {
-      console.log('No user ID provided, skipping token check');
-      return { 
-        hasEnoughTokens: true, 
-        tokensRequired: 0,
-        tokensRemaining: 10000
-      };
-    }
-
-    console.log(`Checking tokens for user ${userId}, model ${modelId}, mode ${mode}`);
+    // Get token consumption for the model and mode
+    let tokensRequired: number;
     
-    // Get token consumption for the requested operation
+    // Try to get from database first
     const { data: rateData, error: rateError } = await supabase
       .from('token_consumption_rates')
       .select('tokens_per_request')
@@ -43,147 +96,95 @@ export async function checkUserTokens(
       .eq('mode', mode)
       .single();
     
-    if (rateError && rateError.code !== 'PGRST116') {
-      console.error('Error fetching token rate:', rateError);
-      return { 
-        hasEnoughTokens: false, 
-        tokensRequired: 0,
-        error: 'Error calculating token consumption' 
-      };
+    if (rateError || !rateData) {
+      tokensRequired = getDefaultTokenConsumption(modelId, mode);
+      console.log(`[tokenManager] Using default token consumption: ${tokensRequired} for ${modelId}/${mode}`);
+    } else {
+      tokensRequired = rateData.tokens_per_request;
+      console.log(`[tokenManager] Using database token consumption: ${tokensRequired} for ${modelId}/${mode}`);
     }
     
-    // Use default consumption if specific rate not found
-    const tokensRequired = rateData?.tokens_per_request || 50;
-    console.log(`Operation requires ${tokensRequired} tokens`);
-    
-    // Check if token balance is sufficient using the database function
-    const { data: result, error: fnError } = await supabase.rpc(
-      'check_and_update_token_balance',
-      {
-        p_user_id: userId,
-        p_model_id: modelId,
-        p_mode: mode
-      }
-    );
-    
-    if (fnError) {
-      console.error('Error checking token balance:', fnError);
-      return {
-        hasEnoughTokens: false,
-        tokensRequired,
-        error: 'Error verifying token balance'
-      };
-    }
-    
-    // Get updated token balance to return to client
+    // Get user's token balance
     const { data: userData, error: userError } = await supabase
       .from('user_tokens')
-      .select('tokens_remaining, next_reset_date')
+      .select('tokens_remaining')
       .eq('user_id', userId)
       .single();
     
-    if (userError) {
-      console.error('Error fetching user token balance:', userError);
-    }
-    
-    const tokensRemaining = userData?.tokens_remaining || 0;
-    
-    // If result is true, user has enough tokens and they've already been deducted
-    if (result === true) {
-      console.log(`User has enough tokens. Remaining: ${tokensRemaining}`);
+    // If no user record exists, create one with default balance
+    if (userError || !userData) {
+      // Default token amount for new users
+      const defaultTokens = 1000;
+      
+      // Insert new record
+      const { data: newUserData, error: insertError } = await supabase
+        .from('user_tokens')
+        .insert({
+          user_id: userId,
+          tokens_remaining: defaultTokens,
+          tokens_used: 0
+        })
+        .select('tokens_remaining')
+        .single();
+      
+      if (insertError || !newUserData) {
+        console.error(`[tokenManager] Error creating user token record: ${insertError?.message}`);
+        return {
+          hasEnoughTokens: false,
+          tokensRequired,
+          tokensRemaining: 0,
+          error: "Failed to check token balance"
+        };
+      }
+      
+      const tokensRemaining = newUserData.tokens_remaining;
       return {
-        hasEnoughTokens: true,
+        hasEnoughTokens: tokensRemaining >= tokensRequired,
         tokensRequired,
         tokensRemaining
       };
-    } else {
-      console.log(`User doesn't have enough tokens. Required: ${tokensRequired}, Remaining: ${tokensRemaining}`);
-      return {
-        hasEnoughTokens: false,
-        tokensRequired,
-        tokensRemaining,
-        error: `Not enough tokens. This operation requires ${tokensRequired} tokens.`
-      };
     }
-  } catch (err) {
-    console.error('Unexpected error in token check:', err);
+    
+    const tokensRemaining = userData.tokens_remaining;
+    
+    // Check if enough tokens and update balance if sufficient
+    if (tokensRemaining >= tokensRequired) {
+      // Update token balance
+      const { error: updateError } = await supabase
+        .from('user_tokens')
+        .update({
+          tokens_remaining: tokensRemaining - tokensRequired,
+          tokens_used: supabase.rpc('increment_counter', { 
+            row_id: userId, 
+            increment_amount: tokensRequired
+          }),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+      
+      if (updateError) {
+        console.error(`[tokenManager] Error updating token balance: ${updateError.message}`);
+        return {
+          hasEnoughTokens: true, // Still return true as they have enough tokens
+          tokensRequired,
+          tokensRemaining,
+          error: "Failed to update token balance"
+        };
+      }
+    }
+    
+    return {
+      hasEnoughTokens: tokensRemaining >= tokensRequired,
+      tokensRequired,
+      tokensRemaining
+    };
+  } catch (error) {
+    console.error(`[tokenManager] Error checking tokens: ${error instanceof Error ? error.message : String(error)}`);
     return {
       hasEnoughTokens: false,
       tokensRequired: 0,
-      error: 'Unexpected error checking token balance'
-    };
-  }
-}
-
-/**
- * Get user's current token balance
- */
-export async function getUserTokenBalance(userId: string | undefined): Promise<{
-  tokensRemaining: number;
-  tokensUsed: number;
-  nextResetDate: string | null;
-  error?: string;
-}> {
-  try {
-    // If no user ID, return default values
-    if (!userId) {
-      return { 
-        tokensRemaining: 10000, 
-        tokensUsed: 0,
-        nextResetDate: null
-      };
-    }
-    
-    const { data, error } = await supabase
-      .from('user_tokens')
-      .select('tokens_remaining, tokens_used, next_reset_date')
-      .eq('user_id', userId)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching user token balance:', error);
-      return {
-        tokensRemaining: 0,
-        tokensUsed: 0,
-        nextResetDate: null,
-        error: 'Error fetching token balance'
-      };
-    }
-    
-    return {
-      tokensRemaining: data.tokens_remaining,
-      tokensUsed: data.tokens_used,
-      nextResetDate: data.next_reset_date
-    };
-  } catch (err) {
-    console.error('Unexpected error getting token balance:', err);
-    return {
       tokensRemaining: 0,
-      tokensUsed: 0,
-      nextResetDate: null,
-      error: 'Unexpected error getting token balance'
+      error: `Failed to check tokens: ${error instanceof Error ? error.message : "Unknown error"}`
     };
-  }
-}
-
-/**
- * Get token consumption rates for all model/mode combinations
- */
-export async function getTokenConsumptionRates() {
-  try {
-    const { data, error } = await supabase
-      .from('token_consumption_rates')
-      .select('model_id, mode, tokens_per_request')
-      .order('tokens_per_request', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching token consumption rates:', error);
-      return { rates: [], error: 'Error fetching token consumption rates' };
-    }
-    
-    return { rates: data || [] };
-  } catch (err) {
-    console.error('Unexpected error getting token rates:', err);
-    return { rates: [], error: 'Unexpected error getting token rates' };
   }
 }

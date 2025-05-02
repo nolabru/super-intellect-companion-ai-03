@@ -36,3 +36,5 @@ apiframe-generate-image.verify_jwt = false
 apiframe-task-status.verify_jwt = false
 apiframe-task-cancel.verify_jwt = false
 apiframe-test-connection.verify_jwt = false
+apiframe-generate-video.verify_jwt = false
+apiframe-generate-audio.verify_jwt = false

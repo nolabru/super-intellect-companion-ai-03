@@ -18,19 +18,29 @@ serve(async (req) => {
       throw new Error("API_FRAME is not configured");
     }
     
-    // Test endpoints
+    // Test endpoints - updated with more endpoints to try
     const testEndpoints = [
+      "https://api.apiframe.ai/v1/healthcheck",
       "https://api.apiframe.ai/healthcheck",
+      "https://api.apiframe.com/v1/healthcheck",
       "https://api.apiframe.com/healthcheck",
-      "https://api.apiframe.io/healthcheck"
+      "https://api.apiframe.io/v1/healthcheck", 
+      "https://api.apiframe.io/healthcheck",
+      "https://api.apiformai.io/v1/healthcheck",
+      "https://api.apiformai.io/healthcheck"
     ];
+    
+    console.log(`[apiframe-test-connection] Testing ${testEndpoints.length} endpoints with API key: ${APIFRAME_API_KEY.substring(0, 5)}...`);
     
     // Try each endpoint
     let working = false;
     let workingEndpoint = null;
+    let allResponses = {};
     
     for (const endpoint of testEndpoints) {
       try {
+        console.log(`[apiframe-test-connection] Testing endpoint: ${endpoint}`);
+        
         const response = await fetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${APIFRAME_API_KEY}`,
@@ -38,6 +48,12 @@ serve(async (req) => {
           },
           method: 'GET'
         });
+        
+        const responseText = await response.text();
+        allResponses[endpoint] = {
+          status: response.status,
+          text: responseText
+        };
         
         console.log(`[apiframe-test-connection] Response from ${endpoint}: ${response.status}`);
         
@@ -48,6 +64,9 @@ serve(async (req) => {
         }
       } catch (err) {
         console.error(`[apiframe-test-connection] Error testing endpoint ${endpoint}:`, err);
+        allResponses[endpoint] = {
+          error: err.message
+        };
       }
     }
     
@@ -64,7 +83,8 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Could not connect to any APIframe endpoint"
+          error: "Could not connect to any APIframe endpoint",
+          details: allResponses
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

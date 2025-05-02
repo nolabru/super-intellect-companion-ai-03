@@ -1,290 +1,125 @@
-import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
+
 import { supabase } from '@/integrations/supabase/client';
-import { getCircuitBreaker, CircuitState } from '@/utils/circuitBreaker';
-import { toast } from 'sonner';
 
-// Global flag to indicate that the API key is globally configured on the server
-// O nome da chave de API foi alterado para "API FRAME" no lado do servidor
-const isGlobalApiKeyConfigured = true;
-
-// Create circuit breakers for each operation type
-const imageCircuitBreaker = getCircuitBreaker('apiframe-image', {
-  failureThreshold: 3,
-  resetTimeout: 30000, // 30 seconds
-  onStateChange: (from, to) => {
-    if (to === CircuitState.OPEN) {
-      toast.warning('Image generation service temporarily unavailable', {
-        description: 'Automatic reconnection attempt in 30 seconds',
-        duration: 5000
-      });
-    } else if (from === CircuitState.OPEN && to === CircuitState.CLOSED) {
-      toast.success('Image generation service restored', {
-        duration: 3000
-      });
-    }
-  }
-});
-
-const videoCircuitBreaker = getCircuitBreaker('apiframe-video', {
-  failureThreshold: 2, // More sensitive for videos as they're more resource-intensive
-  resetTimeout: 45000, // 45 seconds
-  onStateChange: (from, to) => {
-    if (to === CircuitState.OPEN) {
-      toast.warning('Video generation service temporarily unavailable', {
-        description: 'Automatic reconnection attempt in 45 seconds',
-        duration: 5000
-      });
-    } else if (from === CircuitState.OPEN && to === CircuitState.CLOSED) {
-      toast.success('Video generation service restored', {
-        duration: 3000
-      });
-    }
-  }
-});
-
-const audioCircuitBreaker = getCircuitBreaker('apiframe-audio', {
-  failureThreshold: 3,
-  resetTimeout: 30000, // 30 seconds
-  onStateChange: (from, to) => {
-    if (to === CircuitState.OPEN) {
-      toast.warning('Audio generation service temporarily unavailable', {
-        description: 'Automatic reconnection attempt in 30 seconds',
-        duration: 5000
-      });
-    } else if (from === CircuitState.OPEN && to === CircuitState.CLOSED) {
-      toast.success('Audio generation service restored', {
-        duration: 3000
-      });
-    }
-  }
-});
-
-const statusCircuitBreaker = getCircuitBreaker('apiframe-status', {
-  failureThreshold: 5, // More tolerant for status checks
-  resetTimeout: 20000 // 20 seconds
-});
-
+/**
+ * Service for interacting with APIframe API
+ */
 export const apiframeService = {
-  setApiKey(key: string): boolean {
-    // We're using a global key on the server
+  /**
+   * Check if API key is configured
+   */
+  isApiKeyConfigured: (): boolean => {
+    // We're using a server-side API key, so it's always configured
     return true;
   },
   
-  isApiKeyConfigured(): boolean {
-    // Always return true since we're using a global API key
-    return isGlobalApiKeyConfigured;
-  },
-  
-  async generateImage(
-    prompt: string,
-    model: ApiframeModel,
-    params: ApiframeParams = {}
-  ): Promise<{ taskId: string; status: string; mediaUrl?: string; error?: string }> {
+  /**
+   * Test connection to APIframe API
+   */
+  testConnection: async (): Promise<{
+    success: boolean;
+    endpoint?: string;
+    error?: string;
+    details?: any;
+  }> {
     try {
-      console.log(`[apiframeService] Generating image with model ${model} and prompt: ${prompt}`);
+      const response = await supabase.functions.invoke('apiframe-test-connection');
       
-      return await imageCircuitBreaker.execute(async () => {
-        const { data, error } = await supabase.functions.invoke('apiframe-image', {
-          body: { 
-            prompt, 
-            model, 
-            params
-          }
-        });
-        
-        if (error || !data) {
-          console.error('[apiframeService] Error generating image:', error || 'No data received');
-          throw new Error(error?.message || 'Failed to generate image');
-        }
-        
-        return data;
-      });
-    } catch (err) {
-      console.error('[apiframeService] Error in generateImage:', err);
-      
-      // Show user-friendly error message
-      toast.error("Failed to generate image", {
-        description: err instanceof Error ? err.message : "Connection issue with image service",
-        duration: 5000
-      });
-      
-      throw err;
-    }
-  },
-  
-  async generateVideo(
-    prompt: string,
-    model: ApiframeModel,
-    params: ApiframeParams = {},
-    referenceImageUrl?: string
-  ): Promise<{ taskId: string; status: string; mediaUrl?: string; error?: string }> {
-    try {
-      console.log(`[apiframeService] Generating video with model ${model} and prompt: ${prompt}`);
-      
-      // No need to check if API key is configured since we're using a global key
-      return await videoCircuitBreaker.execute(async () => {
-        const { data, error } = await supabase.functions.invoke('apiframe-generate-video', {
-          body: { 
-            prompt, 
-            model, 
-            params,
-            referenceImageUrl 
-            // No longer sending API key in the request body
-          }
-        });
-        
-        if (error || !data) {
-          console.error('[apiframeService] Error generating video:', error || 'No data received');
-          throw new Error(error?.message || 'Failed to generate video');
-        }
-        
-        return data;
-      });
-    } catch (err) {
-      console.error('[apiframeService] Error in generateVideo:', err);
-      throw err;
-    }
-  },
-  
-  async generateAudio(
-    prompt: string,
-    model: ApiframeModel,
-    params: ApiframeParams = {},
-    referenceUrl?: string
-  ): Promise<{ taskId: string; status: string; mediaUrl?: string; error?: string }> {
-    try {
-      console.log(`[apiframeService] Generating audio with model ${model} and prompt: ${prompt}`);
-      
-      // No need to check if API key is configured since we're using a global key
-      return await audioCircuitBreaker.execute(async () => {
-        const { data, error } = await supabase.functions.invoke('apiframe-generate-audio', {
-          body: { 
-            prompt, 
-            model, 
-            params,
-            referenceUrl 
-            // No longer sending API key in the request body
-          }
-        });
-        
-        if (error || !data) {
-          console.error('[apiframeService] Error generating audio:', error || 'No data received');
-          throw new Error(error?.message || 'Failed to generate audio');
-        }
-        
-        return data;
-      });
-    } catch (err) {
-      console.error('[apiframeService] Error in generateAudio:', err);
-      throw err;
-    }
-  },
-  
-  async checkTaskStatus(taskId: string): Promise<{ status: string; mediaUrl?: string; error?: string; taskId?: string }> {
-    try {
-      console.log(`[apiframeService] Checking status for task ${taskId}`);
-      
-      // No need to check if API key is configured since we're using a global key
-      return await statusCircuitBreaker.execute(async () => {
-        const { data, error } = await supabase.functions.invoke('apiframe-check-status', {
-          body: { 
-            taskId
-            // No longer sending API key in the request body
-          }
-        });
-        
-        if (error || !data) {
-          console.error('[apiframeService] Error checking task status:', error || 'No data received');
-          throw new Error(error?.message || 'Failed to check task status');
-        }
-        
-        return {
-          ...data,
-          taskId
+      if (response.error) {
+        console.error('[apiframeService] Error testing connection:', response.error);
+        return { 
+          success: false, 
+          error: `Error: ${response.error.message || 'Unknown error'}` 
         };
-      });
-    } catch (err) {
-      console.error('[apiframeService] Error in checkTaskStatus:', err);
-      throw err;
-    }
-  },
-  
-  async cancelTask(taskId: string): Promise<boolean> {
-    try {
-      console.log(`[apiframeService] Cancelling task ${taskId}`);
-      
-      // No need to check if API key is configured since we're using a global key
-      const { data, error } = await supabase.functions.invoke('apiframe-task-cancel', {
-        body: { 
-          taskId
-          // No longer sending API key in the request body
-        }
-      });
-      
-      if (error || !data) {
-        console.error('[apiframeService] Error cancelling task:', error || 'No data received');
-        throw new Error(error?.message || 'Failed to cancel task');
       }
       
-      return data.success || false;
-    } catch (err) {
-      console.error('[apiframeService] Error in cancelTask:', err);
-      throw err;
-    }
-  },
-  
-  subscribeToTaskUpdates(callback: (payload: any) => void) {
-    return supabase
-      .channel('media-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'media_ready_events'
-        },
-        callback
-      )
-      .subscribe();
-  },
-  
-  // Methods to get circuit breaker state
-  getCircuitState(type: 'image' | 'video' | 'audio' | 'status'): CircuitState {
-    switch (type) {
-      case 'image': return imageCircuitBreaker.getState();
-      case 'video': return videoCircuitBreaker.getState();
-      case 'audio': return audioCircuitBreaker.getState();
-      case 'status': return statusCircuitBreaker.getState();
-    }
-  },
-  
-  // Method to manually reset circuit breakers
-  resetCircuitBreakers(): void {
-    imageCircuitBreaker.reset();
-    videoCircuitBreaker.reset();
-    audioCircuitBreaker.reset();
-    statusCircuitBreaker.reset();
-    console.log('[apiframeService] All circuit breakers have been reset');
-  },
-  
-  // Add a new method to test connection
-  async testConnection(): Promise<boolean> {
-    try {
-      console.log(`[apiframeService] Testing APIframe connection...`);
-      
-      const { data, error } = await supabase.functions.invoke('apiframe-test-connection', {
-        body: {}
-      });
-      
-      if (error || !data?.success) {
-        console.error('[apiframeService] Connection test failed:', error || data?.error || 'No success response');
-        return false;
-      }
-      
-      return true;
+      return response.data;
     } catch (err) {
       console.error('[apiframeService] Error testing connection:', err);
-      return false;
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Unknown error' 
+      };
+    }
+  },
+  
+  /**
+   * Generate media using APIframe
+   */
+  generateMedia: async (params: any): Promise<any> {
+    const { mediaType } = params;
+    let functionName = '';
+    
+    switch (mediaType) {
+      case 'image':
+        functionName = 'apiframe-generate-image';
+        break;
+      case 'video':
+        functionName = 'apiframe-generate-video';
+        break;
+      case 'audio':
+        functionName = 'apiframe-generate-audio';
+        break;
+      default:
+        throw new Error(`Unsupported media type: ${mediaType}`);
+    }
+    
+    try {
+      const response = await supabase.functions.invoke(functionName, {
+        body: params
+      });
+      
+      if (response.error) {
+        console.error(`[apiframeService] Error generating ${mediaType}:`, response.error);
+        throw new Error(response.error.message || `Failed to generate ${mediaType}`);
+      }
+      
+      return response.data;
+    } catch (err) {
+      console.error(`[apiframeService] Error generating ${mediaType}:`, err);
+      throw err;
+    }
+  },
+  
+  /**
+   * Check media generation task status
+   */
+  checkTaskStatus: async (taskId: string): Promise<any> {
+    try {
+      const response = await supabase.functions.invoke('apiframe-task-status', {
+        body: { taskId }
+      });
+      
+      if (response.error) {
+        console.error('[apiframeService] Error checking task status:', response.error);
+        throw new Error(response.error.message || 'Failed to check task status');
+      }
+      
+      return response.data;
+    } catch (err) {
+      console.error('[apiframeService] Error checking task status:', err);
+      throw err;
+    }
+  },
+  
+  /**
+   * Cancel media generation task
+   */
+  cancelTask: async (taskId: string): Promise<boolean> {
+    try {
+      const response = await supabase.functions.invoke('apiframe-task-cancel', {
+        body: { taskId }
+      });
+      
+      if (response.error) {
+        console.error('[apiframeService] Error canceling task:', response.error);
+        throw new Error(response.error.message || 'Failed to cancel task');
+      }
+      
+      return response.data.success || false;
+    } catch (err) {
+      console.error('[apiframeService] Error canceling task:', err);
+      throw err;
     }
   }
 };

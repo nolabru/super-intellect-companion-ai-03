@@ -1,14 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getModelsByMode } from '@/components/ModelSelector';
 import { useChatState } from '@/hooks/useChatState';
 import { useMessageSending } from '@/hooks/useMessageSending';
+import { useConversation } from '@/hooks/useConversation';
 import MainLayout from '@/components/layout/MainLayout';
 import ChatSidebar from '@/components/layout/ChatSidebar';
 import ChatContent from '@/components/chat/ChatContent';
 import ChatFooter from '@/components/chat/ChatFooter';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 const Index: React.FC = () => {
   const { 
@@ -18,9 +21,12 @@ const Index: React.FC = () => {
     handleModeChange, handleLeftModelChange, handleRightModelChange, handleParamsChange
   } = useChatState();
   
-  const { loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { conversationId } = useParams<{ conversationId: string }>();
-
+  const navigate = useNavigate();
+  const [creatingConversation, setCreatingConversation] = useState(false);
+  
+  const conversation = useConversation();
   const {
     messages,
     messagesLoading,
@@ -37,7 +43,7 @@ const Index: React.FC = () => {
     generationParams, 
     isMobile, 
     sidebarOpen, 
-    (open) => toggleSidebar()
+    () => toggleSidebar()
   );
 
   // Sync URL conversationId with state
@@ -47,8 +53,64 @@ const Index: React.FC = () => {
     }
   }, [conversationId, currentConversationId, setCurrentConversationId]);
 
+  // Create a new conversation if there isn't one and we're not already creating one
+  useEffect(() => {
+    // Only run if:
+    // 1. We're not already creating a conversation
+    // 2. We're not currently loading conversations
+    // 3. Initial load of conversations is done
+    // 4. There's no current conversation ID
+    // 5. We're not on a specific conversation page
+    if (
+      !creatingConversation &&
+      !conversation.loading &&
+      conversation.initialLoadDone &&
+      !currentConversationId &&
+      !conversationId
+    ) {
+      const createNewConversation = async () => {
+        try {
+          console.log('[Index] No conversation selected. Creating a new one...');
+          setCreatingConversation(true);
+          const success = await conversation.createNewConversation();
+          
+          if (success) {
+            console.log('[Index] New conversation created successfully');
+          } else {
+            console.error('[Index] Failed to create new conversation');
+            toast.error('Erro ao criar nova conversa');
+          }
+        } catch (err) {
+          console.error('[Index] Error creating new conversation:', err);
+          toast.error('Erro ao criar nova conversa');
+        } finally {
+          setCreatingConversation(false);
+        }
+      };
+      
+      createNewConversation();
+    }
+  }, [
+    conversation,
+    creatingConversation,
+    currentConversationId,
+    conversationId,
+    navigate
+  ]);
+
   const availableModels = getModelsByMode(activeMode).map(model => model.id);
-  const isLoading = authLoading || messagesLoading;
+  const isLoading = authLoading || messagesLoading || creatingConversation;
+
+  if (creatingConversation) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-b from-inventu-darker to-inventu-dark">
+        <div className="flex flex-col items-center gap-4 p-8 rounded-lg bg-black/20 backdrop-blur-sm">
+          <Loader2 className="h-10 w-10 animate-spin text-inventu-primary" />
+          <p className="text-white text-lg font-medium">Criando nova conversa...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <MainLayout 
