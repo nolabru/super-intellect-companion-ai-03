@@ -1,20 +1,38 @@
 
 project_id = "sxcdfhomogjtjdtoolbg"
 
-[functions.apiframe-generate-audio]
-verify_jwt = true
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
 
-[functions.increment-post-view]
-verify_jwt = true
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
 
-[functions.user-tokens]
-verify_jwt = true
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost:54321"
 
-[functions.ai-chat]
-verify_jwt = true
+[inbucket]
+enabled = true
+port = 54324
 
-[functions.admin-update-tokens]
-verify_jwt = true
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
 
-[functions.newsletter-media-storage]
-verify_jwt = true
+[storage]
+enabled = true
+
+[edge-runtime]
+enabled = true
+
+[functions]
+apiframe-image.verify_jwt = false
+apiframe-generate-image.verify_jwt = false
+apiframe-task-status.verify_jwt = false
+apiframe-task-cancel.verify_jwt = false
+apiframe-test-connection.verify_jwt = false

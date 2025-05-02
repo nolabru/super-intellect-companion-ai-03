@@ -1,4 +1,3 @@
-
 import { ApiframeMediaType, ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 import { supabase } from '@/integrations/supabase/client';
 import { getCircuitBreaker, CircuitState } from '@/utils/circuitBreaker';
@@ -67,8 +66,7 @@ const statusCircuitBreaker = getCircuitBreaker('apiframe-status', {
 
 export const apiframeService = {
   setApiKey(key: string): boolean {
-    // We don't need to store the API key anymore since we're using a global key
-    // But we'll keep this method for backward compatibility
+    // We're using a global key on the server
     return true;
   },
   
@@ -85,14 +83,12 @@ export const apiframeService = {
     try {
       console.log(`[apiframeService] Generating image with model ${model} and prompt: ${prompt}`);
       
-      // No need to check if API key is configured since we're using a global key
       return await imageCircuitBreaker.execute(async () => {
-        const { data, error } = await supabase.functions.invoke('apiframe-generate-image', {
+        const { data, error } = await supabase.functions.invoke('apiframe-image', {
           body: { 
             prompt, 
             model, 
             params
-            // No longer sending API key in the request body
           }
         });
         
@@ -105,6 +101,13 @@ export const apiframeService = {
       });
     } catch (err) {
       console.error('[apiframeService] Error in generateImage:', err);
+      
+      // Show user-friendly error message
+      toast.error("Failed to generate image", {
+        description: err instanceof Error ? err.message : "Connection issue with image service",
+        duration: 5000
+      });
+      
       throw err;
     }
   },
@@ -262,5 +265,26 @@ export const apiframeService = {
     audioCircuitBreaker.reset();
     statusCircuitBreaker.reset();
     console.log('[apiframeService] All circuit breakers have been reset');
+  },
+  
+  // Add a new method to test connection
+  async testConnection(): Promise<boolean> {
+    try {
+      console.log(`[apiframeService] Testing APIframe connection...`);
+      
+      const { data, error } = await supabase.functions.invoke('apiframe-test-connection', {
+        body: {}
+      });
+      
+      if (error || !data?.success) {
+        console.error('[apiframeService] Connection test failed:', error || data?.error || 'No success response');
+        return false;
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('[apiframeService] Error testing connection:', err);
+      return false;
+    }
   }
 };

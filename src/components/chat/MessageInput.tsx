@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo, memo } from 'react';
-import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen } from 'lucide-react';
+import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen, AlertTriangle } from 'lucide-react';
 import { ChatMode } from '@/components/ModeSelector';
 import { useGoogleAuth } from '@/contexts/GoogleAuthContext';
 import { toast } from 'sonner';
@@ -75,6 +75,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const isTouchDevice = useTouchDevice();
   const isMobile = useIsMobile();
+  const [hasApiError, setHasApiError] = useState(false);
   
   const placeholder = useMemo(() => {
     if (isImageGenerationModel) {
@@ -91,6 +92,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
     return "Digite aqui...";
   }, [isImageGenerationModel, mode, model]);
+  
+  useEffect(() => {
+    setHasApiError(false);
+  }, [mode, model]);
   
   useEffect(() => {
     if (textareaRef.current) {
@@ -132,6 +137,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
       const newHeight = Math.min(120, Math.max(44, e.target.scrollHeight));
       textareaRef.current.style.height = `${newHeight}px`;
     }
+    
+    if (hasApiError) {
+      setHasApiError(false);
+    }
   };
 
   const insertCommand = (command: string) => {
@@ -170,6 +179,27 @@ const MessageInput: React.FC<MessageInputProps> = ({
     
     setShowCommandMenu(false);
   };
+
+  const handleSendWithError = () => {
+    if ((mode === 'image' || mode === 'video' || mode === 'audio') && hasApiError) {
+      toast.error(`Falha na conexão com o serviço de ${mode === 'image' ? 'imagens' : mode === 'video' ? 'vídeos' : 'áudio'}`, {
+        description: "Tente novamente em alguns instantes ou verifique sua conexão.",
+        action: {
+          label: "Tentar novamente",
+          onClick: () => {
+            setHasApiError(false);
+            onSendMessage();
+          }
+        },
+        duration: 5000
+      });
+      return;
+    }
+    
+    onSendMessage();
+  };
+
+  const showApiErrorBanner = hasApiError && (mode === 'image' || mode === 'video' || mode === 'audio');
 
   const buttonClasses = cn(
     "transition-all rounded-xl",
@@ -214,71 +244,84 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, [showCommandMenu, commandMenuPosition, message, cursorPosition, isGoogleConnected, isMobile]);
 
   return (
-    <div 
-      className={cn(
-        "relative flex items-center gap-2 p-1.5",
-        isFocused && "ring-1 ring-white/30"
-      )} 
-      ref={containerRef}
-    >
-      <textarea
-        ref={textareaRef}
-        value={message}
-        onChange={handleMessageChange}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            onSendMessage();
-          }
-        }}
-        onClick={() => {
-          if (textareaRef.current) {
-            setCursorPosition(textareaRef.current.selectionStart);
-          }
-        }}
-        onKeyUp={() => {
-          if (textareaRef.current) {
-            setCursorPosition(textareaRef.current.selectionStart);
-          }
-        }}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        placeholder={placeholder}
+    <div>
+      {showApiErrorBanner && (
+        <div className="px-3 py-2 bg-red-500/20 border-t border-red-500/30 mb-1 rounded-t-lg flex items-center">
+          <AlertTriangle className="h-4 w-4 text-red-400 mr-2 flex-shrink-0" />
+          <span className="text-xs text-red-200">
+            Problema de conexão com serviço de {mode === 'image' ? 'imagens' : mode === 'video' ? 'vídeos' : 'áudio'}.
+            Tente novamente ou mude o modelo.
+          </span>
+        </div>
+      )}
+      
+      <div 
         className={cn(
-          "w-full pl-3 pr-24 py-2 bg-transparent text-white resize-none overflow-hidden focus:outline-none",
-          "min-h-[36px] text-base leading-relaxed placeholder:text-white/40",
-          isMobile && "text-lg py-3"
-        )}
-        rows={1}
-        disabled={isSending}
-        style={{ maxHeight: '100px' }}
-      />
-      
-      <div className={cn(
-        "absolute top-1/2 right-2 -translate-y-1/2 flex gap-1.5",
-        isMobile && "gap-3"
-      )}>
-        <button 
-          onClick={onAttachment}
-          className={buttonClasses}
-          title={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
+          "relative flex items-center gap-2 p-1.5",
+          isFocused && "ring-1 ring-white/30",
+          showApiErrorBanner && "rounded-t-none"
+        )} 
+        ref={containerRef}
+      >
+        <textarea
+          ref={textareaRef}
+          value={message}
+          onChange={handleMessageChange}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSendWithError();
+            }
+          }}
+          onClick={() => {
+            if (textareaRef.current) {
+              setCursorPosition(textareaRef.current.selectionStart);
+            }
+          }}
+          onKeyUp={() => {
+            if (textareaRef.current) {
+              setCursorPosition(textareaRef.current.selectionStart);
+            }
+          }}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder={placeholder}
+          className={cn(
+            "w-full pl-3 pr-24 py-2 bg-transparent text-white resize-none overflow-hidden focus:outline-none",
+            "min-h-[36px] text-base leading-relaxed placeholder:text-white/40",
+            isMobile && "text-lg py-3"
+          )}
+          rows={1}
           disabled={isSending}
-          aria-label={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
-        >
-          <Paperclip className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
-        </button>
+          style={{ maxHeight: '100px' }}
+        />
         
-        <button 
-          onClick={onSendMessage}
-          className={buttonClasses}
-          disabled={isSending}
-          aria-label="Enviar mensagem"
-        >
-          <Send className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
-        </button>
+        <div className={cn(
+          "absolute top-1/2 right-2 -translate-y-1/2 flex gap-1.5",
+          isMobile && "gap-3"
+        )}>
+          <button 
+            onClick={onAttachment}
+            className={buttonClasses}
+            title={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
+            disabled={isSending}
+            aria-label={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
+          >
+            <Paperclip className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
+          </button>
+          
+          <button 
+            onClick={handleSendWithError}
+            className={buttonClasses}
+            disabled={isSending}
+            aria-label="Enviar mensagem"
+          >
+            <Send className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
+          </button>
+        </div>
+        
+        {commandMenu}
       </div>
-      
-      {commandMenu}
     </div>
   );
 };

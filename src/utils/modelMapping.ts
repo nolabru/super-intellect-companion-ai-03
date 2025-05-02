@@ -9,8 +9,8 @@ const imageModelMapping: ModelMapping = {
   'deepfloyd': 'deepfloyd-if',
   'dalle-3': 'dall-e-3',
   'midjourney': 'midjourney-v6',
-  'sd-3': 'stable-diffusion-3', // Added newer model
-  'pixel-art': 'pixel-art-xl',  // Added specialty model
+  'sd-3': 'stable-diffusion-3', 
+  'pixel-art': 'pixel-art-xl',
 };
 
 // Mapping for video models
