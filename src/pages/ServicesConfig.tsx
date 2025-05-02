@@ -1,14 +1,10 @@
 
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import ApiframeConfig from '@/components/apiframe/ApiframeConfig';
-import OpenRouterConfig from '@/components/openrouter/OpenRouterConfig';
 
 const ServicesConfig: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('apiframe');
   const navigate = useNavigate();
   
   return (
@@ -26,20 +22,11 @@ const ServicesConfig: React.FC = () => {
         <h1 className="text-2xl font-bold">Configurações de Serviços</h1>
       </div>
       
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="apiframe">APIframe.ai</TabsTrigger>
-          <TabsTrigger value="openrouter">OpenRouter</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="apiframe" className="mt-6">
-          <ApiframeConfig />
-        </TabsContent>
-        
-        <TabsContent value="openrouter" className="mt-6">
-          <OpenRouterConfig />
-        </TabsContent>
-      </Tabs>
+      <div className="p-8 text-center">
+        <p className="text-gray-500">
+          A configuração de serviços externos foi removida desta versão.
+        </p>
+      </div>
     </div>
   );
 };
