@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { ApiframeModel, ApiframeParams } from '@/types/apiframeGeneration';
 
 /**
  * Service for interacting with APIframe API
@@ -10,6 +11,16 @@ export const apiframeService = {
    */
   isApiKeyConfigured(): boolean {
     // We're using a server-side API key, so it's always configured
+    return true;
+  },
+  
+  /**
+   * Set API key (this is a no-op since we're using server-side keys)
+   * Added for compatibility with other parts of the application
+   */
+  setApiKey(apiKey: string): boolean {
+    console.log('[apiframeService] setApiKey is a no-op for server-side keys');
+    // Always return true since we're using a server-side key
     return true;
   },
   
@@ -40,6 +51,79 @@ export const apiframeService = {
         success: false, 
         error: err instanceof Error ? err.message : 'Unknown error' 
       };
+    }
+  },
+  
+  /**
+   * Generate image using APIframe
+   */
+  async generateImage(
+    prompt: string,
+    model: ApiframeModel,
+    params: ApiframeParams = {}
+  ): Promise<any> {
+    try {
+      console.log(`[apiframeService] Generating image with model ${model}`);
+      
+      return await this.generateMedia({
+        mediaType: 'image',
+        prompt,
+        model,
+        ...params
+      });
+    } catch (err) {
+      console.error('[apiframeService] Error generating image:', err);
+      throw err;
+    }
+  },
+  
+  /**
+   * Generate video using APIframe
+   */
+  async generateVideo(
+    prompt: string,
+    model: ApiframeModel,
+    params: ApiframeParams = {},
+    referenceUrl?: string
+  ): Promise<any> {
+    try {
+      console.log(`[apiframeService] Generating video with model ${model}`);
+      
+      return await this.generateMedia({
+        mediaType: 'video',
+        prompt,
+        model,
+        referenceUrl,
+        ...params
+      });
+    } catch (err) {
+      console.error('[apiframeService] Error generating video:', err);
+      throw err;
+    }
+  },
+  
+  /**
+   * Generate audio using APIframe
+   */
+  async generateAudio(
+    prompt: string,
+    model: ApiframeModel,
+    params: ApiframeParams = {},
+    referenceUrl?: string
+  ): Promise<any> {
+    try {
+      console.log(`[apiframeService] Generating audio with model ${model}`);
+      
+      return await this.generateMedia({
+        mediaType: 'audio',
+        prompt,
+        model,
+        referenceUrl,
+        ...params
+      });
+    } catch (err) {
+      console.error('[apiframeService] Error generating audio:', err);
+      throw err;
     }
   },
   
@@ -121,5 +205,25 @@ export const apiframeService = {
       console.error('[apiframeService] Error canceling task:', err);
       throw err;
     }
+  },
+  
+  /**
+   * Subscribe to task updates
+   */
+  subscribeToTaskUpdates(callback: (payload: any) => void) {
+    console.log('[apiframeService] Subscribing to task updates');
+    
+    return supabase
+      .channel('media-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'media_ready_events'
+        },
+        callback
+      )
+      .subscribe();
   }
 };
