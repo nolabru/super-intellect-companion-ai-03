@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { NewsletterPost, PostWithStats, CommentWithUser } from '@/types/newsletter';
 import { toast } from 'sonner';
@@ -49,13 +48,29 @@ export const newsletterService = {
         .eq('id', post.author_id)
         .single();
       
-      return {
-        ...post,
+      // Create a complete PostWithStats object with all required fields
+      const enhancedPost: PostWithStats = {
+        id: post.id,
+        title: post.title || '',  // Provide default values for required fields
+        content: post.content,
+        user_id: post.user_id || post.author_id,  // Use author_id as fallback
+        published_at: post.published_at,
+        media_url: post.media_url,
+        media_type: post.media_type,
+        view_count: post.view_count,
+        like_count: likesCount,
+        share_count: post.share_count || 0,  // Default to 0 if missing
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        is_published: post.is_published,
+        author_id: post.author_id,
         likes_count: likesCount,
         comments_count: commentsCount,
         user_has_liked: userHasLiked,
         author
       };
+      
+      return enhancedPost;
     }));
 
     return postsWithLikes;
@@ -111,13 +126,29 @@ export const newsletterService = {
       userHasLiked = !!likeData;
     }
 
-    return {
-      ...post,
+    // Create a complete PostWithStats object with all required fields
+    const enhancedPost: PostWithStats = {
+      id: post.id,
+      title: post.title || '',
+      content: post.content,
+      user_id: post.user_id || post.author_id,
+      published_at: post.published_at,
+      media_url: post.media_url,
+      media_type: post.media_type,
+      view_count: post.view_count,
+      like_count: likesCount,
+      share_count: post.share_count || 0,
+      created_at: post.created_at,
+      updated_at: post.updated_at,
+      is_published: post.is_published,
+      author_id: post.author_id,
       likes_count: likesCount,
       comments_count: commentsCount,
       user_has_liked: userHasLiked,
       author
     };
+
+    return enhancedPost;
   },
 
   async likePost(postId: string): Promise<boolean> {
@@ -332,7 +363,10 @@ export const newsletterAdminService = {
         author_id: user.id,
         user_id: user.id, // Important: Set this to match the RLS policy
         title: post.title,
-        content: post.content
+        content: post.content,
+        like_count: 0,
+        share_count: 0,
+        created_at: new Date().toISOString()
       })
       .select()
       .single();
@@ -343,8 +377,26 @@ export const newsletterAdminService = {
       return null;
     }
 
+    // Create a complete NewsletterPost object with all required fields
+    const completePost: NewsletterPost = {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      user_id: data.user_id,
+      published_at: data.published_at,
+      media_url: data.media_url,
+      media_type: data.media_type,
+      view_count: data.view_count,
+      like_count: data.like_count || 0,
+      share_count: data.share_count || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      is_published: data.is_published,
+      author_id: data.author_id,
+    };
+
     toast.success('Publicação criada com sucesso');
-    return data;
+    return completePost;
   },
 
   async updatePost(postId: string, updates: Partial<NewsletterPost>): Promise<NewsletterPost | null> {
@@ -380,8 +432,26 @@ export const newsletterAdminService = {
       return null;
     }
 
+    // Create a complete NewsletterPost object with all required fields
+    const completePost: NewsletterPost = {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      user_id: data.user_id,
+      published_at: data.published_at,
+      media_url: data.media_url,
+      media_type: data.media_type,
+      view_count: data.view_count,
+      like_count: data.like_count || 0,
+      share_count: data.share_count || 0,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      is_published: data.is_published,
+      author_id: data.author_id,
+    };
+
     toast.success('Publicação atualizada com sucesso');
-    return data;
+    return completePost;
   },
 
   async deletePost(postId: string): Promise<boolean> {
