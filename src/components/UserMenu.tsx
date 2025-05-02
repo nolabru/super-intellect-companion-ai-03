@@ -23,7 +23,7 @@ const UserMenu: React.FC = () => {
     await signOut();
     navigate('/auth');
   };
-  return <div className="flex items-center gap-3">
+  return <div className="flex items-center gap-3 mx-[12px]">
       <TokenDisplay />
       
       <DropdownMenu>

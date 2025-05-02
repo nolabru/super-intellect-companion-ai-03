@@ -18,7 +18,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 }) => {
   const isMobile = useIsMobile();
   return <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-inventu-darker/80 backdrop-blur-lg">
-      <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
+      <div className="flex h-16 items-center gap-4 px-4 sm:px-[24px] py-[36px]">
         {onToggleSidebar && <Button onClick={onToggleSidebar} size="icon" variant="ghost" className="shrink-0 text-inventu-gray hover:text-white hover:bg-white/10" title={sidebarOpen ? "Fechar menu" : "Abrir menu"}>
             <Menu className="h-5 w-5" />
           </Button>}
