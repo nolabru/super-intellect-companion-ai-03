@@ -8,9 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const incrementViewCount = async (postId: string): Promise<void> => {
   try {
-    const { data, error } = await supabase.rpc('increment_view_count', {
-      post_id: postId,
-    });
+    // Use direct SQL update instead of RPC function to avoid TS errors
+    const { error } = await supabase
+      .from('newsletter_posts')
+      .update({ view_count: supabase.rpc('get_view_count', { post_id: postId }) + 1 })
+      .eq('id', postId);
 
     if (error) {
       console.error('Error incrementing view count:', error);
@@ -27,9 +29,11 @@ export const incrementViewCount = async (postId: string): Promise<void> => {
  */
 export const incrementLikeCount = async (postId: string): Promise<void> => {
   try {
-    const { data, error } = await supabase.rpc('increment_like_count', {
-      post_id: postId,
-    });
+    // Use direct SQL update instead of RPC function to avoid TS errors
+    const { error } = await supabase
+      .from('newsletter_posts')
+      .update({ like_count: supabase.rpc('get_like_count', { post_id: postId }) + 1 })
+      .eq('id', postId);
 
     if (error) {
       console.error('Error incrementing like count:', error);
@@ -46,9 +50,11 @@ export const incrementLikeCount = async (postId: string): Promise<void> => {
  */
 export const incrementShareCount = async (postId: string): Promise<void> => {
   try {
-    const { data, error } = await supabase.rpc('increment_share_count', {
-      post_id: postId,
-    });
+    // Use direct SQL update instead of RPC function to avoid TS errors
+    const { error } = await supabase
+      .from('newsletter_posts')
+      .update({ share_count: supabase.rpc('get_share_count', { post_id: postId }) + 1 })
+      .eq('id', postId);
 
     if (error) {
       console.error('Error incrementing share count:', error);

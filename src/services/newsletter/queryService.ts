@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { NewsletterPost, PostWithStats } from '@/types/newsletter';
 import { mapPostToFrontend } from './utils';
@@ -33,7 +32,7 @@ export const getPosts = async (page: number = 1, pageSize: number = 10): Promise
     const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
     const totalCount = count || 0;
 
-    return { data: posts as PostWithStats[], totalCount };
+    return { data: posts, totalCount };
   } catch (err) {
     console.error('Error fetching posts:', err);
     return { data: [], totalCount: 0 };
@@ -66,7 +65,7 @@ export const getPublishedPosts = async (page: number = 1, pageSize: number = 10)
     const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
     const totalCount = count || 0;
 
-    return { data: posts as PostWithStats[], totalCount };
+    return { data: posts, totalCount };
   } catch (err) {
     console.error('Error fetching published posts:', err);
     return { data: [], totalCount: 0 };
@@ -100,7 +99,7 @@ export const getPostsByUserId = async (userId: string, page: number = 1, pageSiz
     const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
     const totalCount = count || 0;
 
-    return { data: posts as PostWithStats[], totalCount };
+    return { data: posts, totalCount };
   } catch (err) {
     console.error('Error fetching posts by user:', err);
     return { data: [], totalCount: 0 };
@@ -139,7 +138,7 @@ export const getPublishedPostsByUserId = async (
     const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
     const totalCount = count || 0;
 
-    return { data: posts as PostWithStats[], totalCount };
+    return { data: posts, totalCount };
   } catch (err) {
     console.error('Error fetching published posts by user:', err);
     return { data: [], totalCount: 0 };
@@ -173,7 +172,7 @@ export const getPostsBySearchTerm = async (searchTerm: string, page: number = 1,
     const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
     const totalCount = count || 0;
 
-    return { data: posts as PostWithStats[], totalCount };
+    return { data: posts, totalCount };
   } catch (err) {
     console.error('Error fetching posts by search term:', err);
     return { data: [], totalCount: 0 };
@@ -207,7 +206,7 @@ export const getPostsByCategory = async (category: string, page: number = 1, pag
     const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
     const totalCount = count || 0;
 
-    return { data: posts as PostWithStats[], totalCount };
+    return { data: posts, totalCount };
   } catch (err) {
     console.error('Error fetching posts by category:', err);
     return { data: [], totalCount: 0 };
@@ -219,7 +218,7 @@ export const getPostsByCategory = async (category: string, page: number = 1, pag
  * @param limit The maximum number of posts to return
  * @returns A list of popular posts
  */
-export const getPopularPosts = async (limit: number = 5): Promise<NewsletterPost[]> => {
+export const getPopularPosts = async (limit: number = 5): Promise<PostWithStats[]> => {
   try {
     const { data, error } = await supabase
       .from('newsletter_posts')
@@ -233,7 +232,7 @@ export const getPopularPosts = async (limit: number = 5): Promise<NewsletterPost
       return [];
     }
 
-    return data ? data.map(post => mapPostToFrontend(post)) as NewsletterPost[] : [];
+    return data ? data.map(post => mapPostToFrontend(post)) : [];
   } catch (err) {
     console.error('Error fetching popular posts:', err);
     return [];
@@ -245,7 +244,7 @@ export const getPopularPosts = async (limit: number = 5): Promise<NewsletterPost
  * @param limit The maximum number of posts to return
  * @returns A list of recent posts
  */
-export const getRecentPosts = async (limit: number = 5): Promise<NewsletterPost[]> => {
+export const getRecentPosts = async (limit: number = 5): Promise<PostWithStats[]> => {
   try {
     const { data, error } = await supabase
       .from('newsletter_posts')
@@ -259,7 +258,7 @@ export const getRecentPosts = async (limit: number = 5): Promise<NewsletterPost[
       return [];
     }
 
-    return data ? data.map(post => mapPostToFrontend(post)) as NewsletterPost[] : [];
+    return data ? data.map(post => mapPostToFrontend(post)) : [];
   } catch (err) {
     console.error('Error fetching recent posts:', err);
     return [];
