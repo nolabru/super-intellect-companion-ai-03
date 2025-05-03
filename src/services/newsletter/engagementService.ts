@@ -8,10 +8,24 @@ import { supabase } from '@/integrations/supabase/client';
  */
 export const incrementViewCount = async (postId: string): Promise<void> => {
   try {
-    // Use direct SQL update instead of RPC function to avoid TS errors
+    // First fetch the current view_count
+    const { data, error: fetchError } = await supabase
+      .from('newsletter_posts')
+      .select('view_count')
+      .eq('id', postId)
+      .single();
+    
+    if (fetchError) {
+      console.error('Error fetching view count:', fetchError);
+      return;
+    }
+    
+    const currentViewCount = data.view_count || 0;
+    
+    // Then update it with the incremented value
     const { error } = await supabase
       .from('newsletter_posts')
-      .update({ view_count: supabase.rpc('get_view_count', { post_id: postId }) + 1 })
+      .update({ view_count: currentViewCount + 1 })
       .eq('id', postId);
 
     if (error) {
@@ -29,14 +43,32 @@ export const incrementViewCount = async (postId: string): Promise<void> => {
  */
 export const incrementLikeCount = async (postId: string): Promise<void> => {
   try {
-    // Use direct SQL update instead of RPC function to avoid TS errors
-    const { error } = await supabase
+    // Need to check if the column exists in the table
+    const { data: tableData, error: tableError } = await supabase
       .from('newsletter_posts')
-      .update({ like_count: supabase.rpc('get_like_count', { post_id: postId }) + 1 })
-      .eq('id', postId);
-
-    if (error) {
-      console.error('Error incrementing like count:', error);
+      .select('like_count')
+      .eq('id', postId)
+      .single();
+    
+    if (tableError) {
+      console.error('Error checking like_count column:', tableError);
+      return;
+    }
+    
+    // If like_count is defined in the response, it means the column exists
+    if ('like_count' in tableData) {
+      const currentLikeCount = tableData.like_count || 0;
+      
+      const { error } = await supabase
+        .from('newsletter_posts')
+        .update({ like_count: currentLikeCount + 1 })
+        .eq('id', postId);
+  
+      if (error) {
+        console.error('Error incrementing like count:', error);
+      }
+    } else {
+      console.error('like_count column does not exist in newsletter_posts table');
     }
   } catch (err) {
     console.error('Error incrementing like count:', err);
@@ -50,14 +82,32 @@ export const incrementLikeCount = async (postId: string): Promise<void> => {
  */
 export const incrementShareCount = async (postId: string): Promise<void> => {
   try {
-    // Use direct SQL update instead of RPC function to avoid TS errors
-    const { error } = await supabase
+    // Need to check if the column exists in the table
+    const { data: tableData, error: tableError } = await supabase
       .from('newsletter_posts')
-      .update({ share_count: supabase.rpc('get_share_count', { post_id: postId }) + 1 })
-      .eq('id', postId);
-
-    if (error) {
-      console.error('Error incrementing share count:', error);
+      .select('share_count')
+      .eq('id', postId)
+      .single();
+    
+    if (tableError) {
+      console.error('Error checking share_count column:', tableError);
+      return;
+    }
+    
+    // If share_count is defined in the response, it means the column exists
+    if ('share_count' in tableData) {
+      const currentShareCount = tableData.share_count || 0;
+      
+      const { error } = await supabase
+        .from('newsletter_posts')
+        .update({ share_count: currentShareCount + 1 })
+        .eq('id', postId);
+  
+      if (error) {
+        console.error('Error incrementing share count:', error);
+      }
+    } else {
+      console.error('share_count column does not exist in newsletter_posts table');
     }
   } catch (err) {
     console.error('Error incrementing share count:', err);

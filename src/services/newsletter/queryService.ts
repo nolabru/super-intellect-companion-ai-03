@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { NewsletterPost, PostWithStats } from '@/types/newsletter';
 import { mapPostToFrontend } from './utils';
@@ -6,6 +7,9 @@ interface PaginatedPosts {
   data: PostWithStats[];
   totalCount: number;
 }
+
+// Fix the type instantiation issue by simplifying our query responses
+// and avoiding deep type nesting
 
 /**
  * Gets all newsletter posts with pagination
@@ -18,7 +22,7 @@ export const getPosts = async (page: number = 1, pageSize: number = 10): Promise
     const startIndex = (page - 1) * pageSize;
     const endIndex = page * pageSize - 1;
 
-    let { data, error, count } = await supabase
+    const { data, error, count } = await supabase
       .from('newsletter_posts')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
@@ -29,7 +33,7 @@ export const getPosts = async (page: number = 1, pageSize: number = 10): Promise
       return { data: [], totalCount: 0 };
     }
 
-    const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
+    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
     const totalCount = count || 0;
 
     return { data: posts, totalCount };
@@ -50,7 +54,7 @@ export const getPublishedPosts = async (page: number = 1, pageSize: number = 10)
     const startIndex = (page - 1) * pageSize;
     const endIndex = page * pageSize - 1;
 
-    let { data, error, count } = await supabase
+    const { data, error, count } = await supabase
       .from('newsletter_posts')
       .select('*', { count: 'exact' })
       .eq('is_published', true)
@@ -62,7 +66,7 @@ export const getPublishedPosts = async (page: number = 1, pageSize: number = 10)
       return { data: [], totalCount: 0 };
     }
 
-    const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
+    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
     const totalCount = count || 0;
 
     return { data: posts, totalCount };
@@ -84,7 +88,7 @@ export const getPostsByUserId = async (userId: string, page: number = 1, pageSiz
     const startIndex = (page - 1) * pageSize;
     const endIndex = page * pageSize - 1;
 
-    let { data, error, count } = await supabase
+    const { data, error, count } = await supabase
       .from('newsletter_posts')
       .select('*', { count: 'exact' })
       .eq('author_id', userId)
@@ -96,7 +100,7 @@ export const getPostsByUserId = async (userId: string, page: number = 1, pageSiz
       return { data: [], totalCount: 0 };
     }
 
-    const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
+    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
     const totalCount = count || 0;
 
     return { data: posts, totalCount };
@@ -122,7 +126,7 @@ export const getPublishedPostsByUserId = async (
     const startIndex = (page - 1) * pageSize;
     const endIndex = page * pageSize - 1;
 
-    let { data, error, count } = await supabase
+    const { data, error, count } = await supabase
       .from('newsletter_posts')
       .select('*', { count: 'exact' })
       .eq('author_id', userId)
@@ -135,7 +139,7 @@ export const getPublishedPostsByUserId = async (
       return { data: [], totalCount: 0 };
     }
 
-    const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
+    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
     const totalCount = count || 0;
 
     return { data: posts, totalCount };
@@ -157,7 +161,7 @@ export const getPostsBySearchTerm = async (searchTerm: string, page: number = 1,
     const startIndex = (page - 1) * pageSize;
     const endIndex = page * pageSize - 1;
 
-    let { data, error, count } = await supabase
+    const { data, error, count } = await supabase
       .from('newsletter_posts')
       .select('*', { count: 'exact' })
       .ilike('title', `%${searchTerm}%`)
@@ -169,7 +173,7 @@ export const getPostsBySearchTerm = async (searchTerm: string, page: number = 1,
       return { data: [], totalCount: 0 };
     }
 
-    const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
+    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
     const totalCount = count || 0;
 
     return { data: posts, totalCount };
@@ -191,7 +195,7 @@ export const getPostsByCategory = async (category: string, page: number = 1, pag
     const startIndex = (page - 1) * pageSize;
     const endIndex = page * pageSize - 1;
 
-    let { data, error, count } = await supabase
+    const { data, error, count } = await supabase
       .from('newsletter_posts')
       .select('*', { count: 'exact' })
       .eq('category', category)
@@ -203,7 +207,7 @@ export const getPostsByCategory = async (category: string, page: number = 1, pag
       return { data: [], totalCount: 0 };
     }
 
-    const posts = data ? data.map(post => mapPostToFrontend(post)) : [];
+    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
     const totalCount = count || 0;
 
     return { data: posts, totalCount };
@@ -232,7 +236,7 @@ export const getPopularPosts = async (limit: number = 5): Promise<PostWithStats[
       return [];
     }
 
-    return data ? data.map(post => mapPostToFrontend(post)) : [];
+    return data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
   } catch (err) {
     console.error('Error fetching popular posts:', err);
     return [];
@@ -258,7 +262,7 @@ export const getRecentPosts = async (limit: number = 5): Promise<PostWithStats[]
       return [];
     }
 
-    return data ? data.map(post => mapPostToFrontend(post)) : [];
+    return data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
   } catch (err) {
     console.error('Error fetching recent posts:', err);
     return [];

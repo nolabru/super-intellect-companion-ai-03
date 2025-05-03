@@ -7,13 +7,13 @@ export type NewsletterPost = {
   id: string;
   title: string;
   content: string;
-  user_id: string;
+  user_id?: string;
   published_at: string | null;
   media_url: string | null;
   media_type: 'none' | 'image' | 'video' | 'audio' | null;
-  view_count: number | null;
-  like_count: number | null;
-  share_count: number | null;
+  view_count: number;
+  like_count?: number;
+  share_count?: number;
   created_at: string;
   updated_at: string;
   is_published?: boolean;
