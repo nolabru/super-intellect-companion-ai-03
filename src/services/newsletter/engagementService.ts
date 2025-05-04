@@ -11,7 +11,7 @@ export const incrementViewCount = async (postId: string): Promise<boolean> => {
   try {
     // Primeiro obtemos a contagem atual de visualizações
     const { data: post, error: fetchError } = await supabase
-      .from('posts')
+      .from('newsletter_posts')
       .select('view_count')
       .eq('id', postId)
       .single();
@@ -25,7 +25,7 @@ export const incrementViewCount = async (postId: string): Promise<boolean> => {
     const currentViewCount = post?.view_count || 0;
     
     const { error } = await supabase
-      .from('posts')
+      .from('newsletter_posts')
       .update({ view_count: currentViewCount + 1 })
       .eq('id', postId);
     
@@ -79,7 +79,7 @@ export const incrementLikeCount = async (postId: string, userId: string): Promis
     
     // Buscar contagem atual
     const { data: post, error: fetchError } = await supabase
-      .from('posts_with_counts')
+      .from('newsletter_posts')
       .select('likes_count')
       .eq('id', postId)
       .single();
@@ -106,7 +106,7 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
     // Incrementamos a tabela de estatísticas de compartilhamento
     const { error } = await supabase
       .from('post_shares')
-      .insert([{ post_id: postId }]);
+      .insert({ post_id: postId });
     
     if (error) {
       console.error('Erro ao registrar compartilhamento:', error);

@@ -24,6 +24,9 @@ export type PostWithCounts = {
   author_avatar?: string | null;
 };
 
+// Alias para PostWithCounts para manter compatibilidade com o código existente
+export type PostWithStats = PostWithCounts;
+
 export type PostFilterParams = {
   limit?: number;
   offset?: number;
@@ -93,4 +96,10 @@ export type NewsletterPost = {
   shares_count?: number;
   author_name?: string | null;
   author_avatar?: string | null;
+  author?: {
+    username?: string;
+    avatar_url?: string | null;
+  };
+  user_has_liked?: boolean;
+  like_count?: number;
 };

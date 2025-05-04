@@ -1,22 +1,14 @@
 
+// This file re-exports from the new modular structure
+import * as commentService from './commentService';
 import * as postService from './postService';
-import * as queryService from './queryService';
 import * as statsService from './statsService';
 import * as engagementService from './engagementService';
-import * as commentService from './commentService';
-import { mapPostToFrontend, getUserInfo } from './utils';
+import * as queryService from './queryService';
 
-// Export all services as a single object
+// Service de usuário comum
 export const newsletterService = {
-  // Post operations
-  createPost: postService.createPost,
-  updatePost: postService.updatePost,
-  deletePost: postService.deletePost,
-  getPostById: postService.getPostById,
-  publishPost: postService.publishPost,
-  unpublishPost: postService.unpublishPost,
-  
-  // Query operations
+  // Funcionalidades de consulta
   getPosts: queryService.getPosts,
   getPublishedPosts: queryService.getPublishedPosts,
   getPostsByUserId: queryService.getPostsByUserId,
@@ -24,30 +16,34 @@ export const newsletterService = {
   getPostsBySearchTerm: queryService.getPostsBySearchTerm,
   getPostsByCategory: queryService.getPostsByCategory,
   getPopularPosts: queryService.getPopularPosts,
-  getRecentPosts: queryService.getRecentPosts,
+  getRelatedPosts: queryService.getRelatedPosts,
+  getPostById: postService.getPostById,
   
-  // Stats operations
-  getTotalPostsCount: statsService.getTotalPostsCount,
-  getTotalPublishedPostsCount: statsService.getTotalPublishedPostsCount,
-  getTotalPostsCountByUserId: statsService.getTotalPostsCountByUserId,
-  getTotalPublishedPostsCountByUserId: statsService.getTotalPublishedPostsCountByUserId,
-  getTotalPostsCountBySearchTerm: statsService.getTotalPostsCountBySearchTerm,
-  getTotalPostsCountByCategory: statsService.getTotalPostsCountByCategory,
+  // Funcionalidades de comentários
+  getComments: commentService.getComments,
+  addComment: commentService.addComment,
   
-  // Engagement operations
+  // Funcionalidades de engajamento
   incrementViewCount: engagementService.incrementViewCount,
   incrementLikeCount: engagementService.incrementLikeCount,
   incrementShareCount: engagementService.incrementShareCount,
-  
-  // Comment operations
-  addComment: commentService.addComment,
-  getComments: commentService.getComments,
-  deleteComment: commentService.deleteComment,
-  
-  // Utils
-  mapPostToFrontend,
-  getUserInfo
+  hasUserLikedPost: engagementService.hasUserLikedPost
 };
 
-// Export the newsletter admin service that contains the same methods
-export const newsletterAdminService = newsletterService;
+// Service administrativo
+export const newsletterAdminService = {
+  // Herda todas as funcionalidades do newsletterService
+  ...newsletterService,
+  
+  // Funcionalidades específicas de administrador
+  createPost: postService.createPost,
+  updatePost: postService.updatePost,
+  deletePost: postService.deletePost,
+  publishPost: postService.publishPost,
+  unpublishPost: postService.unpublishPost,
+  
+  // Estatísticas administrativas
+  getStats: statsService.getStats,
+  getTopPosts: statsService.getTopPosts,
+  getEngagementStats: statsService.getEngagementStats
+};

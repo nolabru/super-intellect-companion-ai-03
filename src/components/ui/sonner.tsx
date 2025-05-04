@@ -26,7 +26,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       closeButton
       /* Configurações para prevenir múltiplas notificações */
       expand={false}
-      position="top-right"
+      position="bottom-right"
       duration={4000}
       pauseWhenPageIsHidden
       visibleToasts={3}
