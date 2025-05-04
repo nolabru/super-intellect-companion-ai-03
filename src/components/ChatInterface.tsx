@@ -48,7 +48,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           </div> : filteredMessages.length > 0 ? <div className="space-y-6 max-w-3xl mx-auto">
             {filteredMessages.map(message => <ChatMessage key={message.id} message={message} highlightModel={isCompareMode ? model : undefined} />)}
             <div ref={messagesEndRef} />
-          </div> : <div className="flex flex-col items-center justify-center h-full text-center text-white/60 mx-0">
+          </div> : <div className="flex flex-col items-center justify-center h-full text-center text-white/60 mx-0 my-[56px]">
             <div className="w-16 h-16 rounded-full bg-white/5 backdrop-blur-xl flex items-center justify-center mb-4 border border-white/10">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
