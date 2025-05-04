@@ -130,7 +130,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex justify-between py-[8px] px-[4px]">
+        <CardFooter className="p-4 pt-0 flex justify-start py-[8px] px-[4px]">
           <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={e => {
           e.stopPropagation();
           setIsDeleteDialogOpen(true);
