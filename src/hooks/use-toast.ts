@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -5,8 +6,8 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_LIMIT = 3
+const TOAST_REMOVE_DELAY = 5000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -22,6 +23,8 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
+// Mapa para rastrear notificações ativas por conteúdo
+const activeToastsByContent = new Map<string, string>();
 let count = 0
 
 function genId() {
@@ -94,10 +97,20 @@ export const reducer = (state: State, action: Action): State => {
       // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId)
+        
+        // Remover do mapa de toasts ativos se este toast estiver sendo fechado
+        for (const [content, id] of activeToastsByContent.entries()) {
+          if (id === toastId) {
+            activeToastsByContent.delete(content);
+            break;
+          }
+        }
       } else {
         state.toasts.forEach((toast) => {
           addToRemoveQueue(toast.id)
         })
+        // Limpar mapa de toasts ativos se todos estiverem sendo fechados
+        activeToastsByContent.clear();
       }
 
       return {
@@ -114,11 +127,22 @@ export const reducer = (state: State, action: Action): State => {
     }
     case "REMOVE_TOAST":
       if (action.toastId === undefined) {
+        // Limpar mapa de toasts ativos se todos estiverem sendo removidos
+        activeToastsByContent.clear();
         return {
           ...state,
           toasts: [],
         }
       }
+      
+      // Remover do mapa de toasts ativos quando um toast for removido
+      for (const [content, id] of activeToastsByContent.entries()) {
+        if (id === action.toastId) {
+          activeToastsByContent.delete(content);
+          break;
+        }
+      }
+      
       return {
         ...state,
         toasts: state.toasts.filter((t) => t.id !== action.toastId),
@@ -140,14 +164,42 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
+  // Verificar se já existe uma notificação com o mesmo conteúdo
+  const contentKey = 
+    (typeof props.title === 'string' ? props.title : '') + 
+    '|' + 
+    (typeof props.description === 'string' ? props.description : '');
+  
+  if (contentKey && activeToastsByContent.has(contentKey)) {
+    // Se já existe uma notificação com o mesmo conteúdo, não criar uma nova
+    return {
+      id: activeToastsByContent.get(contentKey) || '',
+      dismiss: () => {},
+      update: () => {},
+    };
+  }
+
   const id = genId()
+
+  // Registrar este toast no mapa de conteúdos ativos
+  if (contentKey) {
+    activeToastsByContent.set(contentKey, id);
+  }
 
   const update = (props: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
       toast: { ...props, id },
     })
-  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+    
+  const dismiss = () => {
+    dispatch({ type: "DISMISS_TOAST", toastId: id })
+    
+    // Remover do mapa quando descartado explicitamente
+    if (contentKey) {
+      activeToastsByContent.delete(contentKey);
+    }
+  }
 
   dispatch({
     type: "ADD_TOAST",
@@ -162,7 +214,7 @@ function toast({ ...props }: Toast) {
   })
 
   return {
-    id: id,
+    id,
     dismiss,
     update,
   }
