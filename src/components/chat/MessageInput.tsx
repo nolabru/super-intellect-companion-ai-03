@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect, useState, useMemo, memo } from 'react';
 import { Send, Paperclip, Calendar, FileSpreadsheet, FileText, Mail, FolderOpen, AlertTriangle } from 'lucide-react';
 import { ChatMode } from '@/components/ModeSelector';
@@ -16,6 +17,8 @@ interface MessageInputProps {
   isSending: boolean;
   mode: ChatMode;
   model: string;
+  hasActiveConversation?: boolean;
+  onCreateConversation?: () => void;
 }
 
 const GOOGLE_COMMANDS = [
@@ -64,7 +67,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
   isImageGenerationModel,
   isSending,
   mode,
-  model
+  model,
+  hasActiveConversation = true,
+  onCreateConversation
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -78,6 +83,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [hasApiError, setHasApiError] = useState(false);
   
   const placeholder = useMemo(() => {
+    if (!hasActiveConversation) {
+      return "Crie uma conversa para começar...";
+    }
     if (isImageGenerationModel) {
       return "Descreva sua imagem...";
     }
@@ -91,7 +99,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
       return "Pergunte...";
     }
     return "Digite aqui...";
-  }, [isImageGenerationModel, mode, model]);
+  }, [isImageGenerationModel, mode, model, hasActiveConversation]);
   
   useEffect(() => {
     setHasApiError(false);
@@ -129,6 +137,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, [message, cursorPosition, isMobile]);
 
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!hasActiveConversation) {
+      toast.info("Crie uma conversa primeiro", {
+        description: "É necessário criar uma conversa antes de começar a digitar.",
+        action: onCreateConversation ? {
+          label: "Criar agora",
+          onClick: onCreateConversation
+        } : undefined,
+        duration: 4000
+      });
+      return;
+    }
+    
     setMessage(e.target.value);
     setCursorPosition(e.target.selectionStart);
     
@@ -144,6 +164,17 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const insertCommand = (command: string) => {
+    if (!hasActiveConversation) {
+      toast.info("Crie uma conversa primeiro", {
+        description: "É necessário criar uma conversa antes de usar comandos.",
+        action: onCreateConversation ? {
+          label: "Criar agora",
+          onClick: onCreateConversation
+        } : undefined
+      });
+      return;
+    }
+
     if (!isGoogleConnected) {
       toast.error(
         "Conta Google não conectada", 
@@ -181,6 +212,17 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   const handleSendWithError = () => {
+    if (!hasActiveConversation) {
+      toast.info("Crie uma conversa primeiro", {
+        description: "É necessário criar uma conversa antes de enviar mensagens.",
+        action: onCreateConversation ? {
+          label: "Criar agora",
+          onClick: onCreateConversation
+        } : undefined
+      });
+      return;
+    }
+
     if ((mode === 'image' || mode === 'video' || mode === 'audio') && hasApiError) {
       toast.error(`Falha na conexão com o serviço de ${mode === 'image' ? 'imagens' : mode === 'video' ? 'vídeos' : 'áudio'}`, {
         description: "Tente novamente em alguns instantes ou verifique sua conexão.",
@@ -241,7 +283,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </div>
       </div>
     );
-  }, [showCommandMenu, commandMenuPosition, message, cursorPosition, isGoogleConnected, isMobile]);
+  }, [showCommandMenu, commandMenuPosition, message, cursorPosition, isGoogleConnected, isMobile, hasActiveConversation, onCreateConversation]);
+
+  // Show alert banner when there's no active conversation
+  const showNoConversationBanner = !hasActiveConversation;
 
   return (
     <div>
@@ -255,11 +300,29 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </div>
       )}
       
+      {showNoConversationBanner && (
+        <div className="px-3 py-2 bg-blue-500/20 border-t border-blue-500/30 mb-1 rounded-t-lg flex items-center">
+          <AlertTriangle className="h-4 w-4 text-blue-300 mr-2 flex-shrink-0" />
+          <span className="text-xs text-blue-100">
+            Crie uma conversa para começar a interagir.
+          </span>
+          {onCreateConversation && (
+            <button 
+              onClick={onCreateConversation}
+              className="ml-auto text-xs bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded"
+            >
+              Criar agora
+            </button>
+          )}
+        </div>
+      )}
+      
       <div 
         className={cn(
           "relative flex items-center gap-2 p-1.5",
           isFocused && "ring-1 ring-white/30",
-          showApiErrorBanner && "rounded-t-none"
+          (showApiErrorBanner || showNoConversationBanner) && "rounded-t-none",
+          !hasActiveConversation && "bg-black/40 opacity-80"
         )} 
         ref={containerRef}
       >
@@ -273,7 +336,18 @@ const MessageInput: React.FC<MessageInputProps> = ({
               handleSendWithError();
             }
           }}
-          onClick={() => {
+          onClick={(e) => {
+            if (!hasActiveConversation) {
+              e.preventDefault();
+              toast.info("Crie uma conversa primeiro", {
+                description: "É necessário criar uma conversa antes de começar a digitar.",
+                action: onCreateConversation ? {
+                  label: "Criar agora",
+                  onClick: onCreateConversation
+                } : undefined
+              });
+              return;
+            }
             if (textareaRef.current) {
               setCursorPosition(textareaRef.current.selectionStart);
             }
@@ -283,16 +357,28 @@ const MessageInput: React.FC<MessageInputProps> = ({
               setCursorPosition(textareaRef.current.selectionStart);
             }
           }}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => {
+            setIsFocused(true);
+            if (!hasActiveConversation) {
+              toast.info("Crie uma conversa primeiro", {
+                description: "É necessário criar uma conversa antes de começar a digitar.",
+                action: onCreateConversation ? {
+                  label: "Criar agora",
+                  onClick: onCreateConversation
+                } : undefined
+              });
+            }
+          }}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
           className={cn(
             "w-full pl-3 pr-24 py-2 bg-transparent text-white resize-none overflow-hidden focus:outline-none",
             "min-h-[36px] text-base leading-relaxed placeholder:text-white/40",
-            isMobile && "text-lg py-3"
+            isMobile && "text-lg py-3",
+            !hasActiveConversation && "cursor-not-allowed"
           )}
           rows={1}
-          disabled={isSending}
+          disabled={isSending || !hasActiveConversation}
           style={{ maxHeight: '100px' }}
         />
         
@@ -301,10 +387,22 @@ const MessageInput: React.FC<MessageInputProps> = ({
           isMobile && "gap-3"
         )}>
           <button 
-            onClick={onAttachment}
-            className={buttonClasses}
+            onClick={() => {
+              if (!hasActiveConversation) {
+                toast.info("Crie uma conversa primeiro", {
+                  description: "É necessário criar uma conversa antes de anexar arquivos.",
+                  action: onCreateConversation ? {
+                    label: "Criar agora",
+                    onClick: onCreateConversation
+                  } : undefined
+                });
+                return;
+              }
+              onAttachment();
+            }}
+            className={cn(buttonClasses, !hasActiveConversation && "opacity-50 cursor-not-allowed")}
             title={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
-            disabled={isSending}
+            disabled={isSending || !hasActiveConversation}
             aria-label={mode === 'text' ? 'Anexar arquivo' : `Anexar ${mode}`}
           >
             <Paperclip className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />
@@ -312,8 +410,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
           
           <button 
             onClick={handleSendWithError}
-            className={buttonClasses}
-            disabled={isSending}
+            className={cn(buttonClasses, !hasActiveConversation && "opacity-50 cursor-not-allowed")}
+            disabled={isSending || !hasActiveConversation}
             aria-label="Enviar mensagem"
           >
             <Send className={cn("h-5 w-5", isTouchDevice && "h-6 w-6")} />

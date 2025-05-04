@@ -17,6 +17,8 @@ interface ChatFooterProps {
   onToggleLink: () => void;
   onParamsChange: (params: any) => void;
   onSendMessage: (content: string, files?: string[], params?: any, targetModel?: string) => void;
+  hasActiveConversation?: boolean;
+  onCreateConversation?: () => void;
 }
 
 const ChatFooter: React.FC<ChatFooterProps> = ({
@@ -30,7 +32,9 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
   onToggleCompare,
   onToggleLink,
   onParamsChange,
-  onSendMessage
+  onSendMessage,
+  hasActiveConversation = true,
+  onCreateConversation
 }) => {
   return (
     <div className={cn(
@@ -59,6 +63,8 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
             onSendMessage={onSendMessage} 
             mode={activeMode}
             model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
+            hasActiveConversation={hasActiveConversation}
+            onCreateConversation={onCreateConversation}
           />
         </div>
       )}

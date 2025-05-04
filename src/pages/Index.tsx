@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getModelsByMode } from '@/components/ModelSelector';
@@ -5,7 +6,6 @@ import { useChatState } from '@/hooks/useChatState';
 import { useMessageSending } from '@/hooks/useMessageSending';
 import { useConversation } from '@/hooks/useConversation';
 import MainLayout from '@/components/layout/MainLayout';
-import ChatSidebar from '@/components/layout/ChatSidebar';
 import ChatContent from '@/components/chat/ChatContent';
 import ChatFooter from '@/components/chat/ChatFooter';
 import { useAuth } from '@/contexts/AuthContext';
@@ -98,8 +98,32 @@ const Index: React.FC = () => {
     navigate
   ]);
 
+  const handleCreateConversation = async () => {
+    if (creatingConversation) return;
+    
+    try {
+      setCreatingConversation(true);
+      toast.loading('Criando nova conversa...');
+      const success = await conversation.createNewConversation();
+      
+      if (success) {
+        toast.success('Nova conversa criada com sucesso');
+      } else {
+        toast.error('Erro ao criar nova conversa');
+      }
+    } catch (err) {
+      console.error('[Index] Error creating conversation:', err);
+      toast.error('Erro ao criar nova conversa');
+    } finally {
+      setCreatingConversation(false);
+    }
+  };
+
   const availableModels = getModelsByMode(activeMode).map(model => model.id);
   const isLoading = authLoading || messagesLoading || creatingConversation;
+  
+  // Check if there's an active conversation
+  const hasActiveConversation = !!currentConversationId;
 
   if (creatingConversation) {
     return (
@@ -173,6 +197,8 @@ const Index: React.FC = () => {
               onToggleLink={toggleLink}
               onParamsChange={handleParamsChange}
               onSendMessage={handleSendMessage}
+              hasActiveConversation={hasActiveConversation}
+              onCreateConversation={handleCreateConversation}
             />
           </div>
         </MainLayout>

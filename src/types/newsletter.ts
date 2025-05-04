@@ -1,54 +1,96 @@
 
-// Define types based on the database structure we defined in the client
+// Tipos para Newsletter e Posts
+import { User } from '@supabase/supabase-js';
 import { Database } from '@/integrations/supabase/types';
 
-// Define base types from the database
+export type PostWithCounts = {
+  id: string;
+  title: string;
+  content: string;
+  author_id: string;
+  is_published: boolean;
+  published_at?: string;
+  created_at?: string;
+  updated_at?: string;
+  cover_image?: string | null;
+  summary?: string | null;
+  media_type?: string | null;
+  media_url?: string | null;
+  view_count: number;
+  likes_count: number; 
+  comments_count: number;
+  shares_count: number;
+  author_name?: string | null;
+  author_avatar?: string | null;
+};
+
+export type PostFilterParams = {
+  limit?: number;
+  offset?: number;
+  onlyPublished?: boolean;
+  authorId?: string | null;
+  sortBy?: 'published_at' | 'view_count' | 'created_at';
+  sortDirection?: 'asc' | 'desc';
+};
+
+export type PostFormData = {
+  title: string;
+  content: string;
+  summary?: string;
+  cover_image?: string | null;
+  media_type?: string | null;
+  media_url?: string | null;
+  is_published: boolean;
+};
+
+export type CommentWithUser = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+export type NewsletterComment = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  username?: string;
+  display_name?: string | null;
+  avatar_url?: string | null;
+};
+
+export type PostDetailData = {
+  post: PostWithCounts;
+  comments: CommentWithUser[];
+  commentCount: number;
+  userHasLiked: boolean;
+  relatedPosts: PostWithCounts[];
+};
+
 export type NewsletterPost = {
   id: string;
   title: string;
   content: string;
-  user_id?: string;
-  published_at: string | null;
-  media_url: string | null;
-  media_type: 'none' | 'image' | 'video' | 'audio' | null;
-  view_count: number;
-  like_count?: number;
-  share_count?: number;
-  created_at: string;
-  updated_at: string;
-  is_published?: boolean;
-  author_id?: string;
-};
-
-export type PostLike = {
-  id: string;
-  user_id: string;
-  post_id: string;
-  created_at: string;
-};
-
-export type PostComment = {
-  id: string;
-  post_id: string;
-  user_id: string;
-  content: string;
-  created_at: string;
-};
-
-// Enhanced types with additional fields
-export interface PostWithStats extends NewsletterPost {
+  author_id: string;
+  is_published: boolean;
+  published_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  cover_image?: string | null;
+  summary?: string | null;
+  media_type?: string | null;
+  media_url?: string | null;
+  view_count?: number;
   likes_count?: number;
   comments_count?: number;
-  user_has_liked?: boolean;
-  author?: {
-    username?: string;
-    avatar_url?: string;
-  };
-}
-
-export type CommentWithUser = PostComment & {
-  user?: {
-    username?: string;
-    avatar_url?: string;
-  };
+  shares_count?: number;
+  author_name?: string | null;
+  author_avatar?: string | null;
 };

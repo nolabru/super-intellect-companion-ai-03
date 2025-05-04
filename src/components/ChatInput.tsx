@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
@@ -13,12 +14,16 @@ interface ChatInputProps {
   onSendMessage: (message: string, files?: string[], params?: any) => void;
   model?: string;
   mode?: ChatMode;
+  hasActiveConversation?: boolean;
+  onCreateConversation?: () => void;
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({ 
   onSendMessage, 
   model = '', 
-  mode = 'text' 
+  mode = 'text',
+  hasActiveConversation = true,
+  onCreateConversation
 }) => {
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);
@@ -42,6 +47,18 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   // Optimized sendMessage function with useCallback
   const handleSendMessage = useCallback(async () => {
+    if (!hasActiveConversation) {
+      toast({
+        title: "Crie uma conversa",
+        description: "É necessário criar uma conversa antes de enviar mensagens.",
+        variant: "default",
+      });
+      if (onCreateConversation) {
+        onCreateConversation();
+      }
+      return;
+    }
+    
     if (message.trim() || (files.length > 0 && mode !== 'text')) {
       try {
         setIsSending(true);
@@ -75,15 +92,39 @@ const ChatInput: React.FC<ChatInputProps> = ({
         description: "Por favor, insira uma mensagem ou anexe um arquivo compatível com o modo selecionado.",
       });
     }
-  }, [message, files, mode, model, lumaParams, generationParams, onSendMessage]);
+  }, [message, files, mode, model, lumaParams, generationParams, onSendMessage, hasActiveConversation, onCreateConversation]);
 
   const handleAttachment = useCallback(() => {
+    if (!hasActiveConversation) {
+      toast({
+        title: "Crie uma conversa",
+        description: "É necessário criar uma conversa antes de anexar arquivos.",
+        variant: "default",
+      });
+      if (onCreateConversation) {
+        onCreateConversation();
+      }
+      return;
+    }
+    
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
-  }, []);
+  }, [hasActiveConversation, onCreateConversation]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!hasActiveConversation) {
+      toast({
+        title: "Crie uma conversa",
+        description: "É necessário criar uma conversa antes de anexar arquivos.",
+        variant: "default",
+      });
+      if (onCreateConversation) {
+        onCreateConversation();
+      }
+      return;
+    }
+    
     const selectedFiles = e.target.files;
     
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -128,7 +169,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [mode]);
+  }, [mode, hasActiveConversation, onCreateConversation]);
 
   const removeFile = useCallback((index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
@@ -183,6 +224,8 @@ const ChatInput: React.FC<ChatInputProps> = ({
           isSending={isSending}
           mode={mode}
           model={model}
+          hasActiveConversation={hasActiveConversation}
+          onCreateConversation={onCreateConversation}
         />
       </div>
       

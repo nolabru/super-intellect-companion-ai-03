@@ -1,270 +1,263 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { NewsletterPost, PostWithStats } from '@/types/newsletter';
-import { mapPostToFrontend } from './utils';
-
-interface PaginatedPosts {
-  data: PostWithStats[];
-  totalCount: number;
-}
-
-// Fix the type instantiation issue by simplifying our query responses
-// and avoiding deep type nesting
+import { PostgrestError } from '@supabase/supabase-js';
+import { PostWithCounts, CommentWithUser, PostFilterParams } from '@/types/newsletter';
 
 /**
- * Gets all newsletter posts with pagination
- * @param page The page number to get
- * @param pageSize The number of posts per page
- * @returns An object containing the posts and the total count
+ * Busca posts para a página inicial da newsletter
+ * @param params Parâmetros de filtragem
+ * @returns Array de posts com contagens de engajamento
  */
-export const getPosts = async (page: number = 1, pageSize: number = 10): Promise<PaginatedPosts> => {
+export const queryPosts = async ({
+  limit = 10,
+  offset = 0,
+  onlyPublished = true,
+  authorId = null,
+  sortBy = 'published_at',
+  sortDirection = 'desc'
+}: PostFilterParams): Promise<{
+  posts: PostWithCounts[];
+  count: number;
+  error: PostgrestError | null;
+}> => {
   try {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize - 1;
-
-    const { data, error, count } = await supabase
-      .from('newsletter_posts')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(startIndex, endIndex);
-
-    if (error) {
-      console.error('Error fetching posts:', error);
-      return { data: [], totalCount: 0 };
+    // Montar query base
+    let query = supabase
+      .from('posts_with_counts')
+      .select('*', { count: 'exact' });
+    
+    // Adicionar filtros
+    if (onlyPublished) {
+      query = query.eq('is_published', true);
     }
-
-    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
-    const totalCount = count || 0;
-
-    return { data: posts, totalCount };
+    
+    if (authorId) {
+      query = query.eq('author_id', authorId);
+    }
+    
+    // Adicionar ordenação e paginação
+    query = query
+      .order(sortBy, { ascending: sortDirection === 'asc' })
+      .range(offset, offset + limit - 1);
+    
+    const { data, count, error } = await query;
+    
+    const posts: PostWithCounts[] = (data || []) as PostWithCounts[];
+    
+    return {
+      posts,
+      count: count || 0,
+      error
+    };
   } catch (err) {
-    console.error('Error fetching posts:', err);
-    return { data: [], totalCount: 0 };
+    console.error('Erro ao consultar posts:', err);
+    return {
+      posts: [],
+      count: 0,
+      error: err as PostgrestError
+    };
   }
 };
 
 /**
- * Gets all published newsletter posts with pagination
- * @param page The page number to get
- * @param pageSize The number of posts per page
- * @returns An object containing the posts and the total count
+ * Busca um post específico pelo ID
+ * @param postId ID do post
+ * @returns Post com contagens de engajamento
  */
-export const getPublishedPosts = async (page: number = 1, pageSize: number = 10): Promise<PaginatedPosts> => {
-  try {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize - 1;
-
-    const { data, error, count } = await supabase
-      .from('newsletter_posts')
-      .select('*', { count: 'exact' })
-      .eq('is_published', true)
-      .order('published_at', { ascending: false })
-      .range(startIndex, endIndex);
-
-    if (error) {
-      console.error('Error fetching published posts:', error);
-      return { data: [], totalCount: 0 };
-    }
-
-    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
-    const totalCount = count || 0;
-
-    return { data: posts, totalCount };
-  } catch (err) {
-    console.error('Error fetching published posts:', err);
-    return { data: [], totalCount: 0 };
-  }
-};
-
-/**
- * Gets all newsletter posts by a user with pagination
- * @param userId The ID of the user to get posts for
- * @param page The page number to get
- * @param pageSize The number of posts per page
- * @returns An object containing the posts and the total count
- */
-export const getPostsByUserId = async (userId: string, page: number = 1, pageSize: number = 10): Promise<PaginatedPosts> => {
-  try {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize - 1;
-
-    const { data, error, count } = await supabase
-      .from('newsletter_posts')
-      .select('*', { count: 'exact' })
-      .eq('author_id', userId)
-      .order('created_at', { ascending: false })
-      .range(startIndex, endIndex);
-
-    if (error) {
-      console.error('Error fetching posts by user:', error);
-      return { data: [], totalCount: 0 };
-    }
-
-    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
-    const totalCount = count || 0;
-
-    return { data: posts, totalCount };
-  } catch (err) {
-    console.error('Error fetching posts by user:', err);
-    return { data: [], totalCount: 0 };
-  }
-};
-
-/**
- * Gets all published newsletter posts by a user with pagination
- * @param userId The ID of the user to get posts for
- * @param page The page number to get
- * @param pageSize The number of posts per page
- * @returns An object containing the posts and the total count
- */
-export const getPublishedPostsByUserId = async (
-  userId: string,
-  page: number = 1,
-  pageSize: number = 10
-): Promise<PaginatedPosts> => {
-  try {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize - 1;
-
-    const { data, error, count } = await supabase
-      .from('newsletter_posts')
-      .select('*', { count: 'exact' })
-      .eq('author_id', userId)
-      .eq('is_published', true)
-      .order('published_at', { ascending: false })
-      .range(startIndex, endIndex);
-
-    if (error) {
-      console.error('Error fetching published posts by user:', error);
-      return { data: [], totalCount: 0 };
-    }
-
-    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
-    const totalCount = count || 0;
-
-    return { data: posts, totalCount };
-  } catch (err) {
-    console.error('Error fetching published posts by user:', err);
-    return { data: [], totalCount: 0 };
-  }
-};
-
-/**
- * Gets posts by search term
- * @param searchTerm The search term to filter posts by
- * @param page The page number to get
- * @param pageSize The number of posts per page
- * @returns An object containing the posts and the total count
- */
-export const getPostsBySearchTerm = async (searchTerm: string, page: number = 1, pageSize: number = 10): Promise<PaginatedPosts> => {
-  try {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize - 1;
-
-    const { data, error, count } = await supabase
-      .from('newsletter_posts')
-      .select('*', { count: 'exact' })
-      .ilike('title', `%${searchTerm}%`)
-      .order('created_at', { ascending: false })
-      .range(startIndex, endIndex);
-
-    if (error) {
-      console.error('Error fetching posts by search term:', error);
-      return { data: [], totalCount: 0 };
-    }
-
-    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
-    const totalCount = count || 0;
-
-    return { data: posts, totalCount };
-  } catch (err) {
-    console.error('Error fetching posts by search term:', err);
-    return { data: [], totalCount: 0 };
-  }
-};
-
-/**
- * Gets posts by category
- * @param category The category to filter posts by
- * @param page The page number to get
- * @param pageSize The number of posts per page
- * @returns An object containing the posts and the total count
- */
-export const getPostsByCategory = async (category: string, page: number = 1, pageSize: number = 10): Promise<PaginatedPosts> => {
-  try {
-    const startIndex = (page - 1) * pageSize;
-    const endIndex = page * pageSize - 1;
-
-    const { data, error, count } = await supabase
-      .from('newsletter_posts')
-      .select('*', { count: 'exact' })
-      .eq('category', category)
-      .order('created_at', { ascending: false })
-      .range(startIndex, endIndex);
-
-    if (error) {
-      console.error('Error fetching posts by category:', error);
-      return { data: [], totalCount: 0 };
-    }
-
-    const posts = data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
-    const totalCount = count || 0;
-
-    return { data: posts, totalCount };
-  } catch (err) {
-    console.error('Error fetching posts by category:', err);
-    return { data: [], totalCount: 0 };
-  }
-};
-
-/**
- * Gets popular posts ordered by view count
- * @param limit The maximum number of posts to return
- * @returns A list of popular posts
- */
-export const getPopularPosts = async (limit: number = 5): Promise<PostWithStats[]> => {
+export const queryPostById = async (postId: string): Promise<{
+  post: PostWithCounts | null;
+  error: PostgrestError | null;
+}> => {
   try {
     const { data, error } = await supabase
-      .from('newsletter_posts')
+      .from('posts_with_counts')
       .select('*')
-      .eq('is_published', true)
-      .order('view_count', { ascending: false })
-      .limit(limit);
-
+      .eq('id', postId)
+      .single();
+    
     if (error) {
-      console.error('Error fetching popular posts:', error);
-      return [];
+      throw error;
     }
-
-    return data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
+    
+    return {
+      post: data as PostWithCounts,
+      error: null
+    };
   } catch (err) {
-    console.error('Error fetching popular posts:', err);
-    return [];
+    console.error('Erro ao buscar post por ID:', err);
+    return {
+      post: null,
+      error: err as PostgrestError
+    };
   }
 };
 
 /**
- * Gets recent posts ordered by published date
- * @param limit The maximum number of posts to return
- * @returns A list of recent posts
+ * Busca comentários de um post
+ * @param postId ID do post
+ * @param limit Limite de comentários
+ * @param offset Offset para paginação
+ * @returns Array de comentários com dados dos usuários
  */
-export const getRecentPosts = async (limit: number = 5): Promise<PostWithStats[]> => {
+export const queryCommentsByPostId = async (
+  postId: string,
+  limit = 10,
+  offset = 0
+): Promise<{
+  comments: CommentWithUser[];
+  count: number;
+  error: PostgrestError | null;
+}> => {
   try {
-    const { data, error } = await supabase
-      .from('newsletter_posts')
-      .select('*')
-      .eq('is_published', true)
-      .order('published_at', { ascending: false })
-      .limit(limit);
-
+    const { data, count, error } = await supabase
+      .from('comments_with_users')
+      .select('*', { count: 'exact' })
+      .eq('post_id', postId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
     if (error) {
-      console.error('Error fetching recent posts:', error);
-      return [];
+      throw error;
+    }
+    
+    const comments: CommentWithUser[] = (data || []) as CommentWithUser[];
+    
+    return {
+      comments,
+      count: count || 0,
+      error: null
+    };
+  } catch (err) {
+    console.error('Erro ao buscar comentários:', err);
+    return {
+      comments: [],
+      count: 0,
+      error: err as PostgrestError
+    };
+  }
+};
+
+/**
+ * Publica um comentário em um post
+ * @param postId ID do post
+ * @param content Conteúdo do comentário
+ * @param userId ID do usuário autor
+ * @returns Dados do comentário criado
+ */
+export const publishComment = async (
+  postId: string,
+  content: string,
+  userId: string
+): Promise<{
+  comment: CommentWithUser | null;
+  error: PostgrestError | null;
+}> => {
+  try {
+    // Verificar se o post existe
+    const { data: post, error: postError } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('id', postId)
+      .single();
+    
+    if (postError) {
+      throw new Error('Post não encontrado');
+    }
+    
+    // Criar comentário
+    const { data, error } = await supabase
+      .from('comments')
+      .insert([
+        {
+          post_id: postId,
+          user_id: userId,
+          content
+        }
+      ])
+      .select('*')
+      .single();
+    
+    if (error) {
+      throw error;
+    }
+    
+    if (!data) {
+      throw new Error('Erro ao criar comentário');
+    }
+    
+    // Buscar dados do usuário
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (userError) {
+      console.warn('Erro ao buscar dados do usuário:', userError);
+    }
+    
+    // Retornar comentário com dados do usuário
+    const comment: CommentWithUser = {
+      ...data,
+      username: userData?.username || 'Usuário',
+      avatar_url: userData?.avatar_url || null,
+      display_name: userData?.display_name || 'Usuário',
+    };
+    
+    return { comment, error: null };
+  } catch (err) {
+    console.error('Erro ao publicar comentário:', err);
+    return {
+      comment: null,
+      error: err as PostgrestError
+    };
+  }
+};
+
+/**
+ * Busca posts relacionados a um post específico
+ * @param postId ID do post de referência
+ * @param limit Limite de posts
+ * @returns Array de posts relacionados
+ */
+export const queryRelatedPosts = async (postId: string, limit = 3): Promise<{
+  posts: PostWithCounts[];
+  error: PostgrestError | null;
+}> => {
+  try {
+    // Primeiro buscar o post atual para ter sua categoria
+    const { data: currentPost, error: postError } = await supabase
+      .from('posts')
+      .select('id')
+      .eq('id', postId)
+      .single();
+    
+    if (postError) {
+      throw postError;
     }
 
-    return data ? data.map(post => mapPostToFrontend(post as NewsletterPost)) : [];
+    // Buscar posts relacionados (da mesma categoria, excluindo o atual)
+    const { data, error } = await supabase
+      .from('posts_with_counts')
+      .select('*')
+      .eq('is_published', true)
+      .neq('id', postId)
+      .order('published_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) {
+      throw error;
+    }
+    
+    return {
+      posts: data as PostWithCounts[],
+      error: null
+    };
   } catch (err) {
-    console.error('Error fetching recent posts:', err);
-    return [];
+    console.error('Erro ao buscar posts relacionados:', err);
+    return {
+      posts: [],
+      error: err as PostgrestError
+    };
   }
 };
