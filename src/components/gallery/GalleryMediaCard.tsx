@@ -5,50 +5,33 @@ import { AudioLines, Calendar, Image, MessageSquare, Video, ExternalLink, Loader
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from '@/components/ui/use-toast';
-
 type GalleryMediaCardProps = {
   item: MediaItem;
   onDelete: (id: string) => Promise<void>;
   isDeleting?: boolean;
 };
-
-const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isDeleting = false }) => {
+const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
+  item,
+  onDelete,
+  isDeleting = false
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [localDeleting, setLocalDeleting] = useState(false);
-
   const handleMediaLoad = () => {
     setIsMediaLoading(false);
   };
-
   const handleMediaError = () => {
     setIsMediaLoading(false);
     setMediaError(true);
   };
-
   const handleDeleteMedia = async () => {
     if (localDeleting || isDeleting) return;
-    
     try {
       setLocalDeleting(true);
       await onDelete(item.id);
@@ -58,13 +41,12 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
       toast({
         title: "Erro",
         description: "Não foi possível excluir a mídia",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLocalDeleting(false);
     }
   };
-
   const getTypeIcon = () => {
     const mediaType = item.media_type || item.type;
     switch (mediaType) {
@@ -78,10 +60,9 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
         return null;
     }
   };
-
   const formatDate = (dateString: string) => {
     try {
-      return formatDistanceToNow(new Date(dateString), { 
+      return formatDistanceToNow(new Date(dateString), {
         addSuffix: true,
         locale: ptBR
       });
@@ -89,99 +70,44 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
       return dateString;
     }
   };
-
   const renderMediaPreview = (small: boolean = false) => {
-    const commonClasses = small 
-      ? "h-full w-full object-cover"
-      : "max-h-96 max-w-full mx-auto";
-    
+    const commonClasses = small ? "h-full w-full object-cover" : "max-h-96 max-w-full mx-auto";
     const mediaUrl = item.media_url || item.url;
     const mediaType = item.media_type || item.type;
-      
     if (mediaError) {
-      return (
-        <div className="flex items-center justify-center p-6 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400">
+      return <div className="flex items-center justify-center p-6 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400">
           Não foi possível carregar a mídia
-        </div>
-      );
+        </div>;
     }
-    
     switch (mediaType) {
       case 'image':
-        return (
-          <div className={small ? "relative h-full w-full" : "relative"}>
-            {isMediaLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
+        return <div className={small ? "relative h-full w-full" : "relative"}>
+            {isMediaLoading && <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
                 <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
-              </div>
-            )}
-            <img 
-              src={mediaUrl} 
-              alt={item.prompt} 
-              className={commonClasses} 
-              onLoad={handleMediaLoad}
-              onError={handleMediaError}
-            />
-          </div>
-        );
-        
+              </div>}
+            <img src={mediaUrl} alt={item.prompt} className={commonClasses} onLoad={handleMediaLoad} onError={handleMediaError} />
+          </div>;
       case 'video':
-        return (
-          <div className={small ? "relative h-full w-full" : "relative"}>
-            {isMediaLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
+        return <div className={small ? "relative h-full w-full" : "relative"}>
+            {isMediaLoading && <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
                 <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
-              </div>
-            )}
-            <video 
-              src={mediaUrl} 
-              controls={!small}
-              muted={true}
-              className={commonClasses}
-              onLoadedData={handleMediaLoad}
-              onError={handleMediaError}
-              autoPlay={false}
-              preload="metadata"
-            />
-          </div>
-        );
-        
+              </div>}
+            <video src={mediaUrl} controls={!small} muted={true} className={commonClasses} onLoadedData={handleMediaLoad} onError={handleMediaError} autoPlay={false} preload="metadata" />
+          </div>;
       case 'audio':
-        return (
-          <div className={small ? "flex items-center justify-center h-full w-full" : ""}>
-            {isMediaLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
+        return <div className={small ? "flex items-center justify-center h-full w-full" : ""}>
+            {isMediaLoading && <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
                 <Loader2 className="h-8 w-8 animate-spin text-inventu-gray" />
-              </div>
-            )}
-            {small ? (
-              <AudioLines className="h-16 w-16 text-inventu-gray" />
-            ) : (
-              <audio 
-                src={mediaUrl} 
-                controls 
-                className="w-full"
-                onLoadedData={handleMediaLoad}
-                onError={handleMediaError}
-                autoPlay={false}
-                preload="metadata"
-              />
-            )}
-          </div>
-        );
-        
+              </div>}
+            {small ? <AudioLines className="h-16 w-16 text-inventu-gray" /> : <audio src={mediaUrl} controls className="w-full" onLoadedData={handleMediaLoad} onError={handleMediaError} autoPlay={false} preload="metadata" />}
+          </div>;
       default:
         return <div>Tipo de mídia não suportado</div>;
     }
   };
-
-  return (
-    <>
+  return <>
       <Card className="overflow-hidden bg-inventu-card border-inventu-gray/30 hover:border-inventu-gray/50 transition-colors">
-        <div 
-          className="h-48 bg-inventu-darker cursor-pointer" 
-          onClick={() => setIsOpen(true)}
-        >
+        <div className="h-48 bg-inventu-darker cursor-pointer" onClick={() => setIsOpen(true)}>
           {renderMediaPreview(true)}
         </div>
         
@@ -190,8 +116,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
             <div className="flex items-center">
               {getTypeIcon()}
               <span className="ml-1 text-sm text-white">
-                {item.media_type === 'image' ? 'Imagem' : 
-                 item.media_type === 'video' ? 'Vídeo' : 'Áudio'}
+                {item.media_type === 'image' ? 'Imagem' : item.media_type === 'video' ? 'Vídeo' : 'Áudio'}
               </span>
             </div>
             <div className="flex items-center text-xs text-inventu-gray">
@@ -205,26 +130,16 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex justify-between">
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-red-400 hover:text-red-300 hover:bg-red-900/20"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsDeleteDialogOpen(true);
-            }}
-          >
+        <CardFooter className="p-4 pt-0 flex justify-between px-[4px]">
+          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={e => {
+          e.stopPropagation();
+          setIsDeleteDialogOpen(true);
+        }}>
             <Trash2 className="h-4 w-4 mr-1" />
             Excluir
           </Button>
           
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="text-white hover:text-white hover:bg-inventu-blue/20"
-            onClick={() => setIsOpen(true)}
-          >
+          <Button variant="ghost" size="sm" className="text-white hover:text-white hover:bg-inventu-blue/20" onClick={() => setIsOpen(true)}>
             Visualizar
           </Button>
         </CardFooter>
@@ -235,8 +150,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               {getTypeIcon()}
-              {item.media_type === 'image' ? 'Imagem' : 
-               item.media_type === 'video' ? 'Vídeo' : 'Áudio'}
+              {item.media_type === 'image' ? 'Imagem' : item.media_type === 'video' ? 'Vídeo' : 'Áudio'}
             </DialogTitle>
             <DialogDescription className="text-inventu-gray flex items-center">
               <Calendar className="h-3 w-3 mr-1" />
@@ -257,26 +171,16 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
           </div>
           
           <div className="flex justify-between">
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-400 border-red-900/30 hover:bg-red-900/20 hover:text-red-300"
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsOpen(false);
-                setIsDeleteDialogOpen(true);
-              }}
-            >
+            <Button variant="outline" size="sm" className="text-red-400 border-red-900/30 hover:bg-red-900/20 hover:text-red-300" onClick={e => {
+            e.stopPropagation();
+            setIsOpen(false);
+            setIsDeleteDialogOpen(true);
+          }}>
               <Trash2 className="h-4 w-4 mr-2" />
               Excluir mídia
             </Button>
             
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-white border-inventu-gray/30 hover:bg-inventu-blue/20 hover:text-white"
-              onClick={() => window.open(item.media_url, '_blank')}
-            >
+            <Button variant="outline" size="sm" className="text-white border-inventu-gray/30 hover:bg-inventu-blue/20 hover:text-white" onClick={() => window.open(item.media_url, '_blank')}>
               <ExternalLink className="h-4 w-4 mr-2" />
               Abrir em nova aba
             </Button>
@@ -296,31 +200,21 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ item, onDelete, isD
             <AlertDialogCancel className="bg-inventu-darker text-white border-inventu-gray/30 hover:bg-inventu-gray/20 hover:text-white">
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction 
-              className="bg-red-600 text-white hover:bg-red-700"
-              onClick={(e) => {
-                e.preventDefault();
-                handleDeleteMedia();
-              }}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <>
+            <AlertDialogAction className="bg-red-600 text-white hover:bg-red-700" onClick={e => {
+            e.preventDefault();
+            handleDeleteMedia();
+          }} disabled={isDeleting}>
+              {isDeleting ? <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Excluindo...
-                </>
-              ) : (
-                <>
+                </> : <>
                   <Trash2 className="h-4 w-4 mr-2" />
                   Excluir
-                </>
-              )}
+                </>}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
-  );
+    </>;
 };
-
 export default GalleryMediaCard;
