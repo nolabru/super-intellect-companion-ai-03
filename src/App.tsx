@@ -20,6 +20,7 @@ import ServicesConfig from "./pages/ServicesConfig";
 import Analytics from "./pages/Analytics";
 import CreatePost from "./pages/CreatePost";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AdminRoute from "./components/auth/AdminRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,12 +62,19 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 
+                {/* Admin-protected routes */}
                 <Route path="/admin" element={<AdminPanel />} />
+                <Route path="/analytics" element={
+                  <AdminRoute>
+                    <Analytics />
+                  </AdminRoute>
+                } />
+                
                 <Route path="/feed" element={<NewsFeed />} />
                 <Route path="/feed/new" element={<CreatePost />} />
                 <Route path="/post/:id" element={<PostDetail />} />
                 <Route path="/services" element={<ServicesConfig />} />
-                <Route path="/analytics" element={<Analytics />} />
+                
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
