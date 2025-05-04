@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getModelsByMode } from '@/components/ModelSelector';
 import { useChatState } from '@/hooks/useChatState';
@@ -25,6 +24,7 @@ const Index: React.FC = () => {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
   const [creatingConversation, setCreatingConversation] = useState(false);
+  const creatingConversationRef = useRef(false); // Ref para controle de estado entre re-renderizações
   
   const conversation = useConversation();
   const {
@@ -55,39 +55,46 @@ const Index: React.FC = () => {
 
   // Create a new conversation if there isn't one and we're not already creating one
   useEffect(() => {
-    // Only run if:
-    // 1. We're not already creating a conversation
-    // 2. We're not currently loading conversations
-    // 3. Initial load of conversations is done
-    // 4. There's no current conversation ID
-    // 5. We're not on a specific conversation page
+    // Função para criar nova conversa apenas uma vez
+    const createNewConversation = async () => {
+      // Utiliza ref para garantir que apenas uma criação aconteça
+      if (creatingConversationRef.current) return;
+      
+      try {
+        console.log('[Index] No conversation selected. Creating a new one...');
+        creatingConversationRef.current = true;
+        setCreatingConversation(true);
+        const success = await conversation.createNewConversation();
+        
+        if (success) {
+          console.log('[Index] New conversation created successfully');
+          // Apenas uma notificação de sucesso
+          toast.success('Nova conversa criada com sucesso');
+        } else {
+          console.error('[Index] Failed to create new conversation');
+          toast.error('Erro ao criar nova conversa');
+        }
+      } catch (err) {
+        console.error('[Index] Error creating new conversation:', err);
+        toast.error('Erro ao criar nova conversa');
+      } finally {
+        setCreatingConversation(false);
+        // Mantém o ref true para evitar novas tentativas neste ciclo
+        setTimeout(() => {
+          creatingConversationRef.current = false;
+        }, 1000);
+      }
+    };
+    
+    // Verificações para criar nova conversa
     if (
       !creatingConversation &&
+      !creatingConversationRef.current &&
       !conversation.loading &&
       conversation.initialLoadDone &&
       !currentConversationId &&
       !conversationId
     ) {
-      const createNewConversation = async () => {
-        try {
-          console.log('[Index] No conversation selected. Creating a new one...');
-          setCreatingConversation(true);
-          const success = await conversation.createNewConversation();
-          
-          if (success) {
-            console.log('[Index] New conversation created successfully');
-          } else {
-            console.error('[Index] Failed to create new conversation');
-            toast.error('Erro ao criar nova conversa');
-          }
-        } catch (err) {
-          console.error('[Index] Error creating new conversation:', err);
-          toast.error('Erro ao criar nova conversa');
-        } finally {
-          setCreatingConversation(false);
-        }
-      };
-      
       createNewConversation();
     }
   }, [
@@ -99,23 +106,35 @@ const Index: React.FC = () => {
   ]);
 
   const handleCreateConversation = async () => {
-    if (creatingConversation) return;
+    if (creatingConversation || creatingConversationRef.current) return;
     
     try {
       setCreatingConversation(true);
-      toast.loading('Criando nova conversa...');
+      creatingConversationRef.current = true;
+      
+      // Usar um ID temporário para o toast para poder atualizá-lo depois
+      const toastId = toast.loading('Criando nova conversa...');
+      
       const success = await conversation.createNewConversation();
       
       if (success) {
-        toast.success('Nova conversa criada com sucesso');
+        toast.success('Nova conversa criada com sucesso', {
+          id: toastId
+        });
       } else {
-        toast.error('Erro ao criar nova conversa');
+        toast.error('Erro ao criar nova conversa', {
+          id: toastId
+        });
       }
     } catch (err) {
       console.error('[Index] Error creating conversation:', err);
       toast.error('Erro ao criar nova conversa');
     } finally {
       setCreatingConversation(false);
+      // Mantém o ref true por um curto período para prevenir cliques duplos
+      setTimeout(() => {
+        creatingConversationRef.current = false;
+      }, 1000);
     }
   };
 

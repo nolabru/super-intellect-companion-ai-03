@@ -2,12 +2,38 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Mapa para rastrear operações recentes de engajamento
+const recentEngagementOperations = new Map<string, number>();
+const OPERATION_COOLDOWN = 2000; // 2 segundos de cooldown entre operações idênticas
+
+/**
+ * Verifica se a operação pode ser executada ou está em cooldown
+ * @param key identificador da operação
+ * @returns boolean indicando se a operação pode ser executada
+ */
+const canPerformOperation = (key: string): boolean => {
+  const now = Date.now();
+  const lastOperation = recentEngagementOperations.get(key);
+  
+  if (lastOperation && now - lastOperation < OPERATION_COOLDOWN) {
+    return false;
+  }
+  
+  recentEngagementOperations.set(key, now);
+  return true;
+};
+
 /**
  * Incrementa a contagem de visualizações de um post
  * @param postId ID do post
  * @returns Promise<boolean> Sucesso da operação
  */
 export const incrementViewCount = async (postId: string): Promise<boolean> => {
+  const operationKey = `view_${postId}`;
+  if (!canPerformOperation(operationKey)) {
+    return true; // Ignora operações duplicadas em sequência rápida
+  }
+  
   try {
     // Primeiro obtemos a contagem atual de visualizações
     const { data: post, error: fetchError } = await supabase
@@ -48,6 +74,11 @@ export const incrementViewCount = async (postId: string): Promise<boolean> => {
  * @returns Promise<boolean> Sucesso da operação
  */
 export const incrementLikeCount = async (postId: string, userId: string): Promise<boolean> => {
+  const operationKey = `like_${postId}_${userId}`;
+  if (!canPerformOperation(operationKey)) {
+    return false; // Evita curtidas duplicadas em sequência rápida
+  }
+  
   try {
     // Verificar se o usuário já curtiu o post
     const { data: existingLike, error: checkError } = await supabase
@@ -102,14 +133,34 @@ export const incrementLikeCount = async (postId: string, userId: string): Promis
  * @returns Promise<boolean> Sucesso da operação
  */
 export const incrementShareCount = async (postId: string): Promise<boolean> => {
+  const operationKey = `share_${postId}`;
+  if (!canPerformOperation(operationKey)) {
+    return true; // Ignora compartilhamentos duplicados em sequência rápida
+  }
+  
   try {
-    // Incrementamos a tabela de estatísticas de compartilhamento
+    // Incrementamos através do update diretamente em vez de inserir em uma tabela separada
+    // para evitar erros de tabela inexistente
+    const { data: post, error: fetchError } = await supabase
+      .from('newsletter_posts')
+      .select('shares_count')
+      .eq('id', postId)
+      .single();
+    
+    if (fetchError) {
+      console.error('Erro ao buscar contagem de compartilhamentos:', fetchError);
+      return false;
+    }
+    
+    const currentShareCount = post?.shares_count || 0;
+    
     const { error } = await supabase
-      .from('post_shares')
-      .insert({ post_id: postId });
+      .from('newsletter_posts')
+      .update({ shares_count: currentShareCount + 1 })
+      .eq('id', postId);
     
     if (error) {
-      console.error('Erro ao registrar compartilhamento:', error);
+      console.error('Erro ao incrementar compartilhamentos:', error);
       return false;
     }
     
@@ -128,6 +179,12 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
  */
 export const hasUserLikedPost = async (postId: string, userId: string): Promise<boolean> => {
   if (!userId) return false;
+  
+  const operationKey = `check_like_${postId}_${userId}`;
+  if (!canPerformOperation(operationKey)) {
+    // Retornar cache (assumindo não curtido para não mostrar falsos positivos)
+    return false;
+  }
   
   try {
     const { data, error } = await supabase

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useConversation } from '@/hooks/useConversation';
@@ -11,16 +11,22 @@ import { v4 as uuidv4 } from 'uuid';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 
+// Mapa para controle de operações recentes
+const recentOperations = new Map<string, number>();
+const OPERATION_COOLDOWN = 1000; // 1 segundo de cooldown
+
 // Interface para as pastas
 interface FolderType {
   id: string;
   name: string;
   isOpen?: boolean;
 }
+
 interface ConversationSidebarProps {
   onToggleSidebar?: () => void;
   isOpen?: boolean;
 }
+
 const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onToggleSidebar,
   isOpen = true
@@ -28,6 +34,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   // Estado para gerenciar pastas
   const [folders, setFolders] = useState<FolderType[]>([]);
   const [conversationFolders, setConversationFolders] = useState<Record<string, string | null>>({});
+  const processingRef = useRef<Record<string, boolean>>({});
+  
   const {
     conversations,
     currentConversationId,
@@ -43,6 +51,19 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     user
   } = useAuth();
   const navigate = useNavigate();
+
+  // Função para verificar se pode executar operação
+  const canPerformOperation = (key: string): boolean => {
+    const now = Date.now();
+    const lastOp = recentOperations.get(key);
+    
+    if (lastOp && now - lastOp < OPERATION_COOLDOWN) {
+      return false;
+    }
+    
+    recentOperations.set(key, now);
+    return true;
+  };
 
   // Carregar pastas do localStorage ao iniciar
   useEffect(() => {
@@ -82,6 +103,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   // Função para criar uma nova pasta
   const handleCreateFolder = (name: string) => {
+    const operationKey = `create_folder_${name}`;
+    if (!canPerformOperation(operationKey)) return;
+    
     const newFolder: FolderType = {
       id: uuidv4(),
       name,
@@ -93,6 +117,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   // Função para renomear uma pasta
   const handleRenameFolder = (id: string, newName: string) => {
+    const operationKey = `rename_folder_${id}_${newName}`;
+    if (!canPerformOperation(operationKey)) return;
+    
     setFolders(prev => prev.map(folder => folder.id === id ? {
       ...folder,
       name: newName
@@ -102,6 +129,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   // Função para excluir uma pasta
   const handleDeleteFolder = (id: string) => {
+    const operationKey = `delete_folder_${id}`;
+    if (!canPerformOperation(operationKey)) return;
+    
     // Remover associações de conversas com esta pasta
     const updatedConversationFolders = {
       ...conversationFolders
@@ -118,6 +148,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   // Função para mover uma conversa para uma pasta
   const handleMoveConversation = (conversationId: string, folderId: string | null) => {
+    const operationKey = `move_conversation_${conversationId}_${folderId}`;
+    if (!canPerformOperation(operationKey)) return;
+    
     setConversationFolders(prev => ({
       ...prev,
       [conversationId]: folderId
@@ -128,6 +161,9 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
   // Função para criar uma nova conversa com navegação atualizada
   const handleNewConversation = async () => {
+    if (processingRef.current.newConversation) return;
+    processingRef.current.newConversation = true;
+    
     console.log('[ConversationSidebar] Criando nova conversa');
 
     // Feedback visual imediato - limpar mensagens
@@ -143,38 +179,59 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
 
     // Criar nova conversa com tratamento de erro
     try {
+      // Usar um ID de toast único
+      const toastId = toast.loading('Criando nova conversa...');
+      
       const success = await createNewConversation();
-      if (!success) {
-        toast.error('Não foi possível criar uma nova conversa');
+      if (success) {
+        toast.success('Nova conversa criada com sucesso', { id: toastId });
+      } else {
+        toast.error('Não foi possível criar uma nova conversa', { id: toastId });
       }
     } catch (error) {
       console.error('[ConversationSidebar] Erro ao criar nova conversa:', error);
       toast.error('Ocorreu um erro ao criar nova conversa');
+    } finally {
+      processingRef.current.newConversation = false;
     }
   };
 
   // Função para selecionar uma conversa existente com navegação
   const handleSelectConversation = (conversationId: string) => {
+    const operationKey = `select_conversation_${conversationId}`;
+    if (!canPerformOperation(operationKey) || processingRef.current[`select_${conversationId}`]) return;
+    
+    processingRef.current[`select_${conversationId}`] = true;
+    
     if (!conversationId) {
       console.error('[ConversationSidebar] ID de conversa inválido');
+      processingRef.current[`select_${conversationId}`] = false;
       return;
     }
+    
     console.log(`[ConversationSidebar] Selecionando conversa: ${conversationId}`);
 
     // Limpar mensagens imediatamente para feedback visual
     clearMessages();
 
-    // Se clicar na mesma conversa, forçar recarregamento
-    if (currentConversationId === conversationId) {
-      console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
-      // Força recarregar as mensagens da conversa atual
-      forceReloadMessages();
-    } else {
-      // Atualizar conversa selecionada e navegar para a URL
-      setCurrentConversationId(conversationId);
-      navigate(`/c/${conversationId}`, {
-        replace: true
-      });
+    try {
+      // Se clicar na mesma conversa, forçar recarregamento
+      if (currentConversationId === conversationId) {
+        console.log(`[ConversationSidebar] Forçando recarregamento da conversa: ${conversationId}`);
+        // Força recarregar as mensagens da conversa atual
+        forceReloadMessages();
+      } else {
+        // Atualizar conversa selecionada e navegar para a URL
+        setCurrentConversationId(conversationId);
+        navigate(`/c/${conversationId}`, {
+          replace: true
+        });
+      }
+    } finally {
+      // Liberar após operação
+      setTimeout(() => {
+        processingRef.current[`select_${conversationId}`] = false;
+      }, 500);
     }
   };
 
@@ -186,6 +243,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </Button>
       </div>;
   }
+  
   return <div className="h-full flex flex-col bg-inventu-dark border-r border-inventu-gray/30">
       <SidebarHeader onNewConversation={handleNewConversation} onToggleSidebar={onToggleSidebar} isUserLoggedIn={!!user} />
       
@@ -201,4 +259,5 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       </div>
     </div>;
 };
+
 export default ConversationSidebar;

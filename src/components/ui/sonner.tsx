@@ -24,9 +24,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       richColors
       closeButton
-      /* Configurações para prevenir múltiplas notificações */
-      expand={false}
       position="bottom-right"
+      expand={false}
       duration={4000}
       pauseWhenPageIsHidden
       visibleToasts={3}
