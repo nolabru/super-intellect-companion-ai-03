@@ -224,24 +224,6 @@ export const AVAILABLE_MODELS: ChatModel[] = [
       imageGeneration: true
     }
   },
-  {
-    id: 'claude-3-opus',
-    displayName: 'Claude 3 Opus',
-    provider: 'anthropic',
-    modes: ['text', 'image'],
-    capabilities: {
-      imageGeneration: false
-    }
-  },
-  {
-    id: 'gemini-pro',
-    displayName: 'Gemini Pro',
-    provider: 'google',
-    modes: ['text', 'image'],
-    capabilities: {
-      imageGeneration: false
-    }
-  },
   // Add image models explicitly to the top level
   ...IMAGE_MODELS,
   // Add video models

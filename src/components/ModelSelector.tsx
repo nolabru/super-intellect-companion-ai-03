@@ -153,6 +153,7 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       >
         <SelectValue placeholder="Selecione um modelo">
           {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {!loading && models.find(m => m.id === selectedModel)?.displayName}
         </SelectValue>
       </SelectTrigger>
       <SelectContent className="bg-inventu-darker/95 backdrop-blur-lg border-white/10 max-h-[60vh]">

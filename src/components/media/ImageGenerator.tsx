@@ -7,13 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useAPIFrameImageGeneration } from '@/hooks/useAPIFrameImageGeneration';
 
-// Updated image models data - ensure API Frame models are included
+// Updated image models data - only including GPT, Ideogram, and Midjourney
 const IMAGE_MODELS = [
   { id: 'ideogram-v2', name: 'Ideogram V2', provider: 'apiframe' },
   { id: 'midjourney', name: 'Midjourney', provider: 'apiframe' },
-  { id: 'openai', name: 'OpenAI DALL-E', provider: 'apiframe' },
-  { id: 'anthropic', name: 'Anthropic Claude', provider: 'apiframe' },
-  { id: 'google', name: 'Google Gemini', provider: 'apiframe' }
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' }
 ];
 
 // Ideogram style types
@@ -77,7 +75,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
   
   const isMidjourney = selectedModel === 'midjourney';
   const isIdeogram = selectedModel === 'ideogram-v2';
-  const isAPIFrameModel = true; // Since all models are now using API Frame
+  const isOpenAI = selectedModel === 'gpt-4o';
+  const isAPIFrameModel = selectedModel === 'ideogram-v2' || selectedModel === 'midjourney';
   
   const { 
     generateImage, 
@@ -135,7 +134,9 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
           onValueChange={setSelectedModel}
         >
           <SelectTrigger id="modelSelect">
-            <SelectValue placeholder="Selecione o modelo" />
+            <SelectValue placeholder="Selecione o modelo">
+              {IMAGE_MODELS.find(model => model.id === selectedModel)?.name}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {IMAGE_MODELS.map(model => (
@@ -156,7 +157,9 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
               onValueChange={setAspectRatio}
             >
               <SelectTrigger id="aspectRatio">
-                <SelectValue placeholder="Selecione a proporção" />
+                <SelectValue placeholder="Selecione a proporção">
+                  {ASPECT_RATIOS.find(ratio => ratio.id === aspectRatio)?.name}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {ASPECT_RATIOS.map(ratio => (
@@ -176,7 +179,9 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
                   onValueChange={setIdeogramStyle}
                 >
                   <SelectTrigger id="ideogramStyle">
-                    <SelectValue placeholder="Selecione o estilo" />
+                    <SelectValue placeholder="Selecione o estilo">
+                      {IDEOGRAM_STYLES.find(style => style.id === ideogramStyle)?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {IDEOGRAM_STYLES.map(style => (
@@ -193,7 +198,9 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
                   onValueChange={setMagicPrompt}
                 >
                   <SelectTrigger id="magicPrompt">
-                    <SelectValue placeholder="Selecione a opção de magic prompt" />
+                    <SelectValue placeholder="Selecione a opção de magic prompt">
+                      {magicPrompt}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="AUTO">Auto</SelectItem>
@@ -215,7 +222,9 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
                   onValueChange={setMjQuality}
                 >
                   <SelectTrigger id="mjQuality">
-                    <SelectValue placeholder="Selecione a qualidade" />
+                    <SelectValue placeholder="Selecione a qualidade">
+                      {MIDJOURNEY_QUALITY_OPTIONS.find(option => option.id === mjQuality)?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {MIDJOURNEY_QUALITY_OPTIONS.map(option => (
@@ -232,7 +241,9 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
                   onValueChange={setMjStyle}
                 >
                   <SelectTrigger id="mjStyle">
-                    <SelectValue placeholder="Selecione o estilo" />
+                    <SelectValue placeholder="Selecione o estilo">
+                      {MIDJOURNEY_STYLE_OPTIONS.find(option => option.id === mjStyle)?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {MIDJOURNEY_STYLE_OPTIONS.map(option => (

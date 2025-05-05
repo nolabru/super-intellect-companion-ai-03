@@ -42,6 +42,25 @@ const IdeogramParameters: React.FC<{
     onParamsChange(newParams);
   };
 
+  // Style options mapping for display
+  const styleOptions = {
+    'GENERAL': 'Geral',
+    'PAINTING': 'Pintura',
+    'PHOTO': 'Foto',
+    'ANIME': 'Anime',
+    'DIGITAL_ART': 'Arte Digital',
+    'CINEMATIC': 'Cinemático'
+  };
+
+  // Aspect ratio options mapping for display
+  const aspectOptions = {
+    'ASPECT_1_1': 'Quadrado (1:1)',
+    'ASPECT_4_3': 'Paisagem (4:3)',
+    'ASPECT_3_4': 'Retrato (3:4)',
+    'ASPECT_16_9': 'Widescreen (16:9)',
+    'ASPECT_9_16': 'Vertical (9:16)'
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -52,7 +71,9 @@ const IdeogramParameters: React.FC<{
             onValueChange={(value) => handleParamChange('style_type', value)}
           >
             <SelectTrigger className="bg-inventu-darker border-inventu-gray/30">
-              <SelectValue placeholder="Estilo" />
+              <SelectValue placeholder="Estilo">
+                {styleOptions[params.style_type as keyof typeof styleOptions] || params.style_type}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-inventu-dark border-inventu-gray/30">
               <SelectItem value="GENERAL">Geral</SelectItem>
@@ -72,7 +93,9 @@ const IdeogramParameters: React.FC<{
             onValueChange={(value) => handleParamChange('aspect_ratio', value)}
           >
             <SelectTrigger className="bg-inventu-darker border-inventu-gray/30">
-              <SelectValue placeholder="Proporção" />
+              <SelectValue placeholder="Proporção">
+                {aspectOptions[params.aspect_ratio as keyof typeof aspectOptions] || params.aspect_ratio}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent className="bg-inventu-dark border-inventu-gray/30">
               <SelectItem value="ASPECT_1_1">Quadrado (1:1)</SelectItem>

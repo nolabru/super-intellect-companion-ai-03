@@ -70,6 +70,11 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
   }, []);
   
   const ParamControls = () => {
+    // Find the current selected voice name
+    const currentVoiceName = 
+      (VOICES[selectedModel as keyof typeof VOICES] || [])
+        .find(voice => voice.id === selectedVoice)?.name || '';
+    
     // Only show voice selector and sliders for TTS models
     if (!['elevenlabs-v2', 'openai-tts-1', 'coqui-xtts'].includes(selectedModel)) {
       return (
@@ -90,7 +95,9 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
             onValueChange={setSelectedVoice}
           >
             <SelectTrigger id="voiceSelector">
-              <SelectValue placeholder="Select a voice" />
+              <SelectValue placeholder="Select a voice">
+                {currentVoiceName}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {(VOICES[selectedModel as keyof typeof VOICES] || []).map((voice) => (

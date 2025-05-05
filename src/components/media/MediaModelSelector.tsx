@@ -16,6 +16,9 @@ const MediaModelSelector: React.FC<MediaModelSelectorProps> = ({
   onModelChange,
   disabled = false
 }) => {
+  // Find the selected model name for display
+  const selectedModelName = models.find(model => model.id === selectedModel)?.name || '';
+
   return (
     <div className="space-y-2">
       <Label htmlFor="modelSelector">Model</Label>
@@ -25,7 +28,9 @@ const MediaModelSelector: React.FC<MediaModelSelectorProps> = ({
         disabled={disabled}
       >
         <SelectTrigger id="modelSelector">
-          <SelectValue placeholder="Select a model" />
+          <SelectValue placeholder="Select a model">
+            {selectedModelName}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {models.map((model) => (
