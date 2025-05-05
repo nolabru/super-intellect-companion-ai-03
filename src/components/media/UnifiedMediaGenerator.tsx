@@ -16,6 +16,7 @@ interface MediaGeneratorProps {
   models: Array<{ id: string; name: string; requiresReference?: boolean }>;
   defaultModel: string;
   onMediaGenerated?: (mediaUrl: string) => void;
+  onModelChange?: (modelId: string) => void;
   paramControls?: React.ReactNode;
   referenceUploader?: React.ReactNode;
   additionalParams?: Record<string, any>;
@@ -27,6 +28,7 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   models,
   defaultModel,
   onMediaGenerated,
+  onModelChange,
   paramControls,
   referenceUploader,
   additionalParams = {}
@@ -55,6 +57,14 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   // Use the persisted task for display if available
   const activeTask = persistedTask || currentTask;
   const taskProgress = activeTask?.progress || 0;
+
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+    // Propagate model change to parent
+    if (onModelChange) {
+      onModelChange(modelId);
+    }
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim() && !referenceUrl) return;
@@ -109,7 +119,7 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
         <MediaModelSelector
           models={models}
           selectedModel={selectedModel}
-          onModelChange={setSelectedModel}
+          onModelChange={handleModelChange}
           disabled={isGenerating}
         />
         
