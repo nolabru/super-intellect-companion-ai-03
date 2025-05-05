@@ -1,13 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import MainLayout from '@/components/layout/MainLayout';
-import { Image, GalleryHorizontal, Loader2, ImageOff, Trash2 } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Image } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import ConversationSidebar from '@/components/ConversationSidebar';
@@ -29,33 +28,35 @@ const MediaGallery: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+  
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
+    
     const fetchMedia = async () => {
       try {
         setLoading(true);
 
-        // Buscar da tabela media_gallery em vez de apiframe_tasks
+        // Fetch from media_gallery table instead of apiframe_tasks
         const {
           data: galleryItems,
           error: galleryError
         } = await supabase.from('media_gallery').select('*').eq('user_id', user.id).order('created_at', {
           ascending: false
         });
+        
         if (galleryError) {
           console.error('Error fetching media gallery:', galleryError);
           throw galleryError;
         }
 
-        // Caso não encontre itens na media_gallery, tenta buscar em piapi_tasks
+        // If no items found in media_gallery, try to fetch from piapi_tasks
         if (!galleryItems || galleryItems.length === 0) {
           const {
             data: piapiTasks,
@@ -63,10 +64,12 @@ const MediaGallery: React.FC = () => {
           } = await supabase.from('piapi_tasks').select('id, media_url, media_type, created_at, prompt').eq('status', 'completed').order('created_at', {
             ascending: false
           });
+          
           if (piapiError) {
             console.error('Error fetching PIAPI tasks:', piapiError);
             throw piapiError;
           }
+          
           const formattedPiapiMedia = (piapiTasks || []).map(item => ({
             id: item.id,
             url: item.media_url || '',
@@ -77,9 +80,10 @@ const MediaGallery: React.FC = () => {
             prompt: item.prompt || '',
             user_id: user.id
           }));
+          
           setMediaItems(formattedPiapiMedia);
         } else {
-          // Formatar os dados da tabela media_gallery
+          // Format data from the media_gallery table
           const formattedGalleryMedia = galleryItems.map(item => ({
             id: item.id,
             url: item.media_url || '',
@@ -91,6 +95,7 @@ const MediaGallery: React.FC = () => {
             title: item.prompt || undefined,
             user_id: item.user_id
           }));
+          
           setMediaItems(formattedGalleryMedia);
         }
       } catch (error) {
@@ -100,33 +105,32 @@ const MediaGallery: React.FC = () => {
         setLoading(false);
       }
     };
+    
     fetchMedia();
   }, [user, navigate]);
-  const handleDeleteMedia = async () => {
-    if (!selectedItem) return;
+  
+  const handleDeleteMedia = async (id: string) => {
     try {
+      const itemToDelete = mediaItems.find(item => item.id === id);
+      if (!itemToDelete) return;
+      
       let success = false;
 
-      // Identificar de qual tabela o item vem baseado nas propriedades
-      if (selectedItem.media_url) {
-        // Item vem da tabela media_gallery
-        const {
-          error
-        } = await supabase.from('media_gallery').delete().eq('id', selectedItem.id);
+      // Identify which table the item is from based on properties
+      if (itemToDelete.media_url) {
+        // Item is from the media_gallery table
+        const { error } = await supabase.from('media_gallery').delete().eq('id', id);
         if (error) throw error;
         success = true;
       } else {
-        // Tentar excluir da tabela piapi_tasks
-        const {
-          error
-        } = await supabase.from('piapi_tasks').delete().eq('id', selectedItem.id);
+        // Try to delete from the piapi_tasks table
+        const { error } = await supabase.from('piapi_tasks').delete().eq('id', id);
         if (error) throw error;
         success = true;
       }
+      
       if (success) {
-        setMediaItems(prevItems => prevItems.filter(item => item.id !== selectedItem.id));
-        setSelectedItem(null);
-        setDeleteDialogOpen(false);
+        setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
         toast.success('Arquivo excluído com sucesso');
       }
     } catch (error) {
@@ -134,6 +138,7 @@ const MediaGallery: React.FC = () => {
       toast.error('Erro ao excluir o arquivo');
     }
   };
+  
   return <div className="flex min-h-screen w-full bg-inventu-darker">
       {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
@@ -150,38 +155,15 @@ const MediaGallery: React.FC = () => {
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-6 py-0 px-[8px]">
               <div className="flex items-center mb-6 px-[16px] py-[10px]">
-                
                 <h1 className="text-[24px] font-bold">Galeria de Mídias</h1>
               </div>
               
-              <GalleryList media={mediaItems} onDeleteItem={async id => {
-              const itemToDelete = mediaItems.find(item => item.id === id);
-              if (itemToDelete) {
-                setSelectedItem(itemToDelete);
-                setDeleteDialogOpen(true);
-              }
-            }} loading={loading} />
+              <GalleryList media={mediaItems} onDeleteItem={handleDeleteMedia} loading={loading} />
             </div>
           </ScrollArea>
         </MainLayout>
       </div>
-      
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta mídia? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteMedia} className="bg-red-500 hover:bg-red-600">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>;
 };
+
 export default MediaGallery;

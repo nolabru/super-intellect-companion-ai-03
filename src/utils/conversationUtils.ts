@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { MessageType } from '@/components/ChatMessage';
 import { toast } from 'sonner';
@@ -217,14 +218,19 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
     console.log(`[conversationUtils] Excluindo conversa ${id}`);
     
     // First delete all associated messages
-    const { error: messagesError } = await supabase
-      .from('messages')
-      .delete()
-      .match({ conversation_id: id });
-      
-    if (messagesError) {
-      console.error('[conversationUtils] Erro ao excluir mensagens da conversa:', messagesError);
-      throw messagesError;
+    try {
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .delete()
+        .match({ conversation_id: id });
+        
+      if (messagesError) {
+        console.error('[conversationUtils] Erro ao excluir mensagens da conversa:', messagesError);
+        // Continue with deletion even if message deletion fails
+      }
+    } catch (messagesErr) {
+      console.error('[conversationUtils] Erro ao excluir mensagens:', messagesErr);
+      // Continue with conversation deletion even if message deletion fails
     }
     
     // Then delete the conversation
@@ -240,6 +246,10 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
     
     console.log(`[conversationUtils] Conversa ${id} excluída com sucesso`);
     toast.success('Conversa excluída com sucesso');
+    
+    // Force a small delay to ensure UI can update properly before redirecting
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     return { data: null, error: null, success: true };
   } catch (err) {
     console.error('[conversationUtils] Erro ao excluir conversa:', err);

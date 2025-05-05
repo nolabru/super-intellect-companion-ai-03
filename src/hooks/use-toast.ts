@@ -23,7 +23,7 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
-// Mapa para rastrear notificações ativas por conteúdo
+// Map to track active toasts by content
 const activeToastsByContent = new Map<string, string>();
 let count = 0
 
@@ -98,7 +98,7 @@ export const reducer = (state: State, action: Action): State => {
       if (toastId) {
         addToRemoveQueue(toastId)
         
-        // Remover do mapa de toasts ativos se este toast estiver sendo fechado
+        // Remove from active toasts map if this toast is being closed
         for (const [content, id] of activeToastsByContent.entries()) {
           if (id === toastId) {
             activeToastsByContent.delete(content);
@@ -109,7 +109,7 @@ export const reducer = (state: State, action: Action): State => {
         state.toasts.forEach((toast) => {
           addToRemoveQueue(toast.id)
         })
-        // Limpar mapa de toasts ativos se todos estiverem sendo fechados
+        // Clear active toasts map if all are being closed
         activeToastsByContent.clear();
       }
 
@@ -127,7 +127,7 @@ export const reducer = (state: State, action: Action): State => {
     }
     case "REMOVE_TOAST":
       if (action.toastId === undefined) {
-        // Limpar mapa de toasts ativos se todos estiverem sendo removidos
+        // Clear active toasts map if all are being removed
         activeToastsByContent.clear();
         return {
           ...state,
@@ -135,7 +135,7 @@ export const reducer = (state: State, action: Action): State => {
         }
       }
       
-      // Remover do mapa de toasts ativos quando um toast for removido
+      // Remove from active toasts map when a toast is removed
       for (const [content, id] of activeToastsByContent.entries()) {
         if (id === action.toastId) {
           activeToastsByContent.delete(content);
@@ -164,14 +164,14 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
-  // Verificar se já existe uma notificação com o mesmo conteúdo
+  // Check if there's already a toast with the same content
   const contentKey = 
     (typeof props.title === 'string' ? props.title : '') + 
     '|' + 
     (typeof props.description === 'string' ? props.description : '');
   
   if (contentKey && activeToastsByContent.has(contentKey)) {
-    // Se já existe uma notificação com o mesmo conteúdo, não criar uma nova
+    // If a toast with the same content exists, don't create a new one
     return {
       id: activeToastsByContent.get(contentKey) || '',
       dismiss: () => {},
@@ -181,7 +181,7 @@ function toast({ ...props }: Toast) {
 
   const id = genId()
 
-  // Registrar este toast no mapa de conteúdos ativos
+  // Register this toast in the content map
   if (contentKey) {
     activeToastsByContent.set(contentKey, id);
   }
@@ -195,7 +195,7 @@ function toast({ ...props }: Toast) {
   const dismiss = () => {
     dispatch({ type: "DISMISS_TOAST", toastId: id })
     
-    // Remover do mapa quando descartado explicitamente
+    // Remove from the map when explicitly dismissed
     if (contentKey) {
       activeToastsByContent.delete(contentKey);
     }

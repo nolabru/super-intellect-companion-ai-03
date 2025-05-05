@@ -3,7 +3,6 @@ import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
-import { LumaParams } from '@/components/LumaParamsButton';
 import { useApiService } from '@/hooks/useApiService';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { createMessageService } from '@/services/messageService';
@@ -15,6 +14,7 @@ import { useMessageState } from './message/useMessageState';
 import { useGoogleCommandHandler } from './message/useGoogleCommandHandler';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { saveMessageToDatabase } from '@/utils/conversationUtils';
 
 export function useMessageHandler(
   messages: MessageType[],
@@ -141,20 +141,43 @@ export function useMessageHandler(
           
           const mediaUrl = result.data.images[0];
           
+          const updatedMessage: MessageType = {
+            id: loadingMessageId,
+            content,
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: modelId,
+            mode,
+            loading: false,
+            mediaUrl
+          };
+          
           setMessages(prev => prev.map(msg => 
-            msg.id === loadingMessageId 
-              ? { 
-                  ...msg, 
-                  content,
-                  loading: false,
-                  mediaUrl
-                } 
-              : msg
+            msg.id === loadingMessageId ? updatedMessage : msg
           ));
+          
+          // Save the message with the media URL to the database for persistence
+          await saveMessageToDatabase(updatedMessage, currentConversationId);
           
           // Save to gallery
           if (mediaUrl) {
             await mediaGallery.saveMediaToGallery(mediaUrl, content, 'image', modelId);
+            
+            // Deduct tokens for image generation
+            if (user?.id) {
+              try {
+                await supabase.functions.invoke('user-tokens', {
+                  body: {
+                    action: 'consume',
+                    model_id: 'ideogram-v2',
+                    mode: 'image'
+                  }
+                });
+              } catch (err) {
+                console.error('[useMessageHandler] Error consuming tokens:', err);
+                // Continue even if token deduction fails
+              }
+            }
           }
         } catch (err) {
           console.error('[useMessageHandler] Erro ao gerar imagem:', err);

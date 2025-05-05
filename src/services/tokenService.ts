@@ -209,6 +209,45 @@ export const tokenService = {
   },
   
   /**
+   * Consume tokens after a successful operation
+   */
+  async consumeTokens(
+    userId: string,
+    modelId: string,
+    mode: string
+  ): Promise<boolean> {
+    try {
+      if (!userId) {
+        return true; // No user, no token consumption
+      }
+      
+      console.log(`[tokenService] Consuming tokens for user ${userId}, model ${modelId}, mode ${mode}`);
+      
+      const { data, error } = await supabase.functions.invoke('user-tokens', {
+        body: {
+          action: 'consume',
+          model_id: modelId,
+          mode: mode
+        }
+      });
+      
+      if (error) {
+        console.error('[tokenService] Error consuming tokens:', error);
+        throw error;
+      }
+      
+      // Clear the cache to ensure fresh data on next fetch
+      this.clearBalanceCache();
+      
+      console.log('[tokenService] Tokens consumed successfully:', data);
+      return true;
+    } catch (err) {
+      console.error('[tokenService] Error consuming tokens:', err);
+      return false;
+    }
+  },
+  
+  /**
    * Calculate days until next token reset
    */
   getDaysUntilReset(nextResetDate: string | null): number | null {

@@ -262,6 +262,111 @@ serve(async (req) => {
         }
       );
     }
+    // Consume tokens
+    else if (action === 'consume') {
+      const model_id = body.model_id;
+      const mode = body.mode;
+      
+      if (!model_id || !mode) {
+        return new Response(
+          JSON.stringify({ error: "Missing required parameters: model_id and mode" }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Get the consumption rate for this model and mode
+      const { data: rateData, error: rateError } = await supabase
+        .from('token_consumption_rates')
+        .select('tokens_per_request')
+        .eq('model_id', model_id)
+        .eq('mode', mode)
+        .maybeSingle();
+      
+      if (rateError) {
+        console.error("Error retrieving token rate:", rateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to retrieve token consumption rate" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Default to 50 tokens if no rate is found
+      const tokensToConsume = rateData?.tokens_per_request || 50;
+      
+      // Get the user's current token balance
+      const { data: tokenData, error: tokenError } = await supabase
+        .from('user_tokens')
+        .select('id, tokens_remaining, tokens_used')
+        .eq('user_id', userId)
+        .single();
+      
+      if (tokenError) {
+        console.error("Error retrieving token data:", tokenError);
+        return new Response(
+          JSON.stringify({ error: "Failed to retrieve token data" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Check if user has enough tokens
+      if (tokenData.tokens_remaining < tokensToConsume) {
+        return new Response(
+          JSON.stringify({ error: "Not enough tokens", 
+            required: tokensToConsume, 
+            remaining: tokenData.tokens_remaining 
+          }),
+          {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Update the token balance
+      const { data: updatedData, error: updateError } = await supabase
+        .from('user_tokens')
+        .update({
+          tokens_remaining: tokenData.tokens_remaining - tokensToConsume,
+          tokens_used: tokenData.tokens_used + tokensToConsume,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', tokenData.id)
+        .select();
+      
+      if (updateError) {
+        console.error("Error updating token balance:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update token balance" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          consumed: tokensToConsume, 
+          balance: {
+            tokens_remaining: updatedData[0].tokens_remaining,
+            tokens_used: updatedData[0].tokens_used
+          }
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
     
     return new Response(
       JSON.stringify({ error: "Invalid action" }),
