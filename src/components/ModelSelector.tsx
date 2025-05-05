@@ -99,6 +99,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     modelsByProvider[provider].push(model);
   });
 
+  // Check if selected model is valid, if not select the first available model
+  useEffect(() => {
+    const isModelValid = models.some(model => model.id === selectedModel);
+    
+    if (!isModelValid && models.length > 0 && !disabled) {
+      // Select the first available model
+      onChange(models[0].id);
+    }
+  }, [selectedModel, models, onChange, disabled]);
+
   return (
     <Select
       value={selectedModel}

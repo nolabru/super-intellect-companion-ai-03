@@ -52,7 +52,7 @@ serve(async (req) => {
       throw new Error("Invalid JSON in request body");
     }
 
-    // Extract parameters from the request - CORREÇÃO AQUI
+    // Extract parameters from the request
     const { content, mode = "text", modelId = "gpt-4o", files = [], params, conversationHistory, userId } = requestData;
     
     if (!content) {
@@ -74,7 +74,50 @@ serve(async (req) => {
     
     console.log(`[ai-chat] Processing ${mode} prompt with model ${modelId}`);
 
-    // Use OpenAI for chat completion
+    // Check if this is an OpenRouter model (contains a slash)
+    if (modelId.includes('/')) {
+      // Redirect to OpenRouter edge function
+      const { data, error } = await supabase.functions.invoke('openrouter-chat', {
+        body: {
+          params: {
+            model: modelId,
+            messages: [
+              {
+                role: "system",
+                content: "You are a helpful assistant that provides accurate and detailed answers."
+              },
+              {
+                role: "user",
+                content: content
+              }
+            ],
+            max_tokens: 2000,
+            temperature: 0.7,
+          },
+          apiKey: "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"
+        }
+      });
+
+      if (error) {
+        console.error("[ai-chat] OpenRouter API error:", error);
+        throw new Error(`OpenRouter API error: ${error.message || JSON.stringify(error)}`);
+      }
+
+      // Get the assistant response from the OpenRouter response
+      const assistantResponse = data.choices[0].message.content;
+
+      console.log("[ai-chat] Received successful response from OpenRouter");
+    
+      // Return the response
+      return new Response(
+        JSON.stringify({ content: assistantResponse }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // For non-OpenRouter models, use OpenAI as before
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured");
     }
