@@ -11,7 +11,7 @@ import MediaProgress from './MediaProgress';
 import MediaPreview from './MediaPreview';
 
 interface MediaGeneratorProps {
-  mediaType: 'image';
+  mediaType: 'image' | 'audio' | 'video';
   title: string;
   models: Array<{ id: string; name: string; requiresReference?: boolean }>;
   defaultModel: string;
@@ -37,7 +37,8 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   const [selectedModel, setSelectedModel] = useState(defaultModel);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
 
-  // Use our ideogram generation hook
+  // Use our ideogram generation hook for images
+  // In the future, we can extend this to use other hooks based on mediaType
   const {
     generateImage,
     isGenerating,
@@ -52,6 +53,11 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
       }
     }
   });
+
+  const [generatedMediaUrl, setGeneratedMediaUrl] = useState<string | null>(null);
+  
+  // Determine which URL to use for display (specific to media type)
+  const displayUrl = mediaType === 'image' ? generatedImageUrl : generatedMediaUrl;
 
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
@@ -78,7 +84,23 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
       referenceUrl: referenceUrl || undefined
     };
 
-    await generateImage(prompt, params);
+    // Different generation based on media type
+    if (mediaType === 'image') {
+      await generateImage(prompt, params);
+    } else {
+      // For now, audio and video generation are placeholders
+      // We'll implement proper generation in the future
+      console.log(`Generating ${mediaType} with prompt: ${prompt} and model: ${selectedModel}`);
+      console.log('Additional params:', params);
+      
+      // Simulate generation for now with a timer
+      setTimeout(() => {
+        setGeneratedMediaUrl('https://example.com/placeholder-media-url');
+        if (onMediaGenerated) {
+          onMediaGenerated('https://example.com/placeholder-media-url');
+        }
+      }, 2000);
+    }
   };
 
   const handleReferenceUpdate = (url: string | null) => {
@@ -121,7 +143,7 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
           <Label htmlFor="mediaPrompt">Prompt</Label>
           <Textarea
             id="mediaPrompt"
-            placeholder="Describe the image you want to generate..."
+            placeholder={`Describe the ${mediaType} you want to generate...`}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={3}
@@ -134,13 +156,13 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
           <MediaProgress
             progress={progress}
             type={mediaType}
-            onCancel={() => alert('Cancellation not supported for Ideogram generation')}
+            onCancel={() => alert(`Cancellation not supported for ${mediaType} generation`)}
           />
         )}
         
-        {generatedImageUrl && !isGenerating && (
+        {displayUrl && !isGenerating && (
           <MediaPreview
-            mediaUrl={generatedImageUrl}
+            mediaUrl={displayUrl}
             mediaType={mediaType}
           />
         )}

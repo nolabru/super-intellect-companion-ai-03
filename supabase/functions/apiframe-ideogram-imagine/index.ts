@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -43,6 +44,10 @@ serve(async (req) => {
       );
     }
 
+    // Log API key details for debugging (masked for security)
+    console.log(`API Key found. Length: ${apiKey.length}, First 4 chars: ${apiKey.substring(0, 4)}...`);
+    console.log(`Full key format check: ${apiKey.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/) ? 'Valid UUID format' : 'Not UUID format'}`);
+    
     console.log(`Generating Ideogram image with prompt: "${prompt.substring(0, 50)}..." and model: ${model}`);
 
     // Prepare request to APIframe
@@ -64,6 +69,13 @@ serve(async (req) => {
 
     console.log('Sending request to APIframe with data:', JSON.stringify(apiRequestData));
 
+    // Make request to APIframe with enhanced logging
+    console.log('Making request to https://api.apiframe.pro/ideogram-imagine');
+    console.log('Headers:', JSON.stringify({
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer [FIRST-4-CHARS]' + apiKey.substring(0, 4) + '...'
+    }));
+
     // Make request to APIframe
     const response = await fetch('https://api.apiframe.pro/ideogram-imagine', {
       method: 'POST',
@@ -74,7 +86,15 @@ serve(async (req) => {
       body: JSON.stringify(apiRequestData)
     });
 
+    // Log response status and headers for debugging
+    console.log(`APIframe response status: ${response.status}`);
+    console.log('APIframe response headers:');
+    for (const [key, value] of response.headers.entries()) {
+      console.log(`${key}: ${value}`);
+    }
+
     const data = await response.json();
+    console.log('APIframe response body:', JSON.stringify(data));
 
     if (!response.ok) {
       console.error('APIframe error response:', data);

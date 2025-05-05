@@ -139,7 +139,7 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
 
   return (
     <UnifiedMediaGenerator
-      mediaType="audio" // Fixed to use the correct media type "audio"
+      mediaType="audio" // Now this is supported with our updated interface
       title="AI Audio Generator"
       models={AUDIO_MODELS}
       defaultModel={selectedModel}

@@ -76,5 +76,8 @@ enabled = true
 # Port used by functions on localhost
 port = 9000
 
+[functions.apiframe-ideogram-imagine]
+verify_jwt = true
+
 [functions.ideogram-imagine]
 verify_jwt = true
