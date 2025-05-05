@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
@@ -14,6 +14,7 @@ import { useGoogleCommandHandler } from './message/useGoogleCommandHandler';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { saveMessageToDatabase } from '@/utils/conversationUtils';
+import { videoGenerationService } from '@/services/videoGenerationService';
 
 export function useMessageHandler(
   messages: MessageType[],
@@ -340,6 +341,84 @@ export function useMessageHandler(
           setMessages(prev => [...prev, {
             id: uuidv4(),
             content: `Erro ao gerar imagem: ${err instanceof Error ? err.message : 'Erro desconhecido'}`,
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: modelId,
+            mode,
+            error: true
+          }]);
+        }
+      } else if (mode === 'video' && modelId.startsWith('kling-')) {
+        try {
+          const loadingMessageId = uuidv4();
+          mediaGenerationMessageId.current = loadingMessageId;
+          mediaType.current = 'video';
+          
+          const loadingMessage: MessageType = {
+            id: loadingMessageId,
+            content: `Gerando vídeo...`,
+            sender: 'assistant',
+            timestamp: new Date().toISOString(),
+            model: modelId,
+            mode,
+            loading: true
+          };
+          
+          setMessages(prev => [...prev, loadingMessage]);
+          
+          // Call videoGenerationService directly instead of going through apiRequestService
+          console.log(`[useMessageHandler] Calling videoGenerationService with model ${modelId} and prompt: ${content}`);
+          
+          const result = await videoGenerationService.generateVideo({
+            prompt: content,
+            model: modelId,
+            duration: params?.duration || 5,
+            aspectRatio: params?.aspectRatio || '16:9',
+            videoType: params?.videoType || 'text-to-video',
+            imageUrl: params?.referenceImageUrl,
+            klingModel: params?.klingModel || 'kling-v1-5',
+            klingMode: params?.klingMode || 'std'
+          });
+          
+          console.log(`[useMessageHandler] Video generation result:`, result);
+          
+          if (!result.taskId) {
+            throw new Error('No task ID returned from video generation service');
+          }
+          
+          // Start polling in the background
+          pollTaskStatus(result.taskId, loadingMessageId, modelId, mode, content)
+            .catch(err => {
+              console.error('[useMessageHandler] Error in task polling:', err);
+              toast.error('Error generating video', {
+                description: err instanceof Error ? err.message : 'Unknown error'
+              });
+            });
+          
+          // Deduct tokens for video generation
+          if (user?.id) {
+            try {
+              await supabase.functions.invoke('user-tokens', {
+                body: {
+                  action: 'consume',
+                  model_id: modelId,
+                  mode: 'video'
+                }
+              });
+            } catch (err) {
+              console.error('[useMessageHandler] Error consuming tokens:', err);
+              // Continue even if token deduction fails
+            }
+          }
+        } catch (err) {
+          console.error('[useMessageHandler] Error generating video:', err);
+          toast.error('Error generating video', {
+            description: err instanceof Error ? err.message : 'Unknown error'
+          });
+          
+          setMessages(prev => [...prev, {
+            id: uuidv4(),
+            content: `Error generating video: ${err instanceof Error ? err.message : 'Unknown error'}`,
             sender: 'assistant',
             timestamp: new Date().toISOString(),
             model: modelId,
