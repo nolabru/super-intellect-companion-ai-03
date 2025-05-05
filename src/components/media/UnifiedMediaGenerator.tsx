@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,6 +47,10 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
       if (onMediaGenerated) {
         onMediaGenerated(mediaUrl);
       }
+      // Refresh token info after media generation
+      if (user) {
+        loadTokenInfo();
+      }
     }
   });
 
@@ -55,19 +59,20 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
     onModelChange(newModel);
   };
 
-  // Load token information when component mounts
-  React.useEffect(() => {
-    const loadTokenInfo = async () => {
-      if (user) {
-        try {
-          const info = await tokenService.getUserTokenBalance(user.id);
-          setTokenInfo(info);
-        } catch (error) {
-          console.error("Error loading token information:", error);
-        }
+  // Load token information 
+  const loadTokenInfo = async () => {
+    if (user) {
+      try {
+        const info = await tokenService.getUserTokenBalance(user.id);
+        setTokenInfo(info);
+      } catch (error) {
+        console.error("Error loading token information:", error);
       }
-    };
-    
+    }
+  };
+
+  // Load token information when component mounts or user changes
+  useEffect(() => {
     loadTokenInfo();
   }, [user]);
 
@@ -93,7 +98,7 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
         }
         
         toast.info(`Generating ${mediaType}...`, {
-          description: `This will use ${tokenCost} tokens`
+          description: `This will use ${tokenCheckResult.required} tokens`
         });
       } catch (error) {
         console.error("Error checking tokens:", error);

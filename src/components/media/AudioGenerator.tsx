@@ -139,10 +139,11 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
 
   return (
     <UnifiedMediaGenerator
-      mediaType="audio" // Now this is supported with our updated interface
+      mediaType="audio"
       title="AI Audio Generator"
       models={AUDIO_MODELS}
       defaultModel={selectedModel}
+      onModelChange={handleModelChange}
       onMediaGenerated={onAudioGenerated}
       paramControls={<ParamControls />}
       additionalParams={{ 

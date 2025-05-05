@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { tokenEvents } from '@/components/TokenDisplay';
 
 export interface TokenBalance {
   tokensRemaining: number;
@@ -215,10 +216,10 @@ export const tokenService = {
     userId: string,
     modelId: string,
     mode: string
-  ): Promise<boolean> {
+  ): Promise<{ success: boolean }> {
     try {
       if (!userId) {
-        return true; // No user, no token consumption
+        return { success: true }; // No user, no token consumption
       }
       
       console.log(`[tokenService] Consuming tokens for user ${userId}, model ${modelId}, mode ${mode}`);
@@ -239,11 +240,14 @@ export const tokenService = {
       // Clear the cache to ensure fresh data on next fetch
       this.clearBalanceCache();
       
+      // Trigger a token update event for real-time UI updates
+      tokenEvents.triggerRefresh();
+      
       console.log('[tokenService] Tokens consumed successfully:', data);
-      return true;
+      return { success: true };
     } catch (err) {
       console.error('[tokenService] Error consuming tokens:', err);
-      return false;
+      return { success: false };
     }
   },
   

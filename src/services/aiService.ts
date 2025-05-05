@@ -271,14 +271,16 @@ export const aiService = {
           // Consume tokens after successful generation
           if (userId) {
             try {
-              const consumeResult = await tokenService.consumeTokens(userId, params.modelId, params.type);
+              await tokenService.consumeTokens(userId, params.modelId, params.type);
               console.log(`[AIService] Consumed ${tokensRequired} tokens for ${params.modelId} ${params.type} generation`);
               
-              if (consumeResult.success) {
-                toast.success(`Image generated successfully. Used ${tokensRequired} tokens.`, {
-                  duration: 3000
-                });
-              }
+              // Refresh token balance to update UI
+              const updatedBalance = await tokenService.getUserTokenBalance(userId);
+              
+              toast.success(`Image generated successfully`, {
+                description: `Used ${tokensRequired} tokens. You have ${updatedBalance.tokensRemaining} tokens remaining.`,
+                duration: 3000
+              });
             } catch (tokenError) {
               console.error('[AIService] Error consuming tokens:', tokenError);
               // Don't fail the operation if token consumption fails
@@ -325,14 +327,16 @@ export const aiService = {
           // Consume tokens after successful generation
           if (userId) {
             try {
-              const consumeResult = await tokenService.consumeTokens(userId, params.modelId, params.type);
+              await tokenService.consumeTokens(userId, params.modelId, params.type);
               console.log(`[AIService] Consumed ${tokensRequired} tokens for ${params.modelId} ${params.type} generation`);
               
-              if (consumeResult.success) {
-                toast.success(`Image generated successfully. Used ${tokensRequired} tokens.`, {
-                  duration: 3000
-                });
-              }
+              // Refresh token balance to update UI
+              const updatedBalance = await tokenService.getUserTokenBalance(userId);
+              
+              toast.success(`Image generated successfully`, {
+                description: `Used ${tokensRequired} tokens. You have ${updatedBalance.tokensRemaining} tokens remaining.`,
+                duration: 3000
+              });
             } catch (tokenError) {
               console.error('[AIService] Error consuming tokens:', tokenError);
               // Don't fail the operation if token consumption fails

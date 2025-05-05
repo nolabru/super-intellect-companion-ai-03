@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Coins, AlertTriangle, Info } from 'lucide-react';
+import { Coins, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,25 @@ import { tokenService, TokenBalance } from '@/services/tokenService';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+
+// Create a global event bus for token updates
+export const tokenEvents = {
+  // Use a Set to store subscribers
+  subscribers: new Set<() => void>(),
+  
+  // Method to trigger a refresh for all subscribers
+  triggerRefresh: () => {
+    tokenEvents.subscribers.forEach(callback => callback());
+  },
+  
+  // Subscribe to token updates
+  subscribe: (callback: () => void) => {
+    tokenEvents.subscribers.add(callback);
+    return () => {
+      tokenEvents.subscribers.delete(callback);
+    };
+  }
+};
 
 const TokenDisplay = () => {
   const [tokenInfo, setTokenInfo] = useState<TokenBalance | null>(null);
@@ -19,53 +38,59 @@ const TokenDisplay = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const fetchTokenInfo = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Retry with cache clearing if we've had issues before
+      if (retryCount > 0) {
+        console.log('Clearing token cache before retry attempt');
+        tokenService.clearBalanceCache();
+      }
+
+      const balance = await tokenService.getUserTokenBalance(user.id);
+      setTokenInfo(balance);
+      setError(false);
+      
+      // Show low token warning if appropriate
+      if (balance.tokensRemaining < 100 && !showLowAlert) {
+        setShowLowAlert(true);
+        toast.warning('Token balance is low', {
+          description: `You have ${balance.tokensRemaining} tokens remaining.`,
+          action: {
+            label: 'View details',
+            onClick: () => navigate('/tokens'),
+          },
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching tokens:', err);
+      setError(true);
+      
+      // If we encounter an error, increment retry counter to clear cache on next attempt
+      setRetryCount(prev => prev + 1);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTokenInfo = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Retry with cache clearing if we've had issues before
-        if (retryCount > 0) {
-          console.log('Clearing token cache before retry attempt');
-          tokenService.clearBalanceCache();
-        }
-
-        const balance = await tokenService.getUserTokenBalance(user.id);
-        setTokenInfo(balance);
-        setError(false);
-        
-        // Show low token warning if appropriate
-        if (balance.tokensRemaining < 100 && !showLowAlert) {
-          setShowLowAlert(true);
-          toast.warning('Token balance is low', {
-            description: `You have ${balance.tokensRemaining} tokens remaining.`,
-            action: {
-              label: 'View details',
-              onClick: () => navigate('/tokens'),
-            },
-            duration: 5000,
-          });
-        }
-      } catch (err) {
-        console.error('Error fetching tokens:', err);
-        setError(true);
-        
-        // If we encounter an error, increment retry counter to clear cache on next attempt
-        setRetryCount(prev => prev + 1);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTokenInfo();
     
-    // Refresh token info every minute
-    const intervalId = setInterval(fetchTokenInfo, 60000);
+    // Refresh token info every 15 seconds (more frequent than before)
+    const intervalId = setInterval(fetchTokenInfo, 15000);
     
-    return () => clearInterval(intervalId);
+    // Subscribe to token events for real-time updates
+    const unsubscribe = tokenEvents.subscribe(fetchTokenInfo);
+    
+    return () => {
+      clearInterval(intervalId);
+      unsubscribe();
+    };
   }, [user, navigate, showLowAlert, retryCount]);
 
   // Format reset date
