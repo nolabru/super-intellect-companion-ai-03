@@ -1,12 +1,10 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Cache-Control": "no-cache, no-store, must-revalidate",
-  "Pragma": "no-cache",
-  "Expires": "0"
 };
 
 // Initialize Supabase client
@@ -355,9 +353,6 @@ serve(async (req) => {
         );
       }
       
-      console.log(`[user-tokens] Consumed ${tokensToConsume} tokens for user ${userId}, model ${model_id}, mode ${mode}`);
-      console.log(`[user-tokens] New balance: ${updatedData[0].tokens_remaining}`);
-      
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -365,8 +360,7 @@ serve(async (req) => {
           balance: {
             tokens_remaining: updatedData[0].tokens_remaining,
             tokens_used: updatedData[0].tokens_used
-          },
-          timestamp: Date.now()
+          }
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },

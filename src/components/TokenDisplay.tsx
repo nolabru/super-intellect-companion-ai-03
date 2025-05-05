@@ -17,11 +17,8 @@ export const tokenEvents = {
   
   // Method to trigger a refresh for all subscribers
   triggerRefresh: () => {
-    console.log('Token refresh event triggered with', tokenEvents.subscribers.size, 'subscribers');
-    tokenEvents.subscribers.forEach(callback => {
-      console.log('Calling subscriber callback');
-      callback();
-    });
+    console.log('Token refresh event triggered');
+    tokenEvents.subscribers.forEach(callback => callback());
   },
   
   // Subscribe to token updates
@@ -29,7 +26,6 @@ export const tokenEvents = {
     console.log('New token event subscriber added');
     tokenEvents.subscribers.add(callback);
     return () => {
-      console.log('Token event subscriber removed');
       tokenEvents.subscribers.delete(callback);
     };
   }
@@ -41,7 +37,6 @@ const TokenDisplay = () => {
   const [error, setError] = useState(false);
   const [showLowAlert, setShowLowAlert] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const [fetchTimestamp, setFetchTimestamp] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -63,7 +58,6 @@ const TokenDisplay = () => {
       console.log('Token balance fetched:', balance);
       setTokenInfo(balance);
       setError(false);
-      setFetchTimestamp(Date.now());
       
       // Show low token warning if appropriate
       if (balance.tokensRemaining < 100 && !showLowAlert) {
@@ -89,19 +83,14 @@ const TokenDisplay = () => {
   };
 
   useEffect(() => {
-    console.log('TokenDisplay: Initial fetch');
     fetchTokenInfo();
     
-    // Refresh token info every 5 seconds
-    const intervalId = setInterval(() => {
-      console.log('TokenDisplay: Interval fetch');
-      fetchTokenInfo();
-    }, 5000);
+    // Refresh token info every 10 seconds (more frequent)
+    const intervalId = setInterval(fetchTokenInfo, 10000);
     
     // Subscribe to token events for real-time updates
     const unsubscribe = tokenEvents.subscribe(() => {
-      console.log('TokenDisplay received refresh event, clearing cache and fetching new token info');
-      tokenService.clearBalanceCache();
+      console.log('TokenDisplay received refresh event, fetching new token info');
       fetchTokenInfo();
     });
     
@@ -109,16 +98,7 @@ const TokenDisplay = () => {
       clearInterval(intervalId);
       unsubscribe();
     };
-  }, [user]);
-
-  // Add an effect that reacts when user changes
-  useEffect(() => {
-    if (user) {
-      console.log('TokenDisplay: User changed, clearing cache and fetching');
-      tokenService.clearBalanceCache();
-      fetchTokenInfo();
-    }
-  }, [user]);
+  }, [user, navigate, showLowAlert, retryCount]);
 
   // Format reset date
   const formatResetDate = (dateString: string | null) => {
@@ -151,22 +131,13 @@ const TokenDisplay = () => {
       tokenService.clearBalanceCache();
       setLoading(true);
       setRetryCount(prev => prev + 1);
-      fetchTokenInfo();
     }
-  };
-
-  // Manual refresh function
-  const handleManualRefresh = () => {
-    console.log('TokenDisplay: Manual refresh requested');
-    tokenService.clearBalanceCache();
-    setLoading(true);
-    fetchTokenInfo();
   };
 
   if (loading) {
     return (
-      <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded cursor-pointer" onClick={handleManualRefresh}>
-        <Coins size={14} className="mr-1 opacity-70 animate-pulse" />
+      <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded">
+        <Coins size={14} className="mr-1 opacity-70" />
         <span className="animate-pulse">Loading...</span>
       </div>
     );
@@ -187,11 +158,7 @@ const TokenDisplay = () => {
 
   if (!tokenInfo) {
     return (
-      <div 
-        className="flex items-center text-xs text-white/70 px-2 py-1 rounded bg-gray-700/30 hover:bg-gray-700/50 cursor-pointer" 
-        title="Token information not available" 
-        onClick={handleManualRefresh}
-      >
+      <div className="flex items-center text-xs text-white/70 px-2 py-1 rounded bg-gray-700/30 hover:bg-gray-700/50" title="Token information not available">
         <Coins size={14} className="mr-1 opacity-70" />
         <span>Tokens: N/A</span>
       </div>
@@ -216,9 +183,6 @@ const TokenDisplay = () => {
                 : 'bg-gray-700/30 text-white/70 hover:bg-gray-700/50'
               }`}
             onClick={handleTokensClick}
-            onDoubleClick={handleManualRefresh}
-            title="Click to view tokens. Double-click to refresh."
-            data-timestamp={fetchTimestamp}
           >
             <Coins size={14} className="mr-1 opacity-70" />
             <span className="mr-1">
@@ -249,8 +213,7 @@ const TokenDisplay = () => {
                 {daysUntilReset !== null ? ` (${daysUntilReset} days)` : ''}
               </p>
             )}
-            <p className="text-gray-400 mt-1 text-2xs">Click to manage your tokens. Double-click to refresh.</p>
-            <p className="text-gray-500 text-2xs">Last updated: {new Date(fetchTimestamp).toLocaleTimeString()}</p>
+            <p className="text-gray-400 mt-1 text-2xs">Click to manage your tokens</p>
           </div>
         </TooltipContent>
       </Tooltip>
