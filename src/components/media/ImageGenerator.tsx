@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useAPIFrameImageGeneration } from '@/hooks/useAPIFrameImageGeneration';
 
-// Updated image models data - only including GPT, Ideogram, and Midjourney
+// Updated image models data - only including GPT-4o, Ideogram, and Midjourney
 const IMAGE_MODELS = [
   { id: 'ideogram-v2', name: 'Ideogram V2', provider: 'apiframe' },
   { id: 'midjourney', name: 'Midjourney', provider: 'apiframe' },
@@ -63,7 +63,7 @@ interface ImageGeneratorProps {
 
 const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => {
   const [negativePrompt, setNegativePrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState('ideogram-v2'); // Set default to Ideogram
+  const [selectedModel, setSelectedModel] = useState('ideogram-v2'); // Set default to Ideogram V2
   const [ideogramStyle, setIdeogramStyle] = useState('GENERAL');
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [magicPrompt, setMagicPrompt] = useState('AUTO');

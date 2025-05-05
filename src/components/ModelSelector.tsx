@@ -66,49 +66,8 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   const [loading, setLoading] = useState(false);
   const { isApiKeyConfigured } = useOpenRouterGeneration();
   
-  // Get base models and OpenRouter models for the selected mode
-  const baseModels = getModelsByMode(mode).filter(model => 
-    !model.id.includes('/') // Filter out OpenRouter models with provider prefix
-  );
-  
-  // Prepare all models based on mode
-  let combinedModels = [...baseModels];
-  
-  // Make sure to include API Frame models for image mode
-  if (mode === 'image') {
-    // Add API Frame models for image mode
-    const apiFrameImageModels: ChatModel[] = [
-      { 
-        id: 'ideogram-v2', 
-        displayName: 'Ideogram V2', 
-        provider: 'apiframe',
-        modes: ['image' as const],
-        capabilities: {
-          imageGeneration: true
-        },
-        description: 'High quality image generation'
-      },
-      { 
-        id: 'midjourney', 
-        displayName: 'Midjourney', 
-        provider: 'apiframe',
-        modes: ['image' as const],
-        capabilities: {
-          imageGeneration: true
-        },
-        description: 'Artistic image generation'
-      }
-    ];
-    combinedModels.push(...apiFrameImageModels);
-  }
-  
-  // Add OpenRouter models if in text mode and API key is configured
-  if (mode === 'text' && isApiKeyConfigured()) {
-    // For text mode, add all OpenRouter models grouped by provider
-    Object.entries(OPENROUTER_MODELS_BY_PROVIDER).forEach(([provider, models]) => {
-      combinedModels.push(...models);
-    });
-  }
+  // Get models for the selected mode
+  let combinedModels = getModelsByMode(mode);
   
   // Filter by available models if provided
   const models = availableModels && availableModels.length > 0

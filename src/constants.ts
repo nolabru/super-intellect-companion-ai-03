@@ -1,3 +1,4 @@
+
 export interface ChatModel {
   id: string;
   displayName: string;
@@ -139,8 +140,7 @@ const OPENROUTER_MODELS: ChatModel[] = [
   ...DEEPSEEK_MODELS
 ];
 
-// Combine Ideogram and Midjourney models into a single IMAGE_MODELS group
-// All under the apiframe provider
+// Define dedicated image models (Ideogram and Midjourney)
 const IMAGE_MODELS: ChatModel[] = [
   {
     id: 'ideogram-v2',
