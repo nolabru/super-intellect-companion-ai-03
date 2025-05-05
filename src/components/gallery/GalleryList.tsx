@@ -22,7 +22,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
       </div>;
   }
   if (media.length === 0) {
-    return <div className="flex flex-col items-center justify-center text-center min-h-[40vh] px-6 py-10">
+    return <div className="flex flex-col items-center justify-center text-center min-h-[70vh] px-6 my-0 py-[40px]">
         <div className="bg-inventu-gray/5 rounded-full p-6 mb-6">
           <Image className="h-10 w-10 text-inventu-gray/40" />
         </div>
