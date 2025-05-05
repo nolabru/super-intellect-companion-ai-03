@@ -235,10 +235,12 @@ export const aiService = {
       // For ideogram image generation
       if (params.type === 'image' && params.modelId === 'ideogram-v2') {
         try {
-          // Updated to use apiframe-ideogram-imagine instead of ideogram-imagine
+          // Updated to use apiframe-ideogram-imagine edge function
           const result = await supabase.functions.invoke('apiframe-ideogram-imagine', {
             body: {
               prompt: params.prompt,
+              model: 'V_2', // Required parameter for apiframe
+              magic_prompt_option: 'AUTO', // Required parameter for apiframe
               ...params.additionalParams
             }
           });

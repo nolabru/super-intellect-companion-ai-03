@@ -120,12 +120,14 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          // Call Supabase Edge Function directly
-          const result = await supabase.functions.invoke('ideogram-imagine', {
+          // Call Supabase Edge Function - CHANGED: Use apiframe-ideogram-imagine instead of ideogram-imagine
+          const result = await supabase.functions.invoke('apiframe-ideogram-imagine', {
             body: {
               prompt: content,
+              model: 'V_2', // Added parameter required by apiframe
               style_type: params?.style_type || 'GENERAL',
-              aspect_ratio: params?.aspect_ratio || 'ASPECT_1_1'
+              aspect_ratio: params?.aspect_ratio || 'ASPECT_1_1',
+              magic_prompt_option: 'AUTO' // Added parameter required by apiframe
             }
           });
           
