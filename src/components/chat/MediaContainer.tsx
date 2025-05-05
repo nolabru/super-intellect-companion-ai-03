@@ -5,6 +5,7 @@ import ImageContent from './media/ImageContent';
 import VideoContent from './media/VideoContent';
 import AudioContent from './media/AudioContent';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
+import VideoLoading from './VideoLoading';
 
 interface MediaContainerProps {
   mediaUrl: string;
@@ -12,6 +13,7 @@ interface MediaContainerProps {
   prompt: string;
   modelId?: string;
   progress?: number;
+  isGenerating?: boolean;
 }
 
 const MediaContainer: React.FC<MediaContainerProps> = ({ 
@@ -19,7 +21,8 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   mode,
   prompt,
   modelId,
-  progress
+  progress,
+  isGenerating = false
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { saveMediaToGallery, saving } = useMediaGallery();
@@ -44,6 +47,11 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   const handleOpenInNewTab = () => {
     window.open(mediaUrl, '_blank');
   };
+  
+  // Show loading state for video if it's still generating
+  if (mode === 'video' && (isGenerating || (mediaUrl.includes('task_id=') && !mediaUrl.includes('.mp4')))) {
+    return <VideoLoading progress={progress} />;
+  }
   
   // Return the appropriate media component based on the mode
   switch (mode) {

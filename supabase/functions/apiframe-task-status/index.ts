@@ -15,15 +15,20 @@ serve(async (req) => {
   }
 
   try {
+    console.log("Recebida requisição para verificar status da tarefa");
+    
     // Obter ID da tarefa da requisição
     const { taskId } = await req.json();
     
     if (!taskId) {
+      console.error("ID da tarefa não fornecido");
       return new Response(
         JSON.stringify({ error: "ID da tarefa não fornecido" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    console.log(`Verificando status da tarefa: ${taskId}`);
 
     // Inicializar cliente Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -44,6 +49,8 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
+
+    console.log(`Tarefa encontrada: ${JSON.stringify(taskData)}`);
 
     // Verificar se é necessário atualizar status diretamente na API Apiframe 
     // para tarefas que não completaram e têm mais de 2 minutos
@@ -82,7 +89,8 @@ serve(async (req) => {
         };
         
         if (apiData.video_url) {
-          updateData.result_url = apiData.video_url;
+          updateData.media_url = apiData.video_url;
+          console.log(`URL do vídeo da API: ${apiData.video_url}`);
         }
 
         const { data: updated, error: updateError } = await supabase
@@ -97,15 +105,29 @@ serve(async (req) => {
           
           // Se o vídeo estiver pronto, salvar no media_ready_events
           if (apiData.status === "finished" && apiData.video_url) {
+            console.log(`Vídeo pronto! Inserindo evento de mídia via status check`);
+            
             await supabase
               .from("media_ready_events")
               .insert({
                 task_id: taskId,
                 media_url: apiData.video_url,
                 media_type: "video",
-                status: "completed"
+                status: "completed",
+                prompt: taskData.prompt,
+                model: taskData.model
               });
           }
+        } else if (updateError) {
+          console.error(`Erro ao atualizar tarefa: ${updateError.message}`);
+        }
+      } else {
+        console.error(`Erro ao verificar status via API: ${apiResponse.status}`);
+        try {
+          const errorText = await apiResponse.text();
+          console.error(`Resposta de erro da API: ${errorText}`);
+        } catch (e) {
+          console.error("Não foi possível ler resposta de erro");
         }
       }
     }
@@ -116,9 +138,11 @@ serve(async (req) => {
       status: updatedTaskData.status === "finished" ? "completed" : 
               updatedTaskData.status === "failed" ? "failed" : "processing",
       progress: updatedTaskData.percentage,
-      mediaUrl: updatedTaskData.result_url || null,
+      mediaUrl: updatedTaskData.media_url || null,
       error: updatedTaskData.error || null
     };
+
+    console.log(`Enviando resposta de status: ${JSON.stringify(response)}`);
 
     return new Response(
       JSON.stringify(response),

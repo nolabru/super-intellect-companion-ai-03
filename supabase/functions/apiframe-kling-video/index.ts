@@ -43,13 +43,18 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const webhookEndpoint = `${supabaseUrl}/functions/v1/apiframe-webhook`;
     
+    // Convert numeric duration to string format required by the API (e.g., "5s")
+    const durationValue = params.duration || 5;
+    const durationString = `${durationValue}s`;
+    
+    console.log(`Parsed duration: ${durationValue} seconds, converted to API format: ${durationString}`);
+    
     // Preparar payload para a API
     const payload = {
       prompt,
       generation_type: generationType,
       model: params.model || "kling-v1-5",
-      // Removido o parâmetro mode que estava causando erro
-      duration: params.duration || 5,
+      duration: durationString, // Use string format for API: "5s", "10s"
       aspect_ratio: params.aspectRatio || "16:9",
       cfg_scale: params.cfgScale !== undefined ? params.cfgScale : 0.7,
       webhook_url: webhookEndpoint,
@@ -69,7 +74,9 @@ serve(async (req) => {
       payload.negative_prompt = params.negativePrompt;
     }
 
+    // Log complete payload for debugging
     console.log("Enviando requisição para Kling AI:", JSON.stringify(payload, null, 2));
+    console.log("Payload enviado para Kling AI:", JSON.stringify(payload, null, 2));
 
     // Enviar requisição para a API
     const apiResponse = await fetch("https://api.apiframe.pro/kling-imagine", {
@@ -98,24 +105,31 @@ serve(async (req) => {
     // Salvar informações da tarefa no banco
     const taskId = responseData.task_id;
     if (taskId) {
-      const { error: insertError } = await supabase
-        .from("apiframe_tasks")
-        .insert({
-          task_id: taskId,
-          service: "kling",
-          task_type: "video",
-          prompt,
-          status: "processing",
-          percentage: 0,
-          params: {
-            ...params,
-            generationType,
-            imageUrl: imageUrl || null
-          }
-        });
+      try {
+        const { error: insertError } = await supabase
+          .from("apiframe_tasks")
+          .insert({
+            task_id: taskId,
+            media_type: "video",
+            status: "processing",
+            prompt,
+            params: {
+              ...params,
+              generationType,
+              imageUrl: imageUrl || null,
+              durationString // Save both representations for debugging
+            },
+            model: params.model || "kling-v1-5"
+          });
 
-      if (insertError) {
-        console.error(`Erro ao inserir registro da tarefa: ${insertError.message}`);
+        if (insertError) {
+          console.error(`Erro ao inserir registro da tarefa: ${insertError.message}`);
+        } else {
+          console.log(`Tarefa ${taskId} registrada no banco de dados com sucesso`);
+        }
+      } catch (dbError) {
+        console.error(`Erro no banco de dados: ${dbError.message}`);
+        // Continue even if DB insert fails - the API task is already created
       }
     }
 
