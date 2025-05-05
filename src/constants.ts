@@ -100,6 +100,12 @@ export const AVAILABLE_MODELS: ChatModel[] = [
     provider: 'luma',
     modes: ['video'],
   },
+  {
+    id: 'kling-v1-5',
+    displayName: 'Kling AI',
+    provider: 'kling',
+    modes: ['video'],
+  },
   // Add all image models (both Ideogram and Midjourney) 
   ...IMAGE_MODELS,
   // Keep audio models
