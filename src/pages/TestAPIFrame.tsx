@@ -3,17 +3,19 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useTaskState } from '@/hooks/media/useTaskState';
 
 const TestAPIFrame: React.FC = () => {
   const [prompt, setPrompt] = useState('A cute cat wearing a hat');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -22,6 +24,20 @@ const TestAPIFrame: React.FC = () => {
   const [negativePrompt, setNegativePrompt] = useState('');
   const [quality, setQuality] = useState('standard');
   const [style, setStyle] = useState('raw');
+  const { tasks, currentTask, currentTaskId, registerTask, updateTask } = useTaskState();
+  
+  // Effect to poll for status updates when we have a taskId
+  useEffect(() => {
+    if (!currentTaskId || !currentTask || currentTask.status === 'completed' || currentTask.status === 'failed') {
+      return;
+    }
+    
+    const intervalId = setInterval(async () => {
+      await checkTaskStatus(currentTaskId);
+    }, 5000);
+    
+    return () => clearInterval(intervalId);
+  }, [currentTaskId, currentTask]);
   
   const testApiFrame = async () => {
     setIsLoading(true);
@@ -76,6 +92,18 @@ const TestAPIFrame: React.FC = () => {
           toast.success('Tarefa de geração iniciada!', {
             description: `ID da tarefa: ${data.taskId}. O processamento pode demorar alguns minutos.`
           });
+          
+          // Register the task for monitoring
+          registerTask(data.taskId, {
+            taskId: data.taskId,
+            status: data.status || 'processing',
+            progress: 0,
+            mediaType: 'image',
+            model: model
+          });
+          
+          // Check status immediately
+          await checkTaskStatus(data.taskId);
         } else {
           setError('No images returned and no task ID. Check console for details.');
           toast.error('Resposta incompleta', {
@@ -83,9 +111,9 @@ const TestAPIFrame: React.FC = () => {
           });
         }
       } else {
-        setError('Request failed. Check console for details.');
-        toast.error('Request failed', {
-          description: 'Check console for more details'
+        setError(data.error || 'Request failed. Check console for details.');
+        toast.error(data.error || 'Request failed', {
+          description: data.details || 'Check console for more details'
         });
       }
     } catch (err) {
@@ -94,6 +122,56 @@ const TestAPIFrame: React.FC = () => {
       toast.error('Error testing APIframe');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const checkTaskStatus = async (taskId: string) => {
+    if (!taskId) return;
+    
+    setIsCheckingStatus(true);
+    try {
+      console.log(`Checking status for task ${taskId}`);
+      
+      // Call the task status endpoint
+      const { data, error } = await supabase.functions.invoke('apiframe-task-status', {
+        body: { taskId }
+      });
+      
+      if (error) {
+        console.error('Error checking task status:', error);
+        toast.error('Error checking task status', {
+          description: error.message
+        });
+        return;
+      }
+      
+      console.log('Task status response:', data);
+      
+      // Update the task state
+      if (data) {
+        updateTask(taskId, {
+          status: data.status,
+          mediaUrl: data.mediaUrl,
+          error: data.error
+        });
+        
+        if (data.mediaUrl) {
+          setImageUrl(data.mediaUrl);
+        }
+        
+        if (data.status === 'completed') {
+          toast.success('Image generation completed!');
+        } else if (data.status === 'failed') {
+          setError(data.error || 'Task failed without specific error');
+          toast.error('Image generation failed', {
+            description: data.error || 'Unknown error'
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error checking task status:', err);
+    } finally {
+      setIsCheckingStatus(false);
     }
   };
 
@@ -224,7 +302,7 @@ const TestAPIFrame: React.FC = () => {
             </div>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-wrap gap-2">
           <Button 
             onClick={testApiFrame} 
             disabled={isLoading || !prompt.trim()}
@@ -236,6 +314,26 @@ const TestAPIFrame: React.FC = () => {
               </>
             ) : 'Generate Test Image'}
           </Button>
+          
+          {currentTaskId && (
+            <Button 
+              variant="outline" 
+              onClick={() => checkTaskStatus(currentTaskId)}
+              disabled={isCheckingStatus || !currentTaskId}
+            >
+              {isCheckingStatus ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Check Status
+                </>
+              )}
+            </Button>
+          )}
         </CardFooter>
       </Card>
       
@@ -250,6 +348,23 @@ const TestAPIFrame: React.FC = () => {
           <h3 className="text-red-800 font-medium">Error</h3>
           <p className="text-red-600">{error}</p>
         </div>
+      )}
+      
+      {currentTask && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Task Status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div><strong>Task ID:</strong> {currentTask.taskId}</div>
+              <div><strong>Status:</strong> {currentTask.status}</div>
+              {currentTask.error && (
+                <div className="text-red-600"><strong>Error:</strong> {currentTask.error}</div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
       
       {result && (

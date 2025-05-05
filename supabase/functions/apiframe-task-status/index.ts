@@ -21,11 +21,11 @@ serve(async (req) => {
   }
 
   try {
-    // Verify API key - updated to use new key name
-    const APIFRAME_API_KEY = Deno.env.get("API FRAME");
+    // FIXED: Use the same environment variable names as the other functions
+    const APIFRAME_API_KEY = Deno.env.get("API_FRAME_KEY") || Deno.env.get("APIFRAME_API_KEY");
     if (!APIFRAME_API_KEY) {
-      console.error("[apiframe-task-status] API FRAME not configured");
-      throw new Error("API FRAME not configured");
+      console.error("[apiframe-task-status] API_FRAME_KEY or APIFRAME_API_KEY not configured");
+      throw new Error("APIFRAME API key not configured");
     }
 
     // Initialize Supabase client
@@ -35,9 +35,21 @@ serve(async (req) => {
     );
 
     // Extract taskId from request body
-    const { taskId } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("[apiframe-task-status] Error parsing request body:", parseError);
+      return new Response(
+        JSON.stringify({ error: "Invalid request body - JSON parsing failed" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+    
+    const { taskId } = requestBody;
 
     if (!taskId) {
+      console.error("[apiframe-task-status] Task ID is required");
       return new Response(
         JSON.stringify({ error: "Task ID is required" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -51,7 +63,7 @@ serve(async (req) => {
       .from("apiframe_tasks")
       .select("*")
       .eq("task_id", taskId)
-      .single();
+      .maybeSingle();  // Using maybeSingle instead of single for better error handling
 
     if (dbError) {
       console.error(`[apiframe-task-status] Error fetching task from database:`, dbError);
@@ -205,6 +217,22 @@ serve(async (req) => {
 
         if (updateError) {
           console.error(`[apiframe-task-status] Error updating task:`, updateError);
+        }
+      } else {
+        // Insert a new record if it doesn't exist
+        const { error: insertError } = await supabaseClient
+          .from("apiframe_tasks")
+          .insert({
+            task_id: taskId,
+            status,
+            media_url: mediaUrl,
+            error: errorMessage,
+            model: 'midjourney',
+            media_type: 'image'
+          });
+          
+        if (insertError) {
+          console.error(`[apiframe-task-status] Error inserting new task:`, insertError);
         }
       }
     }

@@ -38,12 +38,15 @@ serve(async (req) => {
       );
     }
 
-    // Get APIframe API key from environment
+    // Get APIframe API key from environment - check both possible name formats
     const apiKey = Deno.env.get('API_FRAME_KEY') || Deno.env.get('APIFRAME_API_KEY');
     if (!apiKey) {
       console.error('APIframe API key not found in environment variables');
       return new Response(
-        JSON.stringify({ error: 'API key configuration error' }),
+        JSON.stringify({ 
+          error: 'API key configuration error', 
+          details: 'API_FRAME_KEY or APIFRAME_API_KEY not set in environment variables'
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
@@ -51,7 +54,6 @@ serve(async (req) => {
     console.log(`Generating Midjourney image with prompt: "${prompt.substring(0, 50)}..."`);
 
     // Prepare request to APIframe
-    // O IMPORTANTE: Atualizando o endpoint conforme documentação para "/imagine" ao invés de "/midjourney-imagine"
     const apiRequestData = {
       prompt,
       negative_prompt: negative_prompt || undefined,
@@ -67,7 +69,7 @@ serve(async (req) => {
 
     console.log('Sending request to APIframe with data:', JSON.stringify(apiRequestData));
 
-    // Fazendo a requisição para o endpoint correto conforme documentação
+    // Making the request to the endpoint
     const response = await fetch('https://api.apiframe.pro/imagine', {
       method: 'POST',
       headers: {
@@ -84,7 +86,7 @@ serve(async (req) => {
       console.log(`${key}: ${value}`);
     }
 
-    // Verificar o tipo de conteúdo antes de tentar fazer parse como JSON
+    // Verify the content type before trying to parse as JSON
     const contentType = response.headers.get('content-type');
     console.log(`Response content type: ${contentType}`);
     
@@ -111,7 +113,8 @@ serve(async (req) => {
       console.error('APIframe error response:', data);
       return new Response(
         JSON.stringify({ 
-          error: data.error || 'Error generating image', 
+          error: data.error || 'Error generating image',
+          message: 'Failed to generate image with Midjourney',
           details: data,
           status: response.status
         }),
@@ -119,7 +122,7 @@ serve(async (req) => {
       );
     }
 
-    // Verificação de resposta válida
+    // Validation of response
     if (!data.task_id) {
       console.error('Invalid response from APIframe: Missing task_id');
       return new Response(
@@ -133,13 +136,43 @@ serve(async (req) => {
     }
 
     console.log('Midjourney image task created successfully, task ID:', data.task_id);
+    
+    // Insert task record into database for tracking
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (supabaseUrl && supabaseKey) {
+        // Import the createClient dynamically
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2.7.1");
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+        
+        const { error } = await supabaseClient
+          .from("apiframe_tasks")
+          .insert({
+            task_id: data.task_id,
+            status: 'processing',
+            model: 'midjourney',
+            media_type: 'image',
+            prompt: prompt
+          });
+          
+        if (error) {
+          console.error('Error inserting task into database:', error);
+        } else {
+          console.log('Successfully inserted task record into database');
+        }
+      }
+    } catch (dbError) {
+      console.error('Error during database operation:', dbError);
+    }
+    
     console.log('Response data:', JSON.stringify({
       taskId: data.task_id,
       status: data.status || 'processing'
     }));
     
     // Format the response to match what our frontend expects
-    // Nota: Como esta é uma tarefa assíncrona, pode não ter URLs de imagem imediatamente
     const formattedResponse = {
       success: true,
       taskId: data.task_id,
@@ -154,7 +187,11 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ error: 'An unexpected error occurred', details: error.message }),
+      JSON.stringify({ 
+        error: 'An unexpected error occurred', 
+        details: error.message,
+        stack: error.stack
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }

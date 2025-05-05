@@ -33,3 +33,6 @@ enabled = true
 [edge-functions]
 [edge-functions.apiframe-midjourney-imagine]
 verify_jwt = false
+
+[edge-functions.apiframe-task-status]
+verify_jwt = false
