@@ -1,13 +1,11 @@
 
 import { tokenService } from './tokenService';
 import { openRouterService, OpenRouterChatMessage, OpenRouterChatParams } from './openRouterService';
-import { apiframeService } from './apiframeService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { ApiframeModel } from '@/types/apiframeGeneration';
 
 // Define the types of AI models we can interact with
-export type AIModelType = 'openrouter' | 'apiframe' | 'local';
+export type AIModelType = 'openrouter' | 'ideogram' | 'local';
 export type AIModelRole = 'chat' | 'image' | 'video' | 'audio';
 
 // Information about an AI model
@@ -94,55 +92,14 @@ export const aiService = {
         }
       }
       
-      // Add APIframe models (hardcoded for now)
-      if (apiframeService.isApiKeyConfigured()) {
-        // Image models
-        models.push(
-          {
-            id: 'stability-sd-xl',
-            name: 'Stable Diffusion XL',
-            provider: 'APIframe',
-            type: 'apiframe',
-            roles: ['image'],
-          },
-          {
-            id: 'openai-dalle-3',
-            name: 'DALL-E 3',
-            provider: 'APIframe',
-            type: 'apiframe',
-            roles: ['image'],
-          }
-        );
-        
-        // Video models
-        models.push(
-          {
-            id: 'runway-gen2',
-            name: 'Runway Gen-2',
-            provider: 'APIframe',
-            type: 'apiframe',
-            roles: ['video'],
-          },
-          {
-            id: 'pika-1',
-            name: 'Pika',
-            provider: 'APIframe',
-            type: 'apiframe',
-            roles: ['video'],
-          }
-        );
-        
-        // Audio models
-        models.push(
-          {
-            id: 'eleven-labs',
-            name: 'ElevenLabs',
-            provider: 'APIframe',
-            type: 'apiframe',
-            roles: ['audio'],
-          }
-        );
-      }
+      // Add Ideogram models 
+      models.push({
+        id: 'ideogram-v2',
+        name: 'Ideogram V2',
+        provider: 'Ideogram',
+        type: 'ideogram',
+        roles: ['image'],
+      });
       
       return models;
     } catch (err) {
@@ -253,7 +210,7 @@ export const aiService = {
   },
 
   /**
-   * Generate media (image, video, audio) using appropriate service
+   * Generate media (primarily image for Ideogram)
    */
   async generateMedia(
     params: MediaGenerationParams
@@ -275,53 +232,36 @@ export const aiService = {
         }
       }
       
-      // Route to appropriate service based on model ID and media type
-      if (apiframeService.isApiKeyConfigured()) {
-        let result;
-        
-        switch (params.type) {
-          case 'image':
-            result = await apiframeService.generateImage(
-              params.prompt, 
-              params.modelId as ApiframeModel, 
-              params.additionalParams || {}
-            );
-            return {
-              success: true,
-              taskId: result.taskId,
-              status: result.status,
-              mediaUrl: result.mediaUrl,
-              error: result.error
-            };
-          case 'video':
-            result = await apiframeService.generateVideo(
-              params.prompt, 
-              params.modelId as ApiframeModel, 
-              params.additionalParams || {}, 
-              params.referenceUrl
-            );
-            return {
-              success: true,
-              taskId: result.taskId,
-              status: result.status,
-              mediaUrl: result.mediaUrl,
-              error: result.error
-            };
-          case 'audio':
-            result = await apiframeService.generateAudio(
-              params.prompt, 
-              params.modelId as ApiframeModel, 
-              params.additionalParams || {}
-            );
-            return {
-              success: true,
-              taskId: result.taskId,
-              status: result.status,
-              mediaUrl: result.mediaUrl,
-              error: result.error
-            };
-          default:
-            throw new Error(`Unsupported media type: ${params.type}`);
+      // For ideogram image generation
+      if (params.type === 'image' && params.modelId === 'ideogram-v2') {
+        try {
+          const result = await supabase.functions.invoke('ideogram-imagine', {
+            body: {
+              prompt: params.prompt,
+              ...params.additionalParams
+            }
+          });
+          
+          if (result.error) {
+            throw new Error(`Ideogram error: ${result.error.message || 'Unknown error'}`);
+          }
+          
+          if (!result.data.success || !result.data.images || result.data.images.length === 0) {
+            throw new Error('No images were generated');
+          }
+          
+          return {
+            success: true,
+            mediaUrl: result.data.images[0],
+            taskId: result.data.taskId || 'ideogram-task',
+            status: 'completed'
+          };
+        } catch (err) {
+          console.error('[AIService] Error generating Ideogram image:', err);
+          return {
+            success: false,
+            error: err instanceof Error ? err.message : String(err)
+          };
         }
       }
       
@@ -342,14 +282,19 @@ export const aiService = {
     try {
       console.log(`[AIService] Checking status of task ${taskId}`);
       
-      const result = await apiframeService.checkTaskStatus(taskId);
+      // For Ideogram, tasks are immediately complete
+      if (taskId === 'ideogram-task') {
+        return {
+          success: true,
+          taskId,
+          status: 'completed'
+        };
+      }
       
       return {
-        success: true,
-        taskId: result.taskId,
-        mediaUrl: result.mediaUrl,
-        error: result.error,
-        status: result.status
+        success: false,
+        error: 'Task not found',
+        status: 'failed'
       };
     } catch (err) {
       console.error('[AIService] Error checking task status:', err);
@@ -361,30 +306,10 @@ export const aiService = {
   },
 
   /**
-   * Cancel a media generation task
+   * Cancel a media generation task (placeholder for Ideogram)
    */
   async cancelMediaTask(taskId: string): Promise<boolean> {
-    try {
-      console.log(`[AIService] Cancelling task ${taskId}`);
-      
-      return await apiframeService.cancelTask(taskId);
-    } catch (err) {
-      console.error('[AIService] Error cancelling task:', err);
-      return false;
-    }
-  },
-
-  /**
-   * Configure APIframe API key
-   */
-  configureApiframeKey(key: string): boolean {
-    return apiframeService.setApiKey(key);
-  },
-
-  /**
-   * Check if APIframe API key is configured
-   */
-  isApiframeKeyConfigured(): boolean {
-    return apiframeService.isApiKeyConfigured();
+    console.log(`[AIService] Cancel not applicable for Ideogram tasks: ${taskId}`);
+    return false;
   }
 };

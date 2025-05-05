@@ -1,5 +1,5 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { ApiframeMediaType, MediaGenerationResult } from '@/types/apiframeGeneration';
 
 // Define the Media Task structure
 export interface MediaTask {
