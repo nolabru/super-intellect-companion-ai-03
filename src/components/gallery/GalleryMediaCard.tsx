@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MediaItem } from '@/types/gallery';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -22,26 +21,20 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
   const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [mediaError, setMediaError] = useState(false);
   const [localDeleting, setLocalDeleting] = useState(false);
-  
   const handleMediaLoad = () => {
     setIsMediaLoading(false);
   };
-  
   const handleMediaError = () => {
     setIsMediaLoading(false);
     setMediaError(true);
   };
-  
   const handleDeleteMedia = async () => {
     if (localDeleting || isDeleting) return;
-    
     try {
       setLocalDeleting(true);
-      
       if (isOpen) {
         setIsOpen(false);
       }
-      
       await onDelete(item.id);
     } catch (error) {
       console.error("Error in delete handler:", error);
@@ -54,7 +47,6 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
       setLocalDeleting(false);
     }
   };
-  
   const getTypeIcon = () => {
     const mediaType = item.media_type || item.type;
     switch (mediaType) {
@@ -68,7 +60,6 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
         return null;
     }
   };
-  
   const formatDate = (dateString: string) => {
     try {
       return formatDistanceToNow(new Date(dateString), {
@@ -79,18 +70,15 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
       return dateString;
     }
   };
-  
   const renderMediaPreview = (small: boolean = false) => {
     const commonClasses = small ? "h-full w-full object-cover" : "max-h-96 max-w-full mx-auto";
     const mediaUrl = item.media_url || item.url;
     const mediaType = item.media_type || item.type;
-    
     if (mediaError) {
       return <div className="flex items-center justify-center p-6 bg-red-900/20 border border-red-500/30 rounded-lg text-red-400">
           Não foi possível carregar a mídia
         </div>;
     }
-    
     switch (mediaType) {
       case 'image':
         return <div className={small ? "relative h-full w-full" : "relative"}>
@@ -117,21 +105,19 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
         return <div>Tipo de mídia não suportado</div>;
     }
   };
-  
   const confirmDelete = () => {
     // Show a simple confirm dialog using the browser's native confirm dialog
     if (window.confirm("Tem certeza que deseja excluir esta mídia? Esta ação não pode ser desfeita.")) {
       handleDeleteMedia();
     }
   };
-
   return <>
-      <Card className="overflow-hidden bg-inventu-card border-inventu-gray/30 hover:border-inventu-gray/50 transition-colors">
+      <Card className="overflow-hidden bg-inventu-card border-inventu-gray/30 hover:border-inventu-gray/50 transition-colors mx-0 my-0 py-0 px-0">
         <div className="h-48 bg-inventu-darker cursor-pointer" onClick={() => setIsOpen(true)}>
           {renderMediaPreview(true)}
         </div>
         
-        <CardContent className="p-4">
+        <CardContent className="' px-[18px] py-[18px]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               {getTypeIcon()}
@@ -150,8 +136,8 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex justify-start py-[8px] px-[4px]">
-          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-900/20" onClick={confirmDelete}>
+        <CardFooter className="p-4 pt-0 flex justify-between py-[8px] mx-0 my-0 px-[18px]">
+          <Button variant="ghost" size="sm" onClick={confirmDelete} className="text-red-400 hover:text-red-300 hover:bg-red-900/20 text-left">
             <Trash2 className="h-4 w-4 mr-1" />
             Excluir
           </Button>
@@ -202,5 +188,4 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
       </Dialog>
     </>;
 };
-
 export default GalleryMediaCard;
