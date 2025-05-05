@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,9 +10,7 @@ import { toast } from 'sonner';
 
 // Ideogram models
 const IDEOGRAM_MODELS = [
-  { id: 'V_1', name: 'Version 1' },
   { id: 'V_2', name: 'Version 2 (Stable)' },
-  { id: 'V_1_TURBO', name: 'Version 1 Turbo (Fast)' },
   { id: 'V_2_TURBO', name: 'Version 2 Turbo (Fast)' },
 ];
 
@@ -54,7 +51,7 @@ interface IdeogramGeneratorProps {
 const IdeogramGenerator: React.FC<IdeogramGeneratorProps> = ({ onImageGenerated }) => {
   const [prompt, setPrompt] = useState('');
   const [negativePrompt, setNegativePrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState(IDEOGRAM_MODELS[1].id); // Default to V_2
+  const [selectedModel, setSelectedModel] = useState(IDEOGRAM_MODELS[0].id); // Default to V_2
   const [styleType, setStyleType] = useState(STYLE_TYPES[0].id);
   const [aspectRatio, setAspectRatio] = useState(ASPECT_RATIOS[0].id);
   const [magicPrompt, setMagicPrompt] = useState('AUTO');

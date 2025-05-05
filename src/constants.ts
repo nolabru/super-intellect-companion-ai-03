@@ -15,70 +15,6 @@ const IDEOGRAM_MODELS: ChatModel[] = [
     displayName: 'Ideogram V2',
     provider: 'ideogram',
     modes: ['image'],
-  },
-  {
-    id: 'ideogram-v1',
-    displayName: 'Ideogram V1',
-    provider: 'ideogram',
-    modes: ['image'],
-  }
-];
-
-// Video models
-const APIFRAME_VIDEO_MODELS: ChatModel[] = [
-  {
-    id: 'runway-gen2',
-    displayName: 'Runway Gen-2',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'kling-text',
-    displayName: 'Kling Text-to-Video',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'kling-img',
-    displayName: 'Kling Image-to-Video',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'luma-text',
-    displayName: 'Luma Text-to-Video',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'luma-img',
-    displayName: 'Luma Image-to-Video',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'hunyuan-fast',
-    displayName: 'Hunyuan Fast',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'hunyuan-standard',
-    displayName: 'Hunyuan Standard',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'hailuo-text',
-    displayName: 'Hailuo Text-to-Video',
-    provider: 'apiframe',
-    modes: ['video'],
-  },
-  {
-    id: 'hailuo-image',
-    displayName: 'Hailuo Image-to-Video',
-    provider: 'apiframe',
-    modes: ['video'],
   }
 ];
 
@@ -152,7 +88,6 @@ export const AVAILABLE_MODELS: ChatModel[] = [
   },
   // Add only Ideogram models
   ...IDEOGRAM_MODELS,
-  // Keep video and audio models
-  ...APIFRAME_VIDEO_MODELS,
+  // Keep audio models
   ...APIFRAME_AUDIO_MODELS
 ];

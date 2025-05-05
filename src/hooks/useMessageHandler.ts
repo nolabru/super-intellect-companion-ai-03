@@ -1,4 +1,3 @@
-
 import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -101,7 +100,7 @@ export function useMessageHandler(
       
       let modeSwitch = null;
       
-      // Only handle image generation for Ideogram models
+      // Only handle image generation for Ideogram V2 model
       if (mode === 'image' && modelId === 'ideogram-v2') {
         try {
           const loadingMessageId = uuidv4();
@@ -120,14 +119,14 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          // Call Supabase Edge Function - CHANGED: Use apiframe-ideogram-imagine instead of ideogram-imagine
+          // Call Supabase Edge Function - use apiframe-ideogram-imagine
           const result = await supabase.functions.invoke('apiframe-ideogram-imagine', {
             body: {
               prompt: content,
-              model: 'V_2', // Added parameter required by apiframe
+              model: 'V_2', // Only use V_2 model
               style_type: params?.style_type || 'GENERAL',
               aspect_ratio: params?.aspect_ratio || 'ASPECT_1_1',
-              magic_prompt_option: 'AUTO' // Added parameter required by apiframe
+              magic_prompt_option: 'AUTO'
             }
           });
           
