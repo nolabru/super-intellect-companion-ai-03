@@ -372,10 +372,13 @@ export function useMessageHandler(
           // Fix: Cast the modelId to VideoModel type to satisfy TypeScript
           const videoModel = modelId as VideoModel;
           
+          // Ensure duration is 5 or 10 seconds only (API requirement)
+          const validDuration = (params?.duration && [5, 10].includes(params.duration)) ? params.duration : 5;
+          
           const result = await videoGenerationService.generateVideo({
             prompt: content,
             model: videoModel,
-            duration: params?.duration || 5,
+            duration: validDuration,
             aspectRatio: params?.aspectRatio || '16:9',
             videoType: params?.videoType || 'text-to-video',
             imageUrl: params?.referenceImageUrl,

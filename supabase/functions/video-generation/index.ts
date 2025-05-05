@@ -55,7 +55,7 @@ serve(async (req) => {
     }
     
     // Map internal video type to Kling API format
-    const generation_type = videoType === 'text-to-video' ? 'text2video' : 'img2video';
+    const generation_type = videoType === 'text-to-video' ? 'text2video' : 'image2video';
     
     // Validate duration (API only accepts 5 or 10)
     const validatedDuration = VALID_DURATIONS.includes(duration) ? duration : 5;
@@ -70,7 +70,7 @@ serve(async (req) => {
     }
     
     // Validate mode
-    const validatedMode = VALID_MODES.includes(klingMode) ? klingMode : "std";
+    let validatedMode = VALID_MODES.includes(klingMode) ? klingMode : "std";
     // Pro mode only works with kling-v1-5
     if (validatedMode === "pro" && validatedModel !== "kling-v1-5") {
       console.log(`[video-generation] Pro mode only works with kling-v1-5, using std mode instead`);
@@ -109,7 +109,7 @@ serve(async (req) => {
     }
     
     // Add image_url for img2video
-    if (generation_type === 'img2video' && imageUrl) {
+    if (generation_type === 'image2video' && imageUrl) {
       payload["image_url"] = imageUrl;
     }
     

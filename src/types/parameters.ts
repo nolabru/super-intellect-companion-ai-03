@@ -73,7 +73,7 @@ export const getDefaultParameters = (mode: string, model: string): GenerationPar
     case 'video':
       return {
         style: 'cinematic',
-        duration: 3,
+        duration: 5, // Changed from 3 to 5 (valid Kling API value)
         fps: 24
       };
     case 'audio':
