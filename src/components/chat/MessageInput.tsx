@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
 import { useIsMobile } from '@/hooks/use-mobile';
+
 interface MessageInputProps {
   message: string;
   setMessage: (message: string) => void;
@@ -18,6 +19,7 @@ interface MessageInputProps {
   hasActiveConversation?: boolean;
   onCreateConversation?: () => void;
 }
+
 const GOOGLE_COMMANDS = [{
   id: 'calendar',
   name: 'Calendário',
@@ -49,6 +51,7 @@ const GOOGLE_COMMANDS = [{
   description: 'Gerar e enviar e-mails via Gmail',
   command: '@email '
 }];
+
 const MessageInput: React.FC<MessageInputProps> = ({
   message,
   setMessage,
@@ -246,7 +249,12 @@ const MessageInput: React.FC<MessageInputProps> = ({
           <span className="text-blue-100 text-xs font-medium">
             Crie uma conversa para começar a interagir.
           </span>
-          {onCreateConversation && <button onClick={onCreateConversation} className="ml-auto text-xs text-white rounded px-[16px] bg-inventu-card py-[10px]">Criar Conversa</button>}
+          {onCreateConversation && <button 
+            onClick={onCreateConversation} 
+            className="ml-auto text-xs text-white rounded px-[16px] bg-inventu-card py-[10px] transition-all duration-200 hover:bg-inventu-blue hover:scale-105"
+          >
+            Criar Conversa
+          </button>}
         </div>}
       
       <div className={cn("relative flex items-center gap-2 p-1.5", isFocused && "ring-1 ring-white/30", (showApiErrorBanner || showNoConversationBanner) && "rounded-t-none", !hasActiveConversation && "bg-black/40 opacity-80")} ref={containerRef}>
@@ -315,4 +323,5 @@ const MessageInput: React.FC<MessageInputProps> = ({
       </div>
     </div>;
 };
+
 export default memo(MessageInput);
