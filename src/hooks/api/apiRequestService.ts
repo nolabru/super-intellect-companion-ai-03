@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ChatMode } from '@/components/ModeSelector';
 import { LumaParams } from '@/components/LumaParamsButton';
@@ -74,7 +73,7 @@ export const apiRequestService = {
           const currentDuration = typeof validParams?.duration === 'number' ? validParams.duration : 5;
           if (currentDuration !== 5 && currentDuration !== 10) {
             console.log(`[apiRequestService] Corrigindo duração inválida: ${currentDuration} para 5 segundos`);
-            validParams.duration = 5;
+            validParams.duration = 5; // Kling API accepts numeric values
           }
           
           // Chamar a edge function específica para Kling AI

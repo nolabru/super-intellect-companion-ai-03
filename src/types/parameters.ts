@@ -12,7 +12,7 @@ export interface ImageParameters {
 
 export interface VideoParameters {
   style?: string;
-  duration?: number;
+  duration?: number; // Keep as number for consistency with API
   fps?: number;
   [key: string]: any;
 }
