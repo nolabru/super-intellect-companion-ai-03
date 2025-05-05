@@ -47,19 +47,20 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
   const [quality, setQuality] = useState(80);
   const [style, setStyle] = useState('vivid');
   const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const isMobile = useIsMobile();
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
   // Use unified media generation hook
   const { 
     generateMedia, 
-    imageUrl, 
     isGenerating, 
-    error, 
-    progress
-  } = useUnifiedMediaGeneration({
-    type: 'image'
-  });
+    currentTask
+  } = useUnifiedMediaGeneration();
+  
+  // Handle progress and status from the currentTask
+  const error = currentTask?.error || null;
+  const progress = currentTask?.progress || 0;
   
   const handleSubmit = useCallback(async () => {
     if (!prompt.trim()) {
@@ -72,20 +73,34 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
     const { width, height } = parseAspectRatio(aspectRatio);
     
     // Generate the image with the selected model and parameters
-    const result = await generateMedia({
-      model: selectedModel,
-      prompt: prompt,
-      negativePrompt: negativePrompt || undefined,
-      aspectRatio: { width, height },
-      quality: quality / 100, // Convert slider value to decimal
-      style: style,
-      referenceImage: referenceImage || undefined
-    });
+    setImageUrl(null); // Clear previous image URL
     
-    if (result && result.url && onImageGenerated) {
-      onImageGenerated(result.url);
+    try {
+      // Generate the image
+      const taskId = generateMedia('image', prompt, selectedModel, {
+        negativePrompt: negativePrompt || undefined,
+        width, 
+        height,
+        quality: quality / 100, // Convert slider value to decimal
+        style: style
+      }, referenceImage ? URL.createObjectURL(referenceImage) : undefined);
+      
+      // We'll rely on the currentTask updates to show the generated image
+      // The URL will be in currentTask.result when completed
+    } catch (err) {
+      console.error('Error generating image:', err);
     }
-  }, [prompt, selectedModel, negativePrompt, aspectRatio, quality, style, referenceImage, generateMedia, onImageGenerated]);
+  }, [prompt, selectedModel, negativePrompt, aspectRatio, quality, style, referenceImage, generateMedia]);
+  
+  // Update imageUrl when task completes
+  React.useEffect(() => {
+    if (currentTask?.status === 'completed' && currentTask.result) {
+      setImageUrl(currentTask.result);
+      if (onImageGenerated) {
+        onImageGenerated(currentTask.result);
+      }
+    }
+  }, [currentTask, onImageGenerated]);
   
   // Handle model change
   const handleModelChange = (modelId: string) => {
@@ -195,9 +210,21 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
           <div className="space-y-2">
             <Label>Imagem de Referência (opcional)</Label>
             <ReferenceUploader
-              onUpload={handleReferenceUpload}
-              onRemove={handleRemoveReference}
-              file={referenceImage}
+              label="Imagem de Referência"
+              onReferenceUpdate={(url) => {
+                // This handles both setting and clearing the reference
+                if (url) {
+                  fetch(url)
+                    .then(response => response.blob())
+                    .then(blob => {
+                      const file = new File([blob], "reference.png", { type: "image/png" });
+                      setReferenceImage(file);
+                    })
+                    .catch(err => console.error("Error converting URL to File:", err));
+                } else {
+                  setReferenceImage(null);
+                }
+              }}
               disabled={isGenerating}
             />
           </div>
@@ -241,7 +268,10 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
             <CardContent className="p-4">
               {imageUrl ? (
                 <div className="space-y-4">
-                  <MediaPreview url={imageUrl} type="image" />
+                  <MediaPreview 
+                    mediaUrl={imageUrl} 
+                    mediaType="image"
+                  />
                   
                   <div className="flex justify-center">
                     <Button 
