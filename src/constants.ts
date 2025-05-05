@@ -1,3 +1,4 @@
+
 export interface ChatModel {
   id: string;
   displayName: string;
@@ -6,6 +7,7 @@ export interface ChatModel {
   capabilities?: {
     imageGeneration?: boolean;
   };
+  description?: string; // Add description property to fix TypeScript error
 }
 
 // Combine Ideogram and Midjourney models into a single IMAGE_MODELS group

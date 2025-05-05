@@ -70,8 +70,8 @@ export const createMessageService = (
       setMessages,
       apiService.sendRequest,
       mediaGallery.saveMediaToGallery,
-      skipUserMessage,
-      isOpenRouterModel // Passar flag para indicar se é modelo OpenRouter
+      skipUserMessage
+      // Removed isOpenRouterModel parameter as it's likely not expected by the function
     );
   };
   
@@ -110,9 +110,8 @@ export const createMessageService = (
       userId,
       setMessages,
       apiService.sendRequest,
-      mediaGallery.saveMediaToGallery,
-      isLeftOpenRouter,
-      isRightOpenRouter
+      mediaGallery.saveMediaToGallery
+      // Removed isLeftOpenRouter and isRightOpenRouter parameters as they're likely not expected by the function
     );
   };
   
