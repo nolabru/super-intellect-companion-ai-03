@@ -1,7 +1,11 @@
 
 import { useEffect, useRef } from 'react';
-import { UseMediaGenerationOptions } from '@/types/mediaGeneration';
-import { trackMediaEvent } from '@/services/mediaAnalyticsService';
+
+interface UseMediaGenerationOptions {
+  onProgress?: (progress: number) => void;
+  onComplete?: (mediaUrl: string) => void;
+  onError?: (error: string) => void;
+}
 
 export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
   const abortControllers = useRef<Record<string, AbortController>>({});
@@ -9,20 +13,12 @@ export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
   const taskStartTimes = useRef<Record<string, number>>({});
 
   // Method to register a task for tracking
-  const registerTask = (taskId: string, mediaType: 'image' | 'video' | 'audio', modelId?: string) => {
+  const registerTask = (taskId: string, mediaType: 'image') => {
     // Record the start time
     taskStartTimes.current[taskId] = Date.now();
     
-    // Track the start event
-    trackMediaEvent({
-      eventType: 'generation_started',
-      mediaType,
-      taskId,
-      modelId,
-      metadata: {
-        startTime: taskStartTimes.current[taskId]
-      }
-    });
+    // Track the start event in console
+    console.log(`Task ${taskId} started for ${mediaType} generation`);
     
     // Return the abort controller for this task
     abortControllers.current[taskId] = new AbortController();
@@ -30,21 +26,12 @@ export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
   };
 
   // Method to track generation completed
-  const completeTask = (taskId: string, mediaType: 'image' | 'video' | 'audio', modelId?: string, mediaUrl?: string) => {
+  const completeTask = (taskId: string, mediaType: 'image', modelId?: string, mediaUrl?: string) => {
     const startTime = taskStartTimes.current[taskId];
     const duration = startTime ? Date.now() - startTime : undefined;
     
-    // Track completion
-    trackMediaEvent({
-      eventType: 'generation_completed',
-      mediaType,
-      taskId,
-      modelId,
-      duration,
-      metadata: {
-        mediaUrl
-      }
-    });
+    // Track completion in console
+    console.log(`Task ${taskId} completed in ${duration}ms for ${mediaType}`, { mediaUrl });
     
     // Clean up
     delete taskStartTimes.current[taskId];
@@ -58,22 +45,12 @@ export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
   };
 
   // Method to track generation failed
-  const failTask = (taskId: string, mediaType: 'image' | 'video' | 'audio', modelId?: string, error?: string) => {
+  const failTask = (taskId: string, mediaType: 'image', modelId?: string, error?: string) => {
     const startTime = taskStartTimes.current[taskId];
     const duration = startTime ? Date.now() - startTime : undefined;
     
-    // Track failure
-    trackMediaEvent({
-      eventType: 'generation_failed',
-      mediaType,
-      taskId,
-      modelId,
-      duration,
-      details: { 
-        error: error || 'Unknown error',
-        startTime
-      }
-    });
+    // Track failure in console
+    console.log(`Task ${taskId} failed after ${duration}ms for ${mediaType}`, { error });
     
     // Clean up
     delete taskStartTimes.current[taskId];
@@ -95,23 +72,6 @@ export function useTaskCleanup(options: UseMediaGenerationOptions = {}) {
         } catch (err) {
           console.error('[useTaskCleanup] Error aborting controller:', err);
         }
-      });
-      
-      // Track cancellation events for any active tasks
-      Object.entries(abortControllers.current).forEach(([taskId, _]) => {
-        const startTime = taskStartTimes.current[taskId];
-        const duration = startTime ? Date.now() - startTime : undefined;
-        
-        trackMediaEvent({
-          eventType: 'generation_canceled',
-          mediaType: 'image', // Default type, ideally we'd store the actual type
-          taskId,
-          duration,
-          details: {
-            reason: 'Component unmounted',
-            startTime
-          }
-        });
       });
       
       // Clear all intervals

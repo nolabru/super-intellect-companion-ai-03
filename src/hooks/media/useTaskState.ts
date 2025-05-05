@@ -1,6 +1,14 @@
 
 import { useState, useCallback } from 'react';
-import { GenerationTask } from '@/types/mediaGeneration';
+
+export interface GenerationTask {
+  taskId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'canceled';
+  progress: number;
+  mediaUrl?: string;
+  error?: string;
+  [key: string]: any;
+}
 
 export function useTaskState() {
   const [tasks, setTasks] = useState<Record<string, GenerationTask>>({});
@@ -41,4 +49,3 @@ export function useTaskState() {
     clearTasks
   };
 }
-

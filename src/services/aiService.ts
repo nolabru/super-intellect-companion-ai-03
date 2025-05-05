@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 // Define the types of AI models we can interact with
 export type AIModelType = 'openrouter' | 'ideogram' | 'local';
-export type AIModelRole = 'chat' | 'image' | 'video' | 'audio';
+export type AIModelRole = 'chat' | 'image';
 
 // Information about an AI model
 export interface AIModelInfo {
@@ -43,7 +43,7 @@ export interface ChatCompletionResult {
 export interface MediaGenerationParams {
   modelId: string;
   prompt: string;
-  type: 'image' | 'video' | 'audio';
+  type: 'image';
   additionalParams?: Record<string, any>;
   referenceUrl?: string;
 }

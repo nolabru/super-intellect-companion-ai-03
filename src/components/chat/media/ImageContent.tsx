@@ -2,7 +2,40 @@
 import React from 'react';
 import { ExternalLink, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import MediaActionButton from './MediaActionButton';
+import { Button } from '@/components/ui/button';
+
+interface MediaActionButtonProps {
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  variant?: 'default' | 'primary' | 'secondary';
+  loading?: boolean;
+}
+
+const MediaActionButton: React.FC<MediaActionButtonProps> = ({
+  onClick,
+  icon,
+  label,
+  variant = 'default',
+  loading = false
+}) => {
+  return (
+    <Button
+      onClick={onClick}
+      variant={variant === 'primary' ? 'default' : 'outline'}
+      size="sm"
+      disabled={loading}
+      className="flex items-center gap-1"
+    >
+      {loading ? (
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      ) : (
+        icon
+      )}
+      <span>{label}</span>
+    </Button>
+  );
+};
 
 interface ImageContentProps {
   src: string;

@@ -1,11 +1,10 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 
 // Define the Media Task structure
 export interface MediaTask {
   id: string;
   taskId: string;
-  type: 'image' | 'video' | 'audio';
+  type: 'image';
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'canceled';
   progress: number;
   prompt: string;

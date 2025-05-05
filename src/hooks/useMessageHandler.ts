@@ -11,13 +11,10 @@ import { ConversationType } from '@/types/conversation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMessageProcessing } from './message/useMessageProcessing';
 import { useContextOrchestrator } from './useContextOrchestrator';
-import { useMediaHandling } from './message/useMediaHandling';
 import { useMessageState } from './message/useMessageState';
 import { useGoogleCommandHandler } from './message/useGoogleCommandHandler';
 import { toast } from 'sonner';
-import { apiframeService } from '@/services/apiframeService';
-import { useApiframeGeneration } from './useApiframeGeneration';
-import { getApiframeModelId, isApiframeModel } from '@/utils/modelMapping';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useMessageHandler(
   messages: MessageType[],
@@ -36,16 +33,6 @@ export function useMessageHandler(
   const messageProcessing = useMessageProcessing(user?.id);
   
   const {
-    files,
-    filePreviewUrls,
-    isMediaUploading,
-    handleFileChange,
-    removeFile,
-    clearFiles,
-    uploadFiles
-  } = useMediaHandling();
-
-  const {
     isSending,
     setIsSending,
     canSendMessage,
@@ -53,18 +40,6 @@ export function useMessageHandler(
   } = useMessageState();
 
   const { handleGoogleCommand } = useGoogleCommandHandler();
-  
-  const apiframeGeneration = useApiframeGeneration({
-    onProgress: (progress) => {
-      if (mediaGenerationMessageId.current) {
-        setMessages(prev => prev.map(msg => 
-          msg.id === mediaGenerationMessageId.current 
-            ? { ...msg, content: `Gerando ${mediaType.current}... ${progress.toFixed(0)}%` } 
-            : msg
-        ));
-      }
-    }
-  });
   
   const mediaGenerationMessageId = useRef<string | null>(null);
   const mediaType = useRef<'image' | 'video' | 'audio'>('image');
@@ -101,7 +76,6 @@ export function useMessageHandler(
     try {
       setIsSending(true);
 
-      // Adicionar logs para debugar os arquivos
       console.log('[useMessageHandler] Sending message with files:', newFiles);
 
       const canProceed = await handleGoogleCommand(content);
@@ -120,7 +94,6 @@ export function useMessageHandler(
         files: newFiles
       };
       
-      // Adicione logs para debugar
       console.log('[useMessageHandler] User message prepared:', userMessage);
       
       setMessages(prev => [...prev, userMessage]);
@@ -128,21 +101,16 @@ export function useMessageHandler(
       
       let modeSwitch = null;
       
-      if ((mode === 'image' || mode === 'video' || mode === 'audio') && 
-          (isApiframeModel(modelId))) {
-        
+      // Only handle image generation for Ideogram models
+      if (mode === 'image' && modelId === 'ideogram-v2') {
         try {
           const loadingMessageId = uuidv4();
           mediaGenerationMessageId.current = loadingMessageId;
-          
-          let mediaTypeValue: 'image' | 'video' | 'audio' = 'image';
-          if (mode === 'video') mediaTypeValue = 'video';
-          if (mode === 'audio') mediaTypeValue = 'audio';
-          mediaType.current = mediaTypeValue;
+          mediaType.current = 'image';
           
           const loadingMessage: MessageType = {
             id: loadingMessageId,
-            content: `Gerando ${mediaTypeValue}...`,
+            content: `Gerando imagem...`,
             sender: 'assistant',
             timestamp: new Date().toISOString(),
             model: modelId,
@@ -152,74 +120,49 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          const apiframeModelId = getApiframeModelId(modelId);
+          // Call Supabase Edge Function directly
+          const result = await supabase.functions.invoke('ideogram-imagine', {
+            body: {
+              prompt: content,
+              style_type: params?.style_type || 'GENERAL',
+              aspect_ratio: params?.aspect_ratio || 'ASPECT_1_1'
+            }
+          });
           
-          console.log(`[useMessageHandler] Iniciando geração de ${mediaTypeValue} com modelo ${apiframeModelId}`);
-          
-          // Check if API key is configured
-          if (!apiframeService.isApiKeyConfigured()) {
-            throw new Error("Chave de API da APIframe não está configurada. Configure na opção 'Serviços APIframe'");
+          if (result.error) {
+            throw new Error(`Erro na função Ideogram: ${result.error.message || 'Erro desconhecido'}`);
           }
           
-          let result;
-          
-          try {
-            // Use apiframeGeneration hook instead of direct API service
-            result = await apiframeGeneration.generateMedia(
-              content,
-              mediaTypeValue,
-              apiframeModelId as any,
-              params || {},
-              newFiles?.[0]
-            );
-          } catch (err) {
-            console.error(`[useMessageHandler] Erro na geração de mídia:`, err);
-            throw new Error(`Erro ao criar tarefa: ${err instanceof Error ? err.message : String(err)}`);
+          if (!result.data.success || !result.data.images || result.data.images.length === 0) {
+            throw new Error('Nenhuma imagem foi gerada');
           }
           
-          if (!result || !result.success) {
-            throw new Error(result?.error || "Erro desconhecido ao gerar mídia");
-          }
-          
-          const taskId = result.taskId;
-          
-          if (!taskId) {
-            throw new Error("ID de tarefa não recebido");
-          }
+          const mediaUrl = result.data.images[0];
           
           setMessages(prev => prev.map(msg => 
             msg.id === loadingMessageId 
               ? { 
                   ...msg, 
-                  content: `${mediaTypeValue.charAt(0).toUpperCase() + mediaTypeValue.slice(1)} sendo processado. ID da tarefa: ${taskId}`,
+                  content,
+                  loading: false,
+                  mediaUrl
                 } 
               : msg
           ));
-
-          // If we already have a mediaUrl in the result, update the message now
-          if (result.mediaUrl) {
-            setMessages(prev => prev.map(msg => 
-              msg.id === loadingMessageId 
-                ? { 
-                    ...msg, 
-                    content: `${content}`,
-                    loading: false,
-                    mediaUrl: result.mediaUrl
-                  } 
-                : msg
-            ));
-            
-            mediaGallery.saveMediaToGallery(result.mediaUrl, content, mediaTypeValue, modelId);
+          
+          // Save to gallery
+          if (mediaUrl) {
+            await mediaGallery.saveMediaToGallery(mediaUrl, content, 'image', modelId);
           }
         } catch (err) {
-          console.error('[useMessageHandler] Erro ao gerar mídia:', err);
-          toast.error('Erro ao gerar mídia', {
+          console.error('[useMessageHandler] Erro ao gerar imagem:', err);
+          toast.error('Erro ao gerar imagem', {
             description: err instanceof Error ? err.message : 'Erro desconhecido'
           });
           
           setMessages(prev => [...prev, {
             id: uuidv4(),
-            content: `Erro ao gerar mídia: ${err instanceof Error ? err.message : 'Erro desconhecido'}`,
+            content: `Erro ao gerar imagem: ${err instanceof Error ? err.message : 'Erro desconhecido'}`,
             sender: 'assistant',
             timestamp: new Date().toISOString(),
             model: modelId,
@@ -227,50 +170,48 @@ export function useMessageHandler(
             error: true
           }]);
         }
+      } else if (comparing && leftModel && rightModel) {
+        console.log(`[useMessageHandler] Modo comparação: enviando para modelos ${leftModel} e ${rightModel}`);
+        const result = await messageService.handleCompareModels(
+          content,
+          mode,
+          leftModel,
+          rightModel,
+          currentConversationId,
+          messages,
+          newFiles,
+          params,
+          await contextOrchestrator.buildContext(
+            currentConversationId,
+            comparing ? (leftModel || modelId) : modelId,
+            mode
+          ).then(r => r.formattedContext),
+          user?.id
+        );
+        
+        modeSwitch = result?.modeSwitch || null;
       } else {
-        if (comparing && leftModel && rightModel) {
-          console.log(`[useMessageHandler] Modo comparação: enviando para modelos ${leftModel} e ${rightModel}`);
-          const result = await messageService.handleCompareModels(
-            content,
-            mode,
-            leftModel,
-            rightModel,
+        console.log(`[useMessageHandler] Modo único: enviando para modelo ${modelId}`);
+        
+        const result = await messageService.handleSingleModelMessage(
+          content,
+          mode,
+          modelId,
+          currentConversationId,
+          messages,
+          conversations,
+          newFiles,
+          params,
+          await contextOrchestrator.buildContext(
             currentConversationId,
-            messages,
-            newFiles,
-            params,
-            await contextOrchestrator.buildContext(
-              currentConversationId,
-              comparing ? (leftModel || modelId) : modelId,
-              mode
-            ).then(r => r.formattedContext),
-            user?.id
-          );
-          
-          modeSwitch = result?.modeSwitch || null;
-        } else {
-          console.log(`[useMessageHandler] Modo único: enviando para modelo ${modelId}`);
-          
-          const result = await messageService.handleSingleModelMessage(
-            content,
-            mode,
             modelId,
-            currentConversationId,
-            messages,
-            conversations,
-            newFiles,
-            params,
-            await contextOrchestrator.buildContext(
-              currentConversationId,
-              modelId,
-              mode
-            ).then(r => r.formattedContext),
-            user?.id,
-            true
-          );
-          
-          modeSwitch = result?.modeSwitch || null;
-        }
+            mode
+          ).then(r => r.formattedContext),
+          user?.id,
+          true
+        );
+        
+        modeSwitch = result?.modeSwitch || null;
       }
       
       if (user?.id) {
@@ -280,8 +221,6 @@ export function useMessageHandler(
       if (messages.length === 0 || (messages.length === 1 && messages[0].sender === 'user')) {
         updateTitle(currentConversationId, content);
       }
-
-      clearFiles();
       
       return { 
         success: true, 
@@ -306,7 +245,6 @@ export function useMessageHandler(
     user,
     messageProcessing,
     contextOrchestrator,
-    clearFiles,
     handleGoogleCommand,
     canSendMessage,
     updateLastMessage,
@@ -316,11 +254,11 @@ export function useMessageHandler(
   return {
     sendMessage,
     isSending,
-    files,
-    filePreviewUrls,
-    handleFileChange,
-    removeFile,
-    isMediaUploading,
+    files: [],
+    filePreviewUrls: [],
+    handleFileChange: () => {},
+    removeFile: () => {},
+    isMediaUploading: false,
     detectContentType: messageProcessing.detectContentType
   };
 }
