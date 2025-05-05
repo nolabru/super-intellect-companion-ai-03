@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { PostWithStats } from '@/types/newsletter';
-import { queryService } from '@/services/newsletter/queryService';
+import { queryService } from '@/services/newsletter/query';
 import { newsletterService } from '@/services/newsletterService';
 import { toast } from 'sonner';
 
@@ -12,13 +12,13 @@ export const useNewsFeed = () => {
   const fetchPosts = async () => {
     try {
       setIsLoading(true);
-      const { posts, error } = await queryService.getPosts();
+      const result = await queryService.getPosts();
       
-      if (error) {
-        throw new Error(error.message);
+      if (result.error) {
+        throw new Error(result.error.message);
       }
       
-      setPosts(posts);
+      setPosts(result.posts || []);
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast.error('Erro ao carregar publicações');

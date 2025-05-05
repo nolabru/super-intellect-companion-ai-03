@@ -28,22 +28,21 @@ export const queryComments = async (postId: string): Promise<CommentsQueryResult
     // Processar cada comentário para obter dados do usuário
     for (const comment of comments || []) {
       // Buscar informações do usuário
-      const { data: userData } = await supabase
+      const { data: userData, error: userError } = await supabase
         .from('profiles')
-        .select('username, display_name, avatar_url')
+        .select('username, avatar_url')
         .eq('id', comment.user_id)
         .single();
       
       // Combinar dados do comentário com dados do usuário
       const username = userData?.username || 'Usuário';
-      const display_name = userData?.display_name || null;
       const avatar_url = userData?.avatar_url || null;
       
       // Formato compatível com a interface CommentWithUser
       processedComments.push({
         ...comment,
         username,
-        display_name,
+        display_name: null, // Set as null since it doesn't exist in profiles table
         avatar_url,
         user: {
           username: username,
