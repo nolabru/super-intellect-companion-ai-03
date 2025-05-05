@@ -18,6 +18,16 @@ const IDEOGRAM_MODELS: ChatModel[] = [
   }
 ];
 
+// Midjourney models
+const MIDJOURNEY_MODELS: ChatModel[] = [
+  {
+    id: 'midjourney',
+    displayName: 'Midjourney',
+    provider: 'apiframe',
+    modes: ['image'],
+  }
+];
+
 // Audio models
 const APIFRAME_AUDIO_MODELS: ChatModel[] = [
   {
@@ -86,8 +96,10 @@ export const AVAILABLE_MODELS: ChatModel[] = [
     provider: 'luma',
     modes: ['video'],
   },
-  // Add only Ideogram models
+  // Add Ideogram models
   ...IDEOGRAM_MODELS,
+  // Add Midjourney models
+  ...MIDJOURNEY_MODELS,
   // Keep audio models
   ...APIFRAME_AUDIO_MODELS
 ];

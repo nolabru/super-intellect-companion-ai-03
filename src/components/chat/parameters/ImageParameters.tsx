@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -8,60 +8,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ImageParameters as ImageParamsType } from '@/types/parameters';
-import { AVAILABLE_MODELS } from '@/constants';
+import { Separator } from '@/components/ui/separator';
+import MidjourneyParameters from './MidjourneyParameters';
 
-// Get APIFrame image models from available models
-const IMAGE_MODELS = AVAILABLE_MODELS
-  .filter(model => model.provider === 'apiframe' && model.modes.includes('image'))
-  .map(model => ({ id: model.id, name: model.displayName }));
-
-const STYLES = [
-  { id: 'photographic', name: 'Fotográfico' },
-  { id: 'cinematic', name: 'Cinematográfico' },
-  { id: 'anime', name: 'Anime' },
-  { id: 'digital-art', name: 'Arte Digital' }
-];
-
-const ASPECT_RATIOS = [
-  { id: '1:1', name: 'Quadrado (1:1)' },
-  { id: '16:9', name: 'Paisagem (16:9)' },
-  { id: '9:16', name: 'Retrato (9:16)' },
-  { id: '4:3', name: 'Clássico (4:3)' }
-];
+export interface ImageParams {
+  style_type?: string;
+  aspect_ratio?: string;
+  [key: string]: any;
+}
 
 interface ImageParametersProps {
   model: string;
-  onParamsChange: (params: ImageParamsType) => void;
-  initialParams?: Partial<ImageParamsType>;
+  onParamsChange: (params: ImageParams) => void;
+  initialParams?: ImageParams;
 }
 
-const ImageParameters: React.FC<ImageParametersProps> = ({ 
-  model, 
-  onParamsChange, 
-  initialParams 
-}) => {
-  const [params, setParams] = useState<ImageParamsType>({
-    model: model || 'sdxl',
-    style: initialParams?.style || 'photographic',
-    aspectRatio: initialParams?.aspectRatio || '1:1'
+const IdeogramParameters: React.FC<{
+  onParamsChange: (params: ImageParams) => void;
+  initialParams?: ImageParams;
+}> = ({ onParamsChange, initialParams = {} }) => {
+  const [params, setParams] = React.useState<ImageParams>({
+    style_type: initialParams.style_type || 'GENERAL',
+    aspect_ratio: initialParams.aspect_ratio || 'ASPECT_1_1'
   });
 
-  // Update params when model prop changes
-  useEffect(() => {
-    if (model && model !== params.model) {
-      setParams(prev => ({ ...prev, model }));
-    }
-  }, [model, params.model]);
-
-  // Update params if initialParams changes
-  useEffect(() => {
-    if (initialParams) {
-      setParams(prev => ({ ...prev, ...initialParams }));
-    }
-  }, [initialParams]);
-
-  const handleParamChange = (key: keyof ImageParamsType, value: string) => {
+  const handleParamChange = (key: string, value: string) => {
     const newParams = { ...params, [key]: value };
     setParams(newParams);
     onParamsChange(newParams);
@@ -69,63 +40,69 @@ const ImageParameters: React.FC<ImageParametersProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Modelo</Label>
-        <Select
-          value={params.model}
-          onValueChange={(value) => handleParamChange('model', value)}
-        >
-          <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
-            <SelectValue placeholder="Selecione um modelo" />
-          </SelectTrigger>
-          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            {IMAGE_MODELS.map((model) => (
-              <SelectItem key={model.id} value={model.id}>
-                {model.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label className="text-sm text-white/70">Estilo</Label>
+          <Select
+            value={params.style_type}
+            onValueChange={(value) => handleParamChange('style_type', value)}
+          >
+            <SelectTrigger className="bg-inventu-darker border-inventu-gray/30">
+              <SelectValue placeholder="Estilo" />
+            </SelectTrigger>
+            <SelectContent className="bg-inventu-dark border-inventu-gray/30">
+              <SelectItem value="GENERAL">Geral</SelectItem>
+              <SelectItem value="PAINTING">Pintura</SelectItem>
+              <SelectItem value="PHOTO">Foto</SelectItem>
+              <SelectItem value="ANIME">Anime</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="space-y-2">
-        <Label>Estilo</Label>
-        <Select
-          value={params.style}
-          onValueChange={(value) => handleParamChange('style', value)}
-        >
-          <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
-            <SelectValue placeholder="Selecione um estilo" />
-          </SelectTrigger>
-          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            {STYLES.map((style) => (
-              <SelectItem key={style.id} value={style.id}>
-                {style.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Proporção</Label>
-        <Select
-          value={params.aspectRatio}
-          onValueChange={(value) => handleParamChange('aspectRatio', value)}
-        >
-          <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
-            <SelectValue placeholder="Selecione uma proporção" />
-          </SelectTrigger>
-          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            {ASPECT_RATIOS.map((ratio) => (
-              <SelectItem key={ratio.id} value={ratio.id}>
-                {ratio.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-2">
+          <Label className="text-sm text-white/70">Proporção</Label>
+          <Select
+            value={params.aspect_ratio}
+            onValueChange={(value) => handleParamChange('aspect_ratio', value)}
+          >
+            <SelectTrigger className="bg-inventu-darker border-inventu-gray/30">
+              <SelectValue placeholder="Proporção" />
+            </SelectTrigger>
+            <SelectContent className="bg-inventu-dark border-inventu-gray/30">
+              <SelectItem value="ASPECT_1_1">Quadrado (1:1)</SelectItem>
+              <SelectItem value="ASPECT_4_3">Paisagem (4:3)</SelectItem>
+              <SelectItem value="ASPECT_3_4">Retrato (3:4)</SelectItem>
+              <SelectItem value="ASPECT_16_9">Widescreen (16:9)</SelectItem>
+              <SelectItem value="ASPECT_9_16">Vertical (9:16)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
+  );
+};
+
+const ImageParameters: React.FC<ImageParametersProps> = ({ 
+  model, 
+  onParamsChange, 
+  initialParams = {} 
+}) => {
+  // Return the appropriate parameters component based on the model
+  if (model === 'midjourney') {
+    return (
+      <MidjourneyParameters 
+        onParamsChange={onParamsChange} 
+        initialParams={initialParams}
+      />
+    );
+  }
+  
+  // Default to Ideogram parameters for any other model
+  return (
+    <IdeogramParameters 
+      onParamsChange={onParamsChange} 
+      initialParams={initialParams}
+    />
   );
 };
 

@@ -1,77 +1,67 @@
 
-import { ChatMode } from '@/components/ModeSelector';
+import { MidjourneyParams } from '@/components/chat/parameters/MidjourneyParameters';
 
-// Base parameter interface
-export interface BaseParameters {
-  model: string;
-}
-
-// Image generation parameters
-export interface ImageParameters extends BaseParameters {
+export interface ImageParameters {
+  style_type?: string;
+  aspect_ratio?: string;
+  negative_prompt?: string;
+  quality?: string;
   style?: string;
-  aspectRatio?: string;
-  quality?: 'standard' | 'hd';
-  negativePrompt?: string;
+  [key: string]: any;
 }
 
-// Video generation parameters
-export interface VideoParameters extends BaseParameters {
-  videoType?: 'text-to-video' | 'image-to-video';
-  resolution?: '540p' | '720p' | '1080p' | '4k';
-  duration?: '3s' | '5s' | '8s' | '10s';
-  quality?: 'standard' | 'hd';
+export interface VideoParameters {
+  style?: string;
+  duration?: number;
+  fps?: number;
+  [key: string]: any;
 }
 
-// Audio generation parameters
-export interface AudioParameters extends BaseParameters {
-  voice?: string;
-  speed?: number;
-  pitch?: number;
+export interface AudioParameters {
+  voice_id?: string;
+  duration?: number;
+  genre?: string;
+  [key: string]: any;
 }
 
-// Union type for all parameter types
-export type GenerationParameters = 
-  | ImageParameters 
-  | VideoParameters 
-  | AudioParameters;
+export type GenerationParameters = ImageParameters | VideoParameters | AudioParameters;
 
-// Helper function to get default parameters based on mode
-export const getDefaultParameters = (mode: ChatMode, model: string): GenerationParameters => {
+// Get default parameters based on mode and model
+export const getDefaultParameters = (mode: string, model: string): GenerationParameters => {
   switch (mode) {
     case 'image':
+      if (model === 'midjourney') {
+        return {
+          negative_prompt: '',
+          quality: 'standard',
+          aspect_ratio: '1:1',
+          style: 'raw'
+        };
+      }
+      // Default for Ideogram
       return {
-        model,
-        style: 'photographic',
-        aspectRatio: '1:1',
+        style_type: 'GENERAL',
+        aspect_ratio: 'ASPECT_1_1'
       };
     case 'video':
       return {
-        model,
-        videoType: 'text-to-video',
-        resolution: '720p',
-        duration: '5s',
+        style: 'cinematic',
+        duration: 3,
+        fps: 24
       };
     case 'audio':
-      return {
-        model,
-        voice: 'sarah',
-        speed: 1,
-        pitch: 1,
-      };
+      if (model.includes('elevenlabs')) {
+        return {
+          voice_id: 'default',
+        };
+      } else if (model.includes('musicgen') || model.includes('audiogen')) {
+        return {
+          duration: 10,
+          genre: 'ambient'
+        };
+      }
+      return {};
     default:
-      return { model };
+      return {};
   }
-};
-
-// Type guard functions to check parameter types
-export const isImageParameters = (params: GenerationParameters): params is ImageParameters => {
-  return 'style' in params || 'aspectRatio' in params;
-};
-
-export const isVideoParameters = (params: GenerationParameters): params is VideoParameters => {
-  return 'videoType' in params || 'duration' in params;
-};
-
-export const isAudioParameters = (params: GenerationParameters): params is AudioParameters => {
-  return 'voice' in params || 'speed' in params;
 };

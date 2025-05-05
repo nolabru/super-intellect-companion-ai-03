@@ -1,11 +1,10 @@
-
 import { tokenService } from './tokenService';
 import { openRouterService, OpenRouterChatMessage, OpenRouterChatParams } from './openRouterService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 // Define the types of AI models we can interact with
-export type AIModelType = 'openrouter' | 'ideogram' | 'local';
+export type AIModelType = 'openrouter' | 'ideogram' | 'midjourney' | 'local';
 export type AIModelRole = 'chat' | 'image';
 
 // Information about an AI model
@@ -98,6 +97,15 @@ export const aiService = {
         name: 'Ideogram V2',
         provider: 'Ideogram',
         type: 'ideogram',
+        roles: ['image'],
+      });
+      
+      // Add Midjourney models
+      models.push({
+        id: 'midjourney',
+        name: 'Midjourney',
+        provider: 'Midjourney',
+        type: 'midjourney',
         roles: ['image'],
       });
       
@@ -210,7 +218,7 @@ export const aiService = {
   },
 
   /**
-   * Generate media (primarily image for Ideogram)
+   * Generate media (primarily image for Ideogram and Midjourney)
    */
   async generateMedia(
     params: MediaGenerationParams
@@ -232,10 +240,10 @@ export const aiService = {
         }
       }
       
-      // For ideogram image generation
+      // For Ideogram image generation
       if (params.type === 'image' && params.modelId === 'ideogram-v2') {
         try {
-          // Updated to use apiframe-ideogram-imagine edge function
+          // Call apiframe-ideogram-imagine edge function
           const result = await supabase.functions.invoke('apiframe-ideogram-imagine', {
             body: {
               prompt: params.prompt,
@@ -270,7 +278,43 @@ export const aiService = {
         }
       }
       
-      throw new Error(`No configuration found for ${params.type} generation`);
+      // For Midjourney image generation
+      if (params.type === 'image' && params.modelId === 'midjourney') {
+        try {
+          // Call apiframe-midjourney-imagine edge function
+          const result = await supabase.functions.invoke('apiframe-midjourney-imagine', {
+            body: {
+              prompt: params.prompt,
+              ...params.additionalParams
+            }
+          });
+          
+          if (result.error) {
+            console.error('[AIService] Error from edge function:', result.error);
+            throw new Error(`Midjourney error: ${result.error.message || 'Unknown error'}`);
+          }
+          
+          if (!result.data.success || !result.data.images || result.data.images.length === 0) {
+            console.error('[AIService] Invalid response:', result.data);
+            throw new Error('No images were generated');
+          }
+          
+          return {
+            success: true,
+            mediaUrl: result.data.images[0],
+            taskId: result.data.taskId || 'midjourney-task',
+            status: 'completed'
+          };
+        } catch (err) {
+          console.error('[AIService] Error generating Midjourney image:', err);
+          return {
+            success: false,
+            error: err instanceof Error ? err.message : String(err)
+          };
+        }
+      }
+      
+      throw new Error(`No configuration found for ${params.type} generation with model ${params.modelId}`);
     } catch (err) {
       console.error(`[AIService] Error generating ${params.type}:`, err);
       return {
@@ -287,8 +331,8 @@ export const aiService = {
     try {
       console.log(`[AIService] Checking status of task ${taskId}`);
       
-      // For Ideogram, tasks are immediately complete
-      if (taskId === 'ideogram-task') {
+      // For Ideogram and Midjourney, tasks are immediately complete
+      if (taskId === 'ideogram-task' || taskId === 'midjourney-task') {
         return {
           success: true,
           taskId,
@@ -311,10 +355,10 @@ export const aiService = {
   },
 
   /**
-   * Cancel a media generation task (placeholder for Ideogram)
+   * Cancel a media generation task
    */
   async cancelMediaTask(taskId: string): Promise<boolean> {
-    console.log(`[AIService] Cancel not applicable for Ideogram tasks: ${taskId}`);
+    console.log(`[AIService] Cancel not applicable for API FRAME tasks: ${taskId}`);
     return false;
   }
 };

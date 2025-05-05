@@ -1,3 +1,4 @@
+
 import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -100,8 +101,8 @@ export function useMessageHandler(
       
       let modeSwitch = null;
       
-      // Only handle image generation for Ideogram V2 model
-      if (mode === 'image' && modelId === 'ideogram-v2') {
+      // Handle image generation for Ideogram V2 and Midjourney
+      if (mode === 'image' && (modelId === 'ideogram-v2' || modelId === 'midjourney')) {
         try {
           const loadingMessageId = uuidv4();
           mediaGenerationMessageId.current = loadingMessageId;
@@ -119,19 +120,39 @@ export function useMessageHandler(
           
           setMessages(prev => [...prev, loadingMessage]);
           
-          // Call Supabase Edge Function - use apiframe-ideogram-imagine
-          const result = await supabase.functions.invoke('apiframe-ideogram-imagine', {
-            body: {
+          // Determine which Edge Function to call based on the model
+          const functionName = modelId === 'ideogram-v2' 
+            ? 'apiframe-ideogram-imagine' 
+            : 'apiframe-midjourney-imagine';
+          
+          // Prepare request body based on the model
+          let requestBody: any = {};
+          
+          if (modelId === 'ideogram-v2') {
+            requestBody = {
               prompt: content,
               model: 'V_2', // Only use V_2 model
               style_type: params?.style_type || 'GENERAL',
               aspect_ratio: params?.aspect_ratio || 'ASPECT_1_1',
               magic_prompt_option: 'AUTO'
-            }
+            };
+          } else if (modelId === 'midjourney') {
+            requestBody = {
+              prompt: content,
+              negative_prompt: params?.negative_prompt,
+              quality: params?.quality || 'standard',
+              aspect_ratio: params?.aspect_ratio || '1:1',
+              style: params?.style || 'raw'
+            };
+          }
+          
+          // Call Supabase Edge Function
+          const result = await supabase.functions.invoke(functionName, {
+            body: requestBody
           });
           
           if (result.error) {
-            throw new Error(`Erro na função Ideogram: ${result.error.message || 'Erro desconhecido'}`);
+            throw new Error(`Erro na função ${modelId}: ${result.error.message || 'Erro desconhecido'}`);
           }
           
           if (!result.data.success || !result.data.images || result.data.images.length === 0) {
@@ -168,7 +189,7 @@ export function useMessageHandler(
                 await supabase.functions.invoke('user-tokens', {
                   body: {
                     action: 'consume',
-                    model_id: 'ideogram-v2',
+                    model_id: modelId,
                     mode: 'image'
                   }
                 });
