@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import UnifiedMediaGenerator from './UnifiedMediaGenerator';
 import { Label } from '@/components/ui/label';
@@ -10,7 +9,10 @@ import { useAPIFrameImageGeneration } from '@/hooks/useAPIFrameImageGeneration';
 // Updated image models data - now all under API Frame
 const IMAGE_MODELS = [
   { id: 'ideogram-v2', name: 'Ideogram V2' },
-  { id: 'midjourney', name: 'Midjourney' }
+  { id: 'midjourney', name: 'Midjourney' },
+  { id: 'openai', name: 'OpenAI DALL-E' },
+  { id: 'anthropic', name: 'Anthropic Claude' },
+  { id: 'google', name: 'Google Gemini' }
 ];
 
 // Ideogram style types
@@ -73,6 +75,8 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
   const [mjStyle, setMjStyle] = useState('raw');
   
   const isMidjourney = selectedModel === 'midjourney';
+  const isIdeogram = selectedModel === 'ideogram-v2';
+  const isAPIFrameModel = isMidjourney || isIdeogram;
   
   const { 
     generateImage, 
@@ -95,20 +99,29 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
       return;
     }
     
-    // Verificar se existe uma chave de API 
-    const apiKeyFromStorage = localStorage.getItem('apiframe_api_key');
-    if (!apiKeyFromStorage) {
-      toast.error('API Frame API Key não configurada', {
-        description: 'Acesse as configurações para adicionar sua chave de API'
-      });
-      return;
+    // Verificar se existe uma chave de API (somente para modelos API Frame)
+    if (isAPIFrameModel) {
+      const apiKeyFromStorage = localStorage.getItem('apiframe_api_key');
+      if (!apiKeyFromStorage) {
+        toast.error('API Frame API Key não configurada', {
+          description: 'Acesse as configurações para adicionar sua chave de API'
+        });
+        return;
+      }
     }
     
     // Preparar parâmetros com base no modelo selecionado
     const params = getAdditionalParams();
     
-    // Gerar imagem
-    await generateImage(prompt, selectedModel, params);
+    if (isAPIFrameModel) {
+      // Gerar imagem usando API Frame (Ideogram/Midjourney)
+      await generateImage(prompt, selectedModel, params);
+    } else {
+      // Aqui você pode adicionar a integração com outros modelos (OpenAI, etc)
+      toast.info(`Gerando imagem com ${selectedModel}`, {
+        description: "Esta funcionalidade será implementada em breve."
+      });
+    }
   };
   
   const ParamControls = () => (
@@ -131,112 +144,117 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         </Select>
       </div>
 
-      {/* Aspect Ratio - common for both */}
-      <div className="space-y-2">
-        <Label htmlFor="aspectRatio">Proporção</Label>
-        <Select 
-          value={aspectRatio}
-          onValueChange={setAspectRatio}
-        >
-          <SelectTrigger id="aspectRatio">
-            <SelectValue placeholder="Selecione a proporção" />
-          </SelectTrigger>
-          <SelectContent>
-            {ASPECT_RATIOS.map(ratio => (
-              <SelectItem key={ratio.id} value={ratio.id}>{ratio.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Ideogram specific controls */}
-      {!isMidjourney && (
+      {/* Only show these controls for API Frame models (Ideogram and Midjourney) */}
+      {isAPIFrameModel && (
         <>
+          {/* Aspect Ratio - common for both */}
           <div className="space-y-2">
-            <Label htmlFor="ideogramStyle">Estilo</Label>
+            <Label htmlFor="aspectRatio">Proporção</Label>
             <Select 
-              value={ideogramStyle}
-              onValueChange={setIdeogramStyle}
+              value={aspectRatio}
+              onValueChange={setAspectRatio}
             >
-              <SelectTrigger id="ideogramStyle">
-                <SelectValue placeholder="Selecione o estilo" />
+              <SelectTrigger id="aspectRatio">
+                <SelectValue placeholder="Selecione a proporção" />
               </SelectTrigger>
               <SelectContent>
-                {IDEOGRAM_STYLES.map(style => (
-                  <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
+                {ASPECT_RATIOS.map(ratio => (
+                  <SelectItem key={ratio.id} value={ratio.id}>{ratio.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="magicPrompt">Magic Prompt</Label>
-            <Select 
-              value={magicPrompt}
-              onValueChange={setMagicPrompt}
-            >
-              <SelectTrigger id="magicPrompt">
-                <SelectValue placeholder="Selecione a opção de magic prompt" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="AUTO">Auto</SelectItem>
-                <SelectItem value="ON">Ligado</SelectItem>
-                <SelectItem value="OFF">Desligado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </>
-      )}
-      
-      {/* Midjourney specific controls */}
-      {isMidjourney && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="mjQuality">Qualidade</Label>
-            <Select 
-              value={mjQuality}
-              onValueChange={setMjQuality}
-            >
-              <SelectTrigger id="mjQuality">
-                <SelectValue placeholder="Selecione a qualidade" />
-              </SelectTrigger>
-              <SelectContent>
-                {MIDJOURNEY_QUALITY_OPTIONS.map(option => (
-                  <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Ideogram specific controls */}
+          {isIdeogram && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="ideogramStyle">Estilo</Label>
+                <Select 
+                  value={ideogramStyle}
+                  onValueChange={setIdeogramStyle}
+                >
+                  <SelectTrigger id="ideogramStyle">
+                    <SelectValue placeholder="Selecione o estilo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {IDEOGRAM_STYLES.map(style => (
+                      <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="magicPrompt">Magic Prompt</Label>
+                <Select 
+                  value={magicPrompt}
+                  onValueChange={setMagicPrompt}
+                >
+                  <SelectTrigger id="magicPrompt">
+                    <SelectValue placeholder="Selecione a opção de magic prompt" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AUTO">Auto</SelectItem>
+                    <SelectItem value="ON">Ligado</SelectItem>
+                    <SelectItem value="OFF">Desligado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
           
+          {/* Midjourney specific controls */}
+          {isMidjourney && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="mjQuality">Qualidade</Label>
+                <Select 
+                  value={mjQuality}
+                  onValueChange={setMjQuality}
+                >
+                  <SelectTrigger id="mjQuality">
+                    <SelectValue placeholder="Selecione a qualidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MIDJOURNEY_QUALITY_OPTIONS.map(option => (
+                      <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="mjStyle">Estilo</Label>
+                <Select 
+                  value={mjStyle}
+                  onValueChange={setMjStyle}
+                >
+                  <SelectTrigger id="mjStyle">
+                    <SelectValue placeholder="Selecione o estilo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MIDJOURNEY_STYLE_OPTIONS.map(option => (
+                      <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
+          {/* Negative prompt - common for both */}
           <div className="space-y-2">
-            <Label htmlFor="mjStyle">Estilo</Label>
-            <Select 
-              value={mjStyle}
-              onValueChange={setMjStyle}
-            >
-              <SelectTrigger id="mjStyle">
-                <SelectValue placeholder="Selecione o estilo" />
-              </SelectTrigger>
-              <SelectContent>
-                {MIDJOURNEY_STYLE_OPTIONS.map(option => (
-                  <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="negativePrompt">Prompt Negativo (Opcional)</Label>
+            <Textarea
+              id="negativePrompt"
+              placeholder="Elementos a serem evitados na imagem"
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+            />
           </div>
         </>
       )}
-
-      {/* Negative prompt - common for both */}
-      <div className="space-y-2">
-        <Label htmlFor="negativePrompt">Prompt Negativo (Opcional)</Label>
-        <Textarea
-          id="negativePrompt"
-          placeholder="Elementos a serem evitados na imagem"
-          value={negativePrompt}
-          onChange={(e) => setNegativePrompt(e.target.value)}
-        />
-      </div>
       
       {/* Prompt input */}
       <div className="space-y-2">
@@ -266,7 +284,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         aspect_ratio: mjAspectRatio,
         style: mjStyle
       };
-    } else {
+    } else if (isIdeogram) {
       // Ideogram params
       return {
         negative_prompt: negativePrompt,
@@ -274,11 +292,15 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         aspect_ratio: aspectRatio,
         magic_prompt_option: magicPrompt,
       };
+    } else {
+      // Other models (OpenAI, Anthropic, Google)
+      return {};
     }
   };
 
-  // Check if API key is configured
+  // Check if API key is configured (only needed for API Frame models)
   const isApiKeyConfigured = () => {
+    if (!isAPIFrameModel) return true;
     return localStorage.getItem('apiframe_api_key') !== null;
   };
 
@@ -322,7 +344,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         </div>
       )}
       
-      {!isApiKeyConfigured() && (
+      {isAPIFrameModel && !isApiKeyConfigured() && (
         <div className="p-3 bg-yellow-800/30 border border-yellow-500/30 rounded-md mb-4 text-yellow-200">
           <p className="text-sm">
             API Key da API Frame não configurada. Configure-a em Configurações/API.
@@ -333,7 +355,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
       <button
         className="w-full py-2 px-4 bg-inventu-blue hover:bg-inventu-blue/80 text-white font-medium rounded-md transition-colors disabled:bg-inventu-gray/30 disabled:text-white/50"
         onClick={handleGenerate}
-        disabled={!prompt.trim() || isGenerating || !isApiKeyConfigured()}
+        disabled={!prompt.trim() || isGenerating || (isAPIFrameModel && !isApiKeyConfigured())}
       >
         {isGenerating ? 'Gerando...' : 'Gerar Imagem'}
       </button>
