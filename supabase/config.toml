@@ -28,5 +28,8 @@ port = 9999
 [realtime]
 enabled = true
 
+[functions.ai-chat]
+verify_jwt = true
+
 [functions.apiframe-ideogram-imagine]
 verify_jwt = true
