@@ -43,13 +43,16 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const webhookEndpoint = `${supabaseUrl}/functions/v1/apiframe-webhook`;
     
+    // Ensure the duration parameter is numeric (5 or 10)
+    const duration = typeof params.duration === 'number' ? params.duration : 5;
+    
     // Preparar payload para a API
     const payload = {
       prompt,
       generation_type: generationType,
       model: params.model || "kling-v1-5",
       // Removido o parâmetro mode que estava causando erro
-      duration: params.duration || 5,
+      duration: duration, // Always use numeric duration
       aspect_ratio: params.aspectRatio || "16:9",
       cfg_scale: params.cfgScale !== undefined ? params.cfgScale : 0.7,
       webhook_url: webhookEndpoint,

@@ -73,7 +73,8 @@ export const apiRequestService = {
           const currentDuration = typeof validParams?.duration === 'number' ? validParams.duration : 5;
           if (currentDuration !== 5 && currentDuration !== 10) {
             console.log(`[apiRequestService] Corrigindo duração inválida: ${currentDuration} para 5 segundos`);
-            validParams.duration = 5; // Kling API accepts numeric values
+            // Convert the numeric duration to a string format with 's' suffix that matches expected type
+            validParams.duration = 5;
           }
           
           // Chamar a edge function específica para Kling AI
