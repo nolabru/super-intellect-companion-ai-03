@@ -69,8 +69,11 @@ export const apiRequestService = {
           
           // Ensure duration is valid for Kling API (5 or 10 seconds only)
           const validParams = { ...params };
-          if (validParams?.duration && validParams.duration !== 5 && validParams.duration !== 10) {
-            console.log(`[apiRequestService] Corrigindo duração inválida: ${validParams.duration} para 5 segundos`);
+          
+          // Verificar se a duração é um número e se é válida (5 ou 10)
+          const currentDuration = typeof validParams?.duration === 'number' ? validParams.duration : 5;
+          if (currentDuration !== 5 && currentDuration !== 10) {
+            console.log(`[apiRequestService] Corrigindo duração inválida: ${currentDuration} para 5 segundos`);
             validParams.duration = 5;
           }
           

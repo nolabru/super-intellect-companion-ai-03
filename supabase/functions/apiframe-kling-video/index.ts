@@ -48,7 +48,7 @@ serve(async (req) => {
       prompt,
       generation_type: generationType,
       model: params.model || "kling-v1-5",
-      mode: params.mode || "std",
+      // Removido o parâmetro mode que estava causando erro
       duration: params.duration || 5,
       aspect_ratio: params.aspectRatio || "16:9",
       cfg_scale: params.cfgScale !== undefined ? params.cfgScale : 0.7,
