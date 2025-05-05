@@ -73,7 +73,6 @@ export const apiRequestService = {
           const currentDuration = typeof validParams?.duration === 'number' ? validParams.duration : 5;
           if (currentDuration !== 5 && currentDuration !== 10) {
             console.log(`[apiRequestService] Corrigindo duração inválida: ${currentDuration} para 5 segundos`);
-            // Convert the numeric duration to a string format with 's' suffix that matches expected type
             validParams.duration = 5;
           }
           

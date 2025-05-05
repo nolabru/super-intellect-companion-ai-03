@@ -46,18 +46,24 @@ serve(async (req) => {
     // Ensure the duration parameter is numeric (5 or 10)
     const duration = typeof params.duration === 'number' ? params.duration : 5;
     
+    // Convert numeric duration to string format with 's' suffix as expected by the API
+    const durationString = `${duration}s`;
+    
     // Preparar payload para a API
     const payload = {
       prompt,
       generation_type: generationType,
       model: params.model || "kling-v1-5",
-      // Removido o parâmetro mode que estava causando erro
-      duration: duration, // Always use numeric duration
+      // Use string duration with 's' suffix
+      duration: durationString,
       aspect_ratio: params.aspectRatio || "16:9",
       cfg_scale: params.cfgScale !== undefined ? params.cfgScale : 0.7,
       webhook_url: webhookEndpoint,
       webhook_secret: "kling-webhook-secret"
     };
+    
+    // Log the payload to troubleshoot
+    console.log("Payload enviado para Kling AI:", JSON.stringify(payload, null, 2));
     
     // Adicionar parâmetros opcionais se fornecidos
     if (imageUrl) {

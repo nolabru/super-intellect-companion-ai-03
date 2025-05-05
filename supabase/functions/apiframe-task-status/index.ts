@@ -25,6 +25,8 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Verificando status da tarefa ${taskId}`);
+
     // Inicializar cliente Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
@@ -45,6 +47,8 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Tarefa ${taskId} encontrada com status: ${taskData.status}, percentual: ${taskData.percentage}%`);
+
     // Verificar se é necessário atualizar status diretamente na API Apiframe 
     // para tarefas que não completaram e têm mais de 2 minutos
     const taskAge = Date.now() - new Date(taskData.created_at).getTime();
@@ -55,7 +59,7 @@ serve(async (req) => {
     let updatedTaskData = taskData;
     
     if (needsUpdate) {
-      console.log(`Atualizando status da tarefa ${taskId} direto da API`);
+      console.log(`Atualizando status da tarefa ${taskId} direto da API (idade: ${taskAge / 1000 / 60} minutos)`);
       
       const APIFRAME_API_KEY = Deno.env.get("APIFRAME_API_KEY");
       if (!APIFRAME_API_KEY) {
@@ -83,6 +87,7 @@ serve(async (req) => {
         
         if (apiData.video_url) {
           updateData.result_url = apiData.video_url;
+          console.log(`URL do vídeo recebida: ${apiData.video_url}`);
         }
 
         const { data: updated, error: updateError } = await supabase
@@ -97,7 +102,9 @@ serve(async (req) => {
           
           // Se o vídeo estiver pronto, salvar no media_ready_events
           if (apiData.status === "finished" && apiData.video_url) {
-            await supabase
+            console.log(`Criando evento de mídia pronta para o vídeo: ${apiData.video_url}`);
+            
+            const { error: insertError } = await supabase
               .from("media_ready_events")
               .insert({
                 task_id: taskId,
@@ -105,8 +112,18 @@ serve(async (req) => {
                 media_type: "video",
                 status: "completed"
               });
+
+            if (insertError) {
+              console.error(`Erro ao inserir evento de mídia pronta: ${insertError.message}`);
+            } else {
+              console.log(`Evento de mídia pronta criado com sucesso`);
+            }
           }
+        } else if (updateError) {
+          console.error(`Erro ao atualizar registro: ${updateError.message}`);
         }
+      } else {
+        console.error(`Erro ao consultar API: ${apiResponse.status} - ${apiResponse.statusText}`);
       }
     }
 
@@ -119,6 +136,8 @@ serve(async (req) => {
       mediaUrl: updatedTaskData.result_url || null,
       error: updatedTaskData.error || null
     };
+
+    console.log(`Resposta final: ${JSON.stringify(response)}`);
 
     return new Response(
       JSON.stringify(response),
