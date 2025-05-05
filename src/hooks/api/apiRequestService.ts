@@ -63,11 +63,46 @@ export const apiRequestService = {
                                 modelId.includes('gemini')) &&
                                streamListener !== undefined;
         
-        // Preparar os dados da requisição
+        // Tratar o caso específico de geração de vídeo com Kling AI
+        if (mode === 'video' && modelId === 'kling-v1-5') {
+          console.log(`[apiRequestService] Iniciando geração de vídeo com Kling AI`);
+          
+          // Chamar a edge function específica para Kling AI
+          const { data, error } = await supabase.functions.invoke('apiframe-kling-video', {
+            body: {
+              prompt: content,
+              params: params || {},
+              generationType: "text2video"
+            },
+          });
+          
+          if (error) {
+            console.error('[apiRequestService] Erro na chamada para apiframe-kling-video:', error);
+            throw new Error(`Erro na geração de vídeo: ${error.message || 'Falha na comunicação com o servidor'}`);
+          }
+          
+          if (!data || !data.success) {
+            throw new Error(data?.error || 'Falha na geração de vídeo');
+          }
+          
+          console.log('[apiRequestService] Resposta da geração de vídeo:', data);
+          
+          // Criar uma resposta compatível com o formato esperado
+          return {
+            content: `Vídeo sendo gerado com a prompt: "${content}". Seu vídeo logo estará pronto.`,
+            files: data.mediaUrl ? [data.mediaUrl] : undefined,
+            modeSwitch: {
+              newMode: 'video',
+              newModel: modelId
+            }
+          };
+        }
+        
+        // Preparar os dados da requisição para outros modelos
         const requestBody = {
-          content,
+          prompt: content, // Aqui modificamos para usar 'prompt' em vez de 'content'
           mode,
-          modelId,
+          model: modelId,
           files,
           params,
           userId, // Usar userId passado 
