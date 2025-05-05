@@ -36,11 +36,10 @@ export const getProviderDisplayName = (provider: string): string => {
     'anthropic': 'Anthropic',
     'google': 'Google',
     'kligin': 'Kligin',
-    'ideogram': 'Ideogram',
+    'apiframe': 'API Frame',
     'minimax': 'MiniMax',
     'elevenlabs': 'ElevenLabs',
-    'luma': 'Luma AI',
-    'apiframe': 'APIframe'
+    'luma': 'Luma AI'
   };
   
   return providerNames[provider] || provider;

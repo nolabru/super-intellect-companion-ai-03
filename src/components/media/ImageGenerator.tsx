@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-// Updated image models data - now including both Ideogram and Midjourney
+// Updated image models data - now all under API Frame
 const IMAGE_MODELS = [
   { id: 'ideogram-v2', name: 'Ideogram V2' },
   { id: 'midjourney', name: 'Midjourney' }
@@ -14,22 +14,31 @@ const IMAGE_MODELS = [
 // Ideogram style types
 const IDEOGRAM_STYLES = [
   { id: 'GENERAL', name: 'General' },
-  { id: 'REALISTIC', name: 'Realistic' },
-  { id: 'RENDER_3D', name: '3D Render' },
   { id: 'ANIME', name: 'Anime' },
-  { id: 'PAINTING', name: 'Painting' },
+  { id: 'ILLUSTRATION', name: 'Illustration' },
+  { id: 'PHOTOGRAPHY', name: 'Photography' },
+  { id: 'PIXEL_ART', name: 'Pixel Art' },
+  { id: 'COMIC_BOOK', name: 'Comic Book' },
+  { id: 'CRAFT_CLAY', name: 'Craft Clay' },
   { id: 'DIGITAL_ART', name: 'Digital Art' },
-  { id: 'CARTOON', name: 'Cartoon' },
-  { id: 'ILLUSTRATION', name: 'Illustration' }
+  { id: 'ENHANCE', name: 'Enhance' },
+  { id: 'FANTASY_ART', name: 'Fantasy Art' },
+  { id: 'ISOMETRIC', name: 'Isometric' },
+  { id: 'LINE_ART', name: 'Line Art' },
+  { id: 'NEON_PUNK', name: 'Neon Punk' },
+  { id: 'ORIGAMI', name: 'Origami' },
+  { id: 'PHOTOGRAPHIC', name: 'Photographic' },
+  { id: 'CINEMATIC', name: 'Cinematic' },
+  { id: '3D_MODEL', name: '3D Model' },
 ];
 
-// Aspect ratio options
+// Aspect ratios
 const ASPECT_RATIOS = [
-  { id: 'ASPECT_1_1', name: 'Square (1:1)', midjourney: '1:1' },
-  { id: 'ASPECT_4_3', name: 'Landscape (4:3)', midjourney: '4:3' },
-  { id: 'ASPECT_3_4', name: 'Portrait (3:4)', midjourney: '3:4' },
-  { id: 'ASPECT_16_9', name: 'Wide (16:9)', midjourney: '16:9' },
-  { id: 'ASPECT_9_16', name: 'Tall (9:16)', midjourney: '9:16' }
+  { id: 'ASPECT_1_1', name: '1:1 Square', midjourney: '1:1' },
+  { id: 'ASPECT_16_9', name: '16:9 Landscape', midjourney: '16:9' },
+  { id: 'ASPECT_9_16', name: '9:16 Portrait', midjourney: '9:16' },
+  { id: 'ASPECT_4_3', name: '4:3 Classic', midjourney: '4:3' },
+  { id: 'ASPECT_3_2', name: '3:2 Classic', midjourney: '3:2' },
 ];
 
 // Midjourney specific options

@@ -15,17 +15,25 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSimplifiedMediaGeneration } from '@/hooks/useSimplifiedMediaGeneration';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Simple function to check if API key exists
 const hasApiKey = () => {
-  return localStorage.getItem('piapi_api_key') !== null;
+  return localStorage.getItem('apiframe_api_key') !== null;
 };
+
+// Image model options
+const IMAGE_MODELS = [
+  { id: 'ideogram-v2', name: 'Ideogram V2' },
+  { id: 'midjourney', name: 'Midjourney' },
+];
 
 const PiApiServicesButton = () => {
   const [prompt, setPrompt] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'image' | 'settings'>('image');
   const [apiKey, setApiKey] = useState('');
+  const [selectedModel, setSelectedModel] = useState('ideogram-v2');
   
   const mediaGeneration = useSimplifiedMediaGeneration({
     showToasts: true
@@ -44,7 +52,7 @@ const PiApiServicesButton = () => {
     e.preventDefault();
     
     if (!hasApiKey()) {
-      toast.error('Por favor, configure sua chave de API da PiAPI primeiro', {
+      toast.error('Por favor, configure sua chave de API da API Frame primeiro', {
         description: 'Acesse a aba de configurações para inserir sua chave de API'
       });
       setActiveTab('settings');
@@ -57,10 +65,10 @@ const PiApiServicesButton = () => {
     }
     
     try {
-      console.log(`[PiApiServicesButton] Iniciando geração de ${activeTab} com prompt: ${prompt}`);
+      console.log(`[PiApiServicesButton] Iniciando geração de ${activeTab} com prompt: ${prompt} e modelo: ${selectedModel}`);
       
       if (activeTab === 'image') {
-        await mediaGeneration.generateMedia(prompt, 'image', 'ideogram-v2');
+        await mediaGeneration.generateMedia(prompt, 'image', selectedModel);
       }
     } catch (error) {
       console.error('Erro ao gerar mídia:', error);
@@ -76,14 +84,14 @@ const PiApiServicesButton = () => {
       return;
     }
     
-    localStorage.setItem('piapi_api_key', apiKey);
+    localStorage.setItem('apiframe_api_key', apiKey);
     setApiKey('********-****-****-****-************'); // Mask for security
     toast.success('Chave de API configurada com sucesso');
   };
   
   const handleClearApiKey = () => {
     if (confirm('Tem certeza que deseja remover sua chave de API?')) {
-      localStorage.removeItem('piapi_api_key');
+      localStorage.removeItem('apiframe_api_key');
       setApiKey('');
       toast.info('Chave de API removida');
     }
@@ -99,21 +107,21 @@ const PiApiServicesButton = () => {
             variant="outline" 
             size="sm" 
             className="flex items-center gap-1" 
-            data-testid="piapi-services-button"
+            data-testid="apiframe-services-button"
           >
             {hasApiKey() ? (
               <Check className="h-4 w-4 text-green-500" />
             ) : (
               <AlertCircle className="h-4 w-4 text-amber-500" />
             )}
-            <span>Serviços de Imagem</span>
+            <span>Serviços de API Frame</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0" align="end">
           <div className="p-4 border-b">
-            <h2 className="text-lg font-medium">Geração de Imagem com Ideogram</h2>
+            <h2 className="text-lg font-medium">Geração de Imagem com API Frame</h2>
             <p className="text-sm text-gray-500">
-              Gere imagens usando os serviços do Ideogram.
+              Gere imagens usando Ideogram ou Midjourney através da API Frame.
             </p>
           </div>
           
@@ -138,7 +146,7 @@ const PiApiServicesButton = () => {
               <div className="p-4">
                 <h3 className="text-sm font-medium mb-2">Configuração da API</h3>
                 <p className="text-xs text-gray-500 mb-4">
-                  Configure sua chave de API para usar os serviços de geração.
+                  Configure sua chave de API Frame para usar os serviços de geração.
                   {!hasApiKey() && (
                     <span className="block mt-1 text-amber-500">
                       <AlertCircle className="h-3 w-3 inline-block mr-1" />
@@ -185,12 +193,12 @@ const PiApiServicesButton = () => {
                     <p className="mt-1">
                       Você pode obter uma em{' '}
                       <a 
-                        href="https://ideogram.ai" 
+                        href="https://www.apiframe.pro" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-blue-500 hover:underline"
                       >
-                        https://ideogram.ai
+                        https://www.apiframe.pro
                       </a>
                     </p>
                   </div>
@@ -198,6 +206,25 @@ const PiApiServicesButton = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="p-4">
+                <div className="mb-4 space-y-2">
+                  <label htmlFor="modelSelect" className="text-sm font-medium block">Modelo</label>
+                  <Select
+                    value={selectedModel}
+                    onValueChange={setSelectedModel}
+                  >
+                    <SelectTrigger id="modelSelect">
+                      <SelectValue placeholder="Selecione o modelo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {IMAGE_MODELS.map(model => (
+                        <SelectItem key={model.id} value={model.id}>
+                          {model.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
                 <Textarea 
                   placeholder="Descreva a imagem que deseja gerar..."
                   value={prompt}

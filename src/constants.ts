@@ -1,3 +1,4 @@
+
 export interface ChatModel {
   id: string;
   displayName: string;
@@ -9,11 +10,12 @@ export interface ChatModel {
 }
 
 // Combine Ideogram and Midjourney models into a single IMAGE_MODELS group
+// All under the apiframe provider
 const IMAGE_MODELS: ChatModel[] = [
   {
     id: 'ideogram-v2',
     displayName: 'Ideogram V2',
-    provider: 'ideogram',
+    provider: 'apiframe',
     modes: ['image'],
     capabilities: {
       imageGeneration: true
