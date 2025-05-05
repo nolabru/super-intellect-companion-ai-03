@@ -238,6 +238,7 @@ export type Database = {
           media_type: string | null
           media_url: string | null
           published_at: string | null
+          shares_count: number | null
           updated_at: string | null
           view_count: number | null
         }
@@ -249,6 +250,7 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           published_at?: string | null
+          shares_count?: number | null
           updated_at?: string | null
           view_count?: number | null
         }
@@ -260,6 +262,7 @@ export type Database = {
           media_type?: string | null
           media_url?: string | null
           published_at?: string | null
+          shares_count?: number | null
           updated_at?: string | null
           view_count?: number | null
         }

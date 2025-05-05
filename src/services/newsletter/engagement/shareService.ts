@@ -34,7 +34,7 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
     // já que estamos verificando a existência do campo em runtime
     const { error } = await supabase
       .from('newsletter_posts')
-      .update({ shares_count: currentShareCount + 1 } as any)
+      .update({ shares_count: currentShareCount + 1 })
       .eq('id', postId);
     
     if (error) {
