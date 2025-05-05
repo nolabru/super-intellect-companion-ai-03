@@ -10,22 +10,24 @@ import { PostWithStats, NewsletterPost } from '@/types/newsletter';
 export const mapPostToFrontend = (post: any): PostWithStats => {
   return {
     id: post.id || '',
-    title: post.title || '',
+    title: post.title || post.content?.substring(0, 50) || '',
     content: post.content || '',
     author_id: post.author_id || '',
     user_id: post.author_id || '', // Map author_id to user_id for compatibility
     published_at: post.published_at || null,
     media_url: post.media_url || null,
     media_type: post.media_type || 'none',
-    view_count: post.view_count || 0,
-    likes_count: post.likes_count || 0,
-    like_count: post.likes_count || 0,  // Add alias for likes_count
-    shares_count: post.shares_count || 0,
     created_at: post.created_at || post.published_at || new Date().toISOString(),
     updated_at: post.updated_at || new Date().toISOString(),
     is_published: post.is_published || false,
+    view_count: post.view_count || 0,
+    likes_count: post.likes_count || 0,
+    like_count: post.likes_count || 0,  // Add alias for likes_count
     comments_count: post.comments_count || 0,
+    shares_count: post.shares_count || 0,
     user_has_liked: post.user_has_liked || false,
+    author_name: post.author_name || '',
+    author_avatar: post.author_avatar || null,
     author: {
       username: post.author_name || '',
       avatar_url: post.author_avatar || null
