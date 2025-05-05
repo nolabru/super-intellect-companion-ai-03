@@ -49,7 +49,7 @@ export interface ApiframeAudioParams extends ApiframeParams {
   language?: string;
 }
 
-// Add MediaGenerationResult interface with status property
+// Updated MediaGenerationResult interface with consistent error property
 export interface MediaGenerationResult {
   success: boolean;
   mediaUrl?: string;
