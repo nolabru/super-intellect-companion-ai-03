@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,30 +8,32 @@ import { Input } from '@/components/ui/input';
 import { 
   Loader2, 
   Image, 
-  Video, 
-  Music, 
   KeyRound, 
   Check, 
   AlertCircle,
   XCircle
 } from 'lucide-react';
-import { useMediaGeneration } from '@/hooks/useMediaGeneration';
 import { toast } from 'sonner';
-import { hasPiapiApiKey } from '@/services/piapiDirectService';
+import { useSimplifiedMediaGeneration } from '@/hooks/useSimplifiedMediaGeneration';
 
-const PiapiServicesButton = () => {
+// Simple function to check if API key exists
+const hasApiKey = () => {
+  return localStorage.getItem('piapi_api_key') !== null;
+};
+
+const PiApiServicesButton = () => {
   const [prompt, setPrompt] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'image' | 'video' | 'audio' | 'settings'>('image');
+  const [activeTab, setActiveTab] = useState<'image' | 'settings'>('image');
   const [apiKey, setApiKey] = useState('');
   
-  const mediaGeneration = useMediaGeneration({
+  const mediaGeneration = useSimplifiedMediaGeneration({
     showToasts: true
   });
   
   // Initialize API key from localStorage if available
-  useEffect(() => {
-    if (hasPiapiApiKey()) {
+  React.useEffect(() => {
+    if (hasApiKey()) {
       setApiKey('********-****-****-****-************'); // Masked for security
     } else {
       setApiKey('');
@@ -41,7 +43,7 @@ const PiapiServicesButton = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!mediaGeneration.isApiKeyConfigured()) {
+    if (!hasApiKey()) {
       toast.error('Por favor, configure sua chave de API da PiAPI primeiro', {
         description: 'Acesse a aba de configurações para inserir sua chave de API'
       });
@@ -55,18 +57,10 @@ const PiapiServicesButton = () => {
     }
     
     try {
-      console.log(`[PiapiServicesButton] Iniciando geração de ${activeTab} com prompt: ${prompt}`);
+      console.log(`[PiApiServicesButton] Iniciando geração de ${activeTab} com prompt: ${prompt}`);
       
-      switch (activeTab) {
-        case 'image':
-          await mediaGeneration.generateMedia(prompt, 'image', 'flux-schnell');
-          break;
-        case 'video':
-          await mediaGeneration.generateMedia(prompt, 'video', 'kling-text');
-          break;
-        case 'audio':
-          await mediaGeneration.generateMedia(prompt, 'audio', 'diffrhythm-base');
-          break;
+      if (activeTab === 'image') {
+        await mediaGeneration.generateMedia(prompt, 'image', 'ideogram-v2');
       }
     } catch (error) {
       console.error('Erro ao gerar mídia:', error);
@@ -82,12 +76,9 @@ const PiapiServicesButton = () => {
       return;
     }
     
-    const success = mediaGeneration.configureApiKey(apiKey);
-    
-    if (success) {
-      setApiKey('********-****-****-****-************'); // Mask for security
-      toast.success('Chave de API configurada com sucesso');
-    }
+    localStorage.setItem('piapi_api_key', apiKey);
+    setApiKey('********-****-****-****-************'); // Mask for security
+    toast.success('Chave de API configurada com sucesso');
   };
   
   const handleClearApiKey = () => {
@@ -110,19 +101,19 @@ const PiapiServicesButton = () => {
             className="flex items-center gap-1" 
             data-testid="piapi-services-button"
           >
-            {mediaGeneration.isApiKeyConfigured() ? (
+            {hasApiKey() ? (
               <Check className="h-4 w-4 text-green-500" />
             ) : (
               <AlertCircle className="h-4 w-4 text-amber-500" />
             )}
-            <span>Serviços PiAPI</span>
+            <span>Serviços de Imagem</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-96 p-0" align="end">
           <div className="p-4 border-b">
-            <h2 className="text-lg font-medium">Geração de Mídia com PiAPI</h2>
+            <h2 className="text-lg font-medium">Geração de Imagem com Ideogram</h2>
             <p className="text-sm text-gray-500">
-              Gere imagens, vídeos e áudio usando os serviços da PiAPI.
+              Gere imagens usando os serviços do Ideogram.
             </p>
           </div>
           
@@ -132,18 +123,10 @@ const PiapiServicesButton = () => {
             onValueChange={(value) => setActiveTab(value as any)}
             className="w-full"
           >
-            <TabsList className="grid grid-cols-4 w-full">
+            <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="image" className="flex items-center gap-1">
                 <Image className="h-4 w-4" />
                 <span>Imagem</span>
-              </TabsTrigger>
-              <TabsTrigger value="video" className="flex items-center gap-1">
-                <Video className="h-4 w-4" />
-                <span>Vídeo</span>
-              </TabsTrigger>
-              <TabsTrigger value="audio" className="flex items-center gap-1">
-                <Music className="h-4 w-4" />
-                <span>Áudio</span>
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-1">
                 <KeyRound className="h-4 w-4" />
@@ -155,8 +138,8 @@ const PiapiServicesButton = () => {
               <div className="p-4">
                 <h3 className="text-sm font-medium mb-2">Configuração da API</h3>
                 <p className="text-xs text-gray-500 mb-4">
-                  Configure sua chave de API da PiAPI para usar os serviços de geração.
-                  {!mediaGeneration.isApiKeyConfigured() && (
+                  Configure sua chave de API para usar os serviços de geração.
+                  {!hasApiKey() && (
                     <span className="block mt-1 text-amber-500">
                       <AlertCircle className="h-3 w-3 inline-block mr-1" />
                       API não configurada
@@ -175,10 +158,10 @@ const PiapiServicesButton = () => {
                         type="password"
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="Insira sua chave de API da PiAPI"
+                        placeholder="Insira sua chave de API"
                         className="flex-1"
                       />
-                      {mediaGeneration.isApiKeyConfigured() && (
+                      {hasApiKey() && (
                         <Button 
                           size="sm" 
                           variant="destructive"
@@ -198,16 +181,16 @@ const PiapiServicesButton = () => {
                   </Button>
                   
                   <div className="text-xs text-gray-500 mt-2">
-                    <p>Não tem uma chave de API da PiAPI?</p>
+                    <p>Não tem uma chave de API?</p>
                     <p className="mt-1">
                       Você pode obter uma em{' '}
                       <a 
-                        href="https://piapi.ai" 
+                        href="https://ideogram.ai" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-blue-500 hover:underline"
                       >
-                        https://piapi.ai
+                        https://ideogram.ai
                       </a>
                     </p>
                   </div>
@@ -216,13 +199,7 @@ const PiapiServicesButton = () => {
             ) : (
               <form onSubmit={handleSubmit} className="p-4">
                 <Textarea 
-                  placeholder={
-                    activeTab === 'image' 
-                      ? 'Descreva a imagem que deseja gerar...' 
-                      : activeTab === 'video'
-                        ? 'Descreva o vídeo que deseja gerar...'
-                        : 'Descreva o áudio que deseja gerar...'
-                  }
+                  placeholder="Descreva a imagem que deseja gerar..."
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   className="w-full mb-4"
@@ -231,27 +208,11 @@ const PiapiServicesButton = () => {
                 
                 {currentTask && currentTask.mediaUrl && currentTask.status === 'completed' && (
                   <div className="mb-4">
-                    {activeTab === 'image' && (
-                      <img 
-                        src={currentTask.mediaUrl} 
-                        alt="Imagem gerada" 
-                        className="w-full h-auto rounded-lg"
-                      />
-                    )}
-                    {activeTab === 'video' && (
-                      <video 
-                        src={currentTask.mediaUrl} 
-                        controls
-                        className="w-full h-auto rounded-lg"
-                      />
-                    )}
-                    {activeTab === 'audio' && (
-                      <audio 
-                        src={currentTask.mediaUrl} 
-                        controls
-                        className="w-full"
-                      />
-                    )}
+                    <img 
+                      src={currentTask.mediaUrl} 
+                      alt="Imagem gerada" 
+                      className="w-full h-auto rounded-lg"
+                    />
                   </div>
                 )}
                 
@@ -259,11 +220,7 @@ const PiapiServicesButton = () => {
                   <div className="flex flex-col items-center justify-center py-4 gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                     <p className="text-sm text-gray-500">
-                      {activeTab === 'image' 
-                        ? 'Gerando imagem...' 
-                        : activeTab === 'video'
-                          ? 'Gerando vídeo...'
-                          : 'Gerando áudio...'}
+                      Gerando imagem...
                       {currentTask && currentTask.progress > 0 && ` ${currentTask.progress.toFixed(0)}%`}
                     </p>
                   </div>
@@ -288,7 +245,7 @@ const PiapiServicesButton = () => {
                     <Button
                       type="button"
                       variant="destructive"
-                      onClick={() => mediaGeneration.cancelTask(currentTask.taskId)}
+                      onClick={() => mediaGeneration.cancelGeneration()}
                     >
                       Cancelar
                     </Button>
@@ -298,7 +255,7 @@ const PiapiServicesButton = () => {
                       disabled={
                         !prompt.trim() || 
                         mediaGeneration.isGenerating || 
-                        !mediaGeneration.isApiKeyConfigured()
+                        !hasApiKey()
                       }
                     >
                       {mediaGeneration.isGenerating ? (
@@ -306,7 +263,7 @@ const PiapiServicesButton = () => {
                           <Loader2 className="h-4 w-4 animate-spin mr-1" />
                           Gerando...
                         </>
-                      ) : !mediaGeneration.isApiKeyConfigured() ? (
+                      ) : !hasApiKey() ? (
                         <>
                           <KeyRound className="h-4 w-4 mr-1" />
                           Configurar API
@@ -318,12 +275,12 @@ const PiapiServicesButton = () => {
                   )}
                 </div>
                 
-                {!mediaGeneration.isApiKeyConfigured() && (
+                {!hasApiKey() && (
                   <div className="mt-4 p-3 bg-amber-50 text-amber-800 text-sm rounded-md border border-amber-200">
                     <div className="flex items-center">
                       <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
                       <p>
-                        Você precisa configurar sua chave de API da PiAPI primeiro.{' '}
+                        Você precisa configurar sua chave de API primeiro.{' '}
                         <button
                           type="button"
                           className="text-blue-600 hover:underline"
@@ -344,4 +301,4 @@ const PiapiServicesButton = () => {
   );
 };
 
-export default PiapiServicesButton;
+export default PiApiServicesButton;

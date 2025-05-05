@@ -1,17 +1,17 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { usePersistedMediaGeneration } from '@/hooks/usePersistedMediaGeneration';
+import { useIdeogramGeneration } from '@/hooks/useIdeogramGeneration';
 import MediaModelSelector from './MediaModelSelector';
 import MediaProgress from './MediaProgress';
 import MediaPreview from './MediaPreview';
 
 interface MediaGeneratorProps {
-  mediaType: 'image' | 'video' | 'audio';
+  mediaType: 'image';
   title: string;
   models: Array<{ id: string; name: string; requiresReference?: boolean }>;
   defaultModel: string;
@@ -37,15 +37,14 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   const [selectedModel, setSelectedModel] = useState(defaultModel);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
 
-  // Use our persisted media generation hook
+  // Use our ideogram generation hook
   const {
-    generateMedia,
-    cancelGeneration,
+    generateImage,
     isGenerating,
-    generatedMedia,
-    currentTask,
-    persistedTask
-  } = usePersistedMediaGeneration({
+    progress,
+    generatedImageUrl,
+    error
+  } = useIdeogramGeneration({
     showToasts: true,
     onComplete: (mediaUrl) => {
       if (onMediaGenerated) {
@@ -53,10 +52,6 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
       }
     }
   });
-
-  // Use the persisted task for display if available
-  const activeTask = persistedTask || currentTask;
-  const taskProgress = activeTask?.progress || 0;
 
   const handleModelChange = (modelId: string) => {
     setSelectedModel(modelId);
@@ -80,37 +75,21 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
     const params = {
       ...additionalParams,
       modelId: selectedModel,
+      referenceUrl: referenceUrl || undefined
     };
 
-    generateMedia(
-      mediaType,
-      prompt,
-      selectedModel,
-      params,
-      referenceUrl || undefined
-    );
+    await generateImage(prompt, params);
   };
 
   const handleReferenceUpdate = (url: string | null) => {
     setReferenceUrl(url);
   };
 
-  // Get the media URL from generated media or persisted task
-  const mediaUrl = generatedMedia?.url || persistedTask?.mediaUrl;
-
-  // Reset form when media type changes
-  useEffect(() => {
-    setPrompt('');
-    setReferenceUrl(null);
-  }, [mediaType]);
-
   return (
     <Card className="w-full max-w-3xl">
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          {mediaType === 'image' && <span className="h-5 w-5">🖼️</span>}
-          {mediaType === 'video' && <span className="h-5 w-5">🎬</span>}
-          {mediaType === 'audio' && <span className="h-5 w-5">🔊</span>}
+          <span className="h-5 w-5">🖼️</span>
           <span>{title}</span>
         </CardTitle>
       </CardHeader>
@@ -142,7 +121,7 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
           <Label htmlFor="mediaPrompt">Prompt</Label>
           <Textarea
             id="mediaPrompt"
-            placeholder={`Describe the ${mediaType} you want to generate...`}
+            placeholder="Describe the image you want to generate..."
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             rows={3}
@@ -151,19 +130,25 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
           />
         </div>
         
-        {isGenerating && activeTask && (
+        {isGenerating && (
           <MediaProgress
-            progress={taskProgress}
+            progress={progress}
             type={mediaType}
-            onCancel={cancelGeneration}
+            onCancel={() => alert('Cancellation not supported for Ideogram generation')}
           />
         )}
         
-        {mediaUrl && !isGenerating && (
+        {generatedImageUrl && !isGenerating && (
           <MediaPreview
-            mediaUrl={mediaUrl}
+            mediaUrl={generatedImageUrl}
             mediaType={mediaType}
           />
+        )}
+        
+        {error && !isGenerating && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+            {error}
+          </div>
         )}
       </CardContent>
       
