@@ -1,20 +1,26 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import ImageGenerator from '@/components/media/ImageGenerator';
 import MainLayout from '@/components/layout/MainLayout';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
+import AppHeader from '@/components/AppHeader';
 
 const ImageGeneratorPage: React.FC = () => {
   const isMobile = useIsMobile();
   const isTouchDevice = useTouchDevice();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  const handleToggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
   
   return (
     <div className="flex min-h-screen w-full bg-inventu-darker">
       <MainLayout 
-        sidebarOpen={false} 
-        onToggleSidebar={() => {}} 
+        sidebarOpen={sidebarOpen} 
+        onToggleSidebar={handleToggleSidebar} 
         isTouchDevice={isTouchDevice}
       >
         <div className="container mx-auto px-4 py-8">

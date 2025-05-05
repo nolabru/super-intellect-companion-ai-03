@@ -1,420 +1,296 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import MediaModelSelector from './MediaModelSelector';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { toast } from 'sonner';
-import { Loader2, Upload } from 'lucide-react';
-import { useAPIFrameImageGeneration } from '@/hooks/useAPIFrameImageGeneration';
+import { Card, CardContent } from '@/components/ui/card';
+import ReferenceUploader from './ReferenceUploader';
+import { MoveVertical, Image, Lightbulb, Paintbrush, Download } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MediaPreview from './MediaPreview';
 
-// Image models disponíveis
-const IMAGE_MODELS = [
-  { id: 'ideogram-v2', name: 'Ideogram V2', provider: 'apiframe' },
-  { id: 'midjourney', name: 'Midjourney', provider: 'apiframe' },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' }
+// Define available models
+const AVAILABLE_MODELS = [
+  { id: 'ideogram', name: 'Ideogram' },
+  { id: 'midjourney', name: 'Midjourney' },
+  { id: 'gpt4o', name: 'GPT-4o' }
 ];
 
-// Estilos Ideogram
-const IDEOGRAM_STYLES = [
-  { id: 'GENERAL', name: 'Geral' },
-  { id: 'ANIME', name: 'Anime' },
-  { id: 'ILLUSTRATION', name: 'Ilustração' },
-  { id: 'PHOTOGRAPHY', name: 'Fotografia' },
-  { id: 'PIXEL_ART', name: 'Pixel Art' },
-  { id: 'COMIC_BOOK', name: 'Quadrinhos' },
-  { id: 'DIGITAL_ART', name: 'Arte Digital' },
-  { id: 'FANTASY_ART', name: 'Arte Fantástica' },
-  { id: 'CINEMATIC', name: 'Cinemático' },
-  { id: '3D_MODEL', name: 'Modelo 3D' }
-];
-
-// Proporções de aspecto
+// Define aspect ratios
 const ASPECT_RATIOS = [
-  { id: 'ASPECT_1_1', name: '1:1 Quadrado', midjourney: '1:1' },
-  { id: 'ASPECT_16_9', name: '16:9 Paisagem', midjourney: '16:9' },
-  { id: 'ASPECT_9_16', name: '9:16 Retrato', midjourney: '9:16' },
-  { id: 'ASPECT_4_3', name: '4:3 Clássico', midjourney: '4:3' }
+  { id: '1:1', name: '1:1 (Square)' },
+  { id: '16:9', name: '16:9 (Landscape)' },
+  { id: '9:16', name: '9:16 (Portrait)' },
+  { id: '4:5', name: '4:5 (Instagram)' },
+  { id: '3:2', name: '3:2 (Standard)' }
 ];
 
-// Opções específicas do Midjourney
-const MIDJOURNEY_QUALITY_OPTIONS = [
-  { id: 'standard', name: 'Padrão' },
-  { id: 'hd', name: 'HD' }
-];
-
-const MIDJOURNEY_STYLE_OPTIONS = [
-  { id: 'raw', name: 'Natural' },
-  { id: 'cute', name: 'Fofo' },
-  { id: 'scenic', name: 'Cênico' },
-  { id: 'original', name: 'Original' }
-];
+// Utility function to parse aspect ratio
+const parseAspectRatio = (ratio: string) => {
+  const [width, height] = ratio.split(':').map(Number);
+  return { width, height };
+};
 
 interface ImageGeneratorProps {
-  onImageGenerated?: (imageUrl: string) => void;
+  onImageGenerated?: (url: string) => void;
 }
 
 const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => {
-  const [negativePrompt, setNegativePrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState('ideogram-v2');
-  const [ideogramStyle, setIdeogramStyle] = useState('GENERAL');
-  const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
+  const [selectedModel, setSelectedModel] = useState('ideogram');
   const [prompt, setPrompt] = useState('');
-  const [referenceImageUrl, setReferenceImageUrl] = useState<string | null>(null);
-  const [referenceFile, setReferenceFile] = useState<File | null>(null);
-  
-  // Estados específicos do Midjourney
-  const [mjQuality, setMjQuality] = useState('standard');
-  const [mjStyle, setMjStyle] = useState('raw');
-  
-  const isMidjourney = selectedModel === 'midjourney';
-  const isIdeogram = selectedModel === 'ideogram-v2';
-  const isAPIFrameModel = selectedModel === 'ideogram-v2' || selectedModel === 'midjourney';
-  
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [quality, setQuality] = useState(80);
+  const [style, setStyle] = useState('vivid');
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const isMobile = useIsMobile();
+  const promptRef = useRef<HTMLTextAreaElement>(null);
+
+  // Use unified media generation hook
   const { 
-    generateImage, 
+    generateMedia, 
+    imageUrl, 
     isGenerating, 
-    generatedImageUrl, 
-    progress, 
-    error 
-  } = useAPIFrameImageGeneration({
-    showToasts: true,
-    onComplete: (imageUrl) => {
-      if (onImageGenerated) {
-        onImageGenerated(imageUrl);
-      }
-    }
+    error, 
+    progress
+  } = useUnifiedMediaGeneration({
+    type: 'image'
   });
   
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setReferenceFile(file);
-      const url = URL.createObjectURL(file);
-      setReferenceImageUrl(url);
-    }
-  };
-
-  const handleRemoveReferenceImage = () => {
-    if (referenceImageUrl) {
-      URL.revokeObjectURL(referenceImageUrl);
-    }
-    setReferenceImageUrl(null);
-    setReferenceFile(null);
-  };
-  
-  const handleGenerate = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!prompt.trim()) {
-      toast.error('Por favor, insira um prompt para a geração de imagem');
+      // Focus on the prompt textarea if empty
+      promptRef.current?.focus();
       return;
     }
     
-    // Verificar se existe uma chave de API (somente para modelos API Frame)
-    if (isAPIFrameModel) {
-      const apiKeyFromStorage = localStorage.getItem('apiframe_api_key');
-      if (!apiKeyFromStorage) {
-        toast.error('API Frame API Key não configurada', {
-          description: 'Configure sua chave nas configurações'
-        });
-        
-        // Solicitar API Key
-        const apiKey = prompt('Insira sua API Frame API Key:');
-        if (apiKey) {
-          localStorage.setItem('apiframe_api_key', apiKey);
-        } else {
-          return;
-        }
-      }
-    }
+    // Parse the selected aspect ratio
+    const { width, height } = parseAspectRatio(aspectRatio);
     
-    // Preparar parâmetros com base no modelo selecionado
-    const params: any = {};
+    // Generate the image with the selected model and parameters
+    const result = await generateMedia({
+      model: selectedModel,
+      prompt: prompt,
+      negativePrompt: negativePrompt || undefined,
+      aspectRatio: { width, height },
+      quality: quality / 100, // Convert slider value to decimal
+      style: style,
+      referenceImage: referenceImage || undefined
+    });
     
-    if (isIdeogram) {
-      params.style_type = ideogramStyle;
-      params.aspect_ratio = aspectRatio;
-      params.negative_prompt = negativePrompt;
-      params.magic_prompt_option = 'AUTO';
-    } else if (isMidjourney) {
-      // Encontrar o formato correspondente do Midjourney para a proporção selecionada
-      const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio);
-      const mjAspectRatio = selectedRatio ? selectedRatio.midjourney : '1:1';
-      
-      params.negative_prompt = negativePrompt;
-      params.quality = mjQuality;
-      params.aspect_ratio = mjAspectRatio;
-      params.style = mjStyle;
+    if (result && result.url && onImageGenerated) {
+      onImageGenerated(result.url);
     }
-    
-    // Adicionar imagem de referência se estiver presente
-    if (referenceFile) {
-      params.referenceFile = referenceFile;
-    }
-    
-    if (isAPIFrameModel) {
-      // Gerar imagem usando API Frame (Ideogram/Midjourney)
-      await generateImage(prompt, selectedModel, params);
-    } else {
-      // Aqui você pode adicionar a integração com outros modelos (OpenAI, etc)
-      toast.info(`Gerando imagem com ${selectedModel}`, {
-        description: "Esta funcionalidade será implementada em breve."
-      });
-    }
+  }, [prompt, selectedModel, negativePrompt, aspectRatio, quality, style, referenceImage, generateMedia, onImageGenerated]);
+  
+  // Handle model change
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
   };
-
-  // Checar se a API key está configurada (somente para modelos API Frame)
-  const isApiKeyConfigured = () => {
-    if (!isAPIFrameModel) return true;
-    return localStorage.getItem('apiframe_api_key') !== null;
+  
+  // Handle reference image upload
+  const handleReferenceUpload = (file: File) => {
+    setReferenceImage(file);
+  };
+  
+  // Handle reference image removal
+  const handleRemoveReference = () => {
+    setReferenceImage(null);
   };
 
   return (
-    <Card className="bg-inventu-darker border-inventu-gray/30">
-      <CardHeader className="px-6 pt-6 pb-2">
-        <h2 className="text-xl font-semibold text-white">Gerador de Imagens</h2>
-      </CardHeader>
-      
-      <CardContent className="px-6 py-4 space-y-6">
-        {/* Seleção de modelo */}
-        <div className="space-y-2">
-          <Label htmlFor="modelSelector" className="text-white">Modelo</Label>
-          <Select 
-            value={selectedModel}
-            onValueChange={setSelectedModel}
-          >
-            <SelectTrigger id="modelSelector" className="bg-inventu-card border-inventu-gray/30 text-white">
-              <SelectValue placeholder="Selecione um modelo">
-                {IMAGE_MODELS.find(m => m.id === selectedModel)?.name}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="bg-inventu-dark border-inventu-gray/30">
-              {IMAGE_MODELS.map(model => (
-                <SelectItem key={model.id} value={model.id} className="text-white hover:bg-white/10">
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        
-        {/* Controles específicos para cada modelo */}
-        <div className="space-y-4">
-          {/* Proporção de Aspecto - comum para todos os modelos */}
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* Model selector */}
+          <MediaModelSelector
+            models={AVAILABLE_MODELS}
+            selectedModel={selectedModel}
+            onModelChange={handleModelChange}
+            disabled={isGenerating}
+          />
+          
+          {/* Prompt input */}
           <div className="space-y-2">
-            <Label htmlFor="aspectRatio" className="text-white">Proporção</Label>
-            <Select 
+            <Label htmlFor="prompt">Prompt</Label>
+            <Textarea
+              ref={promptRef}
+              id="prompt"
+              placeholder="Descreva a imagem que você deseja criar..."
+              className="min-h-[120px] bg-inventu-darker border-inventu-gray/30 text-white"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              disabled={isGenerating}
+            />
+          </div>
+          
+          {/* Aspect ratio selector */}
+          <div className="space-y-2">
+            <Label htmlFor="aspectRatio">Proporção</Label>
+            <Select
               value={aspectRatio}
               onValueChange={setAspectRatio}
+              disabled={isGenerating}
             >
-              <SelectTrigger id="aspectRatio" className="bg-inventu-card border-inventu-gray/30 text-white">
-                <SelectValue placeholder="Selecione a proporção">
-                  {ASPECT_RATIOS.find(ratio => ratio.id === aspectRatio)?.name}
-                </SelectValue>
+              <SelectTrigger id="aspectRatio" className="bg-inventu-darker border-inventu-gray/30">
+                <MoveVertical className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Escolha uma proporção" />
               </SelectTrigger>
               <SelectContent className="bg-inventu-dark border-inventu-gray/30">
-                {ASPECT_RATIOS.map(ratio => (
-                  <SelectItem key={ratio.id} value={ratio.id} className="text-white hover:bg-white/10">
+                {ASPECT_RATIOS.map((ratio) => (
+                  <SelectItem key={ratio.id} value={ratio.id}>
                     {ratio.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          {/* Controles específicos do Ideogram */}
-          {isIdeogram && (
-            <div className="space-y-2">
-              <Label htmlFor="ideogramStyle" className="text-white">Estilo</Label>
-              <Select 
-                value={ideogramStyle}
-                onValueChange={setIdeogramStyle}
-              >
-                <SelectTrigger id="ideogramStyle" className="bg-inventu-card border-inventu-gray/30 text-white">
-                  <SelectValue placeholder="Selecione o estilo">
-                    {IDEOGRAM_STYLES.find(style => style.id === ideogramStyle)?.name}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-inventu-dark border-inventu-gray/30">
-                  {IDEOGRAM_STYLES.map(style => (
-                    <SelectItem key={style.id} value={style.id} className="text-white hover:bg-white/10">
-                      {style.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           
-          {/* Controles específicos do Midjourney */}
-          {isMidjourney && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Conditional controls based on selected model */}
+          {selectedModel === 'midjourney' && (
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="mjQuality" className="text-white">Qualidade</Label>
-                <Select 
-                  value={mjQuality}
-                  onValueChange={setMjQuality}
-                >
-                  <SelectTrigger id="mjQuality" className="bg-inventu-card border-inventu-gray/30 text-white">
-                    <SelectValue placeholder="Selecione a qualidade">
-                      {MIDJOURNEY_QUALITY_OPTIONS.find(option => option.id === mjQuality)?.name}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="bg-inventu-dark border-inventu-gray/30">
-                    {MIDJOURNEY_QUALITY_OPTIONS.map(option => (
-                      <SelectItem key={option.id} value={option.id} className="text-white hover:bg-white/10">
-                        {option.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="quality">Qualidade</Label>
+                <div className="flex items-center space-x-2">
+                  <Slider
+                    id="quality"
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={[quality]}
+                    onValueChange={(values) => setQuality(values[0])}
+                    disabled={isGenerating}
+                    className="flex-1"
+                  />
+                  <span className="text-sm text-white/70 w-8 text-center">{quality}%</span>
+                </div>
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="mjStyle" className="text-white">Estilo</Label>
-                <Select 
-                  value={mjStyle}
-                  onValueChange={setMjStyle}
+                <Label htmlFor="style">Estilo</Label>
+                <Select
+                  value={style}
+                  onValueChange={setStyle}
+                  disabled={isGenerating}
                 >
-                  <SelectTrigger id="mjStyle" className="bg-inventu-card border-inventu-gray/30 text-white">
-                    <SelectValue placeholder="Selecione o estilo">
-                      {MIDJOURNEY_STYLE_OPTIONS.find(option => option.id === mjStyle)?.name}
-                    </SelectValue>
+                  <SelectTrigger id="style" className="bg-inventu-darker border-inventu-gray/30">
+                    <Paintbrush className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Escolha um estilo" />
                   </SelectTrigger>
                   <SelectContent className="bg-inventu-dark border-inventu-gray/30">
-                    {MIDJOURNEY_STYLE_OPTIONS.map(option => (
-                      <SelectItem key={option.id} value={option.id} className="text-white hover:bg-white/10">
-                        {option.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="vivid">Vivid</SelectItem>
+                    <SelectItem value="natural">Natural</SelectItem>
+                    <SelectItem value="raw">Raw</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
           )}
-
-          {/* Imagem de referência (opcional) */}
+          
+          {/* Reference image upload */}
           <div className="space-y-2">
-            <Label className="text-white">Imagem de Referência (opcional)</Label>
-            
-            {!referenceImageUrl ? (
-              <div className="border-2 border-dashed border-inventu-gray/30 rounded-md p-4 text-center cursor-pointer hover:bg-inventu-card transition-colors"
-                   onClick={() => document.getElementById('reference-upload')?.click()}>
-                <Upload className="mx-auto h-8 w-8 text-white/40" />
-                <p className="mt-2 text-sm text-white/60">Clique para fazer upload de uma imagem de referência</p>
-                <input
-                  id="reference-upload"
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
-              </div>
-            ) : (
-              <div className="relative">
-                <img 
-                  src={referenceImageUrl} 
-                  alt="Imagem de referência" 
-                  className="w-full max-h-64 object-contain rounded-md border border-inventu-gray/30" 
-                />
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
-                  className="absolute top-2 right-2"
-                  onClick={handleRemoveReferenceImage}
-                >
-                  Remover
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Prompt negativo - comum para ambos */}
-          <div className="space-y-2">
-            <Label htmlFor="negativePrompt" className="text-white">Prompt Negativo (Opcional)</Label>
-            <Textarea
-              id="negativePrompt"
-              placeholder="Elementos a serem evitados na imagem"
-              value={negativePrompt}
-              onChange={(e) => setNegativePrompt(e.target.value)}
-              className="bg-inventu-card border-inventu-gray/30 text-white resize-none h-16"
+            <Label>Imagem de Referência (opcional)</Label>
+            <ReferenceUploader
+              onUpload={handleReferenceUpload}
+              onRemove={handleRemoveReference}
+              file={referenceImage}
+              disabled={isGenerating}
             />
           </div>
-        </div>
-        
-        {/* Prompt principal */}
-        <div className="space-y-2">
-          <Label htmlFor="prompt" className="text-white">Prompt</Label>
-          <Textarea
-            id="prompt"
-            placeholder="Descreva a imagem que você deseja gerar..."
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            rows={4}
-            className="bg-inventu-card border-inventu-gray/30 text-white resize-none"
-          />
-        </div>
-        
-        {/* Prévia da imagem gerada */}
-        {generatedImageUrl && !isGenerating && (
-          <div className="rounded-lg overflow-hidden border border-inventu-gray/30">
-            <img 
-              src={generatedImageUrl} 
-              alt="Imagem gerada" 
-              className="w-full h-auto max-h-[500px] object-contain bg-black" 
-            />
-          </div>
-        )}
-        
-        {/* Mensagem de erro */}
-        {error && !isGenerating && (
-          <div className="p-3 bg-red-800/30 border border-red-500/30 rounded-md text-red-200">
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
-        
-        {/* Progresso da geração */}
-        {isGenerating && (
-          <div>
-            <div className="w-full bg-inventu-gray/20 rounded-full h-2.5">
-              <div 
-                className="bg-inventu-blue h-2.5 rounded-full" 
-                style={{ width: `${progress}%` }}
-              ></div>
+          
+          {/* Negative prompt for supported models */}
+          {(selectedModel === 'ideogram' || selectedModel === 'midjourney') && (
+            <div className="space-y-2">
+              <Label htmlFor="negativePrompt">Negative Prompt (opcional)</Label>
+              <Textarea
+                id="negativePrompt"
+                placeholder="Elementos que você NÃO quer na imagem..."
+                className="min-h-[80px] bg-inventu-darker border-inventu-gray/30 text-white"
+                value={negativePrompt}
+                onChange={(e) => setNegativePrompt(e.target.value)}
+                disabled={isGenerating}
+              />
             </div>
-            <p className="text-sm text-white/60 mt-2 text-center">
-              Gerando imagem... {progress}%
-            </p>
-          </div>
-        )}
-        
-        {/* Aviso de API Key não configurada */}
-        {!isApiKeyConfigured() && (
-          <div className="p-3 bg-yellow-800/30 border border-yellow-500/30 rounded-md text-yellow-200">
-            <p className="text-sm">
-              API Key da API Frame não configurada. Configure-a ou clique em gerar para configurar.
-            </p>
-          </div>
-        )}
-      </CardContent>
-      
-      <CardFooter className="px-6 py-4">
-        <Button
-          className="w-full bg-inventu-blue hover:bg-inventu-blue/80 text-white"
-          onClick={handleGenerate}
-          disabled={!prompt.trim() || isGenerating}
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Gerando...
-            </>
-          ) : (
-            'Gerar Imagem'
           )}
-        </Button>
-      </CardFooter>
-    </Card>
+          
+          {/* Generate button */}
+          <Button 
+            onClick={handleSubmit} 
+            disabled={isGenerating || !prompt.trim()}
+            className="w-full"
+          >
+            <Image className="h-4 w-4 mr-2" />
+            {isGenerating ? 'Gerando...' : 'Gerar Imagem'}
+          </Button>
+          
+          {/* Error message */}
+          {error && (
+            <div className="text-red-500 text-sm mt-2">
+              Erro: {error}
+            </div>
+          )}
+        </div>
+        
+        {/* Preview area */}
+        <div>
+          <Card className="bg-inventu-gray/10 border-inventu-gray/20">
+            <CardContent className="p-4">
+              {imageUrl ? (
+                <div className="space-y-4">
+                  <MediaPreview url={imageUrl} type="image" />
+                  
+                  <div className="flex justify-center">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => window.open(imageUrl, '_blank')}
+                      className="mr-2"
+                    >
+                      <Lightbulb className="h-4 w-4 mr-2" />
+                      Visualizar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        const link = document.createElement('a');
+                        link.href = imageUrl;
+                        link.download = `image-${Date.now()}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-[300px] text-center text-white/50">
+                  {isGenerating ? (
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 border-2 border-white/20 border-t-white/80 rounded-full animate-spin mb-4"></div>
+                      <p>Gerando imagem... {typeof progress === 'number' ? `${Math.round(progress * 100)}%` : ''}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <Image className="h-12 w-12 mb-4 opacity-30" />
+                      <p>Sua imagem gerada aparecerá aqui</p>
+                      <p className="text-xs mt-2">
+                        Crie uma imagem usando os controles à esquerda
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 };
 
