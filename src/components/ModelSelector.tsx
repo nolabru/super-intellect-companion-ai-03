@@ -39,7 +39,8 @@ export const getProviderDisplayName = (provider: string): string => {
     'apiframe': 'API Frame',
     'minimax': 'MiniMax',
     'elevenlabs': 'ElevenLabs',
-    'luma': 'Luma AI'
+    'luma': 'Luma AI',
+    'kling': 'Kling AI'
   };
   
   return providerNames[provider] || provider;
@@ -69,6 +70,16 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
     modelsByProvider[model.provider].push(model);
   });
+  
+  // Custom order for providers
+  const providerOrder = ['openai', 'anthropic', 'google', 'luma', 'kling', 'apiframe', 'elevenlabs', 'kligin', 'minimax'];
+  
+  // Sort the providers based on our custom order
+  const sortedProviders = Object.keys(modelsByProvider).sort((a, b) => {
+    const indexA = providerOrder.indexOf(a);
+    const indexB = providerOrder.indexOf(b);
+    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+  });
 
   return (
     <Select
@@ -87,12 +98,12 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
         <SelectValue placeholder="Selecione um modelo" />
       </SelectTrigger>
       <SelectContent className="bg-inventu-darker/95 backdrop-blur-lg border-white/10 max-h-[60vh]">
-        {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
+        {sortedProviders.map((provider) => (
           <React.Fragment key={provider}>
             <div className="px-2 py-1.5 text-xs font-medium text-white/60">
               {getProviderDisplayName(provider)}
             </div>
-            {providerModels.map((model) => (
+            {modelsByProvider[provider].map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 {model.displayName}
               </SelectItem>

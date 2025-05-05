@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ExternalLink, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import VideoLoading from '../VideoLoading';
 
 interface MediaActionButtonProps {
   onClick: () => void;
@@ -45,6 +46,7 @@ interface VideoContentProps {
   onSaveToGallery: () => void;
   onOpenInNewTab: () => void;
   saving: boolean;
+  progress?: number;
 }
 
 const VideoContent: React.FC<VideoContentProps> = ({
@@ -54,22 +56,18 @@ const VideoContent: React.FC<VideoContentProps> = ({
   isLoading,
   onSaveToGallery,
   onOpenInNewTab,
-  saving
+  saving,
+  progress
 }) => {
   const isMobile = useIsMobile();
   const [isPlaying, setIsPlaying] = useState(false);
   
+  if (isLoading) {
+    return <VideoLoading progress={progress} />;
+  }
+  
   return (
     <div className="mt-2 relative overflow-hidden rounded-lg">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/70 z-10 rounded-lg">
-          <div className="flex flex-col items-center">
-            <div className="h-8 w-8 animate-spin text-inventu-gray border-2 border-inventu-gray border-t-transparent rounded-full mb-2" />
-            <span className="text-sm text-white">Carregando vídeo...</span>
-          </div>
-        </div>
-      )}
-      
       <div className="relative group">
         <video 
           src={src} 
@@ -83,10 +81,10 @@ const VideoContent: React.FC<VideoContentProps> = ({
           playsInline
           autoPlay={false}
           loop
-          poster={isLoading ? undefined : `${src}#t=0.001`}
+          poster={`${src}#t=0.001`}
         />
         
-        {!isLoading && !isPlaying && (
+        {!isPlaying && (
           <div 
             className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer group-hover:bg-black/30 transition-all duration-200"
             onClick={() => {
@@ -104,24 +102,22 @@ const VideoContent: React.FC<VideoContentProps> = ({
         )}
       </div>
       
-      {!isLoading && (
-        <div className={`mt-2 flex ${isMobile ? 'flex-col gap-2' : 'justify-end gap-2'}`}>
-          <MediaActionButton
-            onClick={onSaveToGallery}
-            icon={<Save className="h-4 w-4" />}
-            label="Salvar na galeria"
-            variant="primary"
-            loading={saving}
-          />
-          
-          <MediaActionButton
-            onClick={onOpenInNewTab}
-            icon={<ExternalLink className="h-4 w-4" />}
-            label="Abrir em nova aba"
-            variant="secondary"
-          />
-        </div>
-      )}
+      <div className={`mt-2 flex ${isMobile ? 'flex-col gap-2' : 'justify-end gap-2'}`}>
+        <MediaActionButton
+          onClick={onSaveToGallery}
+          icon={<Save className="h-4 w-4" />}
+          label="Salvar na galeria"
+          variant="primary"
+          loading={saving}
+        />
+        
+        <MediaActionButton
+          onClick={onOpenInNewTab}
+          icon={<ExternalLink className="h-4 w-4" />}
+          label="Abrir em nova aba"
+          variant="secondary"
+        />
+      </div>
     </div>
   );
 };
