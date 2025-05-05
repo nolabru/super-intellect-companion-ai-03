@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -50,6 +51,7 @@ serve(async (req) => {
     console.log(`Generating Midjourney image with prompt: "${prompt.substring(0, 50)}..."`);
 
     // Prepare request to APIframe
+    // O IMPORTANTE: Atualizando o endpoint conforme documentação para "/imagine" ao invés de "/midjourney-imagine"
     const apiRequestData = {
       prompt,
       negative_prompt: negative_prompt || undefined,
@@ -65,8 +67,8 @@ serve(async (req) => {
 
     console.log('Sending request to APIframe with data:', JSON.stringify(apiRequestData));
 
-    // Make request to APIframe Midjourney endpoint
-    const response = await fetch('https://api.apiframe.pro/midjourney-imagine', {
+    // Fazendo a requisição para o endpoint correto conforme documentação
+    const response = await fetch('https://api.apiframe.pro/imagine', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,6 +82,26 @@ serve(async (req) => {
     console.log('APIframe response headers:');
     for (const [key, value] of response.headers.entries()) {
       console.log(`${key}: ${value}`);
+    }
+
+    // Verificar o tipo de conteúdo antes de tentar fazer parse como JSON
+    const contentType = response.headers.get('content-type');
+    console.log(`Response content type: ${contentType}`);
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Received non-JSON response from APIframe API');
+      const responseText = await response.text();
+      console.error(`First 500 chars of response: ${responseText.substring(0, 500)}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid response format from APIframe', 
+          details: 'Expected JSON but received a different format',
+          status: response.status,
+          contentType
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
+      );
     }
 
     const data = await response.json();
@@ -97,19 +119,32 @@ serve(async (req) => {
       );
     }
 
-    console.log('Midjourney image generated successfully, task ID:', data.task_id);
+    // Verificação de resposta válida
+    if (!data.task_id) {
+      console.error('Invalid response from APIframe: Missing task_id');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid response from API service', 
+          details: 'Missing task ID in response',
+          rawResponse: data
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    console.log('Midjourney image task created successfully, task ID:', data.task_id);
     console.log('Response data:', JSON.stringify({
-      hasUrls: data.image_urls ? data.image_urls.length : 0,
       taskId: data.task_id,
-      status: data.status
+      status: data.status || 'processing'
     }));
     
     // Format the response to match what our frontend expects
+    // Nota: Como esta é uma tarefa assíncrona, pode não ter URLs de imagem imediatamente
     const formattedResponse = {
       success: true,
-      images: data.image_urls || [],
       taskId: data.task_id,
-      status: data.status || 'completed'
+      status: data.status || 'processing',
+      images: data.image_urls || []
     };
     
     return new Response(

@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 const TestAPIFrame: React.FC = () => {
   const [prompt, setPrompt] = useState('A cute cat wearing a hat');
@@ -15,7 +17,12 @@ const TestAPIFrame: React.FC = () => {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-
+  const [model, setModel] = useState<'ideogram' | 'midjourney'>('ideogram');
+  const [aspectRatio, setAspectRatio] = useState(model === 'ideogram' ? 'ASPECT_1_1' : '1:1');
+  const [negativePrompt, setNegativePrompt] = useState('');
+  const [quality, setQuality] = useState('standard');
+  const [style, setStyle] = useState('raw');
+  
   const testApiFrame = async () => {
     setIsLoading(true);
     setError(null);
@@ -23,17 +30,31 @@ const TestAPIFrame: React.FC = () => {
     setImageUrl(null);
     
     try {
-      console.log('Testing APIframe with prompt:', prompt);
+      console.log(`Testing APIframe with model: ${model} and prompt: ${prompt}`);
       
-      const { data, error } = await supabase.functions.invoke('apiframe-ideogram-imagine', {
-        body: { 
-          prompt,
-          model: 'V_2',
-          style_type: 'GENERAL',
-          aspect_ratio: 'ASPECT_1_1',
-          magic_prompt_option: 'AUTO'
-        }
-      });
+      let data, error;
+      
+      if (model === 'ideogram') {
+        ({ data, error } = await supabase.functions.invoke('apiframe-ideogram-imagine', {
+          body: { 
+            prompt,
+            model: 'V_2',
+            style_type: 'GENERAL',
+            aspect_ratio: aspectRatio,
+            magic_prompt_option: 'AUTO'
+          }
+        }));
+      } else if (model === 'midjourney') {
+        ({ data, error } = await supabase.functions.invoke('apiframe-midjourney-imagine', {
+          body: { 
+            prompt,
+            negative_prompt: negativePrompt || undefined,
+            quality,
+            aspect_ratio: aspectRatio,
+            style
+          }
+        }));
+      }
       
       if (error) {
         console.error('Error calling edge function:', error);
@@ -47,12 +68,23 @@ const TestAPIFrame: React.FC = () => {
       console.log('Edge function response:', data);
       setResult(data);
       
-      if (data.success && data.images && data.images.length > 0) {
-        setImageUrl(data.images[0]);
-        toast.success('Imagem gerada com sucesso!');
+      if (data.success) {
+        if (data.images && data.images.length > 0) {
+          setImageUrl(data.images[0]);
+          toast.success('Imagem gerada com sucesso!');
+        } else if (data.taskId) {
+          toast.success('Tarefa de geração iniciada!', {
+            description: `ID da tarefa: ${data.taskId}. O processamento pode demorar alguns minutos.`
+          });
+        } else {
+          setError('No images returned and no task ID. Check console for details.');
+          toast.error('Resposta incompleta', {
+            description: 'Check console for more details'
+          });
+        }
       } else {
-        setError('No images returned. Check console for details.');
-        toast.error('No images returned', {
+        setError('Request failed. Check console for details.');
+        toast.error('Request failed', {
           description: 'Check console for more details'
         });
       }
@@ -75,6 +107,23 @@ const TestAPIFrame: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
+            <Label htmlFor="model">Model</Label>
+            <Select value={model} onValueChange={(value: 'ideogram' | 'midjourney') => {
+              setModel(value);
+              // Reset aspect ratio based on model
+              setAspectRatio(value === 'ideogram' ? 'ASPECT_1_1' : '1:1');
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select model" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ideogram">Ideogram</SelectItem>
+                <SelectItem value="midjourney">Midjourney</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
             <Label htmlFor="prompt">Prompt</Label>
             <Input
               id="prompt"
@@ -83,6 +132,97 @@ const TestAPIFrame: React.FC = () => {
               placeholder="Enter a prompt to generate an image"
             />
           </div>
+          
+          {model === 'midjourney' && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="negativePrompt">Negative Prompt</Label>
+                <Textarea
+                  id="negativePrompt"
+                  value={negativePrompt}
+                  onChange={(e) => setNegativePrompt(e.target.value)}
+                  placeholder="Things to avoid in the image"
+                  className="resize-none h-20"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="quality">Quality</Label>
+                  <Select value={quality} onValueChange={setQuality}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select quality" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard</SelectItem>
+                      <SelectItem value="hd">HD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="aspectRatio">Aspect Ratio</Label>
+                  <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select aspect ratio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1:1">Square (1:1)</SelectItem>
+                      <SelectItem value="4:3">Landscape (4:3)</SelectItem>
+                      <SelectItem value="3:4">Portrait (3:4)</SelectItem>
+                      <SelectItem value="16:9">Widescreen (16:9)</SelectItem>
+                      <SelectItem value="9:16">Vertical (9:16)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="style">Style</Label>
+                  <Select value={style} onValueChange={setStyle}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select style" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="raw">Raw</SelectItem>
+                      <SelectItem value="cute">Cute</SelectItem>
+                      <SelectItem value="anime">Anime</SelectItem>
+                      <SelectItem value="photography">Photography</SelectItem>
+                      <SelectItem value="digital-art">Digital Art</SelectItem>
+                      <SelectItem value="comic-book">Comic Book</SelectItem>
+                      <SelectItem value="fantasy-art">Fantasy Art</SelectItem>
+                      <SelectItem value="line-art">Line Art</SelectItem>
+                      <SelectItem value="analog-film">Analog Film</SelectItem>
+                      <SelectItem value="neon-punk">Neon Punk</SelectItem>
+                      <SelectItem value="isometric">Isometric</SelectItem>
+                      <SelectItem value="low-poly">Low Poly</SelectItem>
+                      <SelectItem value="origami">Origami</SelectItem>
+                      <SelectItem value="modeling-compound">Modeling Compound</SelectItem>
+                      <SelectItem value="cinematic">Cinematic</SelectItem>
+                      <SelectItem value="pixel-art">Pixel Art</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+          
+          {model === 'ideogram' && (
+            <div className="space-y-2">
+              <Label htmlFor="aspectRatio">Aspect Ratio</Label>
+              <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select aspect ratio" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ASPECT_1_1">Square (1:1)</SelectItem>
+                  <SelectItem value="ASPECT_4_3">Landscape (4:3)</SelectItem>
+                  <SelectItem value="ASPECT_3_4">Portrait (3:4)</SelectItem>
+                  <SelectItem value="ASPECT_16_9">Widescreen (16:9)</SelectItem>
+                  <SelectItem value="ASPECT_9_16">Vertical (9:16)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardContent>
         <CardFooter>
           <Button 
