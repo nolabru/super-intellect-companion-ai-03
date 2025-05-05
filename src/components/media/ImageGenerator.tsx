@@ -1,14 +1,16 @@
-
 import React, { useState } from 'react';
 import UnifiedMediaGenerator from './UnifiedMediaGenerator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { tokenService } from '@/services/tokenService';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Updated image models data - now all under API Frame
 const IMAGE_MODELS = [
-  { id: 'ideogram-v2', name: 'Ideogram V2' },
-  { id: 'midjourney', name: 'Midjourney' }
+  { id: 'ideogram-v2', name: 'Ideogram V2', tokens: 300 },
+  { id: 'midjourney', name: 'Midjourney', tokens: 500 }
 ];
 
 // Ideogram style types
@@ -70,6 +72,29 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
   const [mjStyle, setMjStyle] = useState('raw');
   
   const isMidjourney = selectedModel === 'midjourney';
+  const { user } = useAuth();
+  
+  // Display token requirements when model changes
+  const handleModelChange = async (newModel: string) => {
+    setSelectedModel(newModel);
+    
+    // Get token cost for selected model
+    const selectedModelInfo = IMAGE_MODELS.find(model => model.id === newModel);
+    
+    if (selectedModelInfo && user) {
+      try {
+        const tokenInfo = await tokenService.getUserTokenBalance(user.id);
+        if (tokenInfo) {
+          toast.info(`Model ${selectedModelInfo.name} requires ${selectedModelInfo.tokens} tokens per image`, {
+            description: `You have ${tokenInfo.tokensRemaining} tokens available`,
+            duration: 4000
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching token balance:", error);
+      }
+    }
+  };
   
   const ParamControls = () => (
     <div className="space-y-4">
@@ -78,14 +103,16 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         <Label htmlFor="modelSelect">Model</Label>
         <Select 
           value={selectedModel}
-          onValueChange={setSelectedModel}
+          onValueChange={handleModelChange}
         >
           <SelectTrigger id="modelSelect">
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
             {IMAGE_MODELS.map(model => (
-              <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
+              <SelectItem key={model.id} value={model.id}>
+                {model.name} ({model.tokens} tokens)
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -230,7 +257,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
       title="AI Image Generator"
       models={IMAGE_MODELS}
       defaultModel={selectedModel}
-      onModelChange={setSelectedModel}
+      onModelChange={handleModelChange}
       onMediaGenerated={onImageGenerated}
       paramControls={<ParamControls />}
       additionalParams={getAdditionalParams()}

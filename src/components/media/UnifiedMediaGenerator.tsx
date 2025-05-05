@@ -1,198 +1,217 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
-import { useIdeogramGeneration } from '@/hooks/useIdeogramGeneration';
-import MediaModelSelector from './MediaModelSelector';
-import MediaProgress from './MediaProgress';
-import MediaPreview from './MediaPreview';
+import { Loader2, ImageIcon, Coins } from 'lucide-react';
+import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
+import { saveToGallery } from '@/services/mediaService';
+import { tokenService } from '@/services/tokenService';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
-interface MediaGeneratorProps {
-  mediaType: 'image' | 'audio' | 'video';
+interface UnifiedMediaGeneratorProps {
+  mediaType: 'image' | 'video' | 'audio';
   title: string;
-  models: Array<{ id: string; name: string; requiresReference?: boolean }>;
+  models: { id: string; name: string; tokens?: number }[];
   defaultModel: string;
+  onModelChange: (model: string) => void;
   onMediaGenerated?: (mediaUrl: string) => void;
-  onModelChange?: (modelId: string) => void;
   paramControls?: React.ReactNode;
-  referenceUploader?: React.ReactNode;
   additionalParams?: Record<string, any>;
 }
 
-const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
+const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
   mediaType,
   title,
   models,
   defaultModel,
-  onMediaGenerated,
   onModelChange,
+  onMediaGenerated,
   paramControls,
-  referenceUploader,
   additionalParams = {}
 }) => {
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState(defaultModel);
-  const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
+  const [model, setModel] = useState(defaultModel);
+  const [generatedMedia, setGeneratedMedia] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [tokenInfo, setTokenInfo] = useState<{ tokensRemaining: number } | null>(null);
 
-  // Use our ideogram generation hook for images
-  // In the future, we can extend this to use other hooks based on mediaType
   const {
-    generateImage,
+    generateMedia,
     isGenerating,
-    progress,
-    generatedImageUrl,
-    error
-  } = useIdeogramGeneration({
-    showToasts: true,
+    cancelGeneration
+  } = useUnifiedMediaGeneration({
     onComplete: (mediaUrl) => {
+      setGeneratedMedia(mediaUrl);
       if (onMediaGenerated) {
         onMediaGenerated(mediaUrl);
       }
     }
   });
 
-  const [generatedMediaUrl, setGeneratedMediaUrl] = useState<string | null>(null);
-  
-  // Determine which URL to use for display (specific to media type)
-  const displayUrl = mediaType === 'image' ? generatedImageUrl : generatedMediaUrl;
-
-  const handleModelChange = (modelId: string) => {
-    setSelectedModel(modelId);
-    // Propagate model change to parent
-    if (onModelChange) {
-      onModelChange(modelId);
-    }
+  const handleModelChange = (newModel: string) => {
+    setModel(newModel);
+    onModelChange(newModel);
   };
+
+  // Load token information when component mounts
+  React.useEffect(() => {
+    const loadTokenInfo = async () => {
+      if (user) {
+        try {
+          const info = await tokenService.getUserTokenBalance(user.id);
+          setTokenInfo(info);
+        } catch (error) {
+          console.error("Error loading token information:", error);
+        }
+      }
+    };
+    
+    loadTokenInfo();
+  }, [user]);
 
   const handleGenerate = async () => {
-    if (!prompt.trim() && !referenceUrl) return;
-
-    const selectedModelData = models.find(m => m.id === selectedModel);
-    const modelRequiresReference = selectedModelData?.requiresReference;
-    
-    if (modelRequiresReference && !referenceUrl) {
+    if (!prompt.trim()) {
+      toast.error(`Please enter a ${mediaType} description`);
       return;
     }
-    
-    // Combine the additionalParams with model-specific parameters
-    const params = {
-      ...additionalParams,
-      modelId: selectedModel,
-      referenceUrl: referenceUrl || undefined
-    };
 
-    // Different generation based on media type
-    if (mediaType === 'image') {
-      await generateImage(prompt, params);
-    } else {
-      // For now, audio and video generation are placeholders
-      // We'll implement proper generation in the future
-      console.log(`Generating ${mediaType} with prompt: ${prompt} and model: ${selectedModel}`);
-      console.log('Additional params:', params);
-      
-      // Simulate generation for now with a timer
-      setTimeout(() => {
-        setGeneratedMediaUrl('https://example.com/placeholder-media-url');
-        if (onMediaGenerated) {
-          onMediaGenerated('https://example.com/placeholder-media-url');
+    // Display token requirement before generation
+    if (user) {
+      try {
+        const selectedModel = models.find(m => m.id === model);
+        const tokenCost = selectedModel?.tokens || 0;
+        
+        const tokenCheckResult = await tokenService.hasEnoughTokens(user.id, model, mediaType);
+        
+        if (!tokenCheckResult.hasEnough) {
+          toast.error(`Not enough tokens`, {
+            description: `You need ${tokenCheckResult.required} tokens, but have ${tokenCheckResult.remaining} remaining.`
+          });
+          return;
         }
-      }, 2000);
+        
+        toast.info(`Generating ${mediaType}...`, {
+          description: `This will use ${tokenCost} tokens`
+        });
+      } catch (error) {
+        console.error("Error checking tokens:", error);
+      }
     }
+
+    setGeneratedMedia(null);
+
+    generateMedia(
+      mediaType,
+      prompt,
+      model,
+      additionalParams
+    );
   };
 
-  const handleReferenceUpdate = (url: string | null) => {
-    setReferenceUrl(url);
+  const handleSaveToGallery = async () => {
+    if (!generatedMedia || !prompt) return;
+
+    try {
+      const success = await saveToGallery(generatedMedia, prompt, mediaType, model, user?.id);
+      if (success) {
+        toast.success(`${mediaType === 'image' ? 'Image' : mediaType === 'video' ? 'Video' : 'Audio'} saved to gallery`);
+      }
+    } catch (error) {
+      toast.error(`Error saving to gallery: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   return (
-    <Card className="w-full max-w-3xl">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <span className="h-5 w-5">🖼️</span>
-          <span>{title}</span>
+        <CardTitle className="flex items-center gap-2">
+          <ImageIcon className="h-5 w-5" />
+          {title}
         </CardTitle>
+        <CardDescription>
+          Generate {mediaType}s using AI models
+          {tokenInfo && (
+            <div className="mt-2 flex items-center text-sm text-muted-foreground">
+              <Coins className="mr-1 h-4 w-4" />
+              <span>Available tokens: {tokenInfo.tokensRemaining}</span>
+            </div>
+          )}
+        </CardDescription>
       </CardHeader>
-      
       <CardContent className="space-y-4">
-        <MediaModelSelector
-          models={models}
-          selectedModel={selectedModel}
-          onModelChange={handleModelChange}
-          disabled={isGenerating}
-        />
-        
-        {paramControls && (
-          <div className="space-y-2">
-            {paramControls}
-          </div>
-        )}
-        
-        {referenceUploader && (
-          <div className="space-y-2">
-            {React.cloneElement(referenceUploader as React.ReactElement, {
-              onReferenceUpdate: handleReferenceUpdate,
-              disabled: isGenerating
-            })}
-          </div>
-        )}
-        
         <div className="space-y-2">
-          <Label htmlFor="mediaPrompt">Prompt</Label>
           <Textarea
-            id="mediaPrompt"
             placeholder={`Describe the ${mediaType} you want to generate...`}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            rows={3}
+            className="h-20 resize-none"
             disabled={isGenerating}
-            className="resize-none"
           />
         </div>
-        
-        {isGenerating && (
-          <MediaProgress
-            progress={progress}
-            type={mediaType}
-            onCancel={() => alert(`Cancellation not supported for ${mediaType} generation`)}
-          />
+
+        {paramControls}
+
+        {generatedMedia && mediaType === 'image' && (
+          <div className="mt-4">
+            <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border">
+              <img
+                src={generatedMedia}
+                alt="Generated image"
+                className="h-full w-full object-cover"
+              />
+            </div>
+          </div>
         )}
-        
-        {displayUrl && !isGenerating && (
-          <MediaPreview
-            mediaUrl={displayUrl}
-            mediaType={mediaType}
-          />
+
+        {generatedMedia && mediaType === 'video' && (
+          <div className="mt-4">
+            <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border">
+              <video
+                src={generatedMedia}
+                controls
+                className="h-full w-full"
+              />
+            </div>
+          </div>
         )}
-        
-        {error && !isGenerating && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-            {error}
+
+        {generatedMedia && mediaType === 'audio' && (
+          <div className="mt-4">
+            <div className="relative w-full overflow-hidden rounded-lg border border-border p-4">
+              <audio
+                src={generatedMedia}
+                controls
+                className="w-full"
+              />
+            </div>
           </div>
         )}
       </CardContent>
-      
-      <CardFooter>
-        <Button
-          onClick={handleGenerate}
-          disabled={
-            ((!prompt.trim() && !referenceUrl) || 
-            (models.find(m => m.id === selectedModel)?.requiresReference && !referenceUrl)) || 
-            isGenerating
-          }
-          className="w-full"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      <CardFooter className="flex gap-2">
+        {isGenerating ? (
+          <>
+            <Button variant="destructive" onClick={cancelGeneration}>
+              Cancel
+            </Button>
+            <Button disabled className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
               Generating...
-            </>
-          ) : (
-            `Generate ${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)}`
-          )}
-        </Button>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={handleGenerate} disabled={!prompt.trim()}>
+              Generate {mediaType}
+            </Button>
+            {generatedMedia && (
+              <Button variant="outline" onClick={handleSaveToGallery}>
+                Save to Gallery
+              </Button>
+            )}
+          </>
+        )}
       </CardFooter>
     </Card>
   );

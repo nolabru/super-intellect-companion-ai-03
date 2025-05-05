@@ -1,3 +1,4 @@
+
 import { tokenService } from './tokenService';
 import { openRouterService, OpenRouterChatMessage, OpenRouterChatParams } from './openRouterService';
 import { toast } from 'sonner';
@@ -54,6 +55,7 @@ export interface MediaGenerationResult {
   taskId?: string;
   error?: string;
   status?: string;
+  tokensConsumed?: number; // Added to track token consumption
 }
 
 /**
@@ -228,8 +230,11 @@ export const aiService = {
 
       // Check if user has enough tokens
       const userId = (await supabase.auth.getUser()).data.user?.id;
+      let tokensRequired = 0;
+      
       if (userId) {
         const tokenCheck = await tokenService.hasEnoughTokens(userId, params.modelId, params.type);
+        tokensRequired = tokenCheck.required;
         
         if (!tokenCheck.hasEnough) {
           toast.error('Not enough tokens', {
@@ -263,11 +268,29 @@ export const aiService = {
             throw new Error('No images were generated');
           }
           
+          // Consume tokens after successful generation
+          if (userId) {
+            try {
+              const consumeResult = await tokenService.consumeTokens(userId, params.modelId, params.type);
+              console.log(`[AIService] Consumed ${tokensRequired} tokens for ${params.modelId} ${params.type} generation`);
+              
+              if (consumeResult.success) {
+                toast.success(`Image generated successfully. Used ${tokensRequired} tokens.`, {
+                  duration: 3000
+                });
+              }
+            } catch (tokenError) {
+              console.error('[AIService] Error consuming tokens:', tokenError);
+              // Don't fail the operation if token consumption fails
+            }
+          }
+          
           return {
             success: true,
             mediaUrl: result.data.images[0],
             taskId: result.data.taskId || 'ideogram-task',
-            status: 'completed'
+            status: 'completed',
+            tokensConsumed: tokensRequired
           };
         } catch (err) {
           console.error('[AIService] Error generating Ideogram image:', err);
@@ -299,11 +322,29 @@ export const aiService = {
             throw new Error('No images were generated');
           }
           
+          // Consume tokens after successful generation
+          if (userId) {
+            try {
+              const consumeResult = await tokenService.consumeTokens(userId, params.modelId, params.type);
+              console.log(`[AIService] Consumed ${tokensRequired} tokens for ${params.modelId} ${params.type} generation`);
+              
+              if (consumeResult.success) {
+                toast.success(`Image generated successfully. Used ${tokensRequired} tokens.`, {
+                  duration: 3000
+                });
+              }
+            } catch (tokenError) {
+              console.error('[AIService] Error consuming tokens:', tokenError);
+              // Don't fail the operation if token consumption fails
+            }
+          }
+          
           return {
             success: true,
             mediaUrl: result.data.images[0],
             taskId: result.data.taskId || 'midjourney-task',
-            status: 'completed'
+            status: 'completed',
+            tokensConsumed: tokensRequired
           };
         } catch (err) {
           console.error('[AIService] Error generating Midjourney image:', err);
