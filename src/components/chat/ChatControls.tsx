@@ -8,7 +8,7 @@ import { ChatMode } from '../ModeSelector';
 import { cn } from '@/lib/utils';
 
 interface ChatControlsProps {
-  activeMode: ChatMode;
+  mode: ChatMode;
   comparing: boolean;
   isLinked: boolean;
   isMobile: boolean;
@@ -20,7 +20,7 @@ interface ChatControlsProps {
 }
 
 const ChatControls: React.FC<ChatControlsProps> = ({
-  activeMode,
+  mode,
   comparing,
   isLinked,
   isMobile,
@@ -41,13 +41,13 @@ const ChatControls: React.FC<ChatControlsProps> = ({
           "contain-layout contain-paint"
         )}>
           <RefinedModeSelector 
-            activeMode={activeMode} 
+            activeMode={mode} 
             onChange={onModeChange} 
           />
           
-          {activeMode !== 'text' && (
+          {mode !== 'text' && (
             <ParametersManager
-              mode={activeMode}
+              mode={mode}
               model={model}
               onParamsChange={onParamsChange}
               variant="icon"

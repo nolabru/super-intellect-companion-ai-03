@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getModelsByMode } from '@/components/ModelSelector';
@@ -205,7 +206,7 @@ const Index: React.FC = () => {
             />
             
             <ChatFooter 
-              activeMode={activeMode}
+              mode={activeMode}
               comparing={comparing}
               isLinked={isLinked}
               isMobile={isMobile}
