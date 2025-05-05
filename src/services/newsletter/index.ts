@@ -3,8 +3,8 @@
 import * as commentService from './commentService';
 import * as postService from './postService';
 import * as statsService from './statsService';
-import * as engagementService from './engagementService';
-import * as queryService from './queryService';
+import * as engagementService from './engagement';
+import * as queryService from './query';
 
 // Service de usuário comum
 export const newsletterService = {
@@ -48,3 +48,6 @@ export const newsletterAdminService = {
   getTopPosts: statsService.getTopPosts,
   getEngagementStats: statsService.getEngagementStats
 };
+
+// Also export the direct modules for more granular access
+export { engagementService, queryService };

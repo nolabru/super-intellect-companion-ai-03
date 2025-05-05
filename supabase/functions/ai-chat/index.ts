@@ -43,9 +43,19 @@ serve(async (req) => {
       throw new Error("Invalid user token");
     }
 
-    const { prompt, model = "gpt-4o", mode = "text", images = [], audio, video } = await req.json();
+    // Verificar se o body é válido e possui uma propriedade prompt
+    let requestData;
+    try {
+      requestData = await req.json();
+    } catch (e) {
+      console.error("[ai-chat] Error parsing request JSON:", e);
+      throw new Error("Invalid JSON in request body");
+    }
+
+    const { prompt, model = "gpt-4o", mode = "text", images = [], audio, video } = requestData;
     
     if (!prompt) {
+      console.error("[ai-chat] No prompt provided in request data:", requestData);
       throw new Error("No prompt provided");
     }
 
@@ -104,6 +114,7 @@ serve(async (req) => {
     }
 
     // Make the API request
+    console.log("[ai-chat] Sending request to OpenAI API");
     const response = await fetch(apiUrl, {
       method: "POST",
       headers,
@@ -124,6 +135,8 @@ serve(async (req) => {
     const data = await response.json();
     const assistantResponse = data.choices[0].message.content;
 
+    console.log("[ai-chat] Received successful response from OpenAI");
+    
     // Return the response
     return new Response(
       JSON.stringify({ content: assistantResponse }),

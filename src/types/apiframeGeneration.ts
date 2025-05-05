@@ -6,7 +6,7 @@ export interface UseMediaGenerationOptions {
 }
 
 export type ApiframeMediaType = 'image' | 'video' | 'audio';
-export type ApiframeImageModel = 'stability-sd-xl' | 'openai-dalle-3' | 'midjourney';
+export type ApiframeImageModel = 'stability-sd-xl' | 'openai-dalle-3' | 'midjourney' | 'V_1' | 'V_2' | 'V_1_TURBO' | 'V_2_TURBO';
 export type ApiframeVideoModel = 'runway-gen2' | 'pika-1' | 'luma-3d';
 export type ApiframeAudioModel = 'eleven-labs' | 'openai-tts' | 'music-gen';
 export type ApiframeModel = ApiframeImageModel | ApiframeVideoModel | ApiframeAudioModel;
@@ -25,6 +25,15 @@ export interface ApiframeParams {
   [key: string]: any;
 }
 
+// Add Ideogram specific params
+export interface IdeogramParams extends ApiframeParams {
+  style_type?: string;
+  negative_prompt?: string;
+  aspect_ratio?: string;
+  resolution?: string;
+  magic_prompt_option?: 'AUTO' | 'ON' | 'OFF';
+}
+
 // Add specific type interfaces for different media types
 export interface ApiframeVideoParams extends ApiframeParams {
   aspectRatio?: string;
@@ -40,7 +49,7 @@ export interface ApiframeAudioParams extends ApiframeParams {
   language?: string;
 }
 
-// Add MediaGenerationResult interface with status property
+// Updated MediaGenerationResult interface with consistent error property
 export interface MediaGenerationResult {
   success: boolean;
   mediaUrl?: string;

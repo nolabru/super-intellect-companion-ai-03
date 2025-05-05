@@ -10,9 +10,9 @@ export type PostWithCounts = {
   author_id: string;
   user_id?: string; // Add this field for compatibility
   is_published: boolean;
-  published_at?: string;
-  created_at?: string;
-  updated_at?: string;
+  published_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   cover_image?: string | null;
   summary?: string | null;
   media_type?: string | null;

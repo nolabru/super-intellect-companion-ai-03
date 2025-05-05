@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Label } from '@/components/ui/label';
 import { Loader2, Image as ImageIcon } from 'lucide-react';
 import { useImageGeneration } from '@/hooks/apiframe/useImageGeneration';
-import { ApiframeParams } from '@/types/apiframeGeneration';
+import { ApiframeParams, MediaGenerationResult } from '@/types/apiframeGeneration';
 import ApiframeConfig from './ApiframeConfig';
 import { Progress } from '@/components/ui/progress';
 
@@ -39,7 +39,8 @@ const ApiframeImageGenerator: React.FC<ApiframeImageGeneratorProps> = ({ onImage
     console.log(`[ApiframeImageGenerator] Generating image with model: ${selectedModel}, prompt: ${prompt}`);
     
     try {
-      const result = await generateImage(prompt, selectedModel, params);
+      // Cast the result to MediaGenerationResult to ensure TypeScript knows about the error property
+      const result = await generateImage(prompt, selectedModel, params) as MediaGenerationResult;
       console.log('[ApiframeImageGenerator] Generation result:', result);
       
       if (result && result.success && result.mediaUrl) {
