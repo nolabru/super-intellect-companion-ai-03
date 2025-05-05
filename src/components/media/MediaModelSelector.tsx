@@ -2,30 +2,41 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { getEnhancedModelsByMode } from '@/components/EnhancedModelSelector';
+import { ChatMode } from '@/components/ModeSelector';
 
 interface MediaModelSelectorProps {
-  models: Array<{ id: string; name: string }>;
+  mode: ChatMode;
   selectedModel: string;
   onModelChange: (modelId: string) => void;
   disabled?: boolean;
 }
 
 const MediaModelSelector: React.FC<MediaModelSelectorProps> = ({
-  models,
+  mode,
   selectedModel,
   onModelChange,
   disabled = false
 }) => {
+  // Get all models available for the current mode
+  const modelsByProvider = getEnhancedModelsByMode(mode);
+  
+  // Flatten models for simple display
+  const models = Object.values(modelsByProvider).flat().map(model => ({
+    id: model.id,
+    name: model.displayName
+  }));
+
   return (
     <div className="space-y-2">
       <Label htmlFor="modelSelector">Model</Label>
       <Select
         value={selectedModel}
         onValueChange={onModelChange}
-        disabled={disabled}
+        disabled={disabled || models.length === 0}
       >
         <SelectTrigger id="modelSelector">
-          <SelectValue placeholder="Select a model" />
+          <SelectValue placeholder={models.length === 0 ? "No models available" : "Select a model"} />
         </SelectTrigger>
         <SelectContent>
           {models.map((model) => (

@@ -1,78 +1,96 @@
 
-import React, { memo } from 'react';
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, Menu, RefreshCw } from 'lucide-react';
+import EnhancedModelSelector from '@/components/EnhancedModelSelector';
 import RefinedModeSelector from './RefinedModeSelector';
-import CompareModelsButton from '../CompareModelsButton';
-import LinkToggleButton from '../LinkToggleButton';
-import ParametersManager from './parameters/ParametersManager';
 import { ChatMode } from '../ModeSelector';
-import { cn } from '@/lib/utils';
+import ParametersManager from './parameters/ParametersManager';
+import { GenerationParameters } from '@/types/parameters';
 
 interface ChatControlsProps {
-  activeMode: ChatMode;
-  comparing: boolean;
-  isLinked: boolean;
-  isMobile: boolean;
+  mode: ChatMode;
   model: string;
+  onModelChange: (model: string) => void;
   onModeChange: (mode: ChatMode) => void;
-  onToggleCompare: () => void;
-  onToggleLink: () => void;
-  onParamsChange: (params: any) => void;
+  onToggleSidebar: () => void;
+  onClearChat?: () => void;
+  showBackButton?: boolean;
+  onBackClick?: () => void;
+  params?: GenerationParameters;
+  onParamsChange?: (params: GenerationParameters) => void;
+  className?: string;
 }
 
 const ChatControls: React.FC<ChatControlsProps> = ({
-  activeMode,
-  comparing,
-  isLinked,
-  isMobile,
+  mode,
   model,
+  onModelChange,
   onModeChange,
-  onToggleCompare,
-  onToggleLink,
-  onParamsChange
+  onToggleSidebar,
+  onClearChat,
+  showBackButton,
+  onBackClick,
+  params,
+  onParamsChange,
+  className = ''
 }) => {
   return (
-    <div className={cn(
-      "px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10",
-      "contain-layout contain-paint transform-gpu will-change-auto"
-    )}>
-      <div className="flex items-center justify-between gap-3">
-        <div className={cn(
-          "flex items-center gap-3 transform-gpu",
-          "contain-layout contain-paint"
-        )}>
-          <RefinedModeSelector 
-            activeMode={activeMode} 
-            onChange={onModeChange} 
-          />
-          
-          {activeMode !== 'text' && (
-            <ParametersManager
-              mode={activeMode}
-              model={model}
-              onParamsChange={onParamsChange}
-              variant="icon"
-              className="flex-shrink-0"
-            />
-          )}
-        </div>
+    <div className={`flex items-center space-x-2 w-full ${className}`}>
+      {showBackButton && onBackClick ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onBackClick}
+          className="rounded-full bg-white/5 hover:bg-white/10"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onToggleSidebar}
+          className="rounded-full bg-white/5 hover:bg-white/10"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
 
-        <div className="flex items-center gap-3">
-          <CompareModelsButton 
-            isComparing={comparing} 
-            onToggleCompare={onToggleCompare} 
-          />
-          
-          {comparing && !isMobile && (
-            <LinkToggleButton 
-              isLinked={isLinked} 
-              onToggleLink={onToggleLink} 
-              disabled={isMobile}
-            />
-          )}
-        </div>
+      <div className="flex-1 mx-1">
+        <RefinedModeSelector activeMode={mode} onChange={onModeChange} />
       </div>
+
+      <div className="flex-1">
+        <EnhancedModelSelector
+          mode={mode}
+          selectedModel={model}
+          onChange={onModelChange}
+        />
+      </div>
+
+      {onClearChat && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onClearChat}
+          className="rounded-full bg-white/5 hover:bg-white/10"
+        >
+          <RefreshCw className="h-5 w-5" />
+        </Button>
+      )}
+
+      {onParamsChange && params && (
+        <ParametersManager
+          mode={mode}
+          model={model}
+          onParamsChange={onParamsChange}
+          initialParams={params}
+          variant="icon"
+        />
+      )}
     </div>
   );
 };
 
-export default memo(ChatControls);
+export default ChatControls;
