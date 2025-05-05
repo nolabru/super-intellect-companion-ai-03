@@ -71,7 +71,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
 
   // Ensure we have a valid media_type for the MediaPlayer
   const safeMediaType = (media_type === 'image' || media_type === 'video' || media_type === 'audio') 
-    ? media_type 
+    ? media_type as "image" | "video" | "audio"
     : 'none';
 
   return (
@@ -81,7 +81,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
           <div className="flex items-center space-x-3">
             <Avatar>
               {author?.avatar_url ? (
-                <AvatarImage src={author.avatar_url} alt={author.username || 'Usuário'} />
+                <AvatarImage src={author.avatar_url} alt={author?.username || 'Usuário'} />
               ) : (
                 <AvatarFallback className="bg-inventu-blue">
                   {author?.username ? author.username[0].toUpperCase() : 'U'}

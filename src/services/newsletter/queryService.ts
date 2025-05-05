@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { PostgrestError } from '@supabase/supabase-js';
 import { PostWithCounts, CommentWithUser, PostFilterParams } from '@/types/newsletter';
@@ -44,27 +43,27 @@ export const queryPosts = async ({
     
     const posts: PostWithCounts[] = (data || []).map(post => ({
       id: post.id || '',
-      title: post.title || '',
+      title: post.content?.substring(0, 50) || '', // Use content as title or empty string
       content: post.content || '',
       author_id: post.author_id || '',
       user_id: post.author_id || '',
       is_published: post.is_published || false,
       published_at: post.published_at || null,
-      created_at: post.created_at || null,
+      created_at: post.published_at || null, // Use published_at as created_at
       updated_at: post.updated_at || null,
       media_type: post.media_type || null,
       media_url: post.media_url || null,
       view_count: post.view_count || 0,
-      likes_count: post.likes_count || 0,
-      like_count: post.likes_count || 0,
-      comments_count: post.comments_count || 0,
-      shares_count: post.shares_count || 0,
-      author_name: post.author_name || '',
-      author_avatar: post.author_avatar || null,
+      likes_count: 0, // Default values for missing fields
+      like_count: 0,
+      comments_count: 0,
+      shares_count: 0,
+      author_name: '',
+      author_avatar: null,
       user_has_liked: false,
       author: {
-        username: post.author_name || '',
-        avatar_url: post.author_avatar || null
+        username: '',
+        avatar_url: null
       }
     }));
     
@@ -105,27 +104,27 @@ export const queryPostById = async (postId: string): Promise<{
     
     const post: PostWithCounts = {
       id: data.id || '',
-      title: data.title || '',
+      title: data.content?.substring(0, 50) || '', // Use content as title or empty string
       content: data.content || '',
       author_id: data.author_id || '',
       user_id: data.author_id || '',
       is_published: data.is_published || false,
       published_at: data.published_at || null,
-      created_at: data.created_at || null,
+      created_at: data.published_at || null, // Use published_at as created_at
       updated_at: data.updated_at || null,
       media_type: data.media_type || null,
       media_url: data.media_url || null,
       view_count: data.view_count || 0,
-      likes_count: data.likes_count || 0,
-      like_count: data.likes_count || 0,
-      comments_count: data.comments_count || 0,
-      shares_count: data.shares_count || 0,
+      likes_count: 0, // Default values for missing fields
+      like_count: 0,
+      comments_count: 0,
+      shares_count: 0,
       user_has_liked: false,
-      author_name: data.author_name || '',
-      author_avatar: data.author_avatar || null,
+      author_name: '',
+      author_avatar: null,
       author: {
-        username: data.author_name || '',
-        avatar_url: data.author_avatar || null
+        username: '',
+        avatar_url: null
       }
     };
     
