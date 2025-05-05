@@ -1,130 +1,113 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Get API key from environment variables
-    const APIFRAME_API_KEY = Deno.env.get("APIFRAME_API_KEY");
-    if (!APIFRAME_API_KEY) {
-      throw new Error("APIFRAME_API_KEY is not configured");
-    }
-
-    // Initialize Supabase client for token tracking
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Parse request body
-    const requestData = await req.json();
-    const { 
-      prompt, 
-      modelId = "ideogram-v2", 
-      params = {},
-      userId 
-    } = requestData;
-
-    if (!prompt) {
-      throw new Error("Prompt is required");
-    }
-
-    console.log(`[apiframe-image-generate] Processing image generation with model ${modelId}`);
-
-    // Check if user has enough tokens if userId is provided
-    if (userId) {
-      // Add token check logic here if you have a token system
-    }
-
-    // Determine API endpoint and parameters based on the model
-    let apiUrl;
-    let apiParams;
+    const { prompt, modelId, params } = await req.json();
     
-    if (modelId === "ideogram-v2") {
-      apiUrl = "https://apiframe.pro/api/ideogram/imagine";
-      // Format style_type, aspect_ratio, and negative_prompt for Ideogram
+    // Get the API Frame API key from the authorization header
+    const apiKey = req.headers.get('Authorization')?.replace('Bearer ', '') || '';
+    
+    if (!apiKey) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'API key is required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+      );
+    }
+    
+    if (!prompt) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Prompt is required' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    console.log(`Generating image with ${modelId}. Prompt: ${prompt}`);
+    
+    // Determine which API endpoint to use based on modelId
+    let apiUrl: string;
+    let apiParams: Record<string, any>;
+    
+    if (modelId === 'ideogram-v2') {
+      apiUrl = 'https://api.apiframe.pro/v1/ideogram/imagine';
       apiParams = {
-        model: "V_2",
+        magic_prompt_option: params.magic_prompt_option || 'AUTO',
+        model: 'V_2',
         prompt,
-        magic_prompt_option: params.magic_prompt_option || "AUTO",
-        style_type: params.style_type || "GENERAL",
-        aspect_ratio: params.aspect_ratio || "ASPECT_1_1",
-        negative_prompt: params.negative_prompt || ""
+        style_type: params.style_type || 'GENERAL',
+        aspect_ratio: params.aspect_ratio || 'ASPECT_1_1',
+        negative_prompt: params.negative_prompt || ''
       };
-    } else if (modelId === "midjourney") {
-      apiUrl = "https://apiframe.pro/api/midjourney/imagine";
-      // Format Midjourney specific parameters
+    } else if (modelId === 'midjourney') {
+      apiUrl = 'https://api.apiframe.pro/v1/midjourney/imagine';
+      
+      // Get corresponding aspect ratio in Midjourney format
+      let mjAspectRatio = '1:1';
+      if (params.aspect_ratio) {
+        if (params.aspect_ratio === 'ASPECT_16_9') mjAspectRatio = '16:9';
+        else if (params.aspect_ratio === 'ASPECT_9_16') mjAspectRatio = '9:16';
+        else if (params.aspect_ratio === 'ASPECT_4_3') mjAspectRatio = '4:3';
+        else if (params.aspect_ratio === 'ASPECT_3_4') mjAspectRatio = '3:4';
+      }
+      
       apiParams = {
         prompt,
-        aspect_ratio: params.aspect_ratio || "1:1",
-        quality: params.quality || "standard",
-        style: params.style || "raw",
-        negative_prompt: params.negative_prompt || ""
+        aspect_ratio: params.aspect_ratio ? mjAspectRatio : '1:1',
+        quality: params.quality || 'standard',
+        style: params.style || 'raw',
+        negative_prompt: params.negative_prompt || ''
       };
     } else {
       throw new Error(`Unsupported model: ${modelId}`);
     }
-
-    console.log(`[apiframe-image-generate] Sending request to ${apiUrl} with params:`, apiParams);
-
-    // Make the API request
+    
+    console.log(`Using API: ${apiUrl}`);
+    console.log(`With params: ${JSON.stringify(apiParams)}`);
+    
+    // Make request to API Frame API
     const response = await fetch(apiUrl, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${APIFRAME_API_KEY}`
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(apiParams)
     });
-
-    // Handle API response
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[apiframe-image-generate] API error from ${modelId}:`, errorText);
-      throw new Error(`API error (${response.status}): ${errorText}`);
-    }
-
-    const data = await response.json();
     
-    // Check if the API response contains image URLs
-    if (!data.success || !data.images || data.images.length === 0) {
-      throw new Error(`No images were generated by ${modelId}`);
+    const result = await response.json();
+    console.log(`API response: ${JSON.stringify(result)}`);
+    
+    if (!response.ok) {
+      throw new Error(result.error || `API error: ${response.status}`);
     }
-
-    console.log(`[apiframe-image-generate] Successfully generated ${data.images.length} images`);
-
-    // Return the API response
+    
     return new Response(
       JSON.stringify({
         success: true,
-        images: data.images,
-        taskId: data.taskId || `${modelId}-${Date.now()}`
+        images: result.images || [],
+        taskId: result.taskId || result.id || 'task-id'
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error("[apiframe-image-generate] Error:", error.message);
+    console.error('Error:', error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || "Unknown error occurred"
+        error: error instanceof Error ? error.message : String(error)
       }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });

@@ -22,7 +22,7 @@ const hasApiKey = () => {
   return localStorage.getItem('apiframe_api_key') !== null;
 };
 
-// Image model options - agora explicitamente mostra Ideogram e Midjourney
+// Image model options - explicitly showing Ideogram and Midjourney
 const IMAGE_MODELS = [
   { id: 'ideogram-v2', name: 'Ideogram V2' },
   { id: 'midjourney', name: 'Midjourney' },

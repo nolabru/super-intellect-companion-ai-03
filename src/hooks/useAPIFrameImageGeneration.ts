@@ -66,12 +66,15 @@ export function useAPIFrameImageGeneration(options: UseAPIFrameImageGenerationOp
         paramsCount: Object.keys(params).length
       });
       
-      // Chamar a Edge Function
+      // Chamar a Edge Function com a API key no cabeçalho de autorização
       const { data, error } = await supabase.functions.invoke('apiframe-image-generate', {
         body: {
           prompt,
           modelId,
           params
+        },
+        headers: {
+          Authorization: `Bearer ${apiKeyFromStorage}`
         }
       });
       

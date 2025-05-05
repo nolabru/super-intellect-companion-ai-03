@@ -6,13 +6,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useAPIFrameImageGeneration } from '@/hooks/useAPIFrameImageGeneration';
 
-// Updated image models data - now all under API Frame
+// Updated image models data - ensure API Frame models are included
 const IMAGE_MODELS = [
-  { id: 'ideogram-v2', name: 'Ideogram V2' },
-  { id: 'midjourney', name: 'Midjourney' },
-  { id: 'openai', name: 'OpenAI DALL-E' },
-  { id: 'anthropic', name: 'Anthropic Claude' },
-  { id: 'google', name: 'Google Gemini' }
+  { id: 'ideogram-v2', name: 'Ideogram V2', provider: 'apiframe' },
+  { id: 'midjourney', name: 'Midjourney', provider: 'apiframe' },
+  { id: 'openai', name: 'OpenAI DALL-E', provider: 'apiframe' },
+  { id: 'anthropic', name: 'Anthropic Claude', provider: 'apiframe' },
+  { id: 'google', name: 'Google Gemini', provider: 'apiframe' }
 ];
 
 // Ideogram style types
@@ -76,7 +76,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
   
   const isMidjourney = selectedModel === 'midjourney';
   const isIdeogram = selectedModel === 'ideogram-v2';
-  const isAPIFrameModel = isMidjourney || isIdeogram;
+  const isAPIFrameModel = true; // Since all models are now using API Frame
   
   const { 
     generateImage, 
@@ -144,10 +144,10 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         </Select>
       </div>
 
-      {/* Only show these controls for API Frame models (Ideogram and Midjourney) */}
-      {isAPIFrameModel && (
+      {/* Show specific controls based on selected model */}
+      {selectedModel && (
         <>
-          {/* Aspect Ratio - common for both */}
+          {/* Aspect Ratio - common for all models */}
           <div className="space-y-2">
             <Label htmlFor="aspectRatio">Proporção</Label>
             <Select 
@@ -344,7 +344,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         </div>
       )}
       
-      {isAPIFrameModel && !isApiKeyConfigured() && (
+      {!isApiKeyConfigured() && (
         <div className="p-3 bg-yellow-800/30 border border-yellow-500/30 rounded-md mb-4 text-yellow-200">
           <p className="text-sm">
             API Key da API Frame não configurada. Configure-a em Configurações/API.
@@ -355,7 +355,7 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
       <button
         className="w-full py-2 px-4 bg-inventu-blue hover:bg-inventu-blue/80 text-white font-medium rounded-md transition-colors disabled:bg-inventu-gray/30 disabled:text-white/50"
         onClick={handleGenerate}
-        disabled={!prompt.trim() || isGenerating || (isAPIFrameModel && !isApiKeyConfigured())}
+        disabled={!prompt.trim() || isGenerating || !isApiKeyConfigured()}
       >
         {isGenerating ? 'Gerando...' : 'Gerar Imagem'}
       </button>

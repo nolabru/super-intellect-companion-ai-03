@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Select,
@@ -24,7 +23,7 @@ interface ModelSelectorProps {
   disabled?: boolean;
 }
 
-// Make sure this function is exported correctly
+// Make sure this function returns models that include API Frame models
 export const getModelsByMode = (mode: ChatMode): ChatModel[] => {
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
 };
@@ -73,6 +72,28 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   
   // Prepare all models based on mode
   let combinedModels = [...baseModels];
+  
+  // Make sure to include API Frame models for image mode
+  if (mode === 'image') {
+    // Add API Frame models for image mode
+    const apiFrameImageModels = [
+      { 
+        id: 'ideogram-v2', 
+        displayName: 'Ideogram V2', 
+        provider: 'apiframe',
+        modes: ['image'],
+        description: 'High quality image generation'
+      },
+      { 
+        id: 'midjourney', 
+        displayName: 'Midjourney', 
+        provider: 'apiframe',
+        modes: ['image'],
+        description: 'Artistic image generation'
+      }
+    ];
+    combinedModels.push(...apiFrameImageModels);
+  }
   
   // Add OpenRouter models if in text mode and API key is configured
   if (mode === 'text' && isApiKeyConfigured()) {
