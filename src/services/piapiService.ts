@@ -152,63 +152,56 @@ export const piapiService = {
    * Gera um vídeo usando um dos modelos da PiAPI
    */
   async generateVideo(
-    prompt: string,
-    model: PiapiVideoModel = 'kling-text',
+    prompt: string, 
+    model: string, 
     params: PiapiParams = {},
-    imageUrl?: string
+    referenceImageUrl?: string
   ): Promise<PiapiTaskResult> {
     try {
-      console.log(`[piapiService] Iniciando geração de vídeo com modelo ${model}`);
-      console.log({
-        prompt,
-        model,
-        params,
-        imageUrl
-      });
+      console.log(`[piapiService] Generating video with model ${model} and prompt: ${prompt}`);
       
-      // Validar parâmetros
-      validatePrompt(prompt, 'video');
-      
-      // Verificar se é necessário um imageUrl para modelos baseados em imagem
-      if (model.includes('image') && !imageUrl) {
-        throw new Error(`O modelo ${model} requer uma imagem de referência (imageUrl)`);
+      // Check for required parameters
+      if (!prompt) {
+        throw new Error("Prompt is required for video generation");
       }
       
+      const videoType = referenceImageUrl 
+        ? 'image-to-video' 
+        : 'text-to-video';
+      
+      // Call the video-generation edge function directly
       const { data, error } = await supabase.functions.invoke('video-generation', {
-        body: { 
-          prompt, 
-          model, 
-          imageUrl, 
-          params: params,
-          videoType: model.includes('image') ? 'image-to-video' : 'text-to-video',
+        body: {
+          prompt,
+          model,
+          videoType,
+          imageUrl: referenceImageUrl,
+          // Pass additional parameters for customization
+          duration: params.duration || 5,
           aspectRatio: params.aspectRatio || '16:9',
           klingModel: params.klingModel || 'kling-v1-5',
-          klingMode: params.klingMode || 'std',
-          duration: params.duration || 5
+          klingMode: params.klingMode || 'std'
         }
       });
       
       if (error) {
-        console.error('[piapiService] Erro ao criar tarefa de vídeo:', error);
-        throw new Error(`Erro ao criar tarefa: ${error.message}`);
+        console.error('[piapiService] Error generating video:', error);
+        throw new Error(`Failed to generate video: ${error.message}`);
       }
       
-      console.log(`[piapiService] Resposta de criação de vídeo:`, data);
-      
-      if (!data) {
-        console.error('[piapiService] Resposta vazia da função edge');
-        throw new Error('Resposta vazia da função edge');
+      if (!data.taskId) {
+        throw new Error('No task ID returned from video generation service');
       }
       
-      if (data.error) {
-        console.error('[piapiService] Erro retornado pela função edge:', data.error);
-        throw new Error(data.error);
-      }
-      
-      // Normalizar e retornar resposta
-      return normalizeTaskResponse(data);
-    } catch (err) {
-      return handleApiError(err, 'vídeo');
+      return {
+        taskId: data.taskId,
+        status: data.status || 'pending',
+        mediaUrl: data.mediaUrl,
+        error: data.error
+      };
+    } catch (error) {
+      console.error('[piapiService] Video generation error:', error);
+      throw error;
     }
   },
   
