@@ -72,16 +72,18 @@ export const apiRequestService = {
           
           // Verificar se a duração é um número e se é válida (5 ou 10)
           const currentDuration = typeof validParams?.duration === 'number' ? validParams.duration : 5;
-          if (currentDuration !== 5 && currentDuration !== 10) {
-            console.log(`[apiRequestService] Corrigindo duração inválida: ${currentDuration} para 5 segundos`);
-            validParams.duration = 5;
-          }
+          const durationInSeconds = currentDuration !== 5 && currentDuration !== 10 ? "5s" : `${currentDuration}s`;
+          
+          console.log(`[apiRequestService] Usando duração: ${durationInSeconds} (convertido de ${currentDuration})`);
           
           // Chamar a edge function específica para Kling AI
           const { data, error } = await supabase.functions.invoke('apiframe-kling-video', {
             body: {
               prompt: content,
-              params: validParams || { duration: 5 }, // Ensure we always send a valid duration
+              params: { 
+                ...validParams,
+                duration: durationInSeconds  // Convert to string format with "s" suffix
+              },
               generationType: "text2video"
             },
           });

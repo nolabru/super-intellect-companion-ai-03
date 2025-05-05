@@ -43,13 +43,35 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const webhookEndpoint = `${supabaseUrl}/functions/v1/apiframe-webhook`;
     
+    // Processar a duração: converter de string para número ou usar valor padrão
+    let duration;
+    if (typeof params.duration === 'string') {
+      // Se for string como "5s", extrair apenas o número
+      const durationMatch = params.duration.match(/^(\d+)s$/);
+      duration = durationMatch ? parseInt(durationMatch[1], 10) : 5;
+    } else if (typeof params.duration === 'number') {
+      // Se for número, usar diretamente
+      duration = params.duration;
+    } else {
+      // Valor padrão
+      duration = 5;
+    }
+    
+    // Validar que a duração está dentro dos valores permitidos (5 ou 10)
+    if (duration !== 5 && duration !== 10) {
+      console.log(`Ajustando duração inválida (${duration}) para 5 segundos`);
+      duration = 5;
+    }
+    
+    console.log(`Usando duração: ${duration} segundos`);
+    
     // Preparar payload para a API
     const payload = {
       prompt,
       generation_type: generationType,
       model: params.model || "kling-v1-5",
       // Removido o parâmetro mode que estava causando erro
-      duration: params.duration || 5,
+      duration: duration, // Usando o valor numérico processado
       aspect_ratio: params.aspectRatio || "16:9",
       cfg_scale: params.cfgScale !== undefined ? params.cfgScale : 0.7,
       webhook_url: webhookEndpoint,
@@ -110,7 +132,8 @@ serve(async (req) => {
           params: {
             ...params,
             generationType,
-            imageUrl: imageUrl || null
+            imageUrl: imageUrl || null,
+            duration: duration // Salvar como número para consistência
           }
         });
 

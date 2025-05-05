@@ -12,8 +12,11 @@ export interface ImageParameters {
 
 export interface VideoParameters {
   style?: string;
-  duration?: number;
+  duration?: number; // Using number (5 or 10) for durations
   fps?: number;
+  resolution?: string;
+  videoType?: 'text-to-video' | 'image-to-video';
+  model?: string;
   [key: string]: any;
 }
 
@@ -72,9 +75,12 @@ export const getDefaultParameters = (mode: string, model: string): GenerationPar
       };
     case 'video':
       return {
-        style: 'default', // Alterado de 'cinematic' para 'default' (valor compatível)
-        duration: 5, // Mantido como 5 segundos para compatibilidade com a API Kling
-        fps: 24
+        style: 'default',
+        duration: 5, // Using number value (5 seconds)
+        fps: 24,
+        resolution: '720p',
+        videoType: 'text-to-video',
+        model: model || 'kling-text'
       };
     case 'audio':
       if (model.includes('elevenlabs')) {
