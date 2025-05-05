@@ -56,11 +56,11 @@ export const updatePost = async (postId: string, updateData: Record<string, any>
  * @returns Promise<boolean> indicando se existe
  */
 export const recordExists = async (
-  table: "post_likes" | "post_comments" | "newsletter_posts" | string, 
+  table: string, 
   conditions: Record<string, any>
 ): Promise<boolean> => {
   const { data, error, count } = await supabase
-    .from(table)
+    .from(table as any)
     .select('*', { count: 'exact', head: true })
     .match(conditions);
   

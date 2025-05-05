@@ -23,7 +23,7 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
     }
     
     // Se o campo shares_count não existe no banco de dados, vamos considerar como 0
-    const currentShareCount = post && typeof post.shares_count !== 'undefined' ? post.shares_count || 0 : 0;
+    const currentShareCount = post && 'shares_count' in post ? post.shares_count || 0 : 0;
     
     // Atualizar campo
     const { error } = await supabase

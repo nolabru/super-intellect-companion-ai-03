@@ -5,51 +5,55 @@ import { CommentWithUser } from '@/types/newsletter';
 import { CommentsQueryResult, CommentResult } from './types';
 
 /**
- * Busca comentários de um post
+ * Busca comentários para um post específico
  * @param postId ID do post
- * @param limit Limite de comentários
- * @param offset Offset para paginação
- * @returns Array de comentários com dados dos usuários
+ * @returns Array de comentários com informações do usuário
  */
-export const queryCommentsByPostId = async (
-  postId: string,
-  limit = 10,
-  offset = 0
-): Promise<CommentsQueryResult> => {
+export const queryComments = async (postId: string): Promise<CommentsQueryResult> => {
   try {
-    const { data, count, error } = await supabase
+    // Primeiro buscar os comentários
+    const { data: comments, error, count } = await supabase
       .from('post_comments')
-      .select('*, profiles!post_comments_user_id_fkey(*)')
+      .select('*', { count: 'exact' })
       .eq('post_id', postId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order('created_at', { ascending: false });
     
     if (error) {
       throw error;
     }
     
-    const comments: CommentWithUser[] = (data || []).map(item => {
-      const profile = item.profiles || {};
-      return {
-        id: item.id,
-        post_id: item.post_id,
-        user_id: item.user_id,
-        content: item.content,
-        created_at: item.created_at,
-        updated_at: item.updated_at,
-        // Handle potentially missing profile data with defaults
-        username: profile.username || 'Usuário',
-        display_name: profile.display_name || '',
-        avatar_url: profile.avatar_url || null,
+    // Array para armazenar comentários processados
+    const processedComments: CommentWithUser[] = [];
+    
+    // Processar cada comentário para obter dados do usuário
+    for (const comment of comments || []) {
+      // Buscar informações do usuário
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('username, display_name, avatar_url')
+        .eq('id', comment.user_id)
+        .single();
+      
+      // Combinar dados do comentário com dados do usuário
+      const username = userData?.username || 'Usuário';
+      const display_name = userData?.display_name || null;
+      const avatar_url = userData?.avatar_url || null;
+      
+      // Formato compatível com a interface CommentWithUser
+      processedComments.push({
+        ...comment,
+        username,
+        display_name,
+        avatar_url,
         user: {
-          username: profile.username || 'Usuário',
-          avatar_url: profile.avatar_url || null
+          username: username,
+          avatar_url: avatar_url
         }
-      };
-    });
+      });
+    }
     
     return {
-      comments,
+      comments: processedComments,
       count: count || 0,
       error: null
     };
@@ -64,79 +68,9 @@ export const queryCommentsByPostId = async (
 };
 
 /**
- * Publica um comentário em um post
- * @param postId ID do post
- * @param content Conteúdo do comentário
- * @param userId ID do usuário autor
- * @returns Dados do comentário criado
+ * Implementação das funções wrapper para compatibilidade com código existente
  */
-export const publishComment = async (
-  postId: string,
-  content: string,
-  userId: string
-): Promise<CommentResult> => {
-  try {
-    // Verificar se o post existe
-    const { data: post, error: postError } = await supabase
-      .from('newsletter_posts')
-      .select('id')
-      .eq('id', postId)
-      .single();
-    
-    if (postError) {
-      throw new Error('Post não encontrado');
-    }
-    
-    // Criar comentário
-    const { data, error } = await supabase
-      .from('post_comments')
-      .insert([
-        {
-          post_id: postId,
-          user_id: userId,
-          content
-        }
-      ])
-      .select('*')
-      .single();
-    
-    if (error) {
-      throw error;
-    }
-    
-    if (!data) {
-      throw new Error('Erro ao criar comentário');
-    }
-    
-    // Buscar dados do usuário
-    const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('username, avatar_url')
-      .eq('id', userId)
-      .single();
-    
-    // Define default values for userData
-    const username = userData?.username || 'Usuário';
-    const avatar_url = userData?.avatar_url || null;
-    
-    // Retornar comentário com dados do usuário
-    const comment: CommentWithUser = {
-      ...data,
-      username: username,
-      display_name: '', // Profiles não tem display_name
-      avatar_url: avatar_url,
-      user: {
-        username: username,
-        avatar_url: avatar_url
-      }
-    };
-    
-    return { comment, error: null };
-  } catch (err) {
-    console.error('Erro ao publicar comentário:', err);
-    return {
-      comment: null,
-      error: err as PostgrestError
-    };
-  }
+export const getComments = async (postId: string) => {
+  const result = await queryComments(postId);
+  return result.comments;
 };
