@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import UnifiedMediaGenerator from './UnifiedMediaGenerator';
 import { Label } from '@/components/ui/label';
@@ -138,7 +139,7 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
 
   return (
     <UnifiedMediaGenerator
-      mediaType="image" // Use "image" type for now as that's the only one implemented
+      mediaType="audio" // Fixed to use the correct media type "audio"
       title="AI Audio Generator"
       models={AUDIO_MODELS}
       defaultModel={selectedModel}

@@ -1,4 +1,3 @@
-
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';
@@ -42,11 +41,13 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     onTaskUpdate: (task) => {
       if (task.id !== currentTaskId) return;
       
-      // Convert to the expected task type format
+      // Fix the type issue by not using instanceof with task.createdAt
       const updatedTask = {
         ...task,
-        // Ensure createdAt is a Date or string to avoid type errors
-        createdAt: task.createdAt instanceof Date ? task.createdAt.toString() : task.createdAt
+        // Safely handle createdAt regardless of its type
+        createdAt: typeof task.createdAt === 'string' 
+          ? task.createdAt 
+          : String(task.createdAt)
       };
       
       setCurrentTask(updatedTask as unknown as Task);

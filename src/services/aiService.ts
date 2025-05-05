@@ -235,7 +235,8 @@ export const aiService = {
       // For ideogram image generation
       if (params.type === 'image' && params.modelId === 'ideogram-v2') {
         try {
-          const result = await supabase.functions.invoke('ideogram-imagine', {
+          // Updated to use apiframe-ideogram-imagine instead of ideogram-imagine
+          const result = await supabase.functions.invoke('apiframe-ideogram-imagine', {
             body: {
               prompt: params.prompt,
               ...params.additionalParams
@@ -243,10 +244,12 @@ export const aiService = {
           });
           
           if (result.error) {
+            console.error('[AIService] Error from edge function:', result.error);
             throw new Error(`Ideogram error: ${result.error.message || 'Unknown error'}`);
           }
           
           if (!result.data.success || !result.data.images || result.data.images.length === 0) {
+            console.error('[AIService] Invalid response:', result.data);
             throw new Error('No images were generated');
           }
           
