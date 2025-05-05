@@ -172,7 +172,9 @@ serve(async (req) => {
       status: data.status || 'processing'
     }));
     
-    // Format the response to match what our frontend expects
+    // IMPORTANT FIX: For immediate response compatibility, always include an empty images array
+    // even though the real image URLs will come later from the task status check
+    // This prevents the "No image was generated" error in the frontend
     const formattedResponse = {
       success: true,
       taskId: data.task_id,
