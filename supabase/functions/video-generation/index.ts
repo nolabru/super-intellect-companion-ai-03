@@ -39,9 +39,9 @@ serve(async (req) => {
       klingMode = "std"
     } = await req.json();
     
-    if (!prompt && !imageUrl) {
+    if (!prompt) {
       return new Response(
-        JSON.stringify({ error: "Either prompt or image URL is required" }),
+        JSON.stringify({ error: "Prompt is required for video generation" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -49,7 +49,7 @@ serve(async (req) => {
     console.log(`[video-generation] Creating video task for model: ${model}`);
     console.log(`[video-generation] Parameters:`, { prompt, videoType, duration, aspectRatio, klingModel, klingMode });
 
-    // Prepare API Frame parameters for Kling AI
+    // Convert internal video type to Kling API format
     const generation_type = videoType === 'text-to-video' ? 'text2video' : 'img2video';
     
     // Build the payload for the API Frame Kling API

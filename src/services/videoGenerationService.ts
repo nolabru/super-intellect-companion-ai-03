@@ -56,6 +56,7 @@ export const videoGenerationService = {
         throw new Error('Image URL is required for image-to-video generation');
       }
       
+      // Call directly to the video-generation edge function, bypassing ai-chat
       const { data, error } = await supabase.functions.invoke('video-generation', {
         body: {
           prompt,
