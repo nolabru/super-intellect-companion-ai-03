@@ -45,8 +45,8 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       // Convert to the expected task type format
       const updatedTask = {
         ...task,
-        // Ensure createdAt is a string to avoid type mismatch
-        createdAt: typeof task.createdAt === 'string' ? task.createdAt : task.createdAt.toString()
+        // Ensure createdAt is a Date or string to avoid type errors
+        createdAt: task.createdAt instanceof Date ? task.createdAt.toString() : task.createdAt
       };
       
       setCurrentTask(updatedTask as unknown as Task);

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -71,8 +72,18 @@ serve(async (req) => {
     }
 
     console.log('Ideogram image generated successfully, task ID:', data.task_id);
+    
+    // Format the response to match what our frontend expects
+    const formattedResponse = {
+      success: true,
+      images: data.image_urls || [],
+      taskId: data.task_id,
+      status: data.status || 'completed',
+      seed: data.seed
+    };
+    
     return new Response(
-      JSON.stringify(data),
+      JSON.stringify(formattedResponse),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

@@ -83,8 +83,8 @@ const IdeogramGenerator: React.FC<IdeogramGeneratorProps> = ({ onImageGenerated 
       
       console.log('Gerando imagem com Ideogram:', requestBody);
       
-      // Call Edge Function
-      const { data, error } = await supabase.functions.invoke('ideogram-imagine', {
+      // Call Edge Function - UPDATED to use apiframe-ideogram-imagine
+      const { data, error } = await supabase.functions.invoke('apiframe-ideogram-imagine', {
         body: requestBody
       });
       
