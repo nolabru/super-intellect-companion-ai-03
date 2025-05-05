@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +22,7 @@ import CreatePost from "./pages/CreatePost";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
 import IdeogramPage from "./pages/IdeogramPage";
+import ImageGeneratorPage from './pages/ImageGeneratorPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
