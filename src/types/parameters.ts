@@ -12,7 +12,7 @@ export interface ImageParameters {
 
 export interface VideoParameters {
   style?: string;
-  duration?: number; // Using number for durations consistently
+  duration?: number;
   fps?: number;
   [key: string]: any;
 }
@@ -73,7 +73,7 @@ export const getDefaultParameters = (mode: string, model: string): GenerationPar
     case 'video':
       return {
         style: 'default', // Alterado de 'cinematic' para 'default' (valor compatível)
-        duration: 5, // Using numeric value (5 seconds)
+        duration: 5, // Mantido como 5 segundos para compatibilidade com a API Kling
         fps: 24
       };
     case 'audio':

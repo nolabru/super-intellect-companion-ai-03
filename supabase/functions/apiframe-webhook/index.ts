@@ -29,12 +29,6 @@ serve(async (req) => {
     const percentage = payload.percentage || 0;
     const videoUrl = payload.video_url;
 
-    console.log(`Processando webhook para tarefa ${taskId}:`, {
-      status,
-      percentage,
-      videoUrl: videoUrl ? "URL recebida" : "Nenhuma URL recebida"
-    });
-
     if (!taskId) {
       return new Response(
         JSON.stringify({ error: "ID da tarefa não encontrado no payload" }),
@@ -57,8 +51,6 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Tarefa encontrada no banco: ${existingTask.task_id}, status atual: ${existingTask.status}`);
-
     const updateData: any = {
       status: status,
       percentage: percentage,
@@ -68,7 +60,6 @@ serve(async (req) => {
     // Adicionar URL do vídeo se disponível
     if (videoUrl) {
       updateData.result_url = videoUrl;
-      console.log(`URL do vídeo encontrada no webhook: ${videoUrl}`);
     }
 
     const { error: updateError } = await supabase
@@ -86,8 +77,6 @@ serve(async (req) => {
 
     // Se o vídeo estiver pronto, salvar no media_ready_events para notificar o frontend
     if (status === "finished" && videoUrl) {
-      console.log(`Criando evento de mídia pronta para o vídeo finalizado: ${videoUrl}`);
-      
       const { error: insertError } = await supabase
         .from("media_ready_events")
         .insert({
@@ -99,8 +88,6 @@ serve(async (req) => {
 
       if (insertError) {
         console.error(`Erro ao inserir evento de mídia pronta: ${insertError.message}`);
-      } else {
-        console.log(`Evento de mídia pronta criado com sucesso`);
       }
     }
 

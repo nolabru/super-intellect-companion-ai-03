@@ -43,27 +43,18 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const webhookEndpoint = `${supabaseUrl}/functions/v1/apiframe-webhook`;
     
-    // Ensure the duration parameter is numeric (5 or 10)
-    const duration = typeof params.duration === 'number' ? params.duration : 5;
-    
-    // Convert numeric duration to string format with 's' suffix as expected by the API
-    const durationString = `${duration}s`;
-    
     // Preparar payload para a API
     const payload = {
       prompt,
       generation_type: generationType,
       model: params.model || "kling-v1-5",
-      // Use string duration with 's' suffix
-      duration: durationString,
+      // Removido o parâmetro mode que estava causando erro
+      duration: params.duration || 5,
       aspect_ratio: params.aspectRatio || "16:9",
       cfg_scale: params.cfgScale !== undefined ? params.cfgScale : 0.7,
       webhook_url: webhookEndpoint,
       webhook_secret: "kling-webhook-secret"
     };
-    
-    // Log the payload to troubleshoot
-    console.log("Payload enviado para Kling AI:", JSON.stringify(payload, null, 2));
     
     // Adicionar parâmetros opcionais se fornecidos
     if (imageUrl) {

@@ -36,7 +36,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   const [params, setParams] = useState<VideoParamsType>({
     model: model || 'kling-text',
     videoType: initialParams?.videoType || 'text-to-video',
-    duration: initialParams?.duration || 5, // Default to 5 seconds (numeric)
+    duration: initialParams?.duration || 5, // Default to 5 seconds
     resolution: initialParams?.resolution || '720p'
   });
 
