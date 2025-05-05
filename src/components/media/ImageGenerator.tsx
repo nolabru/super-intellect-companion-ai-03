@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import UnifiedMediaGenerator from './UnifiedMediaGenerator';
 import { Label } from '@/components/ui/label';
@@ -64,7 +65,7 @@ interface ImageGeneratorProps {
 
 const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => {
   const [negativePrompt, setNegativePrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState(IMAGE_MODELS[0].id);
+  const [selectedModel, setSelectedModel] = useState('ideogram-v2'); // Set default to Ideogram
   const [ideogramStyle, setIdeogramStyle] = useState('GENERAL');
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [magicPrompt, setMagicPrompt] = useState('AUTO');

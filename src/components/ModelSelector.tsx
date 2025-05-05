@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Select,
@@ -76,19 +77,25 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   // Make sure to include API Frame models for image mode
   if (mode === 'image') {
     // Add API Frame models for image mode
-    const apiFrameImageModels = [
+    const apiFrameImageModels: ChatModel[] = [
       { 
         id: 'ideogram-v2', 
         displayName: 'Ideogram V2', 
         provider: 'apiframe',
-        modes: ['image'],
+        modes: ['image' as const],
+        capabilities: {
+          imageGeneration: true
+        },
         description: 'High quality image generation'
       },
       { 
         id: 'midjourney', 
         displayName: 'Midjourney', 
         provider: 'apiframe',
-        modes: ['image'],
+        modes: ['image' as const],
+        capabilities: {
+          imageGeneration: true
+        },
         description: 'Artistic image generation'
       }
     ];

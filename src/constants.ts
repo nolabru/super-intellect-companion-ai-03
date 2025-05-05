@@ -149,7 +149,8 @@ const IMAGE_MODELS: ChatModel[] = [
     modes: ['image'],
     capabilities: {
       imageGeneration: true
-    }
+    },
+    description: 'High quality AI image generation'
   },
   {
     id: 'midjourney',
@@ -158,7 +159,8 @@ const IMAGE_MODELS: ChatModel[] = [
     modes: ['image'],
     capabilities: {
       imageGeneration: true
-    }
+    },
+    description: 'Artistic AI image generation'
   }
 ];
 
@@ -240,10 +242,10 @@ export const AVAILABLE_MODELS: ChatModel[] = [
       imageGeneration: false
     }
   },
+  // Add image models explicitly to the top level
+  ...IMAGE_MODELS,
   // Add video models
   ...VIDEO_MODELS,
-  // Add image models
-  ...IMAGE_MODELS,
   // Keep audio models
   ...APIFRAME_AUDIO_MODELS,
   // Add OpenRouter models as a separate category
