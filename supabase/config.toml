@@ -9,3 +9,6 @@ verify_jwt = true
 
 [functions.openrouter-models]
 verify_jwt = true
+
+[functions.apiframe-image-generate]
+verify_jwt = true
