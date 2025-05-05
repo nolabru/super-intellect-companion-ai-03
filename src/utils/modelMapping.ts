@@ -11,11 +11,6 @@ const imageModelMapping: ModelMapping = {
   'midjourney': 'midjourney-v6',
   'sd-3': 'stable-diffusion-3', 
   'pixel-art': 'pixel-art-xl',
-  // Ideogram models
-  'ideogram-v1': 'V_1',
-  'ideogram-v2': 'V_2',
-  'ideogram-v1-turbo': 'V_1_TURBO',
-  'ideogram-v2-turbo': 'V_2_TURBO',
 };
 
 // Mapping for video models

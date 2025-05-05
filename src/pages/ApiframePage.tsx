@@ -18,9 +18,6 @@ const ApiframePage: React.FC = () => {
           Generate high-quality images, videos, and audio using multiple AI models through APIframe.ai.
           The API key is globally configured and ready to use.
         </p>
-        <p className="text-muted-foreground mt-2">
-          <span className="font-semibold">New:</span> Try our Ideogram integration for amazing artistic image generation!
-        </p>
       </div>
       
       <div className="mt-6">

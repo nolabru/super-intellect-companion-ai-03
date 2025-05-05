@@ -39,18 +39,11 @@ const AdminPostsManagement: React.FC = () => {
         // Add necessary fields to match PostWithStats type
         const enhancedPost: PostWithStats = {
           ...newPost,
-          title: newPost.content?.substring(0, 50) || '',
           view_count: 0,
           likes_count: 0,
           comments_count: 0,
           shares_count: 0,
-          user_has_liked: false,
-          author_name: '',
-          author_avatar: null,
-          author: {
-            username: '',
-            avatar_url: null
-          }
+          user_has_liked: false
         };
         setPosts(prev => [enhancedPost, ...prev]);
         setActiveTab('manage');

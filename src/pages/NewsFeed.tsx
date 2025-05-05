@@ -1,24 +1,34 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import AppHeader from '@/components/AppHeader';
 import ConversationSidebar from '@/components/ConversationSidebar';
-import { Loader2 } from 'lucide-react';
+import { NewsletterPost, NewsletterPostSkeleton } from '@/components/newsletter/NewsletterPost';
+import { newsletterService } from '@/services/newsletterService';
+import { PostWithStats } from '@/types/newsletter';
+import { Loader2, Newspaper, PlusCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
-import { FeedHeader } from '@/components/newsletter/feed/FeedHeader';
-import { PostsList } from '@/components/newsletter/feed/PostsList';
-import { useNewsFeed } from '@/hooks/useNewsFeed';
 
 const NewsFeed: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
-  const { user, loading } = useAuth();
+  const {
+    user,
+    loading
+  } = useAuth();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { isAdmin } = useAdminCheck();
-  const { posts, isLoading, handleDeletePost } = useNewsFeed();
+  const [posts, setPosts] = useState<PostWithStats[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const {
+    isAdmin
+  } = useAdminCheck();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,53 +40,86 @@ const NewsFeed: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        const postsData = await newsletterService.getPosts();
+        setPosts(postsData.data);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+        toast.error('Erro ao carregar publicações');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPosts();
+  }, []);
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const success = await newsletterService.deletePost(postId);
+      if (success) {
+        setPosts(posts.filter(post => post.id !== postId));
+        toast.success('Publicação excluída com sucesso');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast.error('Erro ao excluir publicação');
+    }
+  };
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-inventu-darker">
+    return <div className="flex h-screen items-center justify-center bg-inventu-darker">
         <Loader2 className="h-8 w-8 animate-spin text-inventu-blue" />
-      </div>
-    );
+      </div>;
   }
 
   return (
     <div className="flex min-h-screen w-full bg-inventu-darker">
-      {!isMobile && (
-        <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", 
-          sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
+      {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
-        </div>
-      )}
+        </div>}
 
-      {isMobile && sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity" 
-          onClick={toggleSidebar}>
-          <div className="fixed inset-y-0 left-0 z-40 w-64 transform bg-inventu-dark" 
-            onClick={e => e.stopPropagation()}>
+      {isMobile && sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity" onClick={toggleSidebar}>
+          <div className="fixed inset-y-0 left-0 z-40 w-64 transform bg-inventu-dark" onClick={e => e.stopPropagation()}>
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
           </div>
-        </div>
-      )}
+        </div>}
 
-      <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", 
-        !isMobile && sidebarOpen && "pl-64")}>
+      <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
         <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Newsletter" />
         
         <main className="flex-1 overflow-hidden">
           <ScrollArea className="h-[calc(100vh-4rem)]">
-            <div className={cn("mx-auto w-full max-w-md pb-safe", 
-              isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8")}>
+            <div className={cn("mx-auto w-full max-w-md pb-safe", isMobile ? "px-4 pt-2 pb-24" : "px-8 py-8")}>
+              <div className="flex items-center justify-between mb-6">
+                <h1 className="text-2xl font-bold text-white">Newsletter</h1>
+                {isAdmin && (
+                  <Button 
+                    variant="default" 
+                    onClick={() => navigate('/feed/new')} 
+                    className="bg-inventu-blue hover:bg-inventu-blue/80 flex items-center"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nova Publicação
+                  </Button>
+                )}
+              </div>
               
-              <FeedHeader isAdmin={isAdmin} />
-              <PostsList 
-                posts={posts} 
-                isLoading={isLoading} 
-                onDelete={handleDeletePost} 
-              />
-              
+              {isLoading ? <div className="space-y-6">
+                  {[1, 2, 3].map(i => <NewsletterPostSkeleton key={i} />)}
+                </div> : posts.length === 0 ? <div className="text-center p-8 text-white/60">
+                  <Newspaper className="mx-auto h-12 w-12 mb-4 opacity-30" />
+                  <p className="text-lg">Nenhuma publicação ainda</p>
+                  <p className="text-sm">Volte mais tarde para novidades</p>
+                </div> : <div className="space-y-6">
+                  {posts.map(post => <NewsletterPost key={post.id} post={post} onDelete={handleDeletePost} />)}
+                </div>}
             </div>
           </ScrollArea>
         </main>
