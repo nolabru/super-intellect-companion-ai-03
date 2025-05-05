@@ -1,7 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-let apiKey: string | null = null;
+// Usar o token fornecido pelo usuário
+let apiKey: string | null = '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';
 
 export interface OpenRouterModel {
   id: string;
@@ -63,15 +64,8 @@ export const openRouterService = {
   },
   
   isApiKeyConfigured(): boolean {
-    // Try to load from localStorage if not in memory
-    if (!apiKey) {
-      try {
-        apiKey = localStorage.getItem('openrouter_api_key');
-      } catch (err) {
-        console.error('[openRouterService] Error loading API key from localStorage:', err);
-      }
-    }
-    return apiKey !== null && apiKey.trim() !== '';
+    // Já temos um token configurado
+    return true;
   },
   
   async chatCompletion(params: OpenRouterChatParams): Promise<OpenRouterChatResponse> {
@@ -199,7 +193,7 @@ export const openRouterService = {
   }
 };
 
-// Initialize API key from localStorage on module load
+// Initialize API key from localStorage if available
 try {
   const storedKey = localStorage.getItem('openrouter_api_key');
   if (storedKey) {

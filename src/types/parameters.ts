@@ -24,7 +24,17 @@ export interface AudioParameters {
   [key: string]: any;
 }
 
-export type GenerationParameters = ImageParameters | VideoParameters | AudioParameters;
+export interface OpenRouterParameters {
+  temperature?: number;
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  stream?: boolean;
+  [key: string]: any;
+}
+
+export type GenerationParameters = ImageParameters | VideoParameters | AudioParameters | OpenRouterParameters;
 
 // Type guard functions
 export const isImageParameters = (params: any): params is ImageParameters => {
@@ -50,6 +60,14 @@ export const isAudioParameters = (params: any): params is AudioParameters => {
     params.genre !== undefined ||
     params.speed !== undefined ||
     params.pitch !== undefined
+  );
+};
+
+export const isOpenRouterParameters = (params: any): params is OpenRouterParameters => {
+  return params && (
+    params.temperature !== undefined ||
+    params.max_tokens !== undefined ||
+    params.top_p !== undefined
   );
 };
 
@@ -85,6 +103,18 @@ export const getDefaultParameters = (mode: string, model: string): GenerationPar
         return {
           duration: 10,
           genre: 'ambient'
+        };
+      }
+      return {};
+    case 'text':
+      if (model.includes('/')) {  // OpenRouter models use a provider/model format
+        return {
+          temperature: 0.7,
+          max_tokens: 1000,
+          top_p: 1,
+          frequency_penalty: 0,
+          presence_penalty: 0,
+          stream: true
         };
       }
       return {};

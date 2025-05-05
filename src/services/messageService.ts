@@ -32,7 +32,10 @@ export const createMessageService = (
     userId?: string,
     skipUserMessage: boolean = false // Parâmetro para controlar se deve criar a mensagem do usuário
   ) => {
-    // Create user message with specific model target in compare mode - only if not skipped
+    // Verificar se é um modelo do OpenRouter
+    const isOpenRouterModel = modelId.includes('/');
+    
+    // Create user message with specific model target - only if not skipped
     if (!skipUserMessage) {
       const userMessage: MessageType = {
         id: `user-${Date.now()}`,
@@ -41,7 +44,7 @@ export const createMessageService = (
         timestamp: new Date().toISOString(),
         mode,
         files,
-        model: modelId // Set specific model for user message in compare mode
+        model: modelId // Set specific model for user message
       };
       
       setMessages(prev => [...prev, userMessage]);
@@ -67,7 +70,8 @@ export const createMessageService = (
       setMessages,
       apiService.sendRequest,
       mediaGallery.saveMediaToGallery,
-      skipUserMessage
+      skipUserMessage,
+      isOpenRouterModel // Passar flag para indicar se é modelo OpenRouter
     );
   };
   
@@ -84,6 +88,10 @@ export const createMessageService = (
     conversationHistory?: string,
     userId?: string
   ) => {
+    // Verificar se algum dos modelos é do OpenRouter
+    const isLeftOpenRouter = leftModelId.includes('/');
+    const isRightOpenRouter = rightModelId.includes('/');
+    
     // Preparar o histórico de conversa para manter contexto
     // Se não for fornecido externamente, preparar a partir das mensagens atuais
     const enhancedHistory = conversationHistory || prepareConversationHistory(messages);
@@ -102,7 +110,9 @@ export const createMessageService = (
       userId,
       setMessages,
       apiService.sendRequest,
-      mediaGallery.saveMediaToGallery
+      mediaGallery.saveMediaToGallery,
+      isLeftOpenRouter,
+      isRightOpenRouter
     );
   };
   
