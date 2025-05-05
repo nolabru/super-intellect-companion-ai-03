@@ -246,7 +246,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           <span className="text-blue-100 text-xs font-medium">
             Crie uma conversa para começar a interagir.
           </span>
-          {onCreateConversation && <button onClick={onCreateConversation} className="ml-auto text-xs text-white rounded py-[4px] px-[16px] bg-inventu-card">Criar Conversa</button>}
+          {onCreateConversation && <button onClick={onCreateConversation} className="ml-auto text-xs text-white rounded px-[16px] bg-inventu-card py-[10px]">Criar Conversa</button>}
         </div>}
       
       <div className={cn("relative flex items-center gap-2 p-1.5", isFocused && "ring-1 ring-white/30", (showApiErrorBanner || showNoConversationBanner) && "rounded-t-none", !hasActiveConversation && "bg-black/40 opacity-80")} ref={containerRef}>
