@@ -137,7 +137,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
         </CardContent>
         
         <CardFooter className="p-4 pt-0 flex justify-between py-[8px] mx-0 my-0 px-[18px]">
-          <Button variant="ghost" size="sm" onClick={confirmDelete} className="text-red-400 hover:text-red-300 text-left bg-transparent">
+          <Button variant="ghost" size="sm" onClick={confirmDelete} className="text-red-400 hover:text-red-300 hover:bg-red-900/20 text-left">
             <Trash2 className="h-4 w-4 mr-1" />
             Excluir
           </Button>
