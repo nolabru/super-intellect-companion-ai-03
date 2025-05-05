@@ -4,8 +4,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 serve(async (req) => {
   try {
-    console.log("Webhook recebido");
-    
     // Verificar o segredo do webhook
     const webhookSecret = req.headers.get("x-webhook-secret");
     if (webhookSecret !== "kling-webhook-secret") {
@@ -18,7 +16,7 @@ serve(async (req) => {
 
     // Analisar o webhook payload
     const payload = await req.json();
-    console.log("Webhook payload recebido:", JSON.stringify(payload, null, 2));
+    console.log("Webhook recebido:", JSON.stringify(payload, null, 2));
 
     // Inicializar cliente Supabase
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -32,14 +30,11 @@ serve(async (req) => {
     const videoUrl = payload.video_url;
 
     if (!taskId) {
-      console.error("ID da tarefa não encontrado no payload");
       return new Response(
         JSON.stringify({ error: "ID da tarefa não encontrado no payload" }),
         { status: 400 }
       );
     }
-
-    console.log(`Processando webhook para tarefa ${taskId}: status=${status}, percentagem=${percentage}, videoUrl=${videoUrl || 'Não disponível'}`);
 
     // Atualizar o registro da tarefa
     const { data: existingTask, error: fetchError } = await supabase
@@ -56,8 +51,6 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Tarefa encontrada no banco: ${JSON.stringify(existingTask)}`);
-
     const updateData: any = {
       status: status,
       percentage: percentage,
@@ -66,8 +59,7 @@ serve(async (req) => {
 
     // Adicionar URL do vídeo se disponível
     if (videoUrl) {
-      updateData.media_url = videoUrl;
-      console.log(`URL do vídeo disponível: ${videoUrl}`);
+      updateData.result_url = videoUrl;
     }
 
     const { error: updateError } = await supabase
@@ -83,27 +75,19 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Tarefa ${taskId} atualizada com sucesso: ${status}, ${percentage}%`);
-
     // Se o vídeo estiver pronto, salvar no media_ready_events para notificar o frontend
     if (status === "finished" && videoUrl) {
-      console.log(`Vídeo pronto! Inserindo evento de mídia para notificar o frontend`);
-      
       const { error: insertError } = await supabase
         .from("media_ready_events")
         .insert({
           task_id: taskId,
           media_url: videoUrl,
           media_type: "video",
-          status: "completed",
-          prompt: existingTask.prompt,
-          model: existingTask.model
+          status: "completed"
         });
 
       if (insertError) {
         console.error(`Erro ao inserir evento de mídia pronta: ${insertError.message}`);
-      } else {
-        console.log(`Evento de mídia pronta inserido com sucesso para ${taskId}`);
       }
     }
 
