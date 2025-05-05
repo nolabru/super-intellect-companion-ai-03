@@ -8,6 +8,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Valid parameter values based on API documentation
+const VALID_DURATIONS = [5, 10];
+const VALID_MODELS = ["kling-v1", "kling-v1-5", "kling-v1-6"];
+const VALID_MODES = ["std", "pro"];
+const VALID_ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"];
+const VALID_GENERATION_TYPES = ["text2video", "image2video"];
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -32,13 +39,14 @@ serve(async (req) => {
       model, 
       imageUrl, 
       videoType = "text-to-video", 
-      duration = 5, 
+      duration = 5,
       resolution = "720p",
       aspectRatio = "16:9",
       klingModel = "kling-v1-5",
       klingMode = "std"
     } = await req.json();
     
+    // Validate required parameters
     if (!prompt) {
       return new Response(
         JSON.stringify({ error: "Prompt is required for video generation" }),
@@ -46,24 +54,58 @@ serve(async (req) => {
       );
     }
     
-    console.log(`[video-generation] Creating video task for model: ${model}`);
-    console.log(`[video-generation] Parameters:`, { prompt, videoType, duration, aspectRatio, klingModel, klingMode });
-
-    // Convert internal video type to Kling API format
+    // Map internal video type to Kling API format
     const generation_type = videoType === 'text-to-video' ? 'text2video' : 'img2video';
     
+    // Validate duration (API only accepts 5 or 10)
+    const validatedDuration = VALID_DURATIONS.includes(duration) ? duration : 5;
+    if (duration !== validatedDuration) {
+      console.log(`[video-generation] Invalid duration (${duration}), using ${validatedDuration} instead`);
+    }
+    
+    // Validate model
+    const validatedModel = VALID_MODELS.includes(klingModel) ? klingModel : "kling-v1-5";
+    if (klingModel !== validatedModel) {
+      console.log(`[video-generation] Invalid model (${klingModel}), using ${validatedModel} instead`);
+    }
+    
+    // Validate mode
+    const validatedMode = VALID_MODES.includes(klingMode) ? klingMode : "std";
+    // Pro mode only works with kling-v1-5
+    if (validatedMode === "pro" && validatedModel !== "kling-v1-5") {
+      console.log(`[video-generation] Pro mode only works with kling-v1-5, using std mode instead`);
+      validatedMode = "std";
+    }
+    
+    // Validate aspect ratio
+    const validatedAspectRatio = VALID_ASPECT_RATIOS.includes(aspectRatio) ? aspectRatio : "16:9";
+    if (aspectRatio !== validatedAspectRatio) {
+      console.log(`[video-generation] Invalid aspect ratio (${aspectRatio}), using ${validatedAspectRatio} instead`);
+    }
+    
+    console.log(`[video-generation] Creating video task for model: ${model}`);
+    console.log(`[video-generation] Parameters:`, { 
+      prompt, 
+      videoType, 
+      generation_type,
+      validatedDuration, 
+      validatedAspectRatio, 
+      validatedModel, 
+      validatedMode 
+    });
+
     // Build the payload for the API Frame Kling API
     const payload = {
       "prompt": prompt,
       "generation_type": generation_type,
-      "model": klingModel,
-      "duration": duration,
-      "mode": klingMode
+      "model": validatedModel,
+      "duration": validatedDuration,
+      "mode": validatedMode
     };
     
     // Add aspect ratio for text2video 
-    if (generation_type === 'text2video' && aspectRatio) {
-      payload["aspect_ratio"] = aspectRatio;
+    if (generation_type === 'text2video' && validatedAspectRatio) {
+      payload["aspect_ratio"] = validatedAspectRatio;
     }
     
     // Add image_url for img2video
@@ -118,16 +160,16 @@ serve(async (req) => {
       .from("piapi_tasks")
       .insert({
         task_id: taskId,
-        model: `${klingModel}-${generation_type}`,
+        model: `${validatedModel}-${generation_type}`,
         prompt,
         status: "pending",
         media_type: "video",
         params: {
           videoType: generation_type,
-          duration,
-          aspectRatio,
-          model: klingModel,
-          mode: klingMode,
+          duration: validatedDuration,
+          aspectRatio: validatedAspectRatio,
+          model: validatedModel,
+          mode: validatedMode,
           imageUrl
         }
       });
@@ -141,7 +183,7 @@ serve(async (req) => {
       JSON.stringify({
         taskId: taskId,
         status: "pending",
-        message: `Video generation task created successfully with model ${klingModel}`
+        message: `Video generation task created successfully with model ${validatedModel}`
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

@@ -32,19 +32,72 @@ export interface VideoTaskResult {
   error?: string;
 }
 
+// Only allowed durations per API documentation
+const ALLOWED_DURATIONS = [5, 10];
+
+// Only allowed Kling models per API documentation
+const ALLOWED_KLING_MODELS = ["kling-v1", "kling-v1-5", "kling-v1-6"];
+
+// Only allowed modes per API documentation
+const ALLOWED_KLING_MODES = ["std", "pro"];
+
 /**
  * Video Generation Service for API Frame's Kling AI
  */
 export const videoGenerationService = {
   /**
+   * Validate and normalize video generation parameters
+   */
+  validateParams(params: VideoGenerationParams): VideoGenerationParams {
+    const { duration, klingModel, klingMode } = params;
+    
+    // Validate duration
+    let validatedDuration = duration || 5;
+    if (!ALLOWED_DURATIONS.includes(validatedDuration)) {
+      console.warn(`[videoGenerationService] Invalid duration (${validatedDuration}), using 5 seconds instead`);
+      validatedDuration = 5;
+    }
+    
+    // Validate Kling model
+    let validatedModel = klingModel || "kling-v1-5";
+    if (klingModel && !ALLOWED_KLING_MODELS.includes(validatedModel)) {
+      console.warn(`[videoGenerationService] Invalid model (${validatedModel}), using kling-v1-5 instead`);
+      validatedModel = "kling-v1-5";
+    }
+    
+    // Validate Kling mode
+    let validatedMode = klingMode || "std";
+    if (klingMode && !ALLOWED_KLING_MODES.includes(validatedMode)) {
+      console.warn(`[videoGenerationService] Invalid mode (${validatedMode}), using std instead`);
+      validatedMode = "std";
+    }
+    
+    // Pro mode only works with kling-v1-5
+    if (validatedMode === "pro" && validatedModel !== "kling-v1-5") {
+      console.warn(`[videoGenerationService] Pro mode only works with kling-v1-5, using std mode instead`);
+      validatedMode = "std";
+    }
+    
+    return {
+      ...params,
+      duration: validatedDuration,
+      klingModel: validatedModel,
+      klingMode: validatedMode
+    };
+  },
+  
+  /**
    * Generate a video using one of the supported Kling models
    */
   async generateVideo(params: VideoGenerationParams): Promise<VideoTaskResult> {
     try {
-      const { prompt, model, imageUrl, videoType = 'text-to-video', ...otherParams } = params;
+      const { prompt, model, imageUrl, videoType = 'text-to-video' } = params;
+      
+      // Validate and normalize parameters
+      const validatedParams = this.validateParams(params);
       
       console.log(`[videoGenerationService] Initiating video generation with model ${model}`);
-      console.log(`[videoGenerationService] Parameters:`, params);
+      console.log(`[videoGenerationService] Parameters:`, validatedParams);
       
       // Input validation
       if (!prompt || prompt.trim().length === 0) {
@@ -63,7 +116,10 @@ export const videoGenerationService = {
           model,
           imageUrl,
           videoType,
-          ...otherParams
+          duration: validatedParams.duration,
+          aspectRatio: validatedParams.aspectRatio,
+          klingModel: validatedParams.klingModel,
+          klingMode: validatedParams.klingMode
         }
       });
       

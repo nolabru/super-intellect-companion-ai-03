@@ -10,7 +10,8 @@ import {
 } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VideoParameters as VideoParamsType } from '@/types/parameters';
-import { Type, ImageIcon } from 'lucide-react';
+import { Type, ImageIcon, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Video model definitions for Kling AI via API Frame
 const VIDEO_MODELS = [
@@ -24,6 +25,26 @@ const VIDEO_MODELS = [
     name: 'Kling Image-to-Video',
     requiresReference: true
   }
+];
+
+// Only allowed durations per API documentation
+const ALLOWED_DURATIONS = [5, 10];
+
+// Only allowed aspect ratios per API documentation
+const ALLOWED_ASPECT_RATIOS = [
+  { value: "16:9", label: "16:9 (Horizontal)" },
+  { value: "9:16", label: "9:16 (Vertical)" },
+  { value: "1:1", label: "1:1 (Quadrado)" },
+  { value: "4:3", label: "4:3 (Clássico)" },
+  { value: "3:4", label: "3:4 (Retrato)" },
+  { value: "21:9", label: "21:9 (Ultrawide)" }
+];
+
+// Only allowed Kling models per API documentation
+const ALLOWED_KLING_MODELS = [
+  { value: "kling-v1", label: "Kling v1 (Padrão)" },
+  { value: "kling-v1-5", label: "Kling v1.5 (Melhorado)" },
+  { value: "kling-v1-6", label: "Kling v1.6 (Avançado)" }
 ];
 
 interface VideoParametersProps {
@@ -40,9 +61,11 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   const [params, setParams] = useState<VideoParamsType>({
     model: model || 'kling-text',
     videoType: initialParams?.videoType || 'text-to-video',
-    duration: initialParams?.duration || 5,
+    duration: initialParams?.duration || 5, // Default to 5 seconds (valid value)
     resolution: initialParams?.resolution || '720p'
   });
+
+  const [showRequirementsAlert, setShowRequirementsAlert] = useState(false);
 
   // Update params when model prop changes
   useEffect(() => {
@@ -54,11 +77,26 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   // Update params if initialParams changes
   useEffect(() => {
     if (initialParams) {
-      setParams(prev => ({ ...prev, ...initialParams }));
+      // Ensure duration is a valid value
+      const safeDuration = initialParams.duration && ALLOWED_DURATIONS.includes(initialParams.duration) 
+        ? initialParams.duration
+        : 5;
+      
+      setParams(prev => ({ 
+        ...prev, 
+        ...initialParams,
+        duration: safeDuration
+      }));
     }
   }, [initialParams]);
 
   const handleParamChange = <K extends keyof VideoParamsType>(key: K, value: VideoParamsType[K]) => {
+    // Special case for duration to ensure it's one of the allowed values
+    if (key === 'duration' && typeof value === 'number' && !ALLOWED_DURATIONS.includes(value)) {
+      setShowRequirementsAlert(true);
+      value = 5 as any; // Default to 5 seconds if invalid
+    }
+    
     const newParams = { ...params, [key]: value };
     setParams(newParams);
     onParamsChange(newParams);
@@ -66,6 +104,15 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
 
   return (
     <div className="space-y-4">
+      {showRequirementsAlert && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          <AlertDescription>
+            Apenas durações de 5 ou 10 segundos são permitidas pela API Kling.
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="space-y-2">
         <Label>Modelo</Label>
         <Select
@@ -110,7 +157,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label>Duração</Label>
+        <Label>Duração (segundos)</Label>
         <Select
           value={params.duration?.toString()}
           onValueChange={(value) => handleParamChange('duration', parseInt(value, 10))}
@@ -119,10 +166,16 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
             <SelectValue placeholder="Selecione a duração" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            <SelectItem value="5">5 segundos</SelectItem>
-            <SelectItem value="10">10 segundos</SelectItem>
+            {ALLOWED_DURATIONS.map(duration => (
+              <SelectItem key={duration} value={duration.toString()}>
+                {duration} segundos
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        <p className="text-xs text-gray-400 mt-1">
+          Apenas durações de 5 ou 10 segundos são suportadas pela API.
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -135,12 +188,11 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
             <SelectValue placeholder="Selecione a proporção" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            <SelectItem value="16:9">16:9 (Horizontal)</SelectItem>
-            <SelectItem value="9:16">9:16 (Vertical)</SelectItem>
-            <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
-            <SelectItem value="4:3">4:3 (Clássico)</SelectItem>
-            <SelectItem value="3:4">3:4 (Retrato)</SelectItem>
-            <SelectItem value="21:9">21:9 (Ultrawide)</SelectItem>
+            {ALLOWED_ASPECT_RATIOS.map(ratio => (
+              <SelectItem key={ratio.value} value={ratio.value}>
+                {ratio.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -163,18 +215,20 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label>Qualidade (Modelo)</Label>
+        <Label>Modelo Kling</Label>
         <Select
           value={params.klingModel || "kling-v1-5"}
           onValueChange={(value) => handleParamChange('klingModel', value)}
         >
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
-            <SelectValue placeholder="Selecione a qualidade" />
+            <SelectValue placeholder="Selecione o modelo" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            <SelectItem value="kling-v1">Kling v1 (Padrão)</SelectItem>
-            <SelectItem value="kling-v1-5">Kling v1.5 (Melhorado)</SelectItem>
-            <SelectItem value="kling-v1-6">Kling v1.6 (Avançado)</SelectItem>
+            {ALLOWED_KLING_MODELS.map(klingModel => (
+              <SelectItem key={klingModel.value} value={klingModel.value}>
+                {klingModel.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -193,6 +247,9 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
             <SelectItem value="pro">Profissional (apenas com v1.5)</SelectItem>
           </SelectContent>
         </Select>
+        <p className="text-xs text-gray-400 mt-1">
+          O modo 'pro' só funciona com o modelo kling-v1-5.
+        </p>
       </div>
     </div>
   );
