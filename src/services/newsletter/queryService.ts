@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { PostgrestError } from '@supabase/supabase-js';
 import { PostWithCounts, CommentWithUser, PostFilterParams } from '@/types/newsletter';
@@ -43,27 +44,30 @@ export const queryPosts = async ({
     
     const posts: PostWithCounts[] = (data || []).map(post => ({
       id: post.id || '',
-      title: post.content?.substring(0, 50) || '', // Use content as title or empty string
+      // Use first part of content as title if title doesn't exist
+      title: post.title !== undefined ? post.title : post.content?.substring(0, 50) || '', 
       content: post.content || '',
       author_id: post.author_id || '',
       user_id: post.author_id || '',
       is_published: post.is_published || false,
       published_at: post.published_at || null,
-      created_at: post.published_at || null, // Use published_at as created_at
+      // Use published_at as created_at if created_at doesn't exist
+      created_at: post.created_at !== undefined ? post.created_at : post.published_at || null,
       updated_at: post.updated_at || null,
       media_type: post.media_type || null,
       media_url: post.media_url || null,
+      // Default values for potentially missing fields
       view_count: post.view_count || 0,
-      likes_count: 0, // Default values for missing fields
-      like_count: 0,
-      comments_count: 0,
-      shares_count: 0,
-      author_name: '',
-      author_avatar: null,
+      likes_count: post.likes_count || 0, 
+      like_count: post.likes_count || 0,
+      comments_count: post.comments_count || 0,
+      shares_count: post.shares_count || 0,
+      author_name: post.author_name || '',
+      author_avatar: post.author_avatar || null,
       user_has_liked: false,
       author: {
-        username: '',
-        avatar_url: null
+        username: post.author_name || '',
+        avatar_url: post.author_avatar || null
       }
     }));
     
@@ -104,27 +108,30 @@ export const queryPostById = async (postId: string): Promise<{
     
     const post: PostWithCounts = {
       id: data.id || '',
-      title: data.content?.substring(0, 50) || '', // Use content as title or empty string
+      // Use first part of content as title if title doesn't exist
+      title: data.title !== undefined ? data.title : data.content?.substring(0, 50) || '',
       content: data.content || '',
       author_id: data.author_id || '',
       user_id: data.author_id || '',
       is_published: data.is_published || false,
       published_at: data.published_at || null,
-      created_at: data.published_at || null, // Use published_at as created_at
+      // Use published_at as created_at if created_at doesn't exist
+      created_at: data.created_at !== undefined ? data.created_at : data.published_at || null,
       updated_at: data.updated_at || null,
       media_type: data.media_type || null,
       media_url: data.media_url || null,
+      // Default values for potentially missing fields
       view_count: data.view_count || 0,
-      likes_count: 0, // Default values for missing fields
-      like_count: 0,
-      comments_count: 0,
-      shares_count: 0,
+      likes_count: data.likes_count || 0,
+      like_count: data.likes_count || 0,
+      comments_count: data.comments_count || 0,
+      shares_count: data.shares_count || 0,
       user_has_liked: false,
-      author_name: '',
-      author_avatar: null,
+      author_name: data.author_name || '',
+      author_avatar: data.author_avatar || null,
       author: {
-        username: '',
-        avatar_url: null
+        username: data.author_name || '',
+        avatar_url: data.author_avatar || null
       }
     };
     
@@ -178,8 +185,9 @@ export const queryCommentsByPostId = async (
         content: item.content,
         created_at: item.created_at,
         updated_at: item.updated_at,
+        // Handle potentially missing profile data
         username: profile.username || 'Usuário',
-        display_name: null, // Profiles may not have display_name
+        display_name: profile.display_name || null,
         avatar_url: profile.avatar_url || null,
         user: {
           username: profile.username || 'Usuário',

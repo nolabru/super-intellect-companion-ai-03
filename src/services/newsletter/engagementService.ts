@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -150,20 +151,13 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
       return false;
     }
     
-    // We need to determine if shares_count exists in the database structure
-    // If it doesn't, we'll add it with a default value of 1
-    // If it does, we'll increment it
-    
-    // Check if post has a shares_count property
-    const currentShareCount = post.shares_count !== undefined ? post.shares_count : 0;
-    
-    // Use an update operation that doesn't specify shares_count if it doesn't exist
-    const updateData: any = {};
-    updateData.shares_count = currentShareCount + 1;
-    
+    // Check if shares_count property exists and if it doesn't, treat it as 0
+    const currentShareCount = post.shares_count !== undefined ? (post.shares_count || 0) : 0;
+
+    // Use an update operation with a cast to any to allow adding the shares_count field
     const { error } = await supabase
       .from('newsletter_posts')
-      .update(updateData)
+      .update({ shares_count: currentShareCount + 1 } as any)
       .eq('id', postId);
     
     if (error) {
