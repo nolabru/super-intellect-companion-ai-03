@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -37,20 +37,8 @@ const UnifiedMediaGenerator: React.FC<MediaGeneratorProps> = ({
   const [selectedModel, setSelectedModel] = useState(defaultModel);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
 
-  // Use effect to ensure the selected model is valid
-  useEffect(() => {
-    // If the provided defaultModel is not in the models list, set to first available
-    if (defaultModel && !models.some(m => m.id === defaultModel) && models.length > 0) {
-      setSelectedModel(models[0].id);
-      if (onModelChange) {
-        onModelChange(models[0].id);
-      }
-    } else {
-      setSelectedModel(defaultModel);
-    }
-  }, [defaultModel, models, onModelChange]);
-
   // Use our ideogram generation hook for images
+  // In the future, we can extend this to use other hooks based on mediaType
   const {
     generateImage,
     isGenerating,

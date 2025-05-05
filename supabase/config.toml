@@ -1,15 +1,38 @@
 
-project_id = "lovable"
+project_id = "vygluorjwehcdigzxbaa"
 
-[functions.openrouter-stream]
-verify_jwt = true
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
 
-[functions.openrouter-chat]
-verify_jwt = true
+[db]
+port = 54322
 
-[functions.openrouter-models]
-verify_jwt = true
+[studio]
+enabled = true
+port = 54323
+api_url = "http://localhost"
 
-[functions.apiframe-image-generate]
-verify_jwt = true
+[inbucket]
+enabled = true
+port = 54324
 
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[realtime]
+enabled = true
+
+[vector]
+enabled = true
+
+[edge-functions]
+[edge-functions.apiframe-midjourney-imagine]
+verify_jwt = false
+
+[edge-functions.apiframe-task-status]
+verify_jwt = false

@@ -49,7 +49,7 @@ interface AudioGeneratorProps {
 
 const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => {
   const [selectedModel, setSelectedModel] = useState(AUDIO_MODELS[0].id);
-  const [selectedVoice, setSelectedVoice] = useState('');
+  const [selectedVoice, setSelectedVoice] = useState(VOICES['elevenlabs-v2'][0].id);
   const [stability, setStability] = useState(0.5);
   const [clarity, setClarity] = useState(0.5);
   
@@ -65,20 +65,11 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
     }
   };
   
-  // Initialize voice selection on component mount
   useEffect(() => {
-    const voices = VOICES[selectedModel as keyof typeof VOICES] || [];
-    if (voices.length > 0 && !selectedVoice) {
-      setSelectedVoice(voices[0].id);
-    }
-  }, [selectedModel, selectedVoice]);
+    handleModelChange(selectedModel);
+  }, []);
   
   const ParamControls = () => {
-    // Find the current selected voice name
-    const currentVoiceName = 
-      (VOICES[selectedModel as keyof typeof VOICES] || [])
-        .find(voice => voice.id === selectedVoice)?.name || '';
-    
     // Only show voice selector and sliders for TTS models
     if (!['elevenlabs-v2', 'openai-tts-1', 'coqui-xtts'].includes(selectedModel)) {
       return (
@@ -98,12 +89,10 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
             value={selectedVoice}
             onValueChange={setSelectedVoice}
           >
-            <SelectTrigger id="voiceSelector" className="bg-inventu-darker border-inventu-gray/30">
-              <SelectValue placeholder="Select a voice">
-                {currentVoiceName}
-              </SelectValue>
+            <SelectTrigger id="voiceSelector">
+              <SelectValue placeholder="Select a voice" />
             </SelectTrigger>
-            <SelectContent className="bg-inventu-dark border-inventu-gray/30">
+            <SelectContent>
               {(VOICES[selectedModel as keyof typeof VOICES] || []).map((voice) => (
                 <SelectItem key={voice.id} value={voice.id}>
                   {voice.name}
@@ -150,12 +139,11 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
 
   return (
     <UnifiedMediaGenerator
-      mediaType="audio"
+      mediaType="audio" // Now this is supported with our updated interface
       title="AI Audio Generator"
       models={AUDIO_MODELS}
       defaultModel={selectedModel}
       onMediaGenerated={onAudioGenerated}
-      onModelChange={handleModelChange}
       paramControls={<ParamControls />}
       additionalParams={{ 
         voice: selectedVoice,

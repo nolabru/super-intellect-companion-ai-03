@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,7 +14,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAPIFrameImageGeneration } from '@/hooks/useAPIFrameImageGeneration';
+import { useSimplifiedMediaGeneration } from '@/hooks/useSimplifiedMediaGeneration';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Simple function to check if API key exists
@@ -22,7 +22,7 @@ const hasApiKey = () => {
   return localStorage.getItem('apiframe_api_key') !== null;
 };
 
-// Image model options - explicitly showing Ideogram and Midjourney
+// Image model options
 const IMAGE_MODELS = [
   { id: 'ideogram-v2', name: 'Ideogram V2' },
   { id: 'midjourney', name: 'Midjourney' },
@@ -34,22 +34,13 @@ const PiApiServicesButton = () => {
   const [activeTab, setActiveTab] = useState<'image' | 'settings'>('image');
   const [apiKey, setApiKey] = useState('');
   const [selectedModel, setSelectedModel] = useState('ideogram-v2');
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   
-  const { 
-    generateImage, 
-    isGenerating, 
-    progress,
-    error
-  } = useAPIFrameImageGeneration({
-    showToasts: true,
-    onComplete: (imageUrl) => {
-      setGeneratedImageUrl(imageUrl);
-    }
+  const mediaGeneration = useSimplifiedMediaGeneration({
+    showToasts: true
   });
   
   // Initialize API key from localStorage if available
-  useEffect(() => {
+  React.useEffect(() => {
     if (hasApiKey()) {
       setApiKey('********-****-****-****-************'); // Masked for security
     } else {
@@ -74,26 +65,14 @@ const PiApiServicesButton = () => {
     }
     
     try {
-      console.log(`[PiApiServicesButton] Iniciando geração de imagem com prompt: ${prompt} e modelo: ${selectedModel}`);
+      console.log(`[PiApiServicesButton] Iniciando geração de ${activeTab} com prompt: ${prompt} e modelo: ${selectedModel}`);
       
-      // Adicionar parâmetros específicos para o modelo
-      const params: Record<string, any> = {};
-      
-      if (selectedModel === 'ideogram-v2') {
-        params.style_type = 'GENERAL';
-        params.aspect_ratio = 'ASPECT_1_1';
-        params.magic_prompt_option = 'AUTO';
-      } else if (selectedModel === 'midjourney') {
-        params.aspect_ratio = '1:1';
-        params.quality = 'standard';
-        params.style = 'raw';
+      if (activeTab === 'image') {
+        await mediaGeneration.generateMedia(prompt, 'image', selectedModel);
       }
-      
-      // Gerar imagem
-      await generateImage(prompt, selectedModel, params);
     } catch (error) {
-      console.error('Erro ao gerar imagem:', error);
-      toast.error('Erro ao gerar imagem', {
+      console.error('Erro ao gerar mídia:', error);
+      toast.error('Erro ao gerar mídia', {
         description: error instanceof Error ? error.message : 'Erro desconhecido'
       });
     }
@@ -102,12 +81,6 @@ const PiApiServicesButton = () => {
   const handleSaveApiKey = () => {
     if (!apiKey.trim()) {
       toast.error('Por favor, insira uma chave de API válida');
-      return;
-    }
-    
-    // Se a chave foi mascarada, não faça nada
-    if (apiKey === '********-****-****-****-************') {
-      toast.info('Nenhuma alteração na chave de API');
       return;
     }
     
@@ -123,6 +96,8 @@ const PiApiServicesButton = () => {
       toast.info('Chave de API removida');
     }
   };
+  
+  const currentTask = mediaGeneration.currentTask;
   
   return (
     <div>
@@ -208,7 +183,7 @@ const PiApiServicesButton = () => {
                   
                   <Button 
                     onClick={handleSaveApiKey} 
-                    disabled={!apiKey.trim() && !hasApiKey()}
+                    disabled={!apiKey.trim()}
                   >
                     Salvar Chave de API
                   </Button>
@@ -258,29 +233,29 @@ const PiApiServicesButton = () => {
                   rows={3}
                 />
                 
-                {generatedImageUrl && !isGenerating && (
+                {currentTask && currentTask.mediaUrl && currentTask.status === 'completed' && (
                   <div className="mb-4">
                     <img 
-                      src={generatedImageUrl} 
+                      src={currentTask.mediaUrl} 
                       alt="Imagem gerada" 
                       className="w-full h-auto rounded-lg"
                     />
                   </div>
                 )}
                 
-                {isGenerating && (
+                {mediaGeneration.isGenerating && (
                   <div className="flex flex-col items-center justify-center py-4 gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                     <p className="text-sm text-gray-500">
                       Gerando imagem...
-                      {progress > 0 && ` ${progress.toFixed(0)}%`}
+                      {currentTask && currentTask.progress > 0 && ` ${currentTask.progress.toFixed(0)}%`}
                     </p>
                   </div>
                 )}
                 
-                {error && (
+                {currentTask && currentTask.error && (
                   <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4 text-sm text-red-600">
-                    {error}
+                    {currentTask.error}
                   </div>
                 )}
                 
@@ -293,28 +268,38 @@ const PiApiServicesButton = () => {
                     Fechar
                   </Button>
                   
-                  <Button 
-                    type="submit" 
-                    disabled={
-                      !prompt.trim() || 
-                      isGenerating || 
-                      !hasApiKey()
-                    }
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                        Gerando...
-                      </>
-                    ) : !hasApiKey() ? (
-                      <>
-                        <KeyRound className="h-4 w-4 mr-1" />
-                        Configurar API
-                      </>
-                    ) : (
-                      'Gerar'
-                    )}
-                  </Button>
+                  {mediaGeneration.isGenerating && currentTask ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => mediaGeneration.cancelGeneration()}
+                    >
+                      Cancelar
+                    </Button>
+                  ) : (
+                    <Button 
+                      type="submit" 
+                      disabled={
+                        !prompt.trim() || 
+                        mediaGeneration.isGenerating || 
+                        !hasApiKey()
+                      }
+                    >
+                      {mediaGeneration.isGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          Gerando...
+                        </>
+                      ) : !hasApiKey() ? (
+                        <>
+                          <KeyRound className="h-4 w-4 mr-1" />
+                          Configurar API
+                        </>
+                      ) : (
+                        'Gerar'
+                      )}
+                    </Button>
+                  )}
                 </div>
                 
                 {!hasApiKey() && (

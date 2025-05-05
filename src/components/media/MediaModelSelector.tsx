@@ -16,9 +16,6 @@ const MediaModelSelector: React.FC<MediaModelSelectorProps> = ({
   onModelChange,
   disabled = false
 }) => {
-  // Find the selected model name for display
-  const selectedModelName = models.find(model => model.id === selectedModel)?.name || '';
-
   return (
     <div className="space-y-2">
       <Label htmlFor="modelSelector">Model</Label>
@@ -27,14 +24,12 @@ const MediaModelSelector: React.FC<MediaModelSelectorProps> = ({
         onValueChange={onModelChange}
         disabled={disabled}
       >
-        <SelectTrigger id="modelSelector" className="bg-inventu-darker border-inventu-gray/30">
-          <SelectValue placeholder="Select a model">
-            {selectedModelName}
-          </SelectValue>
+        <SelectTrigger id="modelSelector">
+          <SelectValue placeholder="Select a model" />
         </SelectTrigger>
-        <SelectContent className="bg-inventu-dark border-inventu-gray/30 max-h-[40vh]">
+        <SelectContent>
           {models.map((model) => (
-            <SelectItem key={model.id} value={model.id} className="text-sm">
+            <SelectItem key={model.id} value={model.id}>
               {model.name}
             </SelectItem>
           ))}

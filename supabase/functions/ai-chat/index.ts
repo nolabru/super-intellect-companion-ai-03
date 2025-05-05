@@ -43,7 +43,7 @@ serve(async (req) => {
       throw new Error("Invalid user token");
     }
 
-    // Parse the request body
+    // Verificar se o body é válido e possui uma propriedade prompt
     let requestData;
     try {
       requestData = await req.json();
@@ -52,17 +52,16 @@ serve(async (req) => {
       throw new Error("Invalid JSON in request body");
     }
 
-    // Extract parameters from the request
-    const { content, mode = "text", modelId = "gpt-4o", files = [], params, conversationHistory, userId } = requestData;
+    const { prompt, model = "gpt-4o", mode = "text", images = [], audio, video } = requestData;
     
-    if (!content) {
-      console.error("[ai-chat] No content provided in request data:", requestData);
-      throw new Error("No content provided");
+    if (!prompt) {
+      console.error("[ai-chat] No prompt provided in request data:", requestData);
+      throw new Error("No prompt provided");
     }
 
     // Check if the user has enough tokens for this operation
     const { hasEnoughTokens, tokensRequired, tokensRemaining, error: tokenError } = 
-      await checkUserTokens(user.id, modelId, mode);
+      await checkUserTokens(user.id, model, mode);
 
     if (tokenError) {
       throw new Error(`Token check error: ${tokenError}`);
@@ -72,52 +71,9 @@ serve(async (req) => {
       throw new Error(`Not enough tokens. This operation requires ${tokensRequired} tokens, but you have ${tokensRemaining} remaining.`);
     }
     
-    console.log(`[ai-chat] Processing ${mode} prompt with model ${modelId}`);
+    console.log(`[ai-chat] Processing ${mode} prompt with model ${model}`);
 
-    // Check if this is an OpenRouter model (contains a slash)
-    if (modelId.includes('/')) {
-      // Redirect to OpenRouter edge function
-      const { data, error } = await supabase.functions.invoke('openrouter-chat', {
-        body: {
-          params: {
-            model: modelId,
-            messages: [
-              {
-                role: "system",
-                content: "You are a helpful assistant that provides accurate and detailed answers."
-              },
-              {
-                role: "user",
-                content: content
-              }
-            ],
-            max_tokens: 2000,
-            temperature: 0.7,
-          },
-          apiKey: "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"
-        }
-      });
-
-      if (error) {
-        console.error("[ai-chat] OpenRouter API error:", error);
-        throw new Error(`OpenRouter API error: ${error.message || JSON.stringify(error)}`);
-      }
-
-      // Get the assistant response from the OpenRouter response
-      const assistantResponse = data.choices[0].message.content;
-
-      console.log("[ai-chat] Received successful response from OpenRouter");
-    
-      // Return the response
-      return new Response(
-        JSON.stringify({ content: assistantResponse }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // For non-OpenRouter models, use OpenAI as before
+    // Use OpenAI for chat completion
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not configured");
     }
@@ -136,18 +92,18 @@ serve(async (req) => {
       },
       {
         role: "user",
-        content: content
+        content: prompt
       }
     ];
 
     // Handle images if in the right mode and model supports vision
-    if (mode === "text" && files?.length > 0 && (modelId === "gpt-4o" || modelId === "gpt-4-vision-preview" || modelId === "gpt-4o-mini")) {
+    if (mode === "text" && images?.length > 0 && (model === "gpt-4o" || model === "gpt-4-vision-preview" || model === "gpt-4o-mini")) {
       const content = [
-        { type: "text", text: content }
+        { type: "text", text: prompt }
       ];
 
       // Add image URLs as content
-      for (const imageUrl of files) {
+      for (const imageUrl of images) {
         content.push({
           type: "image_url",
           image_url: { url: imageUrl }
@@ -163,7 +119,7 @@ serve(async (req) => {
       method: "POST",
       headers,
       body: JSON.stringify({
-        model: modelId,
+        model,
         messages,
         max_tokens: 2000,
         temperature: 0.7,

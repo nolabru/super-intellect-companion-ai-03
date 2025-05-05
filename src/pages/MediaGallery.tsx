@@ -12,8 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import { MediaItem } from '@/types/gallery';
 import GalleryList from '@/components/gallery/GalleryList';
-import { useTouchDevice } from '@/hooks/useTouchDevice';
-
 export type GalleryFilters = {
   mediaType: string[];
   dateRange: {
@@ -21,14 +19,12 @@ export type GalleryFilters = {
     to?: Date;
   };
 };
-
 const MediaGallery: React.FC = () => {
   const {
     user
   } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const isTouchDevice = useTouchDevice();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,13 +151,7 @@ const MediaGallery: React.FC = () => {
         </div>}
 
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
-        <MainLayout 
-          sidebarOpen={sidebarOpen} 
-          onToggleSidebar={toggleSidebar} 
-          title="Galeria de Mídias" 
-          showHeader={true}
-          isTouchDevice={isTouchDevice}
-        >
+        <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Galeria de Mídias" showHeader={true}>
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-6 py-0 px-[8px]">
               <div className="flex items-center mb-6 px-[16px] py-[10px]">

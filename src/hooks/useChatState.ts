@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -28,19 +29,7 @@ export const useChatState = () => {
     
     if (availableModels.length === 0) return;
     
-    // When switching to image mode, prioritize API Frame models
-    if (activeMode === 'image') {
-      // Check if ideogram-v2 is available and set it as the default left model
-      if (availableModels.includes('ideogram-v2')) {
-        setLeftModel('ideogram-v2');
-      } else if (availableModels.includes('midjourney')) {
-        setLeftModel('midjourney');
-      } else if (availableModels.includes('gpt-4o')) {
-        setLeftModel('gpt-4o');
-      } else {
-        setLeftModel(availableModels[0]);
-      }
-    } else if (!availableModels.includes(leftModel)) {
+    if (!availableModels.includes(leftModel)) {
       setLeftModel(availableModels[0]);
     }
     

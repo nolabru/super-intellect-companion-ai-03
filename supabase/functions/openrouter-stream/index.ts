@@ -4,6 +4,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'text/event-stream',
+  'Cache-Control': 'no-cache',
+  'Connection': 'keep-alive'
 };
 
 serve(async (req) => {
@@ -31,21 +34,22 @@ serve(async (req) => {
 
     const openRouterUrl = 'https://openrouter.ai/api/v1/chat/completions';
     
-    // Prepare request payload
+    // Prepare request payload with stream: true
     const requestPayload = {
       model: params.model,
       messages: params.messages,
       temperature: params.temperature ?? 0.7,
-      max_tokens: params.max_tokens ?? 1000,
+      max_tokens: params.max_tokens,
       top_p: params.top_p ?? 1,
       frequency_penalty: params.frequency_penalty ?? 0,
       presence_penalty: params.presence_penalty ?? 0,
       stream: true,
+      response_format: { type: "text" }
     };
 
-    console.log(`Sending streaming request to OpenRouter with model: ${params.model}`);
+    console.log(`Streaming from OpenRouter with model: ${params.model}`);
 
-    const response = await fetch(openRouterUrl, {
+    const openRouterResponse = await fetch(openRouterUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,45 +60,47 @@ serve(async (req) => {
       body: JSON.stringify(requestPayload)
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenRouter API error:', response.status, errorText);
+    if (!openRouterResponse.ok) {
+      const errorText = await openRouterResponse.text();
+      console.error('OpenRouter API error:', openRouterResponse.status, errorText);
       
       return new Response(
-        JSON.stringify({ error: `OpenRouter API error: ${response.status} ${errorText}` }),
-        { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: `OpenRouter API error: ${openRouterResponse.status} ${errorText}` }),
+        { status: openRouterResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Stream the response back to the client
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body?.getReader();
+    // Create a TransformStream to pass through the response
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    
+    // Pipe the OpenRouter stream directly to our response
+    (async () => {
+      try {
+        const reader = openRouterResponse.body?.getReader();
         if (!reader) {
-          controller.error('No response body');
+          writer.close();
           return;
         }
 
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            controller.enqueue(value);
-          }
-          controller.close();
-        } catch (error) {
-          controller.error(error);
+        const encoder = new TextEncoder();
+        
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          // Pass through the chunk directly
+          await writer.write(value);
         }
+      } catch (error) {
+        console.error('Error streaming from OpenRouter:', error);
+      } finally {
+        writer.close();
       }
-    });
+    })();
 
-    return new Response(readableStream, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-      }
+    return new Response(readable, {
+      headers: corsHeaders
     });
   } catch (error) {
     console.error('Error in openrouter-stream function:', error);

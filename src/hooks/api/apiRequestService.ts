@@ -63,53 +63,16 @@ export const apiRequestService = {
                                 modelId.includes('gemini')) &&
                                streamListener !== undefined;
         
-        // Detectar se é um modelo do OpenRouter (contém /)
-        const isOpenRouterModel = modelId.includes('/');
-        
-        if (isOpenRouterModel) {
-          console.log(`[apiRequestService] Detectado modelo OpenRouter: ${modelId}`);
-          
-          // Chamar ai-chat edge function com indicação de que é um modelo OpenRouter
-          const requestBody = {
-            content,
-            mode,
-            modelId,
-            files,
-            params,
-            userId,
-            conversationHistory
-          };
-          
-          const { data, error } = await supabase.functions.invoke('ai-chat', {
-            body: requestBody,
-          });
-          
-          if (error) {
-            console.error('[apiRequestService] Erro na resposta da Edge Function:', error);
-            throw new Error(`[apiRequestService] Erro ao chamar a API: ${error.message || 'Edge Function retornou um código de status não 2xx'}`);
-          }
-          
-          return data;
-        }
-        
-        // Preparar os dados da requisição para modelos normais
+        // Preparar os dados da requisição
         const requestBody = {
           content,
           mode,
           modelId,
           files,
           params,
-          userId,
-          conversationHistory
+          userId, // Usar userId passado 
+          conversationHistory // Incluir histórico da conversa
         };
-        
-        console.log('[apiRequestService] Enviando requisição:', {
-          content: content.substring(0, 30) + '...',
-          mode,
-          modelId,
-          hasFiles: files && files.length > 0,
-          params: JSON.stringify(params)
-        });
         
         if (canUseStreaming) {
           console.log(`[apiRequestService] Iniciando streaming com modelo ${modelId}`);

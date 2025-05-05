@@ -1,9 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { OPENROUTER_MODELS_BY_PROVIDER } from '@/constants';
 
-// Usar o token fornecido pelo usuário
-let apiKey: string | null = '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';
+let apiKey: string | null = null;
 
 export interface OpenRouterModel {
   id: string;
@@ -65,8 +63,15 @@ export const openRouterService = {
   },
   
   isApiKeyConfigured(): boolean {
-    // Já temos um token configurado
-    return true;
+    // Try to load from localStorage if not in memory
+    if (!apiKey) {
+      try {
+        apiKey = localStorage.getItem('openrouter_api_key');
+      } catch (err) {
+        console.error('[openRouterService] Error loading API key from localStorage:', err);
+      }
+    }
+    return apiKey !== null && apiKey.trim() !== '';
   },
   
   async chatCompletion(params: OpenRouterChatParams): Promise<OpenRouterChatResponse> {
@@ -169,24 +174,24 @@ export const openRouterService = {
   
   async listModels(): Promise<OpenRouterModel[]> {
     try {
-      console.log(`[openRouterService] Returning predefined OpenRouter models`);
+      console.log(`[openRouterService] Fetching available models`);
       
-      // Convert our predefined models to the OpenRouterModel format
-      const models: OpenRouterModel[] = [];
+      if (!this.isApiKeyConfigured()) {
+        throw new Error('API key not configured');
+      }
       
-      // Flatten all provider models into a single array
-      Object.values(OPENROUTER_MODELS_BY_PROVIDER).forEach(providerModels => {
-        providerModels.forEach(model => {
-          models.push({
-            id: model.id,
-            name: model.displayName,
-            context_length: 16000, // Default context length
-            providers: [model.provider]
-          });
-        });
+      const { data, error } = await supabase.functions.invoke('openrouter-models', {
+        body: { 
+          apiKey 
+        }
       });
       
-      return models;
+      if (error || !data) {
+        console.error('[openRouterService] Error fetching models:', error || 'No data received');
+        throw new Error(error?.message || 'Failed to fetch models');
+      }
+      
+      return data.data || [];
     } catch (err) {
       console.error('[openRouterService] Error in listModels:', err);
       throw err;
@@ -194,7 +199,7 @@ export const openRouterService = {
   }
 };
 
-// Initialize API key from localStorage if available
+// Initialize API key from localStorage on module load
 try {
   const storedKey = localStorage.getItem('openrouter_api_key');
   if (storedKey) {

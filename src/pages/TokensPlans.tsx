@@ -20,7 +20,6 @@ import ChatSidebar from '@/components/layout/ChatSidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import { cn } from '@/lib/utils';
-import { useTouchDevice } from '@/hooks/useTouchDevice';
 
 const TokensPlans = () => {
   const [loading, setLoading] = useState(true);
@@ -30,8 +29,6 @@ const TokensPlans = () => {
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const isMobile = useIsMobile();
-  const isTouchDevice = useTouchDevice(); 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -97,12 +94,7 @@ const TokensPlans = () => {
   if (!user) {
     return (
       <div className="flex min-h-screen w-full bg-inventu-darker">
-        <MainLayout 
-          title="Token Management" 
-          sidebarOpen={sidebarOpen}
-          onToggleSidebar={toggleSidebar}
-          isTouchDevice={isTouchDevice}
-        >
+        <MainLayout title="Token Management">
           <div className="container mx-auto px-4 py-8">
             <Card>
               <CardContent className="pt-6">

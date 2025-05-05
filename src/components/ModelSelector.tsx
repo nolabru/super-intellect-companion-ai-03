@@ -1,19 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Select,
   SelectContent,
   SelectTrigger,
   SelectValue,
   SelectItem,
-  SelectGroup,
-  SelectLabel
 } from "@/components/ui/select"
-import { AVAILABLE_MODELS, ChatModel, OPENROUTER_MODELS_BY_PROVIDER } from '@/constants';
+import { AVAILABLE_MODELS, ChatModel } from '@/constants';
 import { cn } from '@/lib/utils';
 import { ChatMode } from './ModeSelector';
-import { useOpenRouterGeneration } from '@/hooks/useOpenRouterGeneration';
-import { Loader2 } from 'lucide-react';
 
 interface ModelSelectorProps {
   mode: ChatMode;
@@ -24,7 +20,7 @@ interface ModelSelectorProps {
   disabled?: boolean;
 }
 
-// Make sure this function returns models that include API Frame models
+// Make sure this function is exported correctly
 export const getModelsByMode = (mode: ChatMode): ChatModel[] => {
   return AVAILABLE_MODELS.filter(model => model.modes.includes(mode));
 };
@@ -43,10 +39,7 @@ export const getProviderDisplayName = (provider: string): string => {
     'apiframe': 'API Frame',
     'minimax': 'MiniMax',
     'elevenlabs': 'ElevenLabs',
-    'luma': 'Luma AI',
-    'openrouter': 'OpenRouter',
-    'xai': 'xAI',
-    'deepseek': 'DeepSeek'
+    'luma': 'Luma AI'
   };
   
   return providerNames[provider] || provider;
@@ -63,44 +56,25 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   className,
   disabled
 }) => {
-  const [loading, setLoading] = useState(false);
-  const { isApiKeyConfigured } = useOpenRouterGeneration();
-  
-  // Get models for the selected mode
-  let combinedModels = getModelsByMode(mode);
-  
-  // Filter by available models if provided
   const models = availableModels && availableModels.length > 0
-    ? combinedModels.filter(model => availableModels.includes(model.id))
-    : combinedModels;
+    ? AVAILABLE_MODELS.filter(model => availableModels.includes(model.id))
+    : getModelsByMode(mode);
 
   // Group models by provider
   const modelsByProvider: Record<string, ChatModel[]> = {};
   
   models.forEach(model => {
-    const provider = model.id.includes('/') ? model.id.split('/')[0] : model.provider;
-    
-    if (!modelsByProvider[provider]) {
-      modelsByProvider[provider] = [];
+    if (!modelsByProvider[model.provider]) {
+      modelsByProvider[model.provider] = [];
     }
-    modelsByProvider[provider].push(model);
+    modelsByProvider[model.provider].push(model);
   });
-
-  // Check if selected model is valid, if not select the first available model
-  useEffect(() => {
-    const isModelValid = models.some(model => model.id === selectedModel);
-    
-    if (!isModelValid && models.length > 0 && !disabled) {
-      // Select the first available model
-      onChange(models[0].id);
-    }
-  }, [selectedModel, models, onChange, disabled]);
 
   return (
     <Select
       value={selectedModel}
       onValueChange={onChange}
-      disabled={disabled || loading}
+      disabled={disabled}
     >
       <SelectTrigger 
         className={cn(
@@ -110,34 +84,21 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
           className
         )}
       >
-        <SelectValue placeholder="Selecione um modelo">
-          {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          {!loading && models.find(m => m.id === selectedModel)?.displayName}
-        </SelectValue>
+        <SelectValue placeholder="Selecione um modelo" />
       </SelectTrigger>
       <SelectContent className="bg-inventu-darker/95 backdrop-blur-lg border-white/10 max-h-[60vh]">
         {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-          <SelectGroup key={provider}>
-            <SelectLabel className="px-2 py-1.5 text-xs font-medium text-white/60">
+          <React.Fragment key={provider}>
+            <div className="px-2 py-1.5 text-xs font-medium text-white/60">
               {getProviderDisplayName(provider)}
-            </SelectLabel>
-            
+            </div>
             {providerModels.map((model) => (
-              <SelectItem 
-                key={model.id} 
-                value={model.id}
-                className="relative"
-              >
-                <div className="flex flex-col">
-                  <span>{model.displayName}</span>
-                  {model.description && (
-                    <span className="text-xs text-white/60">{model.description}</span>
-                  )}
-                </div>
+              <SelectItem key={model.id} value={model.id}>
+                {model.displayName}
               </SelectItem>
             ))}
             <div className="my-1 border-t border-white/10"></div>
-          </SelectGroup>
+          </React.Fragment>
         ))}
       </SelectContent>
     </Select>

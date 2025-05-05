@@ -23,7 +23,6 @@ import CreatePost from "./pages/CreatePost";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
 import IdeogramPage from "./pages/IdeogramPage";
-import ImageGeneratorPage from './pages/ImageGeneratorPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,9 +77,8 @@ const App = () => (
                   <Route path="/feed/new" element={<CreatePost />} />
                   <Route path="/post/:id" element={<PostDetail />} />
                   
-                  {/* Media generation routes */}
+                  {/* Ideogram route */}
                   <Route path="/ideogram" element={<IdeogramPage />} />
-                  <Route path="/image-generator" element={<ImageGeneratorPage />} />
                   
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
