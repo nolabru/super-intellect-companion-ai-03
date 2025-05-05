@@ -139,7 +139,7 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
   }
   
   try {
-    // Verificamos se a coluna shares_count existe na tabela
+    // Primeiro obtemos a contagem atual de compartilhamentos (ou 0 se não existir)
     const { data: post, error: fetchError } = await supabase
       .from('newsletter_posts')
       .select('*')

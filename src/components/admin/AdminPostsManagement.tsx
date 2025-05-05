@@ -39,8 +39,10 @@ const AdminPostsManagement: React.FC = () => {
         // Add necessary fields to match PostWithStats type
         const enhancedPost: PostWithStats = {
           ...newPost,
+          view_count: 0,
           likes_count: 0,
           comments_count: 0,
+          shares_count: 0,
           user_has_liked: false
         };
         setPosts(prev => [enhancedPost, ...prev]);

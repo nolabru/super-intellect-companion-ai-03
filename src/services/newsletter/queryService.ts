@@ -59,6 +59,8 @@ export const queryPosts = async ({
       like_count: post.likes_count || 0,
       comments_count: post.comments_count || 0,
       shares_count: post.shares_count || 0,
+      author_name: post.author_name || '',
+      author_avatar: post.author_avatar || null,
       user_has_liked: false,
       author: {
         username: post.author_name || '',
@@ -119,6 +121,8 @@ export const queryPostById = async (postId: string): Promise<{
       comments_count: data.comments_count || 0,
       shares_count: data.shares_count || 0,
       user_has_liked: false,
+      author_name: data.author_name || '',
+      author_avatar: data.author_avatar || null,
       author: {
         username: data.author_name || '',
         avatar_url: data.author_avatar || null
@@ -176,7 +180,7 @@ export const queryCommentsByPostId = async (
         created_at: item.created_at,
         updated_at: item.updated_at,
         username: profile.username || 'Usuário',
-        display_name: profile.display_name || null,
+        display_name: null, // Profiles may not have display_name
         avatar_url: profile.avatar_url || null,
         user: {
           username: profile.username || 'Usuário',

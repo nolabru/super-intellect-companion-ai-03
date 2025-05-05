@@ -42,7 +42,10 @@ export const addComment = async (postId: string, content: string): Promise<Comme
       username: userInfo.username || 'Usuário',
       display_name: null,
       avatar_url: userInfo.avatar_url || null,
-      user: userInfo
+      user: {
+        username: userInfo.username || '',
+        avatar_url: userInfo.avatar_url || null
+      }
     };
   } catch (err) {
     console.error('Error adding comment:', err);
@@ -78,7 +81,10 @@ export const getComments = async (postId: string): Promise<CommentWithUser[]> =>
         username: userInfo.username || 'Usuário',
         display_name: null,
         avatar_url: userInfo.avatar_url || null,
-        user: userInfo
+        user: {
+          username: userInfo.username || '',
+          avatar_url: userInfo.avatar_url || null
+        }
       });
     }
 
