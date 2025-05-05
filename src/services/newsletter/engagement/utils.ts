@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { PostgrestError } from '@supabase/supabase-js';
 
 // Mapa para rastrear operações recentes de engajamento
 const recentEngagementOperations = new Map<string, number>();
@@ -55,7 +56,7 @@ export const updatePost = async (postId: string, updateData: Record<string, any>
  * @returns Promise<boolean> indicando se existe
  */
 export const recordExists = async (
-  table: string, 
+  table: "post_likes" | "post_comments" | "newsletter_posts" | string, 
   conditions: Record<string, any>
 ): Promise<boolean> => {
   const { data, error, count } = await supabase

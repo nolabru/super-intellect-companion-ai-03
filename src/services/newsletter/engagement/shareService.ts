@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { canPerformOperation, getPostById, updatePost } from './utils';
+import { canPerformOperation, getPostById } from './utils';
 
 /**
  * Incrementa a contagem de compartilhamentos de um post
@@ -23,7 +23,7 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
     }
     
     // Se o campo shares_count não existe no banco de dados, vamos considerar como 0
-    const currentShareCount = post.shares_count !== undefined ? (post.shares_count || 0) : 0;
+    const currentShareCount = post && typeof post.shares_count !== 'undefined' ? post.shares_count || 0 : 0;
     
     // Atualizar campo
     const { error } = await supabase
