@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
 import { ChatMode } from '@/components/ModeSelector';
-import { getEnhancedModelsByMode } from '@/components/EnhancedModelSelector';
+import { getModelsByMode } from '@/components/ModelSelector';
 
 export const useChatState = () => {
   const [comparing, setComparing] = useState(false);
@@ -25,8 +25,7 @@ export const useChatState = () => {
 
   // Auto-select appropriate models when mode changes
   useEffect(() => {
-    const modelsByProvider = getEnhancedModelsByMode(activeMode);
-    const availableModels = Object.values(modelsByProvider).flat().map(model => model.id);
+    const availableModels = getModelsByMode(activeMode).map(model => model.id);
     
     if (availableModels.length === 0) return;
     
@@ -43,8 +42,7 @@ export const useChatState = () => {
   // Prevent comparing the same model
   useEffect(() => {
     if (comparing && leftModel === rightModel) {
-      const modelsByProvider = getEnhancedModelsByMode(activeMode);
-      const availableModels = Object.values(modelsByProvider).flat().map(model => model.id);
+      const availableModels = getModelsByMode(activeMode).map(model => model.id);
       const differentModel = availableModels.find(m => m !== leftModel);
       
       if (differentModel) {
@@ -85,8 +83,7 @@ export const useChatState = () => {
     
     // If comparing, make sure the other model is different
     if (comparing && model === rightModel) {
-      const modelsByProvider = getEnhancedModelsByMode(activeMode);
-      const availableModels = Object.values(modelsByProvider).flat().map(model => model.id);
+      const availableModels = getModelsByMode(activeMode).map(m => m.id);
       const differentModel = availableModels.find(m => m !== model);
       if (differentModel) {
         setRightModel(differentModel);
@@ -99,8 +96,7 @@ export const useChatState = () => {
     
     // If the selected model is the same as the left model, change the left model
     if (model === leftModel) {
-      const modelsByProvider = getEnhancedModelsByMode(activeMode);
-      const availableModels = Object.values(modelsByProvider).flat().map(model => model.id);
+      const availableModels = getModelsByMode(activeMode).map(m => m.id);
       const differentModel = availableModels.find(m => m !== model);
       if (differentModel) {
         setLeftModel(differentModel);
