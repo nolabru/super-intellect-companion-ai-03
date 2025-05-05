@@ -63,16 +63,24 @@ export const apiRequestService = {
                                 modelId.includes('gemini')) &&
                                streamListener !== undefined;
         
-        // Preparar os dados da requisição
+        // Preparar os dados da requisição - CORREÇÃO AQUI
         const requestBody = {
           content,
           mode,
           modelId,
           files,
           params,
-          userId, // Usar userId passado 
-          conversationHistory // Incluir histórico da conversa
+          userId,
+          conversationHistory
         };
+        
+        console.log('[apiRequestService] Enviando requisição:', {
+          content: content.substring(0, 30) + '...',
+          mode,
+          modelId,
+          hasFiles: files && files.length > 0,
+          params: JSON.stringify(params)
+        });
         
         if (canUseStreaming) {
           console.log(`[apiRequestService] Iniciando streaming com modelo ${modelId}`);

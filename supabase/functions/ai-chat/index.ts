@@ -43,7 +43,7 @@ serve(async (req) => {
       throw new Error("Invalid user token");
     }
 
-    // Verificar se o body é válido e possui uma propriedade prompt
+    // Parse the request body
     let requestData;
     try {
       requestData = await req.json();
@@ -52,16 +52,17 @@ serve(async (req) => {
       throw new Error("Invalid JSON in request body");
     }
 
-    const { prompt, model = "gpt-4o", mode = "text", images = [], audio, video } = requestData;
+    // Extract parameters from the request - CORREÇÃO AQUI
+    const { content, mode = "text", modelId = "gpt-4o", files = [], params, conversationHistory, userId } = requestData;
     
-    if (!prompt) {
-      console.error("[ai-chat] No prompt provided in request data:", requestData);
-      throw new Error("No prompt provided");
+    if (!content) {
+      console.error("[ai-chat] No content provided in request data:", requestData);
+      throw new Error("No content provided");
     }
 
     // Check if the user has enough tokens for this operation
     const { hasEnoughTokens, tokensRequired, tokensRemaining, error: tokenError } = 
-      await checkUserTokens(user.id, model, mode);
+      await checkUserTokens(user.id, modelId, mode);
 
     if (tokenError) {
       throw new Error(`Token check error: ${tokenError}`);
@@ -71,7 +72,7 @@ serve(async (req) => {
       throw new Error(`Not enough tokens. This operation requires ${tokensRequired} tokens, but you have ${tokensRemaining} remaining.`);
     }
     
-    console.log(`[ai-chat] Processing ${mode} prompt with model ${model}`);
+    console.log(`[ai-chat] Processing ${mode} prompt with model ${modelId}`);
 
     // Use OpenAI for chat completion
     if (!OPENAI_API_KEY) {
@@ -92,18 +93,18 @@ serve(async (req) => {
       },
       {
         role: "user",
-        content: prompt
+        content: content
       }
     ];
 
     // Handle images if in the right mode and model supports vision
-    if (mode === "text" && images?.length > 0 && (model === "gpt-4o" || model === "gpt-4-vision-preview" || model === "gpt-4o-mini")) {
+    if (mode === "text" && files?.length > 0 && (modelId === "gpt-4o" || modelId === "gpt-4-vision-preview" || modelId === "gpt-4o-mini")) {
       const content = [
-        { type: "text", text: prompt }
+        { type: "text", text: content }
       ];
 
       // Add image URLs as content
-      for (const imageUrl of images) {
+      for (const imageUrl of files) {
         content.push({
           type: "image_url",
           image_url: { url: imageUrl }
@@ -119,7 +120,7 @@ serve(async (req) => {
       method: "POST",
       headers,
       body: JSON.stringify({
-        model,
+        model: modelId,
         messages,
         max_tokens: 2000,
         temperature: 0.7,
