@@ -67,11 +67,18 @@ export const apiRequestService = {
         if (mode === 'video' && modelId === 'kling-v1-5') {
           console.log(`[apiRequestService] Iniciando geração de vídeo com Kling AI`);
           
+          // Ensure duration is valid for Kling API (5 or 10 seconds only)
+          const validParams = { ...params };
+          if (validParams?.duration && validParams.duration !== 5 && validParams.duration !== 10) {
+            console.log(`[apiRequestService] Corrigindo duração inválida: ${validParams.duration} para 5 segundos`);
+            validParams.duration = 5;
+          }
+          
           // Chamar a edge function específica para Kling AI
           const { data, error } = await supabase.functions.invoke('apiframe-kling-video', {
             body: {
               prompt: content,
-              params: params || {},
+              params: validParams || { duration: 5 }, // Ensure we always send a valid duration
               generationType: "text2video"
             },
           });
