@@ -1,4 +1,3 @@
-
 export interface ChatModel {
   id: string;
   displayName: string;
@@ -94,12 +93,7 @@ export const AVAILABLE_MODELS: ChatModel[] = [
       imageGeneration: false
     }
   },
-  {
-    id: 'luma-video',
-    displayName: 'Luma AI',
-    provider: 'luma',
-    modes: ['video'],
-  },
+  // Video model removed from here
   // Add all image models (both Ideogram and Midjourney) 
   ...IMAGE_MODELS,
   // Keep audio models

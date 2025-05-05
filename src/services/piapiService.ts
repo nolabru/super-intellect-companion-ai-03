@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -150,6 +151,7 @@ export const piapiService = {
   
   /**
    * Gera um vídeo usando um dos modelos da PiAPI
+   * TEMPORARILY DISABLED DURING RECONFIGURATION
    */
   async generateVideo(
     prompt: string,
@@ -158,6 +160,15 @@ export const piapiService = {
     imageUrl?: string
   ): Promise<PiapiTaskResult> {
     try {
+      // Temporary message during reconfiguration
+      console.log('[piapiService] Funcionalidade de geração de vídeo em reconstrução');
+      toast.info('Geração de vídeo temporariamente indisponível', { 
+        description: 'Estamos reconfigurando esta funcionalidade para melhor experiência.'
+      });
+      
+      throw new Error('Geração de vídeo temporariamente indisponível durante reconfigurações');
+      
+      /* Original code commented out during reconfiguration
       console.log(`[piapiService] Iniciando geração de vídeo com modelo ${model}`);
       console.log({
         prompt,
@@ -202,6 +213,7 @@ export const piapiService = {
       
       // Normalizar e retornar resposta
       return normalizeTaskResponse(data);
+      */
     } catch (err) {
       return handleApiError(err, 'vídeo');
     }

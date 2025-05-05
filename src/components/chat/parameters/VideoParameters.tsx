@@ -11,16 +11,42 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VideoParameters as VideoParamsType } from '@/types/parameters';
 import { Type, ImageIcon } from 'lucide-react';
-import { AVAILABLE_MODELS } from '@/constants';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
-// Get APIFrame video models from available models
-const VIDEO_MODELS = AVAILABLE_MODELS
-  .filter(model => model.provider === 'apiframe' && model.modes.includes('video'))
-  .map(model => ({ 
-    id: model.id, 
-    name: model.displayName,
-    requiresReference: model.id.includes('-img') || model.id.includes('image')
-  }));
+// Video model definitions for the new implementation
+const VIDEO_MODELS = [
+  { 
+    id: 'kling-text', 
+    name: 'Kling Text-to-Video',
+    requiresReference: false
+  },
+  { 
+    id: 'kling-image', 
+    name: 'Kling Image-to-Video',
+    requiresReference: true
+  },
+  { 
+    id: 'hunyuan-standard', 
+    name: 'Hunyuan Standard',
+    requiresReference: false
+  },
+  { 
+    id: 'hunyuan-fast', 
+    name: 'Hunyuan Fast',
+    requiresReference: false
+  },
+  { 
+    id: 'hailuo-text', 
+    name: 'Hailuo Text-to-Video',
+    requiresReference: false
+  },
+  { 
+    id: 'hailuo-image', 
+    name: 'Hailuo Image-to-Video',
+    requiresReference: true
+  }
+];
 
 interface VideoParametersProps {
   model: string;
@@ -34,7 +60,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   initialParams
 }) => {
   const [params, setParams] = useState<VideoParamsType>({
-    model: model || 'ray-2',
+    model: model || 'kling-text',
     videoType: initialParams?.videoType || 'text-to-video',
     duration: initialParams?.duration || 3,
     resolution: initialParams?.resolution || '720p'
@@ -62,6 +88,13 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
 
   return (
     <div className="space-y-4">
+      <Alert variant="destructive" className="bg-yellow-500/20 text-yellow-600 border-yellow-600/40">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Video generation is being reconfigured and will be available soon.
+        </AlertDescription>
+      </Alert>
+
       <div className="space-y-2">
         <Label>Modelo</Label>
         <Select
