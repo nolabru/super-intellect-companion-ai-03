@@ -14,7 +14,7 @@ import { useGoogleCommandHandler } from './message/useGoogleCommandHandler';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { saveMessageToDatabase } from '@/utils/conversationUtils';
-import { videoGenerationService } from '@/services/videoGenerationService';
+import { videoGenerationService, VideoModel } from '@/services/videoGenerationService';
 
 export function useMessageHandler(
   messages: MessageType[],
@@ -369,9 +369,12 @@ export function useMessageHandler(
           // Call videoGenerationService directly instead of going through apiRequestService
           console.log(`[useMessageHandler] Calling videoGenerationService with model ${modelId} and prompt: ${content}`);
           
+          // Fix: Cast the modelId to VideoModel type to satisfy TypeScript
+          const videoModel = modelId as VideoModel;
+          
           const result = await videoGenerationService.generateVideo({
             prompt: content,
-            model: modelId,
+            model: videoModel,
             duration: params?.duration || 5,
             aspectRatio: params?.aspectRatio || '16:9',
             videoType: params?.videoType || 'text-to-video',
