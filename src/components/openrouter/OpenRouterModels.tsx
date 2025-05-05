@@ -5,13 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { OPENROUTER_MODELS_BY_PROVIDER } from '@/constants';
 
 type OpenRouterModelType = {
   id: string;
   name: string;
   context_length: number;
   providers?: string[];
+  description?: string;
 };
 
 type ModelCategory = {
@@ -24,11 +25,10 @@ const OpenRouterModels: React.FC<{
 }> = ({ onSelectModel }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [models, setModels] = useState<OpenRouterModelType[]>([]);
   const [categories, setCategories] = useState<ModelCategory[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('openai');
   
-  const { fetchAvailableModels, isApiKeyConfigured } = useOpenRouterGeneration({
+  const { isApiKeyConfigured } = useOpenRouterGeneration({
     showToasts: true
   });
 
@@ -43,33 +43,24 @@ const OpenRouterModels: React.FC<{
           return;
         }
         
-        const availableModels = await fetchAvailableModels();
+        // Use our predefined OpenRouter models
+        const modelCategories: ModelCategory[] = [];
         
-        if (!availableModels || availableModels.length === 0) {
-          setError('No models available');
-          setLoading(false);
-          return;
-        }
-        
-        setModels(availableModels);
-        
-        // Group models by provider
-        const providerMap: Record<string, OpenRouterModelType[]> = {};
-        
-        availableModels.forEach(model => {
-          const provider = model.id.split('/')[0];
+        Object.entries(OPENROUTER_MODELS_BY_PROVIDER).forEach(([provider, models]) => {
+          // Convert from our ChatModel format to OpenRouterModelType
+          const formattedModels: OpenRouterModelType[] = models.map(model => ({
+            id: model.id,
+            name: model.displayName,
+            context_length: 16000, // Default context length
+            providers: [provider],
+            description: model.description
+          }));
           
-          if (!providerMap[provider]) {
-            providerMap[provider] = [];
-          }
-          
-          providerMap[provider].push(model);
+          modelCategories.push({
+            provider,
+            models: formattedModels
+          });
         });
-        
-        const modelCategories = Object.entries(providerMap).map(([provider, providerModels]) => ({
-          provider,
-          models: providerModels
-        }));
         
         setCategories(modelCategories);
         
@@ -87,7 +78,7 @@ const OpenRouterModels: React.FC<{
     };
 
     loadModels();
-  }, [fetchAvailableModels, isApiKeyConfigured]);
+  }, [isApiKeyConfigured]);
 
   const handleSelectModel = (modelId: string) => {
     if (onSelectModel) {
@@ -133,33 +124,13 @@ const OpenRouterModels: React.FC<{
       </CardHeader>
       <CardContent>
         <Tabs defaultValue={activeCategory} value={activeCategory} onValueChange={setActiveCategory}>
-          <TabsList className="grid grid-cols-3 mb-4">
-            {categories.slice(0, 3).map((category) => (
+          <TabsList className="grid grid-cols-5 mb-4">
+            {categories.map((category) => (
               <TabsTrigger key={category.provider} value={category.provider}>
                 {category.provider.charAt(0).toUpperCase() + category.provider.slice(1)}
               </TabsTrigger>
             ))}
           </TabsList>
-          
-          {categories.length > 3 && (
-            <div className="my-4">
-              <Select 
-                value={categories.length > 3 && !categories.slice(0, 3).find(c => c.provider === activeCategory) ? activeCategory : undefined}
-                onValueChange={setActiveCategory}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="More providers..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.slice(3).map((category) => (
-                    <SelectItem key={category.provider} value={category.provider}>
-                      {category.provider.charAt(0).toUpperCase() + category.provider.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           
           {categories.map((category) => (
             <TabsContent key={category.provider} value={category.provider} className="space-y-4">
@@ -169,7 +140,9 @@ const OpenRouterModels: React.FC<{
                     onClick={() => handleSelectModel(model.id)}>
                     <CardHeader className="p-4 pb-2">
                       <CardTitle className="text-sm">{model.name}</CardTitle>
-                      <CardDescription className="text-xs truncate">{model.id}</CardDescription>
+                      <CardDescription className="text-xs truncate">
+                        {model.description || model.id}
+                      </CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 pt-0 text-xs">
                       <div className="flex justify-between">

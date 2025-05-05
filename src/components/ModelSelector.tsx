@@ -6,8 +6,10 @@ import {
   SelectTrigger,
   SelectValue,
   SelectItem,
+  SelectGroup,
+  SelectLabel
 } from "@/components/ui/select"
-import { AVAILABLE_MODELS, ChatModel } from '@/constants';
+import { AVAILABLE_MODELS, ChatModel, OPENROUTER_MODELS_BY_PROVIDER } from '@/constants';
 import { cn } from '@/lib/utils';
 import { ChatMode } from './ModeSelector';
 import { useOpenRouterGeneration } from '@/hooks/useOpenRouterGeneration';
@@ -42,7 +44,9 @@ export const getProviderDisplayName = (provider: string): string => {
     'minimax': 'MiniMax',
     'elevenlabs': 'ElevenLabs',
     'luma': 'Luma AI',
-    'openrouter': 'OpenRouter'
+    'openrouter': 'OpenRouter',
+    'xai': 'xAI',
+    'deepseek': 'DeepSeek'
   };
   
   return providerNames[provider] || provider;
@@ -60,44 +64,22 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   disabled
 }) => {
   const [loading, setLoading] = useState(false);
-  const [openRouterModels, setOpenRouterModels] = useState<any[]>([]);
+  const { isApiKeyConfigured } = useOpenRouterGeneration();
   
-  const { fetchAvailableModels, isApiKeyConfigured } = useOpenRouterGeneration();
+  // Get base models and OpenRouter models for the selected mode
+  const baseModels = getModelsByMode(mode).filter(model => 
+    !model.id.includes('/') // Filter out OpenRouter models with provider prefix
+  );
   
-  // Fetch OpenRouter models on component mount
-  useEffect(() => {
-    const loadOpenRouterModels = async () => {
-      if (mode === 'text' && isApiKeyConfigured()) {
-        try {
-          setLoading(true);
-          const models = await fetchAvailableModels();
-          setOpenRouterModels(models);
-        } catch (err) {
-          console.error('Error fetching OpenRouter models:', err);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    
-    loadOpenRouterModels();
-  }, [mode, fetchAvailableModels, isApiKeyConfigured]);
+  // Prepare all models based on mode
+  let combinedModels = [...baseModels];
   
-  // Combine OpenRouter models with regular models
-  const combinedModels = [...getModelsByMode(mode)];
-  
-  // Add OpenRouter models if they exist and we're in text mode
-  if (mode === 'text' && openRouterModels.length > 0) {
-    // Create a virtual model for OpenRouter
-    const openRouterModel: ChatModel = {
-      id: 'openrouter',
-      displayName: 'OpenRouter Models',
-      provider: 'openrouter',
-      modes: ['text'],
-      description: 'Models from multiple providers via OpenRouter'
-    };
-    
-    combinedModels.push(openRouterModel);
+  // Add OpenRouter models if in text mode and API key is configured
+  if (mode === 'text' && isApiKeyConfigured()) {
+    // For text mode, add all OpenRouter models grouped by provider
+    Object.entries(OPENROUTER_MODELS_BY_PROVIDER).forEach(([provider, models]) => {
+      combinedModels.push(...models);
+    });
   }
   
   // Filter by available models if provided
@@ -109,31 +91,13 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
   const modelsByProvider: Record<string, ChatModel[]> = {};
   
   models.forEach(model => {
-    if (!modelsByProvider[model.provider]) {
-      modelsByProvider[model.provider] = [];
+    const provider = model.id.includes('/') ? model.id.split('/')[0] : model.provider;
+    
+    if (!modelsByProvider[provider]) {
+      modelsByProvider[provider] = [];
     }
-    modelsByProvider[model.provider].push(model);
+    modelsByProvider[provider].push(model);
   });
-  
-  // Add OpenRouter provider models
-  if (openRouterModels.length > 0 && mode === 'text') {
-    openRouterModels.forEach(model => {
-      const provider = model.id.split('/')[0];
-      
-      if (!modelsByProvider[provider]) {
-        modelsByProvider[provider] = [];
-      }
-      
-      // Convert to our ChatModel format
-      modelsByProvider[provider].push({
-        id: model.id,
-        displayName: model.name || model.id,
-        provider,
-        modes: ['text'],
-        description: `OpenRouter: ${model.name}`
-      });
-    });
-  }
 
   return (
     <Select
@@ -155,17 +119,27 @@ const ModelSelector: React.FC<ModelSelectorProps> = ({
       </SelectTrigger>
       <SelectContent className="bg-inventu-darker/95 backdrop-blur-lg border-white/10 max-h-[60vh]">
         {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-          <React.Fragment key={provider}>
-            <div className="px-2 py-1.5 text-xs font-medium text-white/60">
+          <SelectGroup key={provider}>
+            <SelectLabel className="px-2 py-1.5 text-xs font-medium text-white/60">
               {getProviderDisplayName(provider)}
-            </div>
+            </SelectLabel>
+            
             {providerModels.map((model) => (
-              <SelectItem key={model.id} value={model.id}>
-                {model.displayName}
+              <SelectItem 
+                key={model.id} 
+                value={model.id}
+                className="relative"
+              >
+                <div className="flex flex-col">
+                  <span>{model.displayName}</span>
+                  {model.description && (
+                    <span className="text-xs text-white/60">{model.description}</span>
+                  )}
+                </div>
               </SelectItem>
             ))}
             <div className="my-1 border-t border-white/10"></div>
-          </React.Fragment>
+          </SelectGroup>
         ))}
       </SelectContent>
     </Select>

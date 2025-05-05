@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { OPENROUTER_MODELS_BY_PROVIDER } from '@/constants';
 
 // Usar o token fornecido pelo usuário
 let apiKey: string | null = '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';
@@ -168,24 +169,24 @@ export const openRouterService = {
   
   async listModels(): Promise<OpenRouterModel[]> {
     try {
-      console.log(`[openRouterService] Fetching available models`);
+      console.log(`[openRouterService] Returning predefined OpenRouter models`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
+      // Convert our predefined models to the OpenRouterModel format
+      const models: OpenRouterModel[] = [];
       
-      const { data, error } = await supabase.functions.invoke('openrouter-models', {
-        body: { 
-          apiKey 
-        }
+      // Flatten all provider models into a single array
+      Object.values(OPENROUTER_MODELS_BY_PROVIDER).forEach(providerModels => {
+        providerModels.forEach(model => {
+          models.push({
+            id: model.id,
+            name: model.displayName,
+            context_length: 16000, // Default context length
+            providers: [model.provider]
+          });
+        });
       });
       
-      if (error || !data) {
-        console.error('[openRouterService] Error fetching models:', error || 'No data received');
-        throw new Error(error?.message || 'Failed to fetch models');
-      }
-      
-      return data.data || [];
+      return models;
     } catch (err) {
       console.error('[openRouterService] Error in listModels:', err);
       throw err;
