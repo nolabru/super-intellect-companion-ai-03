@@ -25,9 +25,19 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
-
+    
     // Extract parameters from the request
-    const { prompt, model, imageUrl, videoType = "text-to-video", duration = 5, resolution = "720p" } = await req.json();
+    const { 
+      prompt, 
+      model, 
+      imageUrl, 
+      videoType = "text-to-video", 
+      duration = 5, 
+      resolution = "720p",
+      aspectRatio = "16:9",
+      klingModel = "kling-v1-5",
+      klingMode = "std"
+    } = await req.json();
     
     if (!prompt && !imageUrl) {
       return new Response(
@@ -35,23 +45,89 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-
-    // This service is temporarily disabled during reconfiguration
-    console.log("[video-generation] Service is being reconfigured");
     
-    // Save a placeholder task in the database
+    console.log(`[video-generation] Creating video task for model: ${model}`);
+    console.log(`[video-generation] Parameters:`, { prompt, videoType, duration, aspectRatio, klingModel, klingMode });
+
+    // Prepare API Frame parameters for Kling AI
+    const generation_type = videoType === 'text-to-video' ? 'text2video' : 'img2video';
+    
+    // Build the payload for the API Frame Kling API
+    const payload = {
+      "prompt": prompt,
+      "generation_type": generation_type,
+      "model": klingModel,
+      "duration": duration,
+      "mode": klingMode
+    };
+    
+    // Add aspect ratio for text2video 
+    if (generation_type === 'text2video' && aspectRatio) {
+      payload["aspect_ratio"] = aspectRatio;
+    }
+    
+    // Add image_url for img2video
+    if (generation_type === 'img2video' && imageUrl) {
+      payload["image_url"] = imageUrl;
+    }
+    
+    // Define the webhook URL for task updates
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/piapi-media-webhook`;
+    if (webhookUrl) {
+      payload["webhook_url"] = webhookUrl;
+      payload["webhook_secret"] = "apiframe-callback";
+    }
+    
+    console.log(`[video-generation] Sending request to API Frame:`, payload);
+    
+    // Send the request to API Frame
+    const apiResponse = await fetch("https://api.apiframe.pro/kling-imagine", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": API_FRAME_KEY
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!apiResponse.ok) {
+      const errorText = await apiResponse.text();
+      let errorMessage = `API Frame error (${apiResponse.status})`;
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        errorMessage = errorText || errorMessage;
+      }
+      
+      console.error(`[video-generation] Error from API Frame:`, errorMessage);
+      throw new Error(errorMessage);
+    }
+    
+    const apiData = await apiResponse.json();
+    const taskId = apiData.task_id;
+    
+    if (!taskId) {
+      throw new Error("No task ID returned from API Frame");
+    }
+    
+    console.log(`[video-generation] Task created successfully with ID: ${taskId}`);
+    
+    // Save the task in the database
     const { error: insertError } = await supabase
       .from("piapi_tasks")
       .insert({
-        task_id: `reconfiguration-${Date.now()}`,
-        model: model || "pending-reconfiguration",
+        task_id: taskId,
+        model: `${klingModel}-${generation_type}`,
         prompt,
         status: "pending",
         media_type: "video",
         params: {
-          videoType,
+          videoType: generation_type,
           duration,
-          resolution,
+          aspectRatio,
+          model: klingModel,
+          mode: klingMode,
           imageUrl
         }
       });
@@ -60,12 +136,12 @@ serve(async (req) => {
       console.error(`[video-generation] Error inserting task record: ${insertError.message}`);
     }
 
-    // Return a pending response
+    // Return success response
     return new Response(
       JSON.stringify({
-        taskId: `reconfiguration-${Date.now()}`,
+        taskId: taskId,
         status: "pending",
-        message: `Video generation service is currently being reconfigured and will be available soon.`
+        message: `Video generation task created successfully with model ${klingModel}`
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

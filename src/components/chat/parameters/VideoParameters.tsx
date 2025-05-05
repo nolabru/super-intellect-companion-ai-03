@@ -11,10 +11,8 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VideoParameters as VideoParamsType } from '@/types/parameters';
 import { Type, ImageIcon } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 
-// Video model definitions for the new implementation
+// Video model definitions for Kling AI via API Frame
 const VIDEO_MODELS = [
   { 
     id: 'kling-text', 
@@ -24,26 +22,6 @@ const VIDEO_MODELS = [
   { 
     id: 'kling-image', 
     name: 'Kling Image-to-Video',
-    requiresReference: true
-  },
-  { 
-    id: 'hunyuan-standard', 
-    name: 'Hunyuan Standard',
-    requiresReference: false
-  },
-  { 
-    id: 'hunyuan-fast', 
-    name: 'Hunyuan Fast',
-    requiresReference: false
-  },
-  { 
-    id: 'hailuo-text', 
-    name: 'Hailuo Text-to-Video',
-    requiresReference: false
-  },
-  { 
-    id: 'hailuo-image', 
-    name: 'Hailuo Image-to-Video',
     requiresReference: true
   }
 ];
@@ -62,7 +40,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   const [params, setParams] = useState<VideoParamsType>({
     model: model || 'kling-text',
     videoType: initialParams?.videoType || 'text-to-video',
-    duration: initialParams?.duration || 3,
+    duration: initialParams?.duration || 5,
     resolution: initialParams?.resolution || '720p'
   });
 
@@ -88,13 +66,6 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
 
   return (
     <div className="space-y-4">
-      <Alert variant="destructive" className="bg-yellow-500/20 text-yellow-600 border-yellow-600/40">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Video generation is being reconfigured and will be available soon.
-        </AlertDescription>
-      </Alert>
-
       <div className="space-y-2">
         <Label>Modelo</Label>
         <Select
@@ -148,10 +119,28 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
             <SelectValue placeholder="Selecione a duração" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            <SelectItem value="3">3 segundos</SelectItem>
             <SelectItem value="5">5 segundos</SelectItem>
-            <SelectItem value="8">8 segundos</SelectItem>
             <SelectItem value="10">10 segundos</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Proporção</Label>
+        <Select
+          value={params.aspectRatio || "16:9"}
+          onValueChange={(value) => handleParamChange('aspectRatio', value)}
+        >
+          <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
+            <SelectValue placeholder="Selecione a proporção" />
+          </SelectTrigger>
+          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
+            <SelectItem value="16:9">16:9 (Horizontal)</SelectItem>
+            <SelectItem value="9:16">9:16 (Vertical)</SelectItem>
+            <SelectItem value="1:1">1:1 (Quadrado)</SelectItem>
+            <SelectItem value="4:3">4:3 (Clássico)</SelectItem>
+            <SelectItem value="3:4">3:4 (Retrato)</SelectItem>
+            <SelectItem value="21:9">21:9 (Ultrawide)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -169,7 +158,39 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
             <SelectItem value="540p">540p</SelectItem>
             <SelectItem value="720p">720p</SelectItem>
             <SelectItem value="1080p">1080p</SelectItem>
-            <SelectItem value="4k">4K</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Qualidade (Modelo)</Label>
+        <Select
+          value={params.klingModel || "kling-v1-5"}
+          onValueChange={(value) => handleParamChange('klingModel', value)}
+        >
+          <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
+            <SelectValue placeholder="Selecione a qualidade" />
+          </SelectTrigger>
+          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
+            <SelectItem value="kling-v1">Kling v1 (Padrão)</SelectItem>
+            <SelectItem value="kling-v1-5">Kling v1.5 (Melhorado)</SelectItem>
+            <SelectItem value="kling-v1-6">Kling v1.6 (Avançado)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Modo</Label>
+        <Select
+          value={params.klingMode || "std"}
+          onValueChange={(value) => handleParamChange('klingMode', value)}
+        >
+          <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
+            <SelectValue placeholder="Selecione o modo" />
+          </SelectTrigger>
+          <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
+            <SelectItem value="std">Padrão</SelectItem>
+            <SelectItem value="pro">Profissional (apenas com v1.5)</SelectItem>
           </SelectContent>
         </Select>
       </div>

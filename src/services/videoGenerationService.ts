@@ -7,11 +7,7 @@ import { toast } from 'sonner';
  */
 export type VideoModel = 
   'kling-text' | 
-  'kling-image' | 
-  'hunyuan-standard' | 
-  'hunyuan-fast' | 
-  'hailuo-text' | 
-  'hailuo-image';
+  'kling-image';
 
 export type VideoGenerationType = 'text-to-video' | 'image-to-video';
 
@@ -22,7 +18,9 @@ export interface VideoGenerationParams {
   resolution?: '540p' | '720p' | '1080p' | '4k';
   videoType?: VideoGenerationType;
   imageUrl?: string;
-  fps?: number;
+  aspectRatio?: string;
+  klingModel?: string;
+  klingMode?: string;
   additionalParams?: Record<string, any>;
 }
 
@@ -35,11 +33,11 @@ export interface VideoTaskResult {
 }
 
 /**
- * Video Generation Service for API Frame
+ * Video Generation Service for API Frame's Kling AI
  */
 export const videoGenerationService = {
   /**
-   * Generate a video using one of the supported models
+   * Generate a video using one of the supported Kling models
    */
   async generateVideo(params: VideoGenerationParams): Promise<VideoTaskResult> {
     try {
@@ -58,19 +56,6 @@ export const videoGenerationService = {
         throw new Error('Image URL is required for image-to-video generation');
       }
       
-      // Currently video generation is disabled during reconfiguration
-      toast.info('Video generation feature is currently being reconfigured', {
-        description: 'This feature will be available again soon. Thanks for your patience!'
-      });
-      
-      return {
-        taskId: 'reconfiguration-in-progress',
-        status: 'pending',
-        error: 'Video generation is being reconfigured and will be available soon.'
-      };
-      
-      /* 
-      // This will be the actual implementation once we reconfigure:
       const { data, error } = await supabase.functions.invoke('video-generation', {
         body: {
           prompt,
@@ -96,7 +81,6 @@ export const videoGenerationService = {
         mediaUrl: data.mediaUrl,
         error: data.error
       };
-      */
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('[videoGenerationService] Video generation error:', errorMessage);
@@ -115,16 +99,6 @@ export const videoGenerationService = {
     try {
       console.log(`[videoGenerationService] Checking status for task: ${taskId}`);
       
-      if (taskId === 'reconfiguration-in-progress') {
-        return {
-          taskId,
-          status: 'pending',
-          error: 'Video generation is being reconfigured and will be available soon.'
-        };
-      }
-      
-      /* 
-      // This will be the actual implementation once we reconfigure:
       const { data, error } = await supabase.functions.invoke('video-task-status', {
         body: { taskId }
       });
@@ -141,14 +115,6 @@ export const videoGenerationService = {
         mediaUrl: data.mediaUrl,
         error: data.error
       };
-      */
-      
-      return {
-        taskId,
-        status: 'pending',
-        progress: 0,
-        error: 'Status checking is temporarily unavailable during reconfiguration'
-      };
     } catch (error) {
       console.error('[videoGenerationService] Error checking task status:', error);
       throw error;
@@ -162,25 +128,13 @@ export const videoGenerationService = {
     try {
       console.log(`[videoGenerationService] Cancelling task: ${taskId}`);
       
-      if (taskId === 'reconfiguration-in-progress') {
-        return true;
-      }
-      
-      /* 
-      // This will be the actual implementation once we reconfigure:
-      const { data, error } = await supabase.functions.invoke('video-task-cancel', {
-        body: { taskId }
+      // Note: Currently, API Frame doesn't support cancelling tasks.
+      // This is a placeholder for future implementation.
+      toast.info('Cancelling video tasks is not currently supported', {
+        description: 'Task will continue until completion.'
       });
       
-      if (error) {
-        console.error('[videoGenerationService] Error cancelling task:', error);
-        throw new Error(`Error cancelling task: ${error.message}`);
-      }
-      
-      return data?.success || false;
-      */
-      
-      return true;
+      return false;
     } catch (error) {
       console.error('[videoGenerationService] Error cancelling task:', error);
       toast.error('Error cancelling task', {

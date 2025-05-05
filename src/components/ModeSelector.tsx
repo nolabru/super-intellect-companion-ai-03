@@ -42,8 +42,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
         <Image size={18} />
       </ToggleGroupItem>
       
-      {/* Video mode temporarily disabled during reconfiguration */}
-      {/* <ToggleGroupItem 
+      <ToggleGroupItem 
         value="video" 
         aria-label="Video mode"
         className={cn(
@@ -52,7 +51,7 @@ const ModeSelector: React.FC<ModeSelectorProps> = ({ activeMode, onChange, class
         )}
       >
         <Video size={18} />
-      </ToggleGroupItem> */}
+      </ToggleGroupItem>
       
       <ToggleGroupItem 
         value="audio" 
