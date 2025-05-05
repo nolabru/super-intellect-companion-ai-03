@@ -1,4 +1,3 @@
-
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { tokenService } from '@/services/tokenService';
@@ -71,13 +70,26 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
         
         // Consume tokens when task completes successfully
         if (user && task.model) {
+          console.log('[useUnifiedMediaGeneration] Consuming tokens for completed task');
+          
+          // First clear the token cache to ensure fresh data
+          tokenService.clearBalanceCache();
+          
           tokenService.consumeTokens(user.id, task.model, task.type).then(() => {
-            // Trigger token refresh event
+            console.log('[useUnifiedMediaGeneration] Tokens consumed successfully, triggering refresh');
+            
+            // Trigger token refresh events
             tokenEvents.triggerRefresh();
             
-            console.log('Tokens consumed and refresh triggered for completed media generation task');
+            // Force a token refresh after a short delay to ensure UI updates
+            setTimeout(() => {
+              console.log('[useUnifiedMediaGeneration] Triggering delayed token refresh');
+              tokenService.clearBalanceCache();
+              tokenEvents.triggerRefresh();
+            }, 500);
+            
           }).catch(err => {
-            console.error('Error consuming tokens:', err);
+            console.error('[useUnifiedMediaGeneration] Error consuming tokens:', err);
           });
         }
         
@@ -142,7 +154,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       };
     }
   }, [mediaService]);
-
+  
   const generateMedia = useCallback((
     type: 'image' | 'video' | 'audio',
     prompt: string,
@@ -152,6 +164,16 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
   ) => {
     setIsGenerating(true);
     setGeneratedMedia(null);
+    
+    // Pre-check token balance before generation
+    if (user) {
+      tokenService.clearBalanceCache(); // Clear cache to get fresh balance
+      tokenService.hasEnoughTokens(user.id, model, type)
+        .then(result => {
+          console.log(`[useUnifiedMediaGeneration] Token check: ${result.remaining} tokens, need ${result.required}`);
+        })
+        .catch(err => console.error('[useUnifiedMediaGeneration] Error checking tokens:', err));
+    }
     
     const taskId = mediaService.generateMedia(
       type,
@@ -178,7 +200,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     }
     
     return taskId;
-  }, [mediaService, showToasts]);
+  }, [mediaService, showToasts, user]);
   
   const cancelGeneration = useCallback(() => {
     if (!currentTaskId) return false;

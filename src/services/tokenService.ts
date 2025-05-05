@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { tokenEvents } from '@/components/TokenDisplay';
 
@@ -22,7 +21,7 @@ interface TokenCache {
 }
 
 // Cache expiration times in milliseconds
-const BALANCE_CACHE_TTL = 2 * 60 * 1000; // 2 minutes (reduced from 5)
+const BALANCE_CACHE_TTL = 10 * 1000; // 10 seconds (reduced from 2 minutes)
 const RATES_CACHE_TTL = 60 * 60 * 1000;  // 1 hour
 
 // In-memory cache
@@ -62,7 +61,10 @@ export const tokenService = {
       console.log(`[tokenService] Getting token balance for user ${userId}`);
       
       const { data, error } = await supabase.functions.invoke('user-tokens', {
-        body: { action: 'balance' }
+        body: { action: 'balance' },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
+        }
       });
       
       if (error) {
@@ -225,11 +227,17 @@ export const tokenService = {
       
       console.log(`[tokenService] Consuming tokens for user ${userId}, model ${modelId}, mode ${mode}`);
       
+      // Clear the cache before making the request to ensure we get fresh data
+      this.clearBalanceCache();
+      
       const { data, error } = await supabase.functions.invoke('user-tokens', {
         body: {
           action: 'consume',
           model_id: modelId,
           mode: mode
+        },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate'
         }
       });
       
@@ -238,13 +246,18 @@ export const tokenService = {
         throw error;
       }
       
-      // Clear the cache to ensure fresh data on next fetch
-      this.clearBalanceCache();
-      
       // Trigger a token update event for real-time UI updates
       tokenEvents.triggerRefresh();
       
       console.log('[tokenService] Tokens consumed successfully:', data);
+      
+      // After a short delay, trigger another refresh to ensure UI is updated
+      setTimeout(() => {
+        console.log('[tokenService] Triggering delayed token refresh after consumption');
+        this.clearBalanceCache();
+        tokenEvents.triggerRefresh();
+      }, 500);
+      
       return { success: true };
     } catch (err) {
       console.error('[tokenService] Error consuming tokens:', err);

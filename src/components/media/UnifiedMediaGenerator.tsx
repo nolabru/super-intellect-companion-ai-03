@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ImageIcon, Coins } from 'lucide-react';
+import { Loader2, ImageIcon, Coins, RefreshCw } from 'lucide-react';
 import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
 import { saveToGallery } from '@/services/mediaService';
 import { tokenService } from '@/services/tokenService';
@@ -37,6 +37,7 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
   const [generatedMedia, setGeneratedMedia] = useState<string | null>(null);
   const { user } = useAuth();
   const [tokenInfo, setTokenInfo] = useState<{ tokensRemaining: number } | null>(null);
+  const [lastTokenUpdate, setLastTokenUpdate] = useState(0);
 
   const {
     generateMedia,
@@ -50,6 +51,8 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
       }
       // Force token info refresh after generation completes
       if (user) {
+        console.log('Media generation completed, refreshing tokens');
+        tokenService.clearBalanceCache();
         tokenEvents.triggerRefresh();
         loadTokenInfo();
       }
@@ -65,8 +68,12 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
   const loadTokenInfo = async () => {
     if (user) {
       try {
+        console.log('UnifiedMediaGenerator: Loading token info');
+        tokenService.clearBalanceCache(); // Force fresh data
         const info = await tokenService.getUserTokenBalance(user.id);
         setTokenInfo(info);
+        setLastTokenUpdate(Date.now());
+        console.log('UnifiedMediaGenerator: Token info updated', info);
       } catch (error) {
         console.error("Error loading token information:", error);
       }
@@ -83,8 +90,14 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
       loadTokenInfo();
     });
     
+    // Also set up a periodic refresh
+    const intervalId = setInterval(() => {
+      loadTokenInfo();
+    }, 5000);
+    
     return () => {
       unsubscribe();
+      clearInterval(intervalId);
     };
   }, [user]);
 
@@ -97,6 +110,9 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
     // Display token requirement before generation
     if (user) {
       try {
+        // Clear token cache to ensure fresh data
+        tokenService.clearBalanceCache();
+        
         const selectedModel = models.find(m => m.id === model);
         const tokenCost = selectedModel?.tokens || 0;
         
@@ -119,12 +135,22 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
 
     setGeneratedMedia(null);
 
+    // Track token info before generation
+    const preGenTokenInfo = tokenInfo;
+    
     generateMedia(
       mediaType,
       prompt,
       model,
       additionalParams
     );
+    
+    // Schedule a token refresh
+    setTimeout(() => {
+      console.log('Scheduled token refresh after generation request');
+      tokenService.clearBalanceCache();
+      loadTokenInfo();
+    }, 2000);
   };
 
   const handleSaveToGallery = async () => {
@@ -140,6 +166,14 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
     }
   };
 
+  // Force refresh of token info
+  const handleRefreshTokens = () => {
+    console.log('Manual token refresh requested');
+    tokenService.clearBalanceCache();
+    loadTokenInfo();
+    tokenEvents.triggerRefresh();
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -153,6 +187,18 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
             <div className="mt-2 flex items-center text-sm text-muted-foreground">
               <Coins className="mr-1 h-4 w-4" />
               <span>Available tokens: {tokenInfo.tokensRemaining}</span>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="ml-1 h-5 w-5" 
+                onClick={handleRefreshTokens}
+                title="Refresh token count"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+              <span className="ml-2 text-xs text-muted-foreground">
+                Updated: {new Date(lastTokenUpdate).toLocaleTimeString()}
+              </span>
             </div>
           )}
         </CardDescription>
