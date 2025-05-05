@@ -18,7 +18,7 @@ export const useNewsFeed = () => {
         throw new Error(result.error.message);
       }
       
-      setPosts(result.posts || []);
+      setPosts(result.data || []);
     } catch (error) {
       console.error('Error fetching posts:', error);
       toast.error('Erro ao carregar publicações');
