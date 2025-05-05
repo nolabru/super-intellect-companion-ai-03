@@ -8,8 +8,6 @@ import ConversationList from './conversation/ConversationList';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 
 // Mapa para controle de operações recentes
 const recentOperations = new Map<string, number>();
@@ -253,9 +251,21 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <DndProvider backend={HTML5Backend}>
-          <ConversationList conversations={conversations} currentConversationId={currentConversationId} onSelectConversation={handleSelectConversation} onDeleteConversation={deleteConversation} onRenameConversation={renameConversation} isUserLoggedIn={!!user} isLoading={loading} folders={folders} onCreateFolder={handleCreateFolder} onRenameFolder={handleRenameFolder} onDeleteFolder={handleDeleteFolder} onMoveConversation={handleMoveConversation} conversationFolders={conversationFolders} />
-        </DndProvider>
+        <ConversationList 
+          conversations={conversations} 
+          currentConversationId={currentConversationId} 
+          onSelectConversation={handleSelectConversation} 
+          onDeleteConversation={deleteConversation} 
+          onRenameConversation={renameConversation} 
+          isUserLoggedIn={!!user} 
+          isLoading={loading} 
+          folders={folders} 
+          onCreateFolder={handleCreateFolder} 
+          onRenameFolder={handleRenameFolder} 
+          onDeleteFolder={handleDeleteFolder} 
+          onMoveConversation={handleMoveConversation} 
+          conversationFolders={conversationFolders} 
+        />
       </div>
     </div>;
 };
