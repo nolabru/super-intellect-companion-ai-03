@@ -1,5 +1,9 @@
+
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
+import { tokenService } from '@/services/tokenService';
+import { tokenEvents } from '@/components/TokenDisplay';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Task } from '@/hooks/useSimplifiedTaskManager';
 
@@ -35,6 +39,8 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     url: string;
   } | null>(null);
   
+  const { user } = useAuth();
+  
   const mediaService = useMediaServiceAdapter({
     service: 'auto',
     showToasts: false,
@@ -62,6 +68,18 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
           type: task.type as any,
           url: task.result
         });
+        
+        // Consume tokens when task completes successfully
+        if (user && task.model) {
+          tokenService.consumeTokens(user.id, task.model, task.type).then(() => {
+            // Trigger token refresh event
+            tokenEvents.triggerRefresh();
+            
+            console.log('Tokens consumed and refresh triggered for completed media generation task');
+          }).catch(err => {
+            console.error('Error consuming tokens:', err);
+          });
+        }
         
         if (showToasts) {
           toast.success(`${task.type.charAt(0).toUpperCase() + task.type.slice(1)} generated successfully`);
