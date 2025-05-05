@@ -1,3 +1,4 @@
+
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';
@@ -95,6 +96,13 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
             onError(task.error || 'Unknown error');
           }
         }
+      } else if (task.status === 'processing') {
+        // For long-running tasks (like video) that are still processing
+        if (showToasts && task.error) {
+          toast.info(`${task.type.charAt(0).toUpperCase() + task.type.slice(1)} still processing`, {
+            description: task.error
+          });
+        }
       }
     }
   });
@@ -107,7 +115,8 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       task.type as any,
       task.prompt,
       task.model,
-      task.metadata?.params
+      task.metadata?.params,
+      task.metadata?.referenceUrl
     );
     
     setCurrentTaskId(newTaskId);
@@ -132,9 +141,24 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     params: any = {},
     referenceUrl?: string
   ) => {
+    // Reset state
     setIsGenerating(true);
     setGeneratedMedia(null);
     
+    // Add timing expectations based on media type
+    if (showToasts) {
+      const timingMessage = type === 'video' 
+        ? 'Video generation may take 1-3 minutes to complete'
+        : type === 'image'
+        ? 'Image generation may take 10-30 seconds to complete'
+        : 'Generation started';
+        
+      toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} generation started`, {
+        description: timingMessage
+      });
+    }
+    
+    // Create task
     const taskId = mediaService.generateMedia(
       type,
       prompt,
@@ -153,10 +177,6 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
         ...task.metadata,
         retryCount: 0
       };
-    }
-    
-    if (showToasts) {
-      toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} generation started`);
     }
     
     return taskId;

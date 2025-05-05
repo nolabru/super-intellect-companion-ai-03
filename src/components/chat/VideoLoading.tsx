@@ -1,82 +1,69 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface VideoLoadingProps {
-  isLoading: boolean;
-  isVideo: boolean;
-  model: string;
-  onTimeout?: () => void;
+  progress?: number;
+  message?: string;
 }
 
 const VideoLoading: React.FC<VideoLoadingProps> = ({ 
-  isLoading, 
-  isVideo, 
-  model,
-  onTimeout 
+  progress = 0, 
+  message = 'Gerando vídeo...' 
 }) => {
-  // Add timeout effect for video loading
-  useEffect(() => {
-    if (isLoading && isVideo) {
-      // Set a timeout to notify when loading exceeds the time limit
-      const timeoutId = setTimeout(() => {
-        console.log('Video loading timeout exceeded');
-        if (onTimeout) {
-          onTimeout();
-        }
-      }, 180000); // 3 minute timeout
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isLoading, isVideo, onTimeout]);
-
-  if (isLoading && isVideo) {
-    const isKliginVideo = model === 'kligin-video';
-    const isLumaVideo = model === 'luma-video';
-    
-    return (
-      <div className="flex flex-col items-center justify-center p-6 my-4 bg-inventu-darker/20 rounded-lg border border-inventu-gray/20">
-        <Loader2 className="h-12 w-12 mb-4 animate-spin text-inventu-blue" />
-        <p className="text-base font-medium text-white">
-          {isKliginVideo 
-            ? "Kligin AI está processando seu vídeo..." 
-            : isLumaVideo
-            ? "Luma AI está processando sua solicitação de vídeo..."
-            : "Gerando seu vídeo..."}
-        </p>
-        <p className="text-sm text-inventu-gray mt-2 text-center">
-          {isKliginVideo
-            ? "O processo pode levar entre 30 segundos e 3 minutos dependendo da complexidade. O processamento ocorre nos servidores da Kligin e estamos aguardando a resposta."
-            : isLumaVideo 
-            ? "O processo pode levar entre 30 segundos e 2 minutos dependendo da complexidade. Estamos usando o SDK oficial da Luma."
-            : "Isso pode levar um momento. Por favor, aguarde."}
-        </p>
-        <div className="mt-4 h-2 w-full bg-inventu-darker rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-inventu-blue opacity-80"
-            style={{
-              width: '30%',
-              animation: 'progressAnimation 2s ease-in-out infinite'
-            }}
-          ></div>
-        </div>
-        <style>
-          {`
-            @keyframes progressAnimation {
-              0% {
-                margin-left: -30%;
-              }
-              100% {
-                margin-left: 100%;
-              }
-            }
-          `}
-        </style>
-      </div>
-    );
-  }
+  const [localProgress, setLocalProgress] = useState(progress);
   
-  return null;
+  // Simulate progress increasing if the original progress stays the same for too long
+  useEffect(() => {
+    if (progress >= 0) {
+      setLocalProgress(progress);
+    }
+    
+    let timeout: NodeJS.Timeout;
+    
+    // If progress is stuck, slowly increment it
+    if (progress < 90) {
+      timeout = setTimeout(() => {
+        setLocalProgress(prev => Math.min(prev + 1, 95));
+      }, 3000);
+    }
+    
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [progress]);
+  
+  // Get an appropriate message based on progress
+  const getMessage = () => {
+    if (localProgress < 20) return 'Iniciando geração de vídeo...';
+    if (localProgress < 40) return 'Criando frames iniciais...';
+    if (localProgress < 60) return 'Processando sequência de vídeo...';
+    if (localProgress < 80) return 'Aplicando efeitos visuais...';
+    if (localProgress < 95) return 'Finalizando vídeo...';
+    return 'Quase pronto...';
+  };
+  
+  const displayMessage = message || getMessage();
+  
+  return (
+    <div className="flex flex-col items-center justify-center p-8 rounded-lg bg-inventu-darker border border-inventu-gray/20">
+      <div className="flex items-center mb-4">
+        <Loader2 className="h-5 w-5 mr-2 animate-spin text-inventu-gray" />
+        <span className="text-white font-medium">{displayMessage}</span>
+      </div>
+      
+      <div className="w-full max-w-xs mb-2">
+        <Progress value={localProgress} className="h-2 bg-inventu-gray/20" />
+      </div>
+      
+      <p className="text-xs text-inventu-gray">
+        {localProgress < 95 
+          ? 'A geração de vídeo pode levar 1-3 minutos. Por favor, aguarde.' 
+          : 'O vídeo está quase pronto. Aguarde mais alguns instantes.'}
+      </p>
+    </div>
+  );
 };
 
 export default VideoLoading;

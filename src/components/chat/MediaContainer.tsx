@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ChatMode } from '../ModeSelector';
 import ImageContent from './media/ImageContent';
+import VideoContent from './media/VideoContent';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 interface MediaContainerProps {
@@ -56,8 +57,17 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
         />
       );
     case 'video':
-      // Add video component when implemented
-      return <div>Video content not supported yet</div>;
+      return (
+        <VideoContent 
+          src={mediaUrl} 
+          onLoad={handleLoad} 
+          onError={handleError} 
+          isLoading={isLoading}
+          onSaveToGallery={handleSaveToGallery}
+          onOpenInNewTab={handleOpenInNewTab}
+          saving={saving}
+        />
+      );
     case 'audio':
       // Add audio component when implemented
       return <div>Audio content not supported yet</div>;

@@ -34,9 +34,9 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   initialParams
 }) => {
   const [params, setParams] = useState<VideoParamsType>({
-    model: model || 'ray-2',
+    model: model || 'kling-text',
     videoType: initialParams?.videoType || 'text-to-video',
-    duration: initialParams?.duration || 3,
+    duration: initialParams?.duration || 5,
     resolution: initialParams?.resolution || '720p'
   });
 
@@ -115,9 +115,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
             <SelectValue placeholder="Selecione a duração" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            <SelectItem value="3">3 segundos</SelectItem>
             <SelectItem value="5">5 segundos</SelectItem>
-            <SelectItem value="8">8 segundos</SelectItem>
             <SelectItem value="10">10 segundos</SelectItem>
           </SelectContent>
         </Select>
