@@ -5,10 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-// Updated image models data - just focusing on Ideogram
+// Updated image models data - now including both Ideogram and Midjourney
 const IMAGE_MODELS = [
   { id: 'ideogram-v2', name: 'Ideogram V2' },
-  { id: 'ideogram-v1', name: 'Ideogram V1' }
+  { id: 'midjourney', name: 'Midjourney' }
 ];
 
 // Ideogram style types
@@ -25,11 +25,24 @@ const IDEOGRAM_STYLES = [
 
 // Aspect ratio options
 const ASPECT_RATIOS = [
-  { id: 'ASPECT_1_1', name: 'Square (1:1)' },
-  { id: 'ASPECT_4_3', name: 'Landscape (4:3)' },
-  { id: 'ASPECT_3_4', name: 'Portrait (3:4)' },
-  { id: 'ASPECT_16_9', name: 'Wide (16:9)' },
-  { id: 'ASPECT_9_16', name: 'Tall (9:16)' }
+  { id: 'ASPECT_1_1', name: 'Square (1:1)', midjourney: '1:1' },
+  { id: 'ASPECT_4_3', name: 'Landscape (4:3)', midjourney: '4:3' },
+  { id: 'ASPECT_3_4', name: 'Portrait (3:4)', midjourney: '3:4' },
+  { id: 'ASPECT_16_9', name: 'Wide (16:9)', midjourney: '16:9' },
+  { id: 'ASPECT_9_16', name: 'Tall (9:16)', midjourney: '9:16' }
+];
+
+// Midjourney specific options
+const MIDJOURNEY_QUALITY_OPTIONS = [
+  { id: 'standard', name: 'Standard' },
+  { id: 'hd', name: 'HD' }
+];
+
+const MIDJOURNEY_STYLE_OPTIONS = [
+  { id: 'raw', name: 'Raw' },
+  { id: 'cute', name: 'Cute' },
+  { id: 'scenic', name: 'Scenic' },
+  { id: 'original', name: 'Original' }
 ];
 
 interface ImageGeneratorProps {
@@ -43,25 +56,33 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
   const [aspectRatio, setAspectRatio] = useState('ASPECT_1_1');
   const [magicPrompt, setMagicPrompt] = useState('AUTO');
   
+  // Midjourney specific states
+  const [mjQuality, setMjQuality] = useState('standard');
+  const [mjStyle, setMjStyle] = useState('raw');
+  
+  const isMidjourney = selectedModel === 'midjourney';
+  
   const ParamControls = () => (
     <div className="space-y-4">
+      {/* Model selection */}
       <div className="space-y-2">
-        <Label htmlFor="ideogramStyle">Style</Label>
+        <Label htmlFor="modelSelect">Model</Label>
         <Select 
-          value={ideogramStyle}
-          onValueChange={setIdeogramStyle}
+          value={selectedModel}
+          onValueChange={setSelectedModel}
         >
-          <SelectTrigger id="ideogramStyle">
-            <SelectValue placeholder="Select style" />
+          <SelectTrigger id="modelSelect">
+            <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
-            {IDEOGRAM_STYLES.map(style => (
-              <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
+            {IMAGE_MODELS.map(model => (
+              <SelectItem key={model.id} value={model.id}>{model.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
+      {/* Aspect Ratio - common for both */}
       <div className="space-y-2">
         <Label htmlFor="aspectRatio">Aspect Ratio</Label>
         <Select 
@@ -79,23 +100,85 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="magicPrompt">Magic Prompt</Label>
-        <Select 
-          value={magicPrompt}
-          onValueChange={setMagicPrompt}
-        >
-          <SelectTrigger id="magicPrompt">
-            <SelectValue placeholder="Select magic prompt option" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="AUTO">Auto</SelectItem>
-            <SelectItem value="ON">On</SelectItem>
-            <SelectItem value="OFF">Off</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Ideogram specific controls */}
+      {!isMidjourney && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="ideogramStyle">Style</Label>
+            <Select 
+              value={ideogramStyle}
+              onValueChange={setIdeogramStyle}
+            >
+              <SelectTrigger id="ideogramStyle">
+                <SelectValue placeholder="Select style" />
+              </SelectTrigger>
+              <SelectContent>
+                {IDEOGRAM_STYLES.map(style => (
+                  <SelectItem key={style.id} value={style.id}>{style.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="magicPrompt">Magic Prompt</Label>
+            <Select 
+              value={magicPrompt}
+              onValueChange={setMagicPrompt}
+            >
+              <SelectTrigger id="magicPrompt">
+                <SelectValue placeholder="Select magic prompt option" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AUTO">Auto</SelectItem>
+                <SelectItem value="ON">On</SelectItem>
+                <SelectItem value="OFF">Off</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+      
+      {/* Midjourney specific controls */}
+      {isMidjourney && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="mjQuality">Quality</Label>
+            <Select 
+              value={mjQuality}
+              onValueChange={setMjQuality}
+            >
+              <SelectTrigger id="mjQuality">
+                <SelectValue placeholder="Select quality" />
+              </SelectTrigger>
+              <SelectContent>
+                {MIDJOURNEY_QUALITY_OPTIONS.map(option => (
+                  <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="mjStyle">Style</Label>
+            <Select 
+              value={mjStyle}
+              onValueChange={setMjStyle}
+            >
+              <SelectTrigger id="mjStyle">
+                <SelectValue placeholder="Select style" />
+              </SelectTrigger>
+              <SelectContent>
+                {MIDJOURNEY_STYLE_OPTIONS.map(option => (
+                  <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+
+      {/* Negative prompt - common for both */}
       <div className="space-y-2">
         <Label htmlFor="negativePrompt">Negative Prompt (Optional)</Label>
         <Textarea
@@ -108,14 +191,28 @@ const ImageGenerator: React.FC<ImageGeneratorProps> = ({ onImageGenerated }) => 
     </div>
   );
 
-  // Create additional params object for Ideogram
+  // Create additional params object based on selected model
   const getAdditionalParams = () => {
-    return {
-      negativePrompt,
-      style_type: ideogramStyle,
-      aspect_ratio: aspectRatio,
-      magic_prompt_option: magicPrompt,
-    };
+    if (isMidjourney) {
+      // Find the corresponding Midjourney format for the selected aspect ratio
+      const selectedRatio = ASPECT_RATIOS.find(r => r.id === aspectRatio);
+      const mjAspectRatio = selectedRatio ? selectedRatio.midjourney : '1:1';
+      
+      return {
+        negative_prompt: negativePrompt,
+        quality: mjQuality,
+        aspect_ratio: mjAspectRatio,
+        style: mjStyle
+      };
+    } else {
+      // Ideogram params
+      return {
+        negativePrompt,
+        style_type: ideogramStyle,
+        aspect_ratio: aspectRatio,
+        magic_prompt_option: magicPrompt,
+      };
+    }
   };
 
   return (

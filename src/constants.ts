@@ -8,23 +8,25 @@ export interface ChatModel {
   };
 }
 
-// IDEOGRAM models
-const IDEOGRAM_MODELS: ChatModel[] = [
+// Combine Ideogram and Midjourney models into a single IMAGE_MODELS group
+const IMAGE_MODELS: ChatModel[] = [
   {
     id: 'ideogram-v2',
     displayName: 'Ideogram V2',
     provider: 'ideogram',
     modes: ['image'],
-  }
-];
-
-// Midjourney models
-const MIDJOURNEY_MODELS: ChatModel[] = [
+    capabilities: {
+      imageGeneration: true
+    }
+  },
   {
     id: 'midjourney',
     displayName: 'Midjourney',
     provider: 'apiframe',
     modes: ['image'],
+    capabilities: {
+      imageGeneration: true
+    }
   }
 ];
 
@@ -96,10 +98,8 @@ export const AVAILABLE_MODELS: ChatModel[] = [
     provider: 'luma',
     modes: ['video'],
   },
-  // Add Ideogram models
-  ...IDEOGRAM_MODELS,
-  // Add Midjourney models
-  ...MIDJOURNEY_MODELS,
+  // Add all image models (both Ideogram and Midjourney) 
+  ...IMAGE_MODELS,
   // Keep audio models
   ...APIFRAME_AUDIO_MODELS
 ];

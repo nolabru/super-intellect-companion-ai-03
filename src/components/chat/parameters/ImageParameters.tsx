@@ -11,10 +11,12 @@ import {
 import { Separator } from '@/components/ui/separator';
 import MidjourneyParameters from './MidjourneyParameters';
 import { MidjourneyParams } from './MidjourneyParameters';
+import { Textarea } from '@/components/ui/textarea';
 
 export interface ImageParams {
   style_type?: string;
   aspect_ratio?: string;
+  negative_prompt?: string;
   [key: string]: any;
 }
 
@@ -30,7 +32,8 @@ const IdeogramParameters: React.FC<{
 }> = ({ onParamsChange, initialParams = {} }) => {
   const [params, setParams] = React.useState<ImageParams>({
     style_type: initialParams.style_type || 'GENERAL',
-    aspect_ratio: initialParams.aspect_ratio || 'ASPECT_1_1'
+    aspect_ratio: initialParams.aspect_ratio || 'ASPECT_1_1',
+    negative_prompt: initialParams.negative_prompt || ''
   });
 
   const handleParamChange = (key: string, value: string) => {
@@ -56,6 +59,8 @@ const IdeogramParameters: React.FC<{
               <SelectItem value="PAINTING">Pintura</SelectItem>
               <SelectItem value="PHOTO">Foto</SelectItem>
               <SelectItem value="ANIME">Anime</SelectItem>
+              <SelectItem value="DIGITAL_ART">Arte Digital</SelectItem>
+              <SelectItem value="CINEMATIC">Cinemático</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -79,6 +84,16 @@ const IdeogramParameters: React.FC<{
           </Select>
         </div>
       </div>
+      
+      <div className="space-y-2">
+        <Label className="text-sm text-white/70">Prompt Negativo</Label>
+        <Textarea
+          placeholder="Elementos que você quer evitar na imagem"
+          value={params.negative_prompt || ''}
+          onChange={(e) => handleParamChange('negative_prompt', e.target.value)}
+          className="bg-inventu-darker border-inventu-gray/30 resize-none h-16"
+        />
+      </div>
     </div>
   );
 };
@@ -100,6 +115,7 @@ const convertToMidjourneyFormat = (params: ImageParams): Partial<MidjourneyParam
     aspect_ratio: aspectRatio,
     quality: params.quality as 'standard' | 'hd' || 'standard',
     style: params.style as any || 'raw',
+    negative_prompt: params.negative_prompt
   };
 };
 
