@@ -17,13 +17,11 @@ export const tokenEvents = {
   
   // Method to trigger a refresh for all subscribers
   triggerRefresh: () => {
-    console.log('Token refresh event triggered');
     tokenEvents.subscribers.forEach(callback => callback());
   },
   
   // Subscribe to token updates
   subscribe: (callback: () => void) => {
-    console.log('New token event subscriber added');
     tokenEvents.subscribers.add(callback);
     return () => {
       tokenEvents.subscribers.delete(callback);
@@ -47,7 +45,6 @@ const TokenDisplay = () => {
     }
 
     try {
-      console.log('Fetching token info in TokenDisplay component');
       // Retry with cache clearing if we've had issues before
       if (retryCount > 0) {
         console.log('Clearing token cache before retry attempt');
@@ -55,7 +52,6 @@ const TokenDisplay = () => {
       }
 
       const balance = await tokenService.getUserTokenBalance(user.id);
-      console.log('Token balance fetched:', balance);
       setTokenInfo(balance);
       setError(false);
       
@@ -85,14 +81,11 @@ const TokenDisplay = () => {
   useEffect(() => {
     fetchTokenInfo();
     
-    // Refresh token info every 10 seconds (more frequent)
-    const intervalId = setInterval(fetchTokenInfo, 10000);
+    // Refresh token info every 15 seconds (more frequent than before)
+    const intervalId = setInterval(fetchTokenInfo, 15000);
     
     // Subscribe to token events for real-time updates
-    const unsubscribe = tokenEvents.subscribe(() => {
-      console.log('TokenDisplay received refresh event, fetching new token info');
-      fetchTokenInfo();
-    });
+    const unsubscribe = tokenEvents.subscribe(fetchTokenInfo);
     
     return () => {
       clearInterval(intervalId);

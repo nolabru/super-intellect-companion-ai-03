@@ -22,7 +22,7 @@ interface TokenCache {
 }
 
 // Cache expiration times in milliseconds
-const BALANCE_CACHE_TTL = 2 * 60 * 1000; // 2 minutes (reduced from 5)
+const BALANCE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const RATES_CACHE_TTL = 60 * 60 * 1000;  // 1 hour
 
 // In-memory cache
@@ -187,8 +187,7 @@ export const tokenService = {
       const rate = rates.find(r => r.modelId === modelId && r.mode === mode);
       const tokensRequired = rate?.tokensPerRequest || 50; // Default if no specific rate found
       
-      // Get current token balance - force fresh fetch by clearing cache
-      this.clearBalanceCache();
+      // Get current token balance
       const balance = await this.getUserTokenBalance(userId);
       
       const result = {

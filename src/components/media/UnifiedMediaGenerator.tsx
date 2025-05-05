@@ -7,7 +7,6 @@ import { Loader2, ImageIcon, Coins } from 'lucide-react';
 import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
 import { saveToGallery } from '@/services/mediaService';
 import { tokenService } from '@/services/tokenService';
-import { tokenEvents } from '@/components/TokenDisplay';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -48,9 +47,8 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
       if (onMediaGenerated) {
         onMediaGenerated(mediaUrl);
       }
-      // Force token info refresh after generation completes
+      // Refresh token info after media generation
       if (user) {
-        tokenEvents.triggerRefresh();
         loadTokenInfo();
       }
     }
@@ -76,16 +74,6 @@ const UnifiedMediaGenerator: React.FC<UnifiedMediaGeneratorProps> = ({
   // Load token information when component mounts or user changes
   useEffect(() => {
     loadTokenInfo();
-    
-    // Subscribe to token update events
-    const unsubscribe = tokenEvents.subscribe(() => {
-      console.log("TokenDisplay event received in UnifiedMediaGenerator");
-      loadTokenInfo();
-    });
-    
-    return () => {
-      unsubscribe();
-    };
   }, [user]);
 
   const handleGenerate = async () => {
