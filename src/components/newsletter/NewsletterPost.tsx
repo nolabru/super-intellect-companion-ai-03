@@ -35,7 +35,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
     updated_at,
     media_url,
     media_type,
-    user_id,
+    author_id,
     author
   } = post;
 
@@ -69,6 +69,11 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
     }
   };
 
+  // Ensure we have a valid media_type for the MediaPlayer
+  const safeMediaType = (media_type === 'image' || media_type === 'video' || media_type === 'audio') 
+    ? media_type 
+    : 'none';
+
   return (
     <Card className="overflow-hidden bg-black/20 backdrop-blur-sm border-white/5">
       <div className="p-4">
@@ -87,7 +92,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
               <p className="text-sm font-medium">{author?.username || 'Usuário'}</p>
               <div className="flex items-center text-xs text-white/50">
                 <Calendar className="mr-1 h-3 w-3" />
-                <span>{formatPostDate(created_at)}</span>
+                <span>{formatPostDate(created_at || new Date().toISOString())}</span>
               </div>
             </div>
           </div>
@@ -109,7 +114,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
         
         {media_url && (
           <div className="mt-3">
-            {media_type === 'image' ? (
+            {safeMediaType === 'image' ? (
               <div 
                 className="relative aspect-video rounded-md overflow-hidden cursor-pointer"
                 onClick={() => setMediaDialogOpen(true)}
@@ -120,7 +125,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
                   className="absolute inset-0 w-full h-full object-cover"
                 />
               </div>
-            ) : media_type === 'video' ? (
+            ) : safeMediaType === 'video' ? (
               <div 
                 className="relative aspect-video rounded-md overflow-hidden cursor-pointer bg-black/40"
                 onClick={() => setMediaDialogOpen(true)}
@@ -129,7 +134,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
                   <Badge className="bg-inventu-blue">Vídeo</Badge>
                 </div>
               </div>
-            ) : media_type === 'audio' ? (
+            ) : safeMediaType === 'audio' ? (
               <div 
                 className="relative h-16 rounded-md overflow-hidden cursor-pointer bg-black/40"
                 onClick={() => setMediaDialogOpen(true)}
@@ -150,7 +155,7 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
             </div>
             <div className="flex items-center">
               <Heart className="h-4 w-4 mr-1" />
-              <span className="text-xs">{post.like_count}</span>
+              <span className="text-xs">{post.likes_count}</span>
             </div>
             <div className="flex items-center">
               <MessageSquare className="h-4 w-4 mr-1" />
@@ -168,11 +173,11 @@ export const NewsletterPost: React.FC<NewsletterPostProps> = ({ post, onDelete }
           </DialogHeader>
           <div className={cn(
             "overflow-hidden",
-            media_type === 'image' || media_type === 'video' ? "aspect-video" : "h-24"
+            safeMediaType === 'image' || safeMediaType === 'video' ? "aspect-video" : "h-24"
           )}>
             <MediaPlayer 
               url={media_url || ''} 
-              type={media_type || 'image'} 
+              type={safeMediaType} 
               className="w-full h-full"
             />
           </div>

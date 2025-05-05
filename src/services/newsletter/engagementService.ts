@@ -139,24 +139,26 @@ export const incrementShareCount = async (postId: string): Promise<boolean> => {
   }
   
   try {
-    // Incrementamos através do update diretamente em vez de inserir em uma tabela separada
-    // para evitar erros de tabela inexistente
+    // Verificamos se a coluna shares_count existe na tabela
     const { data: post, error: fetchError } = await supabase
       .from('newsletter_posts')
-      .select('shares_count')
+      .select('*')
       .eq('id', postId)
       .single();
     
     if (fetchError) {
-      console.error('Erro ao buscar contagem de compartilhamentos:', fetchError);
+      console.error('Erro ao buscar informações do post:', fetchError);
       return false;
     }
     
+    // Incrementamos o contador que existe na tabela
     const currentShareCount = post?.shares_count || 0;
     
     const { error } = await supabase
       .from('newsletter_posts')
-      .update({ shares_count: currentShareCount + 1 })
+      .update({ 
+        shares_count: currentShareCount + 1 
+      })
       .eq('id', postId);
     
     if (error) {

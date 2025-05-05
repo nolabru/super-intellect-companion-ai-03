@@ -12,20 +12,24 @@ export const mapPostToFrontend = (post: any): PostWithStats => {
     id: post.id || '',
     title: post.title || '',
     content: post.content || '',
-    user_id: post.author_id || '',
     author_id: post.author_id || '',
+    user_id: post.author_id || '', // Map author_id to user_id for compatibility
     published_at: post.published_at || null,
     media_url: post.media_url || null,
-    media_type: (post.media_type as "none" | "image" | "video" | "audio") || 'none',
+    media_type: post.media_type || 'none',
     view_count: post.view_count || 0,
-    like_count: post.like_count || 0,
-    share_count: post.share_count || 0,
+    likes_count: post.likes_count || 0,
+    like_count: post.likes_count || 0,  // Add alias for likes_count
+    shares_count: post.shares_count || 0,
     created_at: post.created_at || post.published_at || new Date().toISOString(),
     updated_at: post.updated_at || new Date().toISOString(),
     is_published: post.is_published || false,
-    likes_count: post.likes_count || 0,
     comments_count: post.comments_count || 0,
-    user_has_liked: post.user_has_liked || false
+    user_has_liked: post.user_has_liked || false,
+    author: {
+      username: post.author_name || '',
+      avatar_url: post.author_avatar || null
+    }
   };
 };
 

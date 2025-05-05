@@ -22,25 +22,26 @@ export const newsletterService = {
   // Funcionalidades de comentários
   getComments: commentService.getComments,
   addComment: commentService.addComment,
+  deleteComment: commentService.deleteComment,
   
   // Funcionalidades de engajamento
   incrementViewCount: engagementService.incrementViewCount,
   incrementLikeCount: engagementService.incrementLikeCount,
   incrementShareCount: engagementService.incrementShareCount,
-  hasUserLikedPost: engagementService.hasUserLikedPost
+  hasUserLikedPost: engagementService.hasUserLikedPost,
+  
+  // Funcionalidades de posts (adicionadas aqui para o serviço comum)
+  createPost: postService.createPost,
+  updatePost: postService.updatePost,
+  deletePost: postService.deletePost,
+  publishPost: postService.publishPost,
+  unpublishPost: postService.unpublishPost
 };
 
 // Service administrativo
 export const newsletterAdminService = {
   // Herda todas as funcionalidades do newsletterService
   ...newsletterService,
-  
-  // Funcionalidades específicas de administrador
-  createPost: postService.createPost,
-  updatePost: postService.updatePost,
-  deletePost: postService.deletePost,
-  publishPost: postService.publishPost,
-  unpublishPost: postService.unpublishPost,
   
   // Estatísticas administrativas
   getStats: statsService.getStats,

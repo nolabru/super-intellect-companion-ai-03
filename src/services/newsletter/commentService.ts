@@ -39,6 +39,9 @@ export const addComment = async (postId: string, content: string): Promise<Comme
     
     return {
       ...data,
+      username: userInfo.username || 'Usuário',
+      display_name: null,
+      avatar_url: userInfo.avatar_url || null,
       user: userInfo
     };
   } catch (err) {
@@ -72,6 +75,9 @@ export const getComments = async (postId: string): Promise<CommentWithUser[]> =>
       const userInfo = await getUserInfo(comment.user_id);
       commentsWithUsers.push({
         ...comment,
+        username: userInfo.username || 'Usuário',
+        display_name: null,
+        avatar_url: userInfo.avatar_url || null,
         user: userInfo
       });
     }
