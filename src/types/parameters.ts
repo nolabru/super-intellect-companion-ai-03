@@ -26,6 +26,33 @@ export interface AudioParameters {
 
 export type GenerationParameters = ImageParameters | VideoParameters | AudioParameters;
 
+// Type guard functions
+export const isImageParameters = (params: any): params is ImageParameters => {
+  return params && (
+    params.style_type !== undefined || 
+    params.aspect_ratio !== undefined || 
+    params.negative_prompt !== undefined ||
+    params.quality !== undefined
+  );
+};
+
+export const isVideoParameters = (params: any): params is VideoParameters => {
+  return params && (
+    params.videoType !== undefined ||
+    params.resolution !== undefined ||
+    (params.duration !== undefined && typeof params.duration !== 'string')
+  );
+};
+
+export const isAudioParameters = (params: any): params is AudioParameters => {
+  return params && (
+    params.voice_id !== undefined ||
+    params.genre !== undefined ||
+    params.speed !== undefined ||
+    params.pitch !== undefined
+  );
+};
+
 // Get default parameters based on mode and model
 export const getDefaultParameters = (mode: string, model: string): GenerationParameters => {
   switch (mode) {

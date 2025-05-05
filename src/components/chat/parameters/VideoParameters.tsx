@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import {
@@ -35,7 +36,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   const [params, setParams] = useState<VideoParamsType>({
     model: model || 'ray-2',
     videoType: initialParams?.videoType || 'text-to-video',
-    duration: initialParams?.duration || '5s',
+    duration: initialParams?.duration || 3,
     resolution: initialParams?.resolution || '720p'
   });
 
@@ -107,17 +108,17 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
       <div className="space-y-2">
         <Label>Duração</Label>
         <Select
-          value={params.duration}
-          onValueChange={(value) => handleParamChange('duration', value as '3s' | '5s' | '8s' | '10s')}
+          value={params.duration?.toString()}
+          onValueChange={(value) => handleParamChange('duration', parseInt(value, 10))}
         >
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
             <SelectValue placeholder="Selecione a duração" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            <SelectItem value="3s">3 segundos</SelectItem>
-            <SelectItem value="5s">5 segundos</SelectItem>
-            <SelectItem value="8s">8 segundos</SelectItem>
-            <SelectItem value="10s">10 segundos</SelectItem>
+            <SelectItem value="3">3 segundos</SelectItem>
+            <SelectItem value="5">5 segundos</SelectItem>
+            <SelectItem value="8">8 segundos</SelectItem>
+            <SelectItem value="10">10 segundos</SelectItem>
           </SelectContent>
         </Select>
       </div>

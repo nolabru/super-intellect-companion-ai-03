@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import MidjourneyParameters from './MidjourneyParameters';
+import { MidjourneyParams } from './MidjourneyParameters';
 
 export interface ImageParams {
   style_type?: string;
@@ -82,6 +83,26 @@ const IdeogramParameters: React.FC<{
   );
 };
 
+const convertToMidjourneyFormat = (params: ImageParams): Partial<MidjourneyParams> => {
+  // Convert aspect_ratio if it exists
+  let aspectRatio: "1:1" | "4:3" | "3:4" | "16:9" | "9:16" = "1:1"; 
+  
+  if (params.aspect_ratio) {
+    if (params.aspect_ratio === 'ASPECT_1_1') aspectRatio = "1:1";
+    else if (params.aspect_ratio === 'ASPECT_4_3') aspectRatio = "4:3";
+    else if (params.aspect_ratio === 'ASPECT_3_4') aspectRatio = "3:4";
+    else if (params.aspect_ratio === 'ASPECT_16_9') aspectRatio = "16:9";
+    else if (params.aspect_ratio === 'ASPECT_9_16') aspectRatio = "9:16";
+  }
+  
+  return {
+    ...params,
+    aspect_ratio: aspectRatio,
+    quality: params.quality as 'standard' | 'hd' || 'standard',
+    style: params.style as any || 'raw',
+  };
+};
+
 const ImageParameters: React.FC<ImageParametersProps> = ({ 
   model, 
   onParamsChange, 
@@ -92,7 +113,7 @@ const ImageParameters: React.FC<ImageParametersProps> = ({
     return (
       <MidjourneyParameters 
         onParamsChange={onParamsChange} 
-        initialParams={initialParams}
+        initialParams={convertToMidjourneyFormat(initialParams)}
       />
     );
   }
