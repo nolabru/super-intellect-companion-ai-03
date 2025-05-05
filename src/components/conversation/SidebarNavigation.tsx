@@ -18,6 +18,11 @@ const SidebarNavigation: React.FC = () => {
       icon: <Image className="h-4 w-4 mr-2" />
     },
     {
+      path: '/ideogram',
+      label: 'Ideogram',
+      icon: <Image className="h-4 w-4 mr-2" />
+    },
+    {
       path: '/memory',
       label: 'Memória',
       icon: <Brain className="h-4 w-4 mr-2" />

@@ -1,4 +1,3 @@
-
 export interface ChatModel {
   id: string;
   displayName: string;
@@ -9,43 +8,18 @@ export interface ChatModel {
   };
 }
 
-// APIframe models based on modelMapping.ts
-// Image models
-const APIFRAME_IMAGE_MODELS: ChatModel[] = [
+// IDEOGRAM models
+const IDEOGRAM_MODELS: ChatModel[] = [
   {
-    id: 'sdxl',
-    displayName: 'Stable Diffusion XL',
-    provider: 'apiframe',
+    id: 'ideogram-v2',
+    displayName: 'Ideogram V2',
+    provider: 'ideogram',
     modes: ['image'],
   },
   {
-    id: 'sdxl-turbo',
-    displayName: 'SDXL Turbo (Fast)',
-    provider: 'apiframe',
-    modes: ['image'],
-  },
-  {
-    id: 'kandinsky',
-    displayName: 'Kandinsky 2.2',
-    provider: 'apiframe',
-    modes: ['image'],
-  },
-  {
-    id: 'deepfloyd',
-    displayName: 'DeepFloyd IF',
-    provider: 'apiframe',
-    modes: ['image'],
-  },
-  {
-    id: 'dalle-3',
-    displayName: 'DALL-E 3',
-    provider: 'apiframe',
-    modes: ['image'],
-  },
-  {
-    id: 'midjourney',
-    displayName: 'Midjourney',
-    provider: 'apiframe',
+    id: 'ideogram-v1',
+    displayName: 'Ideogram V1',
+    provider: 'ideogram',
     modes: ['image'],
   }
 ];
@@ -176,8 +150,9 @@ export const AVAILABLE_MODELS: ChatModel[] = [
     provider: 'luma',
     modes: ['video'],
   },
-  // Add APIframe models
-  ...APIFRAME_IMAGE_MODELS,
+  // Add only Ideogram models
+  ...IDEOGRAM_MODELS,
+  // Keep video and audio models
   ...APIFRAME_VIDEO_MODELS,
   ...APIFRAME_AUDIO_MODELS
 ];

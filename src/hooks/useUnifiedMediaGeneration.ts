@@ -2,7 +2,7 @@
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';
-import { Task } from '@/hooks/useTaskManager';
+import { Task } from '@/hooks/useSimplifiedTaskManager';
 
 interface UnifiedMediaGenerationOptions {
   autoRetry?: boolean;
@@ -42,7 +42,14 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     onTaskUpdate: (task) => {
       if (task.id !== currentTaskId) return;
       
-      setCurrentTask(task);
+      // Convert to the expected task type format
+      const updatedTask = {
+        ...task,
+        // Ensure createdAt is a string to avoid type mismatch
+        createdAt: typeof task.createdAt === 'string' ? task.createdAt : task.createdAt.toString()
+      };
+      
+      setCurrentTask(updatedTask as unknown as Task);
       
       if (onProgress && task.progress) {
         onProgress(task.progress);
@@ -65,14 +72,16 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       } else if (task.status === 'failed' || task.status === 'canceled') {
         setIsGenerating(false);
         
-        if (task.status === 'failed' && autoRetry && task.metadata?.retryCount < maxRetries) {
+        if (task.status === 'failed' && autoRetry && 
+            task.metadata?.retryCount !== undefined && 
+            task.metadata.retryCount < maxRetries) {
           // Auto retry failed tasks
           setTimeout(() => {
             if (showToasts) {
               toast.info(`Retry attempt ${(task.metadata?.retryCount || 0) + 1}/${maxRetries}`);
             }
             
-            retryGeneration(task);
+            retryGeneration(task as unknown as Task);
           }, retryDelay);
         } else if (task.status === 'failed') {
           if (showToasts) {
@@ -97,8 +106,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       task.type as any,
       task.prompt,
       task.model,
-      task.metadata?.params,
-      task.metadata?.referenceUrl
+      task.metadata?.params
     );
     
     setCurrentTaskId(newTaskId);
@@ -107,9 +115,11 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     const newTask = mediaService.getTaskStatus(newTaskId);
     
     if (newTask) {
+      const retryCount = (task.metadata?.retryCount !== undefined) ? (task.metadata.retryCount + 1) : 1;
+      // Update metadata without directly modifying the task object
       mediaService.getTaskStatus(newTaskId)!.metadata = {
         ...task.metadata,
-        retryCount: (task.metadata?.retryCount || 0) + 1
+        retryCount
       };
     }
   }, [mediaService]);
@@ -137,6 +147,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     // Set initial metadata
     const task = mediaService.getTaskStatus(taskId);
     if (task) {
+      // Update metadata without directly modifying the task object
       mediaService.getTaskStatus(taskId)!.metadata = {
         ...task.metadata,
         retryCount: 0
@@ -183,9 +194,9 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     generatedMedia,
     
     // Config methods
-    configureApiKey: (key: string, service: 'apiframe' | 'piapi' = 'apiframe') => 
-      mediaService.configureApiKey(key, service),
-    isApiKeyConfigured: (service: 'apiframe' | 'piapi' = 'apiframe') => 
-      mediaService.isApiKeyConfigured(service)
+    configureApiKey: (key: string) => 
+      mediaService.configureApiKey(key),
+    isApiKeyConfigured: () => 
+      mediaService.isApiKeyConfigured()
   };
 }
