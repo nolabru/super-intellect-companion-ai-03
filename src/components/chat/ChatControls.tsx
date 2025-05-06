@@ -3,7 +3,6 @@ import React, { memo } from 'react';
 import RefinedModeSelector from './RefinedModeSelector';
 import CompareModelsButton from '../CompareModelsButton';
 import LinkToggleButton from '../LinkToggleButton';
-import ModelSelector from '../ModelSelector';
 import { ChatMode } from '../ModeSelector';
 import { cn } from '@/lib/utils';
 
@@ -25,17 +24,10 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   comparing,
   isLinked,
   isMobile,
-  model,
   onModeChange,
   onToggleCompare,
   onToggleLink,
-  onModelChange,
-  availableModels
 }) => {
-  // Separar os modelos se estamos comparando
-  const modelIds = model.split(',');
-  const leftModel = modelIds[0] || '';
-  
   return (
     <div className={cn(
       "px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10",
@@ -50,17 +42,6 @@ const ChatControls: React.FC<ChatControlsProps> = ({
             activeMode={activeMode} 
             onChange={onModeChange} 
           />
-          
-          {/* Seletor de modelo movido para cima */}
-          {availableModels && availableModels.length > 0 && (
-            <ModelSelector
-              mode={activeMode}
-              selectedModel={leftModel}
-              onChange={onModelChange}
-              availableModels={availableModels}
-              className="max-w-48"
-            />
-          )}
         </div>
 
         <div className="flex items-center gap-3">

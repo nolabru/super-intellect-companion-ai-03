@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Text, Image, Video, AudioLines, PhoneCall, Music } from 'lucide-react';
+import { Text, Image, Video, AudioLines, PhoneCall } from 'lucide-react';
 import { ChatMode } from '../ModeSelector';
 import { cn } from '@/lib/utils';
 
@@ -17,8 +17,6 @@ const ModeIcon: React.FC<ModeIconProps> = ({ mode, className }) => {
       return <Video size={14} className={cn("mr-1", className)} />;
     case 'audio':
       return <AudioLines size={14} className={cn("mr-1", className)} />;
-    case 'music':
-      return <Music size={14} className={cn("mr-1", className)} />;
     case 'call':
       return <PhoneCall size={14} className={cn("mr-1", className)} />;
     case 'text':

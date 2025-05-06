@@ -47,14 +47,13 @@ export function useChatServiceAdapter(options: ChatServiceOptions = {}) {
         });
       }
 
-      // Chamar a Edge Function para obter resposta
+      // Chamar a Edge Function para obter resposta - remove signal from options
       const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: requestBody,
-        signal: abortSignal
+        body: requestBody
       });
 
       if (error) {
-        if (error.message?.includes('aborted')) {
+        if (abortSignal?.aborted) {
           throw new Error('A requisição foi cancelada');
         }
         
