@@ -38,6 +38,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const [checkAttempts, setCheckAttempts] = useState(0);
   const [lastCheckTime, setLastCheckTime] = useState<number>(0);
   const [isDbCheckActive, setIsDbCheckActive] = useState(false);
+  const [persistentLoading, setPersistentLoading] = useState(false);
   
   const { 
     checkTimedOutTask, 
@@ -47,6 +48,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
     onComplete: (mediaUrl) => {
       setVideoUrl(mediaUrl);
       setHasTimedOut(false);
+      setPersistentLoading(false);
       if (onVideoReady) onVideoReady(mediaUrl);
       if (onLoad) onLoad();
       
@@ -62,13 +64,19 @@ const VideoContent: React.FC<VideoContentProps> = ({
   useEffect(() => {
     let intervalId: number | undefined;
     
-    if (hasTimedOut && taskId && !videoUrl && checkAttempts < 20) {
+    // Verificamos se o vídeo está carregando (taskId existe) e o progresso está em 95% ou mais
+    if (taskId && !videoUrl && currentTask?.progress && currentTask.progress >= 95) {
+      console.log(`[VideoContent] Detected high progress (${currentTask.progress}%) - activating persistent loading`);
+      setPersistentLoading(true);
+    }
+
+    if ((hasTimedOut || persistentLoading) && taskId && !videoUrl && checkAttempts < 40) {
       // Set initial checking state
       setIsManuallyChecking(true);
       
       // Initial check
       const doCheck = async () => {
-        console.log(`[VideoContent] Checking timed out task ${taskId} (attempt ${checkAttempts + 1}/20)`);
+        console.log(`[VideoContent] Checking video status ${taskId} (attempt ${checkAttempts + 1}/40)`);
         setLastCheckTime(Date.now());
         
         try {
@@ -98,31 +106,45 @@ const VideoContent: React.FC<VideoContentProps> = ({
       // Run initial check
       doCheck();
       
-      // Set up periodic checks every 15 seconds
+      // Set up periodic checks every 10 seconds
       intervalId = window.setInterval(async () => {
         // Only check if not already checking and still in timed out state
-        if (!isManuallyChecking && !isCheckingStatus && hasTimedOut && !videoUrl) {
-          // Ensure we don't check too frequently (minimum 10 seconds between checks)
+        if (!isManuallyChecking && !isCheckingStatus && (hasTimedOut || persistentLoading) && !videoUrl) {
+          // Ensure we don't check too frequently (minimum 8 seconds between checks)
           const now = Date.now();
-          if (now - lastCheckTime >= 10000) {
+          if (now - lastCheckTime >= 8000) {
             setIsManuallyChecking(true);
             await doCheck();
           }
         }
-      }, 15000); // Check every 15 seconds
+      }, 10000); // Check every 10 seconds
     }
     
     return () => {
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask, isCheckingStatus, isManuallyChecking, lastCheckTime, isDbCheckActive]);
+  }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask, isCheckingStatus, 
+      isManuallyChecking, lastCheckTime, isDbCheckActive, persistentLoading, currentTask]);
+
+  // Additional effect to monitor progress and prevent premature timeout for videos at high progress
+  useEffect(() => {
+    if (currentTask?.progress && currentTask.progress >= 95 && isLoading) {
+      console.log(`[VideoContent] Progress at ${currentTask.progress}% - activating persistent mode`);
+      setPersistentLoading(true);
+    }
+  }, [currentTask?.progress, isLoading]);
 
   const handleTimeout = () => {
-    setHasTimedOut(true);
-    toast.info(
-      "O vídeo está demorando mais que o esperado", 
-      { description: "Estamos verificando automaticamente o progresso a cada 15 segundos" }
-    );
+    // Only timeout if we're not already in persistent loading mode
+    if (!persistentLoading) {
+      setHasTimedOut(true);
+      toast.info(
+        "O vídeo está demorando mais que o esperado", 
+        { description: "Estamos verificando automaticamente o progresso a cada 10 segundos" }
+      );
+    } else {
+      console.log('[VideoContent] Timeout ignored due to high progress persistent mode');
+    }
   };
   
   const handleRetry = async () => {
@@ -158,20 +180,23 @@ const VideoContent: React.FC<VideoContentProps> = ({
     if (onError) onError(e);
   };
 
-  if (!videoUrl && !isLoading && hasTimedOut) {
+  if (!videoUrl && !isLoading && (hasTimedOut || persistentLoading)) {
     return (
       <VideoGenerationRetry 
         onRetry={handleRetry}
         isChecking={isCheckingStatus || isManuallyChecking}
-        message="O tempo de geração do vídeo excedeu o limite. Estamos verificando automaticamente o status a cada 15 segundos."
+        message={persistentLoading 
+          ? "O vídeo está em fase final de processamento (95% ou mais). Estamos verificando automaticamente o status a cada 10 segundos."
+          : "O tempo de geração do vídeo excedeu o limite. Estamos verificando automaticamente o status a cada 10 segundos."
+        }
         attempts={checkAttempts}
         autoRetry={true}
-        autoRetryInterval={15000}
+        autoRetryInterval={10000}
       />
     );
   }
 
-  if (isLoading && !videoUrl) {
+  if ((isLoading || persistentLoading) && !videoUrl) {
     return (
       <VideoLoading 
         isLoading={true} 

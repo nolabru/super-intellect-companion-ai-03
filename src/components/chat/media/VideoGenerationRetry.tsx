@@ -21,8 +21,8 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
   autoRetry = true,
   autoRetryInterval = 15000
 }) => {
-  // Aumentado o número máximo de tentativas de 10 para 20
-  const MAX_AUTO_ATTEMPTS = 20;
+  // Aumentado o número máximo de tentativas de 20 para 40
+  const MAX_AUTO_ATTEMPTS = 40;
   
   // Add automatic retry effect
   useEffect(() => {
@@ -46,7 +46,9 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
     <div className="flex flex-col items-center justify-center p-6 my-4 bg-inventu-darker/20 rounded-lg border border-inventu-gray/20">
       <AlertTriangle className="h-12 w-12 mb-4 text-amber-500" />
       <p className="text-base font-medium text-white text-center">
-        Tempo de geração excedido
+        {attempts > 0 && attempts >= MAX_AUTO_ATTEMPTS / 2
+          ? "Verificação contínua de status"
+          : "Tempo de geração excedido"}
       </p>
       <p className="text-sm text-inventu-gray mt-2 text-center">
         {message}
@@ -82,6 +84,14 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
           <p className="text-xs text-amber-400/80 mb-2 text-center">
             Verificações automáticas esgotadas. Você pode continuar verificando manualmente.
           </p>
+          <Button 
+            variant="destructive"
+            size="sm"
+            className="mt-2"
+            onClick={() => window.location.reload()}
+          >
+            Recarregar a página
+          </Button>
         </div>
       )}
     </div>

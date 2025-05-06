@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -17,26 +16,33 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
   progress,
   onTimeout 
 }) => {
-  // Add timeout effect for video loading
+  // Add timeout effect for video loading but with improved persistence
   useEffect(() => {
     if (isLoading && isVideo) {
       // Set a timeout to notify when loading exceeds the time limit
-      // Adicionado log para debug
-      console.log('[VideoLoading] Setting timeout for 10 minutes');
+      console.log('[VideoLoading] Setting timeout for 20 minutes');
       
+      // Use a much longer timeout (20 minutes) to ensure completion
       const timeoutId = setTimeout(() => {
-        console.log('[VideoLoading] Video loading timeout exceeded after 10 minutes');
-        if (onTimeout) {
-          onTimeout();
+        // Only timeout if progress is less than 90%
+        // This prevents timeouts when we're at 95% and just waiting for final completion
+        if (!progress || progress < 90) {
+          console.log('[VideoLoading] Video loading timeout exceeded after 20 minutes');
+          if (onTimeout) {
+            onTimeout();
+          }
+        } else {
+          console.log('[VideoLoading] Video at ' + progress + '% - not timing out despite duration');
+          // For videos at high percentage, we'll keep waiting indefinitely
         }
-      }, 600000); // 10 minute timeout (increased from 3 minutes)
+      }, 1200000); // 20 minute timeout (increased from 10 minutes)
 
       return () => {
         console.log('[VideoLoading] Clearing timeout');
         clearTimeout(timeoutId);
       };
     }
-  }, [isLoading, isVideo, onTimeout]);
+  }, [isLoading, isVideo, onTimeout, progress]);
 
   if (isLoading && isVideo) {
     const isKliginVideo = model === 'kligin-video';
@@ -52,8 +58,10 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
         </p>
         <p className="text-sm text-inventu-gray mt-2 text-center">
           {isKliginVideo
-            ? "O processo pode levar entre 30 segundos e 10 minutos dependendo da complexidade. O processamento ocorre nos servidores da Kligin e estamos aguardando a resposta."
-            : "Isso pode levar até 10 minutos para vídeos mais complexos. Por favor, aguarde."}
+            ? "O processo pode levar entre 30 segundos e 20 minutos dependendo da complexidade. O processamento ocorre nos servidores da Kligin e estamos aguardando a resposta."
+            : hasProgress && progress >= 95
+              ? "O vídeo está em fase final de processamento. Aguarde a conclusão sem interrupções."
+              : "Isso pode levar até 20 minutos para vídeos mais complexos. Por favor, aguarde."}
         </p>
         <div className="mt-4 h-2 w-full bg-inventu-darker rounded-full overflow-hidden">
           {hasProgress ? (
@@ -72,7 +80,11 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
           )}
         </div>
         {hasProgress && (
-          <p className="text-xs text-inventu-gray mt-1">{Math.round(progress)}% concluído</p>
+          <p className="text-xs text-inventu-gray mt-1">
+            {progress >= 95 
+              ? `${Math.round(progress)}% concluído - Finalizando processamento...` 
+              : `${Math.round(progress)}% concluído`}
+          </p>
         )}
         <style>
           {`
