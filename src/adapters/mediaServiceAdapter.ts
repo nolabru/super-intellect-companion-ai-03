@@ -10,6 +10,36 @@ export interface MediaServiceOptions {
   onTaskUpdate?: (task: Task) => void;
 }
 
+type MediaTaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
+interface MediaTaskStatusResponse {
+  success: boolean;
+  taskId?: string;
+  status: MediaTaskStatus;
+  mediaUrl?: string;
+  error?: string;
+  percentage?: number;
+}
+
+type MediaServiceType = 'piapi' | 'apiframe' | 'suno' | 'openai' | 'elevenLabs' | 'auto';
+
+interface PiapiTaskResult {
+  taskId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  mediaUrl?: string;
+  error?: string;
+}
+
+const mapPiapiStatus = (status: string): MediaTaskStatus => {
+  switch (status) {
+    case 'pending': return 'pending';
+    case 'processing': return 'processing';
+    case 'completed': return 'completed';
+    case 'failed': return 'failed';
+    default: return 'pending';
+  }
+};
+
 /**
  * Adapter for media generation services
  * Creates a standardized interface for media generation
@@ -406,4 +436,145 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
       return true;
     }
   };
+}
+
+// Adaptador para os diferentes serviços de mídia
+export const mediaServiceAdapter = {
+  // Cria uma tarefa para gerar mídia
+  async createTask(
+    prompt: string,
+    mediaType: string,
+    model: string,
+    params: any = {},
+    referenceUrl?: string
+  ): Promise<string> {
+    // Implemente a lógica para criar a tarefa com base no tipo de mídia e modelo
+    // Isso pode envolver chamar diferentes serviços (PiAPI, APIFrame, etc.)
+    // Retorne o ID da tarefa criada
+    console.log(`[mediaServiceAdapter] Criando tarefa para ${mediaType} com modelo ${model}`);
+    
+    // Por enquanto, apenas retorna um ID de tarefa simulado
+    return 'task-' + Math.random().toString(36).substring(7);
+  },
+
+  // Cancela uma tarefa
+  async cancelTask(taskId: string): Promise<boolean> {
+    // Implemente a lógica para cancelar a tarefa com base no ID da tarefa
+    console.log(`[mediaServiceAdapter] Cancelando tarefa ${taskId}`);
+    return true;
+  },
+
+  // Verifica o status de uma tarefa
+  async checkTaskStatus(taskId: string, service: MediaServiceType = 'piapi'): Promise<MediaTaskStatusResponse> {
+    try {
+      if (service === 'openai' || service === 'elevenLabs') {
+        return { success: true, status: 'completed' }; // Esses serviços não têm status de tarefa
+      }
+      
+      // Serviço PiAPI
+      if (service === 'piapi' || service === 'auto') {
+        const result = await piapiService.checkTaskStatus(taskId);
+        
+        return {
+          success: true,
+          taskId: result.taskId,
+          status: mapPiapiStatus(result.status),
+          mediaUrl: result.mediaUrl,
+          error: result.error,
+          percentage: 0
+        };
+      }
+      
+      // Serviço APIFrame
+      if (service === 'apiframe') {
+        const { data, error } = await supabase.functions.invoke('apiframe-task-status', {
+          body: { taskId }
+        });
+        
+        if (error) {
+          console.error('[mediaServiceAdapter] Erro ao verificar status da tarefa APIFrame:', error);
+          throw new Error(error.message);
+        }
+        
+        if (!data) {
+          throw new Error('Resposta vazia da API');
+        }
+        
+        // Mapear o status da APIFrame para o formato interno
+        return {
+          success: true,
+          taskId: data.taskId || taskId,
+          status: mapApiFrameStatus(data.status),
+          mediaUrl: data.mediaUrl,
+          error: data.error,
+          percentage: data.percentage || 0
+        };
+      }
+      
+      // Serviço Suno
+      if (service === 'suno') {
+        const result = await sunoService.checkTaskStatus(taskId);
+        
+        return {
+          success: true,
+          taskId: result.taskId,
+          status: mapSunoStatus(result.status),
+          mediaUrl: result.songs && result.songs[0]?.audio_url,
+          error: result.error,
+          percentage: result.percentage || 0
+        };
+      }
+      
+      throw new Error(`Serviço de mídia não suportado: ${service}`);
+    } catch (err) {
+      console.error('[mediaServiceAdapter] Erro ao verificar status da tarefa:', err);
+      
+      return {
+        success: false,
+        taskId: taskId,
+        status: 'failed',
+        error: err instanceof Error ? err.message : 'Erro desconhecido'
+      };
+    }
+  },
+
+  // Configura a chave de API
+  configureApiKey(apiKey: string): boolean {
+    // Implemente a lógica para configurar a chave de API para o serviço apropriado
+    console.log(`[mediaServiceAdapter] Configurando chave de API: ${apiKey}`);
+    return true;
+  },
+
+  // Verifica se a chave de API está configurada
+  isApiKeyConfigured(): boolean {
+    // Implemente a lógica para verificar se a chave de API está configurada para o serviço apropriado
+    console.log('[mediaServiceAdapter] Verificando se a chave de API está configurada');
+    return true;
+  }
+};
+
+// Função auxiliar para mapear status da APIFrame para formato interno
+function mapApiFrameStatus(status?: string): MediaTaskStatus {
+  if (!status) return 'processing';
+  
+  switch (status) {
+    case 'pending': return 'pending';
+    case 'processing': return 'processing';
+    case 'finished': return 'completed';
+    case 'failed': return 'failed';
+    default: return 'processing';
+  }
+}
+
+// Função auxiliar para mapear status do Suno para formato interno
+function mapSunoStatus(status?: string): MediaTaskStatus {
+  if (!status) return 'processing';
+  
+  switch (status) {
+    case 'pending': return 'pending';
+    case 'processing': return 'processing';
+    case 'finished': return 'completed';
+    case 'failed': return 'failed';
+    default: return 'processing';
+  }
 }

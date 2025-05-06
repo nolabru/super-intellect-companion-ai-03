@@ -8,7 +8,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { AudioParameters as AudioParamsType } from '@/types/parameters';
 import { AVAILABLE_MODELS } from '@/constants';
 
 // Get APIFrame audio models from available models
@@ -29,51 +28,42 @@ const VOICES = [
 ];
 
 interface AudioParametersProps {
-  model: string;
-  onParamsChange: (params: AudioParamsType) => void;
-  initialParams?: Partial<AudioParamsType>;
+  onChange: (params: any) => void;
+  params: any;
 }
 
 const AudioParameters: React.FC<AudioParametersProps> = ({ 
-  model, 
-  onParamsChange, 
-  initialParams 
+  onChange, 
+  params 
 }) => {
-  const [params, setParams] = useState<AudioParamsType>({
-    model: initialParams?.model || 'elevenlabs',
-    voice: initialParams?.voice || 'sarah',
-    speed: initialParams?.speed || 1,
-    pitch: initialParams?.pitch || 1
+  const [localParams, setLocalParams] = useState({
+    model: params?.model || 'elevenlabs',
+    voice: params?.voice || 'sarah',
+    speed: params?.speed || 1,
+    pitch: params?.pitch || 1
   });
-
-  // Update params when model prop changes
-  useEffect(() => {
-    if (model && model !== params.model) {
-      setParams(prev => ({ ...prev, model }));
-    }
-  }, [model, params.model]);
 
   // Update params if initialParams changes
   useEffect(() => {
-    if (initialParams) {
-      setParams(prev => ({ ...prev, ...initialParams }));
+    if (params) {
+      setLocalParams(prev => ({ ...prev, ...params }));
     }
-  }, [initialParams]);
+  }, [params]);
 
-  const handleParamChange = <K extends keyof AudioParamsType>(key: K, value: AudioParamsType[K]) => {
-    const newParams = { ...params, [key]: value };
-    setParams(newParams);
-    onParamsChange(newParams);
+  const handleParamChange = (key: string, value: any) => {
+    const newParams = { ...localParams, [key]: value };
+    setLocalParams(newParams);
+    onChange(newParams);
   };
 
-  const availableVoices = VOICES.filter(voice => voice.model === params.model);
+  const availableVoices = VOICES.filter(voice => voice.model === localParams.model);
 
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Modelo</Label>
         <Select
-          value={params.model}
+          value={localParams.model}
           onValueChange={(value) => handleParamChange('model', value)}
         >
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
@@ -92,7 +82,7 @@ const AudioParameters: React.FC<AudioParametersProps> = ({
       <div className="space-y-2">
         <Label>Voz</Label>
         <Select
-          value={params.voice}
+          value={localParams.voice}
           onValueChange={(value) => handleParamChange('voice', value)}
         >
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
@@ -109,9 +99,9 @@ const AudioParameters: React.FC<AudioParametersProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label>Velocidade: {params.speed?.toFixed(1)}x</Label>
+        <Label>Velocidade: {localParams.speed?.toFixed(1)}x</Label>
         <Slider
-          value={[params.speed || 1]}
+          value={[localParams.speed || 1]}
           min={0.5}
           max={2.0}
           step={0.1}
@@ -120,9 +110,9 @@ const AudioParameters: React.FC<AudioParametersProps> = ({
       </div>
 
       <div className="space-y-2">
-        <Label>Tom: {params.pitch?.toFixed(1)}</Label>
+        <Label>Tom: {localParams.pitch?.toFixed(1)}</Label>
         <Slider
-          value={[params.pitch || 1]}
+          value={[localParams.pitch || 1]}
           min={0.5}
           max={1.5}
           step={0.1}

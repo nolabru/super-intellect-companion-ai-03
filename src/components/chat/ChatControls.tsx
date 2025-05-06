@@ -1,78 +1,125 @@
 
-import React, { memo } from 'react';
-import RefinedModeSelector from './RefinedModeSelector';
-import CompareModelsButton from '../CompareModelsButton';
-import LinkToggleButton from '../LinkToggleButton';
-import ParametersManager from './parameters/ParametersManager';
-import { ChatMode } from '../ModeSelector';
+import React, { useState, useEffect } from 'react';
+import { Send, Plus, Loader2, Mic, X } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from '@/lib/utils';
+import { ChatMode } from '../ModeSelector';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import ParametersManager from './parameters/ParametersManager';
 
 interface ChatControlsProps {
-  activeMode: ChatMode;
-  comparing: boolean;
-  isLinked: boolean;
-  isMobile: boolean;
-  model: string;
-  onModeChange: (mode: ChatMode) => void;
-  onToggleCompare: () => void;
-  onToggleLink: () => void;
-  onParamsChange: (params: any) => void;
+  onSendMessage: (message: string, params?: any) => void;
+  isLoading?: boolean;
+  mode: ChatMode;
+  inputValue: string;
+  onInputChange: (value: string) => void;
+  onModeChange?: (mode: ChatMode) => void;
+  onStopGeneration?: () => void;
+  onClearChat?: () => void;
+  className?: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
 }
 
 const ChatControls: React.FC<ChatControlsProps> = ({
-  activeMode,
-  comparing,
-  isLinked,
-  isMobile,
-  model,
+  onSendMessage,
+  isLoading = false,
+  mode,
+  inputValue,
+  onInputChange,
   onModeChange,
-  onToggleCompare,
-  onToggleLink,
-  onParamsChange
+  onStopGeneration,
+  onClearChat,
+  className,
+  disabled = false,
+  autoFocus = true
 }) => {
-  return (
-    <div className={cn(
-      "px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10",
-      "contain-layout contain-paint transform-gpu will-change-auto"
-    )}>
-      <div className="flex items-center justify-between gap-3">
-        <div className={cn(
-          "flex items-center gap-3 transform-gpu",
-          "contain-layout contain-paint"
-        )}>
-          <RefinedModeSelector 
-            activeMode={activeMode} 
-            onChange={onModeChange} 
-          />
-          
-          {activeMode !== 'text' && (
-            <ParametersManager
-              mode={activeMode}
-              model={model}
-              onParamsChange={onParamsChange}
-              variant="icon"
-              className="flex-shrink-0"
-            />
-          )}
-        </div>
+  const [params, setParams] = useState<any>({});
+  const [isParametersOpen, setIsParametersOpen] = useState<boolean>(false);
 
-        <div className="flex items-center gap-3">
-          <CompareModelsButton 
-            isComparing={comparing} 
-            onToggleCompare={onToggleCompare} 
-          />
-          
-          {comparing && !isMobile && (
-            <LinkToggleButton 
-              isLinked={isLinked} 
-              onToggleLink={onToggleLink} 
-              disabled={isMobile}
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!inputValue.trim() || isLoading || disabled) return;
+    
+    onSendMessage(inputValue, params);
+    onInputChange('');
+  };
+
+  return (
+    <div className={cn("relative", className)}>
+      {mode !== 'text' && (
+        <Collapsible
+          open={isParametersOpen}
+          onOpenChange={setIsParametersOpen}
+          className="mb-2"
+        >
+          <CollapsibleTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs flex items-center gap-1 mb-1"
+            >
+              {isParametersOpen ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+              Parâmetros
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ParametersManager 
+              mode={mode} 
+              onChange={setParams} 
+              params={params} 
             />
-          )}
-        </div>
-      </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+      
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-end gap-2"
+      >
+        <Textarea
+          placeholder={mode === 'text' ? "Digite sua mensagem..." : 
+                      mode === 'image' ? "Descreva a imagem que deseja gerar..." :
+                      mode === 'video' ? "Descreva o vídeo que deseja gerar..." :
+                      mode === 'audio' ? "Digite o texto que deseja converter para áudio..." :
+                      "Digite sua mensagem..."}
+          className="min-h-[60px] max-h-[200px] bg-inventu-card border-inventu-gray/30"
+          value={inputValue}
+          onChange={(e) => onInputChange(e.target.value)}
+          disabled={isLoading || disabled}
+          autoFocus={autoFocus}
+        />
+        
+        {isLoading && onStopGeneration ? (
+          <Button 
+            type="button" 
+            size="icon" 
+            variant="destructive"
+            onClick={onStopGeneration}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        ) : (
+          <Button 
+            type="submit"
+            size="icon"
+            disabled={!inputValue.trim() || isLoading || disabled}
+          >
+            {isLoading ? 
+              <Loader2 className="h-5 w-5 animate-spin" /> : 
+              <Send className="h-5 w-5" />
+            }
+          </Button>
+        )}
+      </form>
     </div>
   );
 };
 
-export default memo(ChatControls);
+export default ChatControls;
