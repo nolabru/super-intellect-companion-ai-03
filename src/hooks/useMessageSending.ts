@@ -183,18 +183,16 @@ export function useMessageSending(
         errorMessage = 'Requisição abortada.';
       }
 
-      aiMessage = {
-        ...aiMessage,
-        content: errorMessage,
-        loading: false,
-        error: true
-      };
-
+      // Fix the type error by using a function update to modify the message with the error
       setMessages(prevMessages => {
-        const updatedMessages = prevMessages.map(msg =>
-          msg.id === aiMessage.id ? aiMessage : msg
+        return prevMessages.map(msg =>
+          msg.id === aiMessage.id ? {
+            ...msg,
+            content: errorMessage,
+            loading: false,
+            error: true
+          } : msg
         );
-        return updatedMessages;
       });
       
       toast.error("Erro ao enviar mensagem", {

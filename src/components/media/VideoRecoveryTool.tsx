@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Save, RefreshCw, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
-import { isVideoUrlValid, recoverVideo, registerRecoveredVideo } from '@/utils/videoRecoveryUtils';
+import { Loader2, Save, RefreshCw, CheckCircle2, XCircle, ExternalLink, Copy, List } from 'lucide-react';
+import { isVideoUrlValid, recoverVideo, registerRecoveredVideo, getPossibleVideoUrls } from '@/utils/videoRecoveryUtils';
 import { toast } from 'sonner';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface VideoRecoveryToolProps {
   onRecovered?: (url: string) => void;
@@ -26,6 +29,27 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
   const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showUrlCopiedMessage, setShowUrlCopiedMessage] = useState(false);
+  const [possibleUrls, setPossibleUrls] = useState<string[]>([]);
+  const [checkedUrlsCount, setCheckedUrlsCount] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<string>("url");
+  
+  // Effect to show possible URLs when task ID is entered
+  useEffect(() => {
+    if (taskIdInput && taskIdInput.length > 5) {
+      setPossibleUrls(getPossibleVideoUrls(taskIdInput));
+    } else {
+      setPossibleUrls([]);
+    }
+  }, [taskIdInput]);
+  
+  // Start with default tab
+  useEffect(() => {
+    if (returnUrlOnly) {
+      setActiveTab("url");
+    } else if (taskId) {
+      setActiveTab("taskid");
+    }
+  }, [returnUrlOnly, taskId]);
   
   // Função para verificar uma URL de vídeo diretamente
   const handleCheckUrl = async (url: string = videoUrl) => {
@@ -73,53 +97,104 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
     
     setIsRecovering(true);
     setIsValidUrl(null);
+    setCheckedUrlsCount(0);
     
     try {
-      // Possíveis URLs baseadas no ID da tarefa
-      const possibleUrls = [
-        `https://storage.googleapis.com/piapi-videos/${taskIdInput}.mp4`,
-        `https://storage.googleapis.com/piapi-results/${taskIdInput}.mp4`,
-        `https://assets.midjourney.video/${taskIdInput}.mp4`,
-        `https://storage.googleapis.com/tech-ai-videos/${taskIdInput}.mp4`,
-        `https://api.apiframe.com/output/${taskIdInput}.mp4`
-      ];
+      // Get possible URLs based on taskId
+      const urlsToCheck = getPossibleVideoUrls(taskIdInput);
+      setPossibleUrls(urlsToCheck);
       
-      let foundValidUrl = false;
+      // Try the recovery function which tries multiple strategies
+      const result = await recoverVideo(videoUrl, taskIdInput);
       
-      // Tentar cada URL
-      for (const url of possibleUrls) {
-        const isValid = await isVideoUrlValid(url);
+      if (result.success && result.url) {
+        setVideoUrl(result.url);
+        setRecoveredUrl(result.url);
+        setIsValidUrl(true);
         
-        if (isValid) {
-          // Se encontramos uma URL válida
-          setVideoUrl(url);
-          setRecoveredUrl(url);
-          setIsValidUrl(true);
-          foundValidUrl = true;
+        toast.success("Vídeo recuperado com sucesso!");
+        
+        if (onRecovered) {
+          onRecovered(result.url);
+        }
+      } else {
+        // If automatic recovery failed, try each URL manually and track progress
+        let foundValidUrl = false;
+        let validUrl = '';
+        let checkedCount = 0;
+        
+        toast.info("Tentando várias possíveis URLs...");
+        
+        for (const url of urlsToCheck) {
+          checkedCount++;
+          setCheckedUrlsCount(checkedCount);
           
-          // Registrar no banco se possível
-          const result = await recoverVideo(url, taskIdInput);
+          const isValid = await isVideoUrlValid(url);
           
-          if (result.success) {
-            toast.success("Vídeo encontrado e registrado com sucesso!");
-            
-            if (onRecovered) {
-              onRecovered(url);
-            }
+          if (isValid) {
+            foundValidUrl = true;
+            validUrl = url;
+            break;
           }
           
-          break;
+          // Brief pause to avoid hammering servers
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
-      }
-      
-      if (!foundValidUrl) {
-        setRecoveredUrl(null);
-        setIsValidUrl(false);
-        toast.error("Nenhum vídeo encontrado para este ID de tarefa");
+        
+        if (foundValidUrl) {
+          setVideoUrl(validUrl);
+          setRecoveredUrl(validUrl);
+          setIsValidUrl(true);
+          
+          // Register in database
+          await registerRecoveredVideo(validUrl, `Vídeo recuperado (${taskIdInput})`, userId, taskIdInput);
+          
+          toast.success("Vídeo encontrado após verificação manual!");
+          
+          if (onRecovered) {
+            onRecovered(validUrl);
+          }
+        } else {
+          setRecoveredUrl(null);
+          setIsValidUrl(false);
+          toast.error("Nenhum vídeo encontrado para este ID de tarefa");
+        }
       }
     } catch (error) {
       setIsValidUrl(false);
       toast.error("Erro ao recuperar vídeo", {
+        description: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+  
+  // Função para verificar uma URL específica da lista de URLs possíveis
+  const handleCheckSpecificUrl = async (url: string) => {
+    setIsRecovering(true);
+    
+    try {
+      const isValid = await isVideoUrlValid(url);
+      
+      if (isValid) {
+        setVideoUrl(url);
+        setRecoveredUrl(url);
+        setIsValidUrl(true);
+        
+        // Register in database
+        await registerRecoveredVideo(url, `Vídeo recuperado (URL manual)`, userId);
+        
+        toast.success("URL válida encontrada!");
+        
+        if (onRecovered) {
+          onRecovered(url);
+        }
+      } else {
+        toast.error(`URL inválida: ${url}`);
+      }
+    } catch (error) {
+      toast.error("Erro ao verificar URL", {
         description: error instanceof Error ? error.message : "Erro desconhecido"
       });
     } finally {
@@ -152,7 +227,7 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
     }
   };
 
-  // Nova função para copiar URL para a área de transferência
+  // Função para copiar URL para a área de transferência
   const handleCopyUrl = () => {
     if (!recoveredUrl) return;
     
@@ -172,7 +247,7 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center">
           <RefreshCw className="h-5 w-5 mr-2" />
@@ -185,48 +260,101 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Campo para verificar URL */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">URL do Vídeo</label>
-          <div className="flex gap-2">
-            <Input
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="https://example.com/video.mp4"
-              className="flex-1"
-            />
-            <Button 
-              onClick={() => handleCheckUrl()}
-              disabled={isRecovering || !videoUrl}
-              size="sm"
-            >
-              {isRecovering ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verificar'}
-            </Button>
-          </div>
-        </div>
-        
-        {/* Campo para verificar por ID da tarefa */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium">ID da Tarefa</label>
-          <div className="flex gap-2">
-            <Input
-              value={taskIdInput}
-              onChange={(e) => setTaskIdInput(e.target.value)}
-              placeholder="task_abc123"
-              className="flex-1"
-            />
-            <Button 
-              onClick={handleRecoverByTaskId}
-              disabled={isRecovering || !taskIdInput}
-              size="sm"
-            >
-              {isRecovering ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Recuperar'}
-            </Button>
-          </div>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="url" className="flex-1">Por URL</TabsTrigger>
+            <TabsTrigger value="taskid" className="flex-1">Por ID da Tarefa</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="url" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">URL do Vídeo</label>
+              <div className="flex gap-2">
+                <Input
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://example.com/video.mp4"
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={() => handleCheckUrl()}
+                  disabled={isRecovering || !videoUrl}
+                  size="sm"
+                >
+                  {isRecovering ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verificar'}
+                </Button>
+              </div>
+            </div>
+            
+            {videoUrl && (
+              <Alert variant={isValidUrl === true ? "success" : isValidUrl === false ? "destructive" : "default"}>
+                <div className="flex items-center">
+                  {isValidUrl === true && <CheckCircle2 className="h-4 w-4 mr-2" />}
+                  {isValidUrl === false && <XCircle className="h-4 w-4 mr-2" />}
+                  {isValidUrl === null && <RefreshCw className={`h-4 w-4 mr-2 ${isRecovering ? 'animate-spin' : ''}`} />}
+                  <AlertTitle>
+                    {isValidUrl === true && 'URL Válida!'}
+                    {isValidUrl === false && 'URL Inválida'}
+                    {isValidUrl === null && 'Verificando...'}
+                  </AlertTitle>
+                </div>
+                <AlertDescription className="mt-2 text-xs">
+                  {videoUrl}
+                </AlertDescription>
+              </Alert>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="taskid" className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">ID da Tarefa</label>
+              <div className="flex gap-2">
+                <Input
+                  value={taskIdInput}
+                  onChange={(e) => setTaskIdInput(e.target.value)}
+                  placeholder="task_abc123"
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={handleRecoverByTaskId}
+                  disabled={isRecovering || !taskIdInput}
+                  size="sm"
+                >
+                  {isRecovering ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Recuperar'}
+                </Button>
+              </div>
+            </div>
+            
+            {possibleUrls.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium flex items-center">
+                  <List className="h-4 w-4 mr-1" />
+                  Possíveis URLs ({possibleUrls.length})
+                  {isRecovering && <span className="text-xs ml-2">Verificando {checkedUrlsCount}/{possibleUrls.length}</span>}
+                </div>
+                <div className="max-h-32 overflow-y-auto space-y-2 rounded-md border border-gray-700 p-2">
+                  {possibleUrls.map((url, index) => (
+                    <div key={index} className="text-xs flex items-center justify-between">
+                      <span className="truncate flex-1">{url}</span>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 px-2"
+                        onClick={() => handleCheckSpecificUrl(url)}
+                        disabled={isRecovering}
+                      >
+                        Verificar
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
         
         {/* Status da verificação */}
-        {isValidUrl !== null && (
+        {isValidUrl !== null && !videoUrl && (
           <div className={`p-2 rounded-md flex items-center ${isValidUrl ? 'bg-green-900/20 text-green-500' : 'bg-red-900/20 text-red-500'}`}>
             {isValidUrl ? (
               <>
@@ -258,10 +386,7 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
                 onClick={handleCopyUrl}
                 title="Copiar URL"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                </svg>
+                <Copy className="h-4 w-4" />
               </Button>
             </div>
             {showUrlCopiedMessage && (
