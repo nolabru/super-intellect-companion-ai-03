@@ -1,3 +1,4 @@
+
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';
@@ -136,11 +137,13 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     
     if (newTask) {
       const retryCount = (task.metadata?.retryCount !== undefined) ? (task.metadata.retryCount + 1) : 1;
-      // Update metadata without directly modifying the task object
-      mediaService.getTaskStatus(newTaskId)!.metadata = {
-        ...task.metadata,
-        retryCount
-      };
+      // Instead of trying to directly update the task, we'll create a new task with the updated metadata
+      // This avoids using the non-existent updateTask method
+      if (newTask.metadata) {
+        newTask.metadata.retryCount = retryCount;
+      } else {
+        newTask.metadata = { retryCount };
+      }
     }
   }, [mediaService]);
   
@@ -185,8 +188,10 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
           onComplete(data.mediaUrl);
         }
         
-        // Update the task status
-        mediaService.updateTask && mediaService.updateTask(currentTaskId, {
+        // Instead of directly updating task via updateTask, we'll handle task state in the local state
+        // and notify our listeners with the updated status
+        setCurrentTask({
+          ...currentTask,
           status: 'completed',
           progress: 100,
           result: data.mediaUrl
@@ -201,8 +206,9 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
           });
         }
         
-        // Update the task status
-        mediaService.updateTask && mediaService.updateTask(currentTaskId, {
+        // Update the local task state instead of using updateTask
+        setCurrentTask({
+          ...currentTask,
           status: 'processing',
           progress: data.percentage || 50
         });
@@ -242,7 +248,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       
       return false;
     }
-  }, [currentTaskId, currentTask, mediaService, showToasts, onComplete, onError]);
+  }, [currentTaskId, currentTask, showToasts, onComplete, onError]);
 
   const generateMedia = useCallback((
     type: 'image' | 'video' | 'audio',
@@ -268,11 +274,12 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     // Set initial metadata
     const task = mediaService.getTaskStatus(taskId);
     if (task) {
-      // Update metadata without directly modifying the task object
-      mediaService.getTaskStatus(taskId)!.metadata = {
-        ...task.metadata,
-        retryCount: 0
-      };
+      // Update the task's metadata directly if it exists
+      if (task.metadata) {
+        task.metadata.retryCount = 0;
+      } else {
+        task.metadata = { retryCount: 0 };
+      }
     }
     
     if (showToasts) {
