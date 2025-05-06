@@ -45,6 +45,26 @@ serve(async (req) => {
       );
     }
 
+    // Route Midjourney tasks to the specialized endpoint
+    if (taskData.model === "midjourney") {
+      console.log(`Roteando tarefa Midjourney ${taskId} para endpoint específico`);
+      
+      // Call the Midjourney-specific status endpoint
+      const response = await supabase.functions.invoke("apiframe-midjourney-status", {
+        body: { taskId }
+      });
+      
+      if (response.error) {
+        throw new Error(`Erro ao verificar status do Midjourney: ${response.error.message}`);
+      }
+      
+      return new Response(
+        JSON.stringify(response.data),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Continue with regular APIframe tasks (videos)
     // Verificar se é necessário atualizar status diretamente na API Apiframe 
     // para tarefas que não completaram e têm mais de 2 minutos
     const taskAge = Date.now() - new Date(taskData.created_at).getTime();
@@ -57,7 +77,7 @@ serve(async (req) => {
     if (needsUpdate) {
       console.log(`Atualizando status da tarefa ${taskId} direto da API`);
       
-      const APIFRAME_API_KEY = Deno.env.get("APIFRAME_API_KEY");
+      const APIFRAME_API_KEY = Deno.env.get("APIFRAME_API_KEY") || Deno.env.get("API_FRAME_KEY");
       if (!APIFRAME_API_KEY) {
         throw new Error("APIFRAME_API_KEY não configurada");
       }
@@ -83,6 +103,7 @@ serve(async (req) => {
         
         if (apiData.video_url) {
           updateData.result_url = apiData.video_url;
+          updateData.media_url = apiData.video_url;
         }
 
         const { data: updated, error: updateError } = await supabase
@@ -103,7 +124,9 @@ serve(async (req) => {
                 task_id: taskId,
                 media_url: apiData.video_url,
                 media_type: "video",
-                status: "completed"
+                status: "completed",
+                model: updatedTaskData.model,
+                prompt: updatedTaskData.prompt
               });
           }
         }
@@ -116,7 +139,7 @@ serve(async (req) => {
       status: updatedTaskData.status === "finished" ? "completed" : 
               updatedTaskData.status === "failed" ? "failed" : "processing",
       progress: updatedTaskData.percentage,
-      mediaUrl: updatedTaskData.result_url || null,
+      mediaUrl: updatedTaskData.media_url || updatedTaskData.result_url || null,
       error: updatedTaskData.error || null
     };
 

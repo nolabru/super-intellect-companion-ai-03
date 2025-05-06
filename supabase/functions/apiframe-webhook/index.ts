@@ -28,6 +28,7 @@ serve(async (req) => {
     const status = payload.status;
     const percentage = payload.percentage || 0;
     const videoUrl = payload.video_url;
+    const imageUrl = payload.image_url; // Add support for image_url
 
     if (!taskId) {
       return new Response(
@@ -57,9 +58,13 @@ serve(async (req) => {
       updated_at: new Date().toISOString()
     };
 
-    // Adicionar URL do vídeo se disponível
+    // Adicionar URL da mídia se disponível (suporte tanto para vídeo quanto para imagem)
     if (videoUrl) {
       updateData.result_url = videoUrl;
+      updateData.media_url = videoUrl;
+    } else if (imageUrl) {
+      updateData.result_url = imageUrl;
+      updateData.media_url = imageUrl;
     }
 
     const { error: updateError } = await supabase
@@ -75,14 +80,17 @@ serve(async (req) => {
       );
     }
 
-    // Se o vídeo estiver pronto, salvar no media_ready_events para notificar o frontend
-    if (status === "finished" && videoUrl) {
+    // Se a mídia estiver pronta, salvar no media_ready_events para notificar o frontend
+    if (status === "finished" && (videoUrl || imageUrl)) {
+      const mediaUrl = videoUrl || imageUrl;
+      const mediaType = videoUrl ? "video" : "image";
+      
       const { error: insertError } = await supabase
         .from("media_ready_events")
         .insert({
           task_id: taskId,
-          media_url: videoUrl,
-          media_type: "video",
+          media_url: mediaUrl,
+          media_type: mediaType,
           status: "completed"
         });
 

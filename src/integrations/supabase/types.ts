@@ -18,6 +18,7 @@ export type Database = {
           media_url: string | null
           model: string
           params: Json | null
+          percentage: number | null
           prompt: string | null
           status: string
           task_id: string
@@ -31,6 +32,7 @@ export type Database = {
           media_url?: string | null
           model: string
           params?: Json | null
+          percentage?: number | null
           prompt?: string | null
           status?: string
           task_id: string
@@ -44,6 +46,7 @@ export type Database = {
           media_url?: string | null
           model?: string
           params?: Json | null
+          percentage?: number | null
           prompt?: string | null
           status?: string
           task_id?: string

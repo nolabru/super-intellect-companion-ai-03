@@ -319,12 +319,14 @@ export const aiService = {
             throw new Error(`Midjourney error: ${result.error.message || 'Unknown error'}`);
           }
           
-          if (!result.data.success || !result.data.images || result.data.images.length === 0) {
+          // Important: Don't check for images array immediately for Midjourney
+          // as it's an asynchronous process
+          if (!result.data.success || !result.data.taskId) {
             console.error('[AIService] Invalid response:', result.data);
-            throw new Error('No images were generated');
+            throw new Error('Error creating Midjourney task');
           }
           
-          // Consume tokens after successful generation
+          // Consume tokens after successful task creation
           if (userId) {
             try {
               await tokenService.consumeTokens(userId, params.modelId, params.type);
@@ -333,9 +335,9 @@ export const aiService = {
               // Refresh token balance to update UI
               const updatedBalance = await tokenService.getUserTokenBalance(userId);
               
-              toast.success(`Image generated successfully`, {
-                description: `Used ${tokensRequired} tokens. You have ${updatedBalance.tokensRemaining} tokens remaining.`,
-                duration: 3000
+              toast.success(`Midjourney task started`, {
+                description: `Used ${tokensRequired} tokens. You have ${updatedBalance.tokensRemaining} tokens remaining. Image will be ready in about a minute.`,
+                duration: 5000
               });
             } catch (tokenError) {
               console.error('[AIService] Error consuming tokens:', tokenError);
@@ -345,9 +347,8 @@ export const aiService = {
           
           return {
             success: true,
-            mediaUrl: result.data.images[0],
-            taskId: result.data.taskId || 'midjourney-task',
-            status: 'completed',
+            taskId: result.data.taskId,
+            status: 'processing', // Important: Midjourney tasks should start as processing
             tokensConsumed: tokensRequired
           };
         } catch (err) {
@@ -376,8 +377,8 @@ export const aiService = {
     try {
       console.log(`[AIService] Checking status of task ${taskId}`);
       
-      // For Ideogram and Midjourney, tasks are immediately complete
-      if (taskId === 'ideogram-task' || taskId === 'midjourney-task') {
+      // For Ideogram task, they are immediately complete
+      if (taskId === 'ideogram-task') {
         return {
           success: true,
           taskId,
@@ -385,16 +386,41 @@ export const aiService = {
         };
       }
       
+      // For all other task IDs, query the API to get current status
+      const result = await supabase.functions.invoke('apiframe-task-status', {
+        body: { taskId }
+      });
+      
+      if (result.error) {
+        console.error('[AIService] Error checking task status:', result.error);
+        return {
+          success: false,
+          error: `Error checking status: ${result.error.message}`,
+          status: 'failed'
+        };
+      }
+      
+      if (!result.data) {
+        return {
+          success: false,
+          error: 'No data received from status check',
+          status: 'failed'
+        };
+      }
+      
       return {
-        success: false,
-        error: 'Task not found',
-        status: 'failed'
+        success: true,
+        taskId: result.data.taskId,
+        status: result.data.status,
+        mediaUrl: result.data.mediaUrl,
+        error: result.data.error
       };
     } catch (err) {
       console.error('[AIService] Error checking task status:', err);
       return {
         success: false,
-        error: err instanceof Error ? err.message : String(err)
+        error: err instanceof Error ? err.message : String(err),
+        status: 'failed'
       };
     }
   },

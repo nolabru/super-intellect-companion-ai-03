@@ -4,6 +4,7 @@ import { ExternalLink, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import VideoLoading from '../VideoLoading';
+import MediaErrorDisplay from './MediaErrorDisplay';
 
 interface MediaActionButtonProps {
   onClick: () => void;
@@ -61,44 +62,69 @@ const VideoContent: React.FC<VideoContentProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const [isPlaying, setIsPlaying] = useState(false);
+  const [loadError, setLoadError] = useState<boolean>(false);
   
   if (isLoading) {
     return <VideoLoading progress={progress} />;
   }
+
+  const handleRetryLoad = () => {
+    setLoadError(false);
+    const videoElement = document.querySelector('video');
+    if (videoElement) {
+      videoElement.load();
+    }
+  };
+  
+  const handleError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    setLoadError(true);
+    onError(e);
+  };
   
   return (
     <div className="mt-2 relative overflow-hidden rounded-lg">
       <div className="relative group">
-        <video 
-          src={src} 
-          className="max-w-full rounded-lg w-full max-h-80 object-contain bg-inventu-darker" 
-          controls
-          onLoadedData={() => {
-            onLoad();
-            setTimeout(() => setIsPlaying(true), 100);
-          }}
-          onError={onError}
-          playsInline
-          autoPlay={false}
-          loop
-          poster={`${src}#t=0.001`}
-        />
-        
-        {!isPlaying && (
-          <div 
-            className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer group-hover:bg-black/30 transition-all duration-200"
-            onClick={() => {
-              const videoElement = document.querySelector('video');
-              if (videoElement) {
-                videoElement.play();
-                setIsPlaying(true);
-              }
-            }}
-          >
-            <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
-              <div className="w-0 h-0 border-y-8 border-y-transparent border-l-12 border-l-white ml-1"></div>
-            </div>
-          </div>
+        {loadError ? (
+          <MediaErrorDisplay 
+            onRetry={handleRetryLoad}
+            onOpenInNewTab={onOpenInNewTab}
+            mediaUrl={src}
+            mode="video"
+          />
+        ) : (
+          <>
+            <video 
+              src={src} 
+              className="max-w-full rounded-lg w-full max-h-80 object-contain bg-inventu-darker" 
+              controls
+              onLoadedData={() => {
+                onLoad();
+                setTimeout(() => setIsPlaying(true), 100);
+              }}
+              onError={handleError}
+              playsInline
+              autoPlay={false}
+              loop
+              poster={`${src}#t=0.001`}
+            />
+            
+            {!isPlaying && (
+              <div 
+                className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer group-hover:bg-black/30 transition-all duration-200"
+                onClick={() => {
+                  const videoElement = document.querySelector('video');
+                  if (videoElement) {
+                    videoElement.play();
+                    setIsPlaying(true);
+                  }
+                }}
+              >
+                <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center">
+                  <div className="w-0 h-0 border-y-8 border-y-transparent border-l-12 border-l-white ml-1"></div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
       
