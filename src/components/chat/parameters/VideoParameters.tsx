@@ -36,7 +36,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   const [params, setParams] = useState<VideoParamsType>({
     model: model || VIDEO_MODELS[0]?.id || 'kling-text',
     videoType: initialParams?.videoType || 'text-to-video',
-    duration: initialParams?.duration || 3,
+    duration: initialParams?.duration || 5, // FIXED: Changed default from 3 to 5 seconds
     resolution: initialParams?.resolution || '720p'
   });
 
@@ -49,7 +49,9 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
       setParams(prev => ({ 
         ...prev, 
         model,
-        videoType: isImageModel ? 'image-to-video' : prev.videoType
+        videoType: isImageModel ? 'image-to-video' : prev.videoType,
+        // Ensure duration is only 5 or 10
+        duration: prev.duration === 5 || prev.duration === 10 ? prev.duration : 5
       }));
     }
   }, [model, params.model]);
@@ -57,7 +59,16 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   // Update params if initialParams changes
   useEffect(() => {
     if (initialParams) {
-      setParams(prev => ({ ...prev, ...initialParams }));
+      // Ensure duration is either 5 or 10 seconds
+      const validDuration = initialParams.duration === 5 || initialParams.duration === 10 
+        ? initialParams.duration 
+        : 5;
+        
+      setParams(prev => ({ 
+        ...prev, 
+        ...initialParams,
+        duration: validDuration
+      }));
     }
   }, [initialParams]);
 
@@ -146,9 +157,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
             <SelectValue placeholder="Selecione a duração" />
           </SelectTrigger>
           <SelectContent className="bg-inventu-darker border-inventu-gray/30 text-white">
-            <SelectItem value="3">3 segundos</SelectItem>
             <SelectItem value="5">5 segundos</SelectItem>
-            <SelectItem value="8">8 segundos</SelectItem>
             <SelectItem value="10">10 segundos</SelectItem>
           </SelectContent>
         </Select>

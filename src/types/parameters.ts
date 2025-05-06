@@ -14,6 +14,9 @@ export interface VideoParameters {
   style?: string;
   duration?: number;
   fps?: number;
+  videoType?: 'text-to-video' | 'image-to-video';
+  model?: string;
+  resolution?: '540p' | '720p' | '1080p' | '4k';
   [key: string]: any;
 }
 
@@ -73,7 +76,7 @@ export const getDefaultParameters = (mode: string, model: string): GenerationPar
     case 'video':
       return {
         style: 'cinematic',
-        duration: 3,
+        duration: 5, // FIXED: Changed default from 3 to 5
         fps: 24
       };
     case 'audio':

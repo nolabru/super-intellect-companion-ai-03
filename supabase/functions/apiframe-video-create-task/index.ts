@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// API Frame endpoint - Updated to use the correct endpoint
+// API Frame endpoint
 const APIFRAME_BASE_URL = "https://api.apiframe.pro";
 const APIFRAME_ENDPOINT = "/kling-imagine";
 
@@ -71,7 +71,7 @@ serve(async (req) => {
       // Image-to-video
       payload = {
         ...payload,
-        type: "image", // Specify type as image
+        generation_type: "image2video", // FIXED: Changed from 'type: "image"' to 'generation_type: "image2video"'
         image_url: imageUrl,
         prompt: prompt || "Generate video from this image"
       };
@@ -79,13 +79,20 @@ serve(async (req) => {
       // Text-to-video (default)
       payload = {
         ...payload,
-        type: "text", // Specify type as text
+        generation_type: "text2video", // FIXED: Changed from 'type: "text"' to 'generation_type: "text2video"'
         prompt: prompt
       };
     }
     
     // Add optional parameters if provided
-    if (params.duration) payload.duration = params.duration;
+    if (params.duration) {
+      // FIXED: Ensure duration is only 5 or 10
+      payload.duration = params.duration >= 10 ? 10 : 5; 
+    } else {
+      // Default to 5 seconds if not specified
+      payload.duration = 5;
+    }
+    
     if (params.resolution) payload.resolution = params.resolution;
     
     console.log(`[apiframe-video-create-task] Making API request to ${endpoint}`);
