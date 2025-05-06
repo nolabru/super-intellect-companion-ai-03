@@ -77,12 +77,12 @@ serve(async (req) => {
         // Atualizar o registro no banco de dados
         const updateData: any = {
           status: apiData.status || taskData.status,
-          percentage: apiData.percentage || taskData.percentage || 0,
+          percentage: apiData.percentage || taskData.percentage,
           updated_at: new Date().toISOString()
         };
         
         if (apiData.video_url) {
-          updateData.media_url = apiData.video_url;
+          updateData.result_url = apiData.video_url;
         }
 
         const { data: updated, error: updateError } = await supabase
@@ -95,48 +95,16 @@ serve(async (req) => {
         if (!updateError && updated) {
           updatedTaskData = updated;
           
-          // Se o vídeo estiver pronto, salvar no media_ready_events e na galeria
+          // Se o vídeo estiver pronto, salvar no media_ready_events
           if (apiData.status === "finished" && apiData.video_url) {
-            // Salvar no media_ready_events
             await supabase
               .from("media_ready_events")
               .insert({
                 task_id: taskId,
                 media_url: apiData.video_url,
                 media_type: "video",
-                status: "completed",
-                prompt: taskData.prompt || ""
+                status: "completed"
               });
-              
-            // Verificar se já existe na galeria
-            const { data: existingInGallery } = await supabase
-              .from("media_gallery")
-              .select("id")
-              .eq("media_url", apiData.video_url)
-              .maybeSingle();
-              
-            // Salvar na galeria se não existir
-            if (!existingInGallery) {
-              const galleryItemId = crypto.randomUUID();
-              
-              await supabase
-                .from("media_gallery")
-                .insert({
-                  id: galleryItemId,
-                  media_url: apiData.video_url,
-                  media_type: "video",
-                  prompt: taskData.prompt || "Vídeo gerado pela API Frame",
-                  user_id: taskData.user_id || "unknown",
-                  model_id: taskData.model || "apiframe",
-                  metadata: {
-                    source: "apiframe",
-                    task_id: taskId,
-                    params: taskData.params,
-                    auto_saved: true
-                  }
-                });
-              console.log(`Vídeo salvo automaticamente na galeria: ${galleryItemId}`);
-            }
           }
         }
       }
@@ -147,8 +115,8 @@ serve(async (req) => {
       taskId: updatedTaskData.task_id,
       status: updatedTaskData.status === "finished" ? "completed" : 
               updatedTaskData.status === "failed" ? "failed" : "processing",
-      progress: updatedTaskData.percentage || 0,
-      mediaUrl: updatedTaskData.media_url || null,
+      progress: updatedTaskData.percentage,
+      mediaUrl: updatedTaskData.result_url || null,
       error: updatedTaskData.error || null
     };
 

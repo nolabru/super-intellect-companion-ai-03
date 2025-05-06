@@ -84,15 +84,20 @@ serve(async (req) => {
           task_id: taskId,
           media_url: videoUrl,
           media_type: "video",
-          status: "completed",
-          prompt: existingTask.prompt || ""
+          status: "completed"
         });
 
       if (insertError) {
         console.error(`Erro ao inserir evento de mídia pronta: ${insertError.message}`);
       }
 
-      // 2. Inserir automaticamente na media_gallery para armazenamento permanente
+      // 2. NOVO: Inserir automaticamente na media_gallery para armazenamento permanente
+      // Buscar informações adicionais da tarefa para armazenar na galeria
+      const { data: userData } = await supabase.auth.admin.getUserByClaims({ 
+        role: 'authenticated'
+      });
+      
+      // Gerar um ID único para o item da galeria
       const galleryItemId = crypto.randomUUID();
       
       const { error: galleryError } = await supabase
@@ -102,7 +107,7 @@ serve(async (req) => {
           media_url: videoUrl,
           media_type: "video",
           prompt: existingTask.prompt || "Vídeo gerado pela API Frame",
-          user_id: existingTask.user_id || null, // Changed from "unknown" to null if user_id is missing
+          user_id: existingTask.user_id || userData?.id, // Usar ID do usuário da tarefa ou admin
           model_id: existingTask.model || "apiframe",
           metadata: {
             source: "apiframe",

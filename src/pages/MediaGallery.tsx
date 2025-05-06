@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/toast';
@@ -11,7 +12,6 @@ import { supabase } from '@/integrations/supabase/client';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import { MediaItem } from '@/types/gallery';
 import GalleryList from '@/components/gallery/GalleryList';
-import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 export type GalleryFilters = {
   mediaType: string[];
@@ -22,76 +22,76 @@ export type GalleryFilters = {
 };
 
 const MediaGallery: React.FC = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { deleteMediaFromGallery } = useMediaGallery();
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
   
-  const fetchMedia = useCallback(async () => {
-    if (!user) return;
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
     
-    try {
-      setLoading(true);
-      console.log("Fetching media gallery items...");
-
-      // Fetch from unified media_gallery table first
-      const {
-        data: galleryItems,
-        error: galleryError
-      } = await supabase.from('media_gallery')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (galleryError) {
-        console.error('Error fetching media gallery:', galleryError);
-        throw galleryError;
-      }
-
-      let allMediaItems: MediaItem[] = [];
-      
-      // Format data from the media_gallery table
-      if (galleryItems && galleryItems.length > 0) {
-        console.log(`Found ${galleryItems.length} items in media_gallery`);
-        const formattedGalleryMedia = galleryItems.map(item => ({
-          id: item.id,
-          url: item.media_url || '',
-          media_url: item.media_url || '',
-          type: item.media_type as 'image' | 'video' | 'audio',
-          media_type: item.media_type as 'image' | 'video' | 'audio',
-          created_at: item.created_at,
-          prompt: item.prompt || '',
-          title: item.prompt || undefined,
-          user_id: item.user_id
-        }));
-        
-        allMediaItems = [...formattedGalleryMedia];
-      }
-      
-      // If enabled, fetch additional items from piapi_tasks that are not in gallery
+    const fetchMedia = async () => {
       try {
-        // Select only the columns we need
-        const piapiResponse = await supabase.from('piapi_tasks')
-          .select('id, media_url, media_type, created_at, prompt, status, user_id')
+        setLoading(true);
+
+        // Fetch from unified media_gallery table first
+        const {
+          data: galleryItems,
+          error: galleryError
+        } = await supabase.from('media_gallery').select('*').eq('user_id', user.id).order('created_at', {
+          ascending: false
+        });
+        
+        if (galleryError) {
+          console.error('Error fetching media gallery:', galleryError);
+          throw galleryError;
+        }
+
+        let allMediaItems: MediaItem[] = [];
+        
+        // Format data from the media_gallery table
+        if (galleryItems && galleryItems.length > 0) {
+          const formattedGalleryMedia = galleryItems.map(item => ({
+            id: item.id,
+            url: item.media_url || '',
+            media_url: item.media_url || '',
+            type: item.media_type as 'image' | 'video' | 'audio',
+            media_type: item.media_type as 'image' | 'video' | 'audio',
+            created_at: item.created_at,
+            prompt: item.prompt || '',
+            title: item.prompt || undefined,
+            user_id: item.user_id
+          }));
+          
+          allMediaItems = [...formattedGalleryMedia];
+        }
+        
+        // If enabled, fetch additional items from piapi_tasks that are not in gallery
+        const {
+          data: piapiTasks,
+          error: piapiError
+        } = await supabase.from('piapi_tasks')
+          .select('id, media_url, media_type, created_at, prompt, status')
           .eq('status', 'completed')
           .order('created_at', { ascending: false });
         
-        if (piapiResponse.error) {
-          // Log the error but continue execution
-          console.error('Error querying piapi_tasks:', piapiResponse.error);
-        } else if (piapiResponse.data && piapiResponse.data.length > 0) {
+        if (!piapiError && piapiTasks && piapiTasks.length > 0) {
           // Filter out items that might already be in the gallery
           const existingUrls = new Set(allMediaItems.map(item => item.media_url));
           
-          const formattedPiapiMedia = piapiResponse.data
-            .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
+          const formattedPiapiMedia = piapiTasks
+            .filter(item => item.media_url && !existingUrls.has(item.media_url))
             .map(item => ({
               id: item.id,
               url: item.media_url || '',
@@ -100,83 +100,60 @@ const MediaGallery: React.FC = () => {
               media_type: item.media_type as 'image' | 'video' | 'audio',
               created_at: item.created_at,
               prompt: item.prompt || '',
-              user_id: item.user_id || user.id
+              user_id: user.id
             }));
           
-          if (formattedPiapiMedia.length > 0) {
-            console.log(`Found ${formattedPiapiMedia.length} additional items in piapi_tasks`);
-            allMediaItems = [...allMediaItems, ...formattedPiapiMedia];
-          }
+          allMediaItems = [...allMediaItems, ...formattedPiapiMedia];
         }
-      } catch (piapiQueryError) {
-        console.error('Error querying piapi_tasks:', piapiQueryError);
-        // Continue execution even if this part fails
-      }
-      
-      // Fetch additional items from apiframe_tasks that are not in gallery
-      try {
-        // Select only the columns we need
-        const apiframeResponse = await supabase.from('apiframe_tasks')
-          .select('task_id, media_url, media_type, created_at, prompt, status, user_id')
+        
+        // If enabled, fetch additional items from apiframe_tasks that are not in gallery
+        const {
+          data: apiframeTasks,
+          error: apiframeError
+        } = await supabase.from('apiframe_tasks')
+          .select('id, media_url, media_type, created_at, prompt, status')
           .eq('status', 'finished')
           .order('created_at', { ascending: false });
         
-        if (apiframeResponse.error) {
-          // Log the error but continue execution
-          console.error('Error querying apiframe_tasks:', apiframeResponse.error);
-        } else if (apiframeResponse.data && apiframeResponse.data.length > 0) {
+        if (!apiframeError && apiframeTasks && apiframeTasks.length > 0) {
           // Filter out items that might already be in the gallery
           const existingUrls = new Set(allMediaItems.map(item => item.media_url));
           
-          const formattedApiframeMedia = apiframeResponse.data
-            .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
+          const formattedApiframeMedia = apiframeTasks
+            .filter(item => item.media_url && !existingUrls.has(item.media_url))
             .map(item => ({
-              id: item.task_id,
+              id: item.id,
               url: item.media_url || '',
               media_url: item.media_url || '',
               type: item.media_type as 'image' | 'video' | 'audio',
               media_type: item.media_type as 'image' | 'video' | 'audio',
               created_at: item.created_at,
               prompt: item.prompt || '',
-              user_id: item.user_id || user.id
+              user_id: user.id
             }));
           
-          if (formattedApiframeMedia.length > 0) {
-            console.log(`Found ${formattedApiframeMedia.length} additional items in apiframe_tasks`);
-            allMediaItems = [...allMediaItems, ...formattedApiframeMedia];
-          }
+          allMediaItems = [...allMediaItems, ...formattedApiframeMedia];
         }
-      } catch (apiframeQueryError) {
-        console.error('Error querying apiframe_tasks:', apiframeQueryError);
-        // Continue execution even if this part fails
+        
+        // Sort all items by created_at
+        allMediaItems.sort((a, b) => {
+          const dateA = new Date(a.created_at).getTime();
+          const dateB = new Date(b.created_at).getTime();
+          return dateB - dateA; // Descending order
+        });
+        
+        setMediaItems(allMediaItems);
+      } catch (error) {
+        console.error('Error fetching media:', error);
+        toast({
+          title: "Erro",
+          description: 'Não foi possível carregar sua galeria de mídia',
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
       }
-      
-      // Sort all items by created_at
-      allMediaItems.sort((a, b) => {
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return dateB - dateA; // Descending order
-      });
-      
-      setMediaItems(allMediaItems);
-      console.log(`Total media items: ${allMediaItems.length}`);
-    } catch (error) {
-      console.error('Error fetching media:', error);
-      toast({
-        title: "Erro",
-        description: 'Não foi possível carregar sua galeria de mídia',
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-  
-  useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
+    };
     
     fetchMedia();
     
@@ -193,23 +170,10 @@ const MediaGallery: React.FC = () => {
       })
       .subscribe();
     
-    // Also listen for changes to media_gallery
-    const galleryChannel = supabase.channel('gallery-updates')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'media_gallery'
-      }, payload => {
-        console.log('Gallery update detected:', payload);
-        fetchMedia();
-      })
-      .subscribe();
-    
     return () => {
       supabase.removeChannel(channel);
-      supabase.removeChannel(galleryChannel);
     };
-  }, [user, navigate, fetchMedia]);
+  }, [user, navigate]);
   
   const handleDeleteMedia = async (id: string) => {
     try {
@@ -218,13 +182,12 @@ const MediaGallery: React.FC = () => {
       
       let success = false;
 
-      // First try to delete from media_gallery using our hook
-      try {
-        await deleteMediaFromGallery(id);
+      // First try to delete from media_gallery
+      const { error: galleryError } = await supabase.from('media_gallery').delete().eq('id', id);
+      
+      if (!galleryError) {
         success = true;
-      } catch (error) {
-        console.log('Item might not be in media_gallery, trying other tables');
-        
+      } else {
         // If not in media_gallery, try other tables based on the item source
         // Try to delete from the piapi_tasks table
         const { error: piapiError } = await supabase.from('piapi_tasks').delete().eq('id', id);
@@ -232,7 +195,7 @@ const MediaGallery: React.FC = () => {
           success = true;
         } else {
           // Try to delete from the apiframe_tasks table
-          const { error: apiframeError } = await supabase.from('apiframe_tasks').delete().eq('task_id', id);
+          const { error: apiframeError } = await supabase.from('apiframe_tasks').delete().eq('id', id);
           if (!apiframeError) {
             success = true;
           }
@@ -258,29 +221,18 @@ const MediaGallery: React.FC = () => {
     }
   };
   
-  return (
-    <div className="flex min-h-screen w-full bg-inventu-darker">
-      {!isMobile && (
-        <div className={cn(
-          "fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", 
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}>
+  return <div className="flex min-h-screen w-full bg-inventu-darker">
+      {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
-        </div>
-      )}
+        </div>}
 
-      {isMobile && sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity" onClick={toggleSidebar}>
+      {isMobile && sidebarOpen && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm transition-opacity" onClick={toggleSidebar}>
           <div className="fixed inset-y-0 left-0 z-40 w-64 transform bg-inventu-dark" onClick={e => e.stopPropagation()}>
             <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
           </div>
-        </div>
-      )}
+        </div>}
 
-      <div className={cn(
-        "flex min-h-screen w-full flex-col transition-all duration-300", 
-        !isMobile && sidebarOpen && "pl-64"
-      )}>
+      <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
         <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Galeria de Mídias" showHeader={true}>
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-6 py-0 px-[8px]">
@@ -293,8 +245,7 @@ const MediaGallery: React.FC = () => {
           </ScrollArea>
         </MainLayout>
       </div>
-    </div>
-  );
+    </div>;
 };
 
 export default MediaGallery;
