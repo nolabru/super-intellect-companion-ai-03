@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Save, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, Save, RefreshCw, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import { isVideoUrlValid, recoverVideo, registerRecoveredVideo } from '@/utils/videoRecoveryUtils';
 import { toast } from 'sonner';
 
@@ -11,12 +10,14 @@ interface VideoRecoveryToolProps {
   onRecovered?: (url: string) => void;
   taskId?: string;
   userId?: string;
+  returnUrlOnly?: boolean;
 }
 
 const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
   onRecovered,
   taskId,
-  userId
+  userId,
+  returnUrlOnly = false
 }) => {
   const [videoUrl, setVideoUrl] = useState<string>('');
   const [taskIdInput, setTaskIdInput] = useState<string>(taskId || '');
@@ -24,6 +25,7 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
   const [recoveredUrl, setRecoveredUrl] = useState<string | null>(null);
   const [isValidUrl, setIsValidUrl] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showUrlCopiedMessage, setShowUrlCopiedMessage] = useState(false);
   
   // Função para verificar uma URL de vídeo diretamente
   const handleCheckUrl = async (url: string = videoUrl) => {
@@ -150,15 +152,36 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
     }
   };
 
+  // Nova função para copiar URL para a área de transferência
+  const handleCopyUrl = () => {
+    if (!recoveredUrl) return;
+    
+    try {
+      navigator.clipboard.writeText(recoveredUrl);
+      setShowUrlCopiedMessage(true);
+      toast.success("URL copiada para a área de transferência!");
+      
+      setTimeout(() => {
+        setShowUrlCopiedMessage(false);
+      }, 3000);
+    } catch (error) {
+      toast.error("Erro ao copiar URL", {
+        description: "Não foi possível copiar para a área de transferência"
+      });
+    }
+  };
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle className="flex items-center">
           <RefreshCw className="h-5 w-5 mr-2" />
-          Recuperação de Vídeos
+          {returnUrlOnly ? "Obter URL do Vídeo" : "Recuperação de Vídeos"}
         </CardTitle>
         <CardDescription>
-          Tente recuperar vídeos gerados usando URL ou ID da tarefa
+          {returnUrlOnly 
+            ? "Encontre a URL direta do vídeo para compartilhar ou incorporar" 
+            : "Tente recuperar vídeos gerados usando URL ou ID da tarefa"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -219,8 +242,36 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
           </div>
         )}
         
-        {/* Prévia do vídeo recuperado */}
+        {/* URL recuperada */}
         {recoveredUrl && (
+          <div className="mt-4 space-y-2">
+            <label className="text-sm font-medium">URL do Vídeo</label>
+            <div className="flex items-center gap-2">
+              <Input 
+                value={recoveredUrl} 
+                readOnly 
+                className="flex-1 font-mono text-xs"
+              />
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={handleCopyUrl}
+                title="Copiar URL"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                </svg>
+              </Button>
+            </div>
+            {showUrlCopiedMessage && (
+              <p className="text-xs text-green-500">URL copiada!</p>
+            )}
+          </div>
+        )}
+        
+        {/* Prévia do vídeo recuperado - mostrar apenas se não estiver no modo URL only */}
+        {recoveredUrl && !returnUrlOnly && (
           <div className="mt-4">
             <label className="text-sm font-medium">Prévia do Vídeo</label>
             <div className="aspect-video mt-2 bg-black/20 rounded-md overflow-hidden">
@@ -243,15 +294,17 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
             <ExternalLink className="h-4 w-4 mr-2" />
             Abrir em Nova Aba
           </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={handleSaveToGallery}
-            disabled={isSaving}
-          >
-            {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Salvar na Galeria
-          </Button>
+          {!returnUrlOnly && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleSaveToGallery}
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Salvar na Galeria
+            </Button>
+          )}
         </CardFooter>
       )}
     </Card>

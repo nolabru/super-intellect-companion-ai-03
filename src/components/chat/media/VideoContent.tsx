@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
 import VideoGenerationRetry from './VideoGenerationRetry';
 import VideoLoading from '../VideoLoading';
 import { Button } from '@/components/ui/button';
-import { Save, ExternalLink, RefreshCcw } from 'lucide-react';
+import { Save, ExternalLink, RefreshCcw, Link } from 'lucide-react';
 import { toast } from 'sonner';
 import { recoverVideo, registerRecoveredVideo, isVideoUrlValid } from '@/utils/videoRecoveryUtils';
 import { withRetry } from '@/utils/retryOperations';
+import VideoRecoveryTool from '@/components/media/VideoRecoveryTool';
 
 interface VideoContentProps {
   src?: string;
@@ -20,6 +20,7 @@ interface VideoContentProps {
   onSaveToGallery?: () => Promise<void>;
   onOpenInNewTab?: () => void;
   saving?: boolean;
+  showUrlOnly?: boolean;
 }
 
 const VideoContent: React.FC<VideoContentProps> = ({
@@ -32,7 +33,8 @@ const VideoContent: React.FC<VideoContentProps> = ({
   onError,
   onSaveToGallery,
   onOpenInNewTab,
-  saving = false
+  saving = false,
+  showUrlOnly = false
 }) => {
   const [videoUrl, setVideoUrl] = useState<string | undefined>(src);
   const [hasTimedOut, setHasTimedOut] = useState(false);
@@ -44,6 +46,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const [authErrors, setAuthErrors] = useState(0);
   const [isRecovering, setIsRecovering] = useState(false);
   const [videoRecovered, setVideoRecovered] = useState(false);
+  const [showUrlView, setShowUrlView] = useState(showUrlOnly);
   
   const { 
     checkTimedOutTask, 
@@ -398,6 +401,11 @@ const VideoContent: React.FC<VideoContentProps> = ({
     }
   };
 
+  // Toggle between URL view and embedded view
+  const toggleUrlView = () => {
+    setShowUrlView(prev => !prev);
+  };
+
   if (!videoUrl && !isLoading && (hasTimedOut || persistentLoading)) {
     return (
       <VideoGenerationRetry 
@@ -424,6 +432,75 @@ const VideoContent: React.FC<VideoContentProps> = ({
     );
   }
 
+  if (videoUrl && showUrlView) {
+    return (
+      <div className="w-full space-y-3">
+        <div className="flex items-center gap-2 p-3 bg-black/20 rounded-md border border-white/10">
+          <Link className="h-4 w-4 text-blue-400 flex-shrink-0" />
+          <input 
+            type="text" 
+            value={videoUrl} 
+            readOnly 
+            className="bg-transparent border-none outline-none text-xs flex-1 overflow-x-auto whitespace-nowrap scrollbar-thin overflow-y-hidden"
+            style={{ scrollbarWidth: 'thin' }}
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-xs"
+            onClick={() => {
+              navigator.clipboard.writeText(videoUrl);
+              toast.success("URL copiada para a área de transferência");
+            }}
+          >
+            Copiar
+          </Button>
+        </div>
+
+        {/* Ação para alternar para visão de vídeo */}
+        <div className="flex justify-end">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleUrlView}
+            className="text-xs"
+          >
+            Mostrar Vídeo
+          </Button>
+        </div>
+
+        {/* Ações adicionais */}
+        <div className="flex items-center justify-end gap-2">
+          {onSaveToGallery && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSaveToGallery}
+              disabled={saving}
+              title="Salvar na galeria"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          )}
+          
+          {onOpenInNewTab && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenInNewTab}
+              title="Abrir em nova aba"
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Abrir
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (videoUrl) {
     return (
       <div className="w-full">
@@ -437,54 +514,63 @@ const VideoContent: React.FC<VideoContentProps> = ({
           Your browser does not support the video tag.
         </video>
 
-        {(onSaveToGallery || onOpenInNewTab) && (
-          <div className="flex items-center justify-end gap-2 mt-2">
-            {onSaveToGallery && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onSaveToGallery}
-                disabled={saving}
-                title="Salvar na galeria"
-              >
-                <Save className="h-4 w-4 mr-1" />
-                {saving ? 'Salvando...' : 'Salvar'}
-              </Button>
-            )}
-            
-            {onOpenInNewTab && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onOpenInNewTab}
-                title="Abrir em nova aba"
-              >
-                <ExternalLink className="h-4 w-4 mr-1" />
-                Abrir
-              </Button>
-            )}
+        <div className="flex items-center justify-end gap-2 mt-2">
+          {/* Botão para mostrar apenas a URL */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleUrlView}
+            title="Mostrar URL"
+          >
+            <Link className="h-4 w-4 mr-1" />
+            Mostrar URL
+          </Button>
 
-            {/* Adicionar botão para recuperar no banco se foi recuperado manualmente */}
-            {videoRecovered && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  if (videoUrl) {
-                    const success = await registerRecoveredVideo(videoUrl);
-                    if (success) {
-                      toast.success("Vídeo registrado na galeria com sucesso!");
-                    }
+          {onSaveToGallery && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onSaveToGallery}
+              disabled={saving}
+              title="Salvar na galeria"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              {saving ? 'Salvando...' : 'Salvar'}
+            </Button>
+          )}
+          
+          {onOpenInNewTab && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenInNewTab}
+              title="Abrir em nova aba"
+            >
+              <ExternalLink className="h-4 w-4 mr-1" />
+              Abrir
+            </Button>
+          )}
+
+          {/* Adicionar botão para recuperar no banco se foi recuperado manualmente */}
+          {videoRecovered && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (videoUrl) {
+                  const success = await registerRecoveredVideo(videoUrl);
+                  if (success) {
+                    toast.success("Vídeo registrado na galeria com sucesso!");
                   }
-                }}
-                title="Registrar vídeo recuperado"
-              >
-                <Save className="h-4 w-4 mr-1" />
-                Registrar
-              </Button>
-            )}
-          </div>
-        )}
+                }
+              }}
+              title="Registrar vídeo recuperado"
+            >
+              <Save className="h-4 w-4 mr-1" />
+              Registrar
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
