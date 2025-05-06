@@ -1,73 +1,97 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 interface VideoGenerationRetryProps {
   onRetry: () => void;
-  isChecking: boolean;
   message?: string;
+  isChecking?: boolean;
   attempts?: number;
   autoRetry?: boolean;
   autoRetryInterval?: number;
-  additionalContent?: React.ReactNode;
 }
 
 const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
   onRetry,
   isChecking = false,
-  message = "O tempo de geração do vídeo excedeu o limite. Por favor, verifique novamente.",
+  message = "O tempo de geração do vídeo excedeu o limite. Não se preocupe, o vídeo pode ainda estar sendo processado no servidor.",
   attempts = 0,
-  autoRetry = false,
-  autoRetryInterval = 10000,
-  additionalContent
+  autoRetry = true,
+  autoRetryInterval = 15000
 }) => {
+  // Aumentado o número máximo de tentativas de 20 para 40
+  const MAX_AUTO_ATTEMPTS = 40;
+  
+  // Add automatic retry effect
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | undefined;
+    
+    // If autoRetry is enabled and not currently checking and attempts are below max,
+    // start automatic retry interval
+    if (autoRetry && !isChecking && attempts < MAX_AUTO_ATTEMPTS) {
+      intervalId = setInterval(() => {
+        console.log('Automatic retry triggered');
+        onRetry();
+      }, autoRetryInterval);
+    }
+    
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [autoRetry, isChecking, attempts, onRetry, autoRetryInterval, MAX_AUTO_ATTEMPTS]);
+  
   return (
-    <div className="w-full rounded-lg bg-black/5 backdrop-blur p-4 flex flex-col items-center justify-center text-center min-h-[200px] border border-white/10">
-      <AlertCircle className="h-8 w-8 text-amber-500 mb-2" />
-      
-      <h3 className="text-lg font-medium text-white mb-2">Verificando Status do Vídeo</h3>
-      
-      <p className="text-sm text-white/70 max-w-md mb-4">
+    <div className="flex flex-col items-center justify-center p-6 my-4 bg-inventu-darker/20 rounded-lg border border-inventu-gray/20">
+      <AlertTriangle className="h-12 w-12 mb-4 text-amber-500" />
+      <p className="text-base font-medium text-white text-center">
+        {attempts > 0 && attempts >= MAX_AUTO_ATTEMPTS / 2
+          ? "Verificação contínua de status"
+          : "Tempo de geração excedido"}
+      </p>
+      <p className="text-sm text-inventu-gray mt-2 text-center">
         {message}
       </p>
       
-      <div className="flex flex-col w-full max-w-sm gap-2">
-        {attempts > 0 && (
-          <p className="text-xs text-white/50 mb-1">
-            Tentativas: {attempts} | {autoRetry ? `Verificando a cada ${autoRetryInterval/1000} segundos` : 'Verificação automática desativada'}
-          </p>
-        )}
-        
-        <Button
-          variant="outline"
-          onClick={onRetry}
-          disabled={isChecking}
-          className="flex items-center justify-center gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-          {isChecking ? 'Verificando...' : 'Verificar Novamente'}
-        </Button>
-        
-        {attempts >= 20 && (
-          <div className="mt-2 text-xs text-amber-400">
-            <p>Muitas tentativas sem sucesso. O vídeo pode estar com problemas.</p>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="mt-2"
-              onClick={() => window.location.reload()}
-            >
-              Recarregar Página
-            </Button>
-          </div>
-        )}
+      <div className="w-full mt-4">
+        <div className="flex justify-between text-xs text-inventu-gray mb-1">
+          <span>Verificação automática</span>
+          <span>{attempts}/{MAX_AUTO_ATTEMPTS} verificações</span>
+        </div>
+        <Progress value={Math.min((attempts / MAX_AUTO_ATTEMPTS) * 100, 100)} className="h-2" />
       </div>
-
-      {/* Adicionar conteúdo adicional se fornecido */}
-      {additionalContent && (
-        <div className="w-full max-w-sm mt-4">
-          {additionalContent}
+      
+      <div className="mt-4 flex items-center gap-2">
+        <RefreshCw className={`h-5 w-5 text-inventu-gray ${isChecking ? 'animate-spin' : ''}`} />
+        <p className="text-sm text-inventu-gray">
+          {isChecking ? 'Verificando...' : 'Verificando automaticamente...'}
+        </p>
+      </div>
+      
+      <Button 
+        variant="outline"
+        className="flex items-center gap-2 mt-4"
+        onClick={onRetry}
+        disabled={isChecking}
+      >
+        <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
+        {isChecking ? 'Verificando...' : 'Verificar manualmente'}
+      </Button>
+      
+      {attempts >= MAX_AUTO_ATTEMPTS && (
+        <div className="mt-4 flex flex-col items-center">
+          <p className="text-xs text-amber-400/80 mb-2 text-center">
+            Verificações automáticas esgotadas. Você pode continuar verificando manualmente.
+          </p>
+          <Button 
+            variant="destructive"
+            size="sm"
+            className="mt-2"
+            onClick={() => window.location.reload()}
+          >
+            Recarregar a página
+          </Button>
         </div>
       )}
     </div>

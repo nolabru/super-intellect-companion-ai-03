@@ -7,6 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const PIAPI_API_BASE_URL = "https://api.piapi.ai/api/v1";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -32,7 +34,7 @@ serve(async (req) => {
       );
     }
 
-    const { taskId, forceCheck = false } = requestBody;
+    const { taskId } = requestBody;
     
     if (!taskId) {
       console.error("[piapi-task-status] taskId é obrigatório");
@@ -42,7 +44,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[piapi-task-status] Verificando status da tarefa: ${taskId}, forceCheck: ${forceCheck}`);
+    console.log(`[piapi-task-status] Verificando status da tarefa: ${taskId}`);
 
     // Primeiro, verificar no banco de dados se a tarefa já está concluída
     const supabaseClient = createClient(
@@ -65,8 +67,8 @@ serve(async (req) => {
         hasUrl: !!taskData.media_url
       });
       
-      // If force check is not enabled and the task is already complete or failed, return directly
-      if (!forceCheck && (taskData.status === 'completed' || taskData.status === 'failed')) {
+      // Se a tarefa já estiver concluída ou falhou, retornar diretamente
+      if (taskData.status === 'completed' || taskData.status === 'failed') {
         console.log(`[piapi-task-status] Retornando status da tarefa a partir do banco de dados`);
         return new Response(
           JSON.stringify({
@@ -80,68 +82,33 @@ serve(async (req) => {
       }
     }
 
-    // If forceCheck is enabled or the task is not complete yet, check the API
-    console.log(`[piapi-task-status] Consultando status na API: ${PIAPI_API_KEY.substring(0, 5)}***`);
+    // Se a tarefa não estiver concluída, verificar o status na API
+    console.log(`[piapi-task-status] Consultando status na API: ${PIAPI_API_BASE_URL}/task/${taskId}`);
     
-    let apiResponse;
-    try {
-      apiResponse = await fetch(`https://api.piapi.ai/api/v1/task/${taskId}`, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${PIAPI_API_KEY}`
-        }
-      });
-    } catch (fetchError) {
-      console.error(`[piapi-task-status] Erro de rede ao consultar API:`, fetchError);
-      
-      // If network error and we have task data already, return it
-      if (taskData) {
-        console.log(`[piapi-task-status] Retornando dados existentes após erro de rede`);
-        return new Response(
-          JSON.stringify({
-            taskId: taskData.task_id,
-            status: taskData.status,
-            mediaUrl: taskData.media_url,
-            error: taskData.error || "Network error, returning cached data"
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    const response = await fetch(`${PIAPI_API_BASE_URL}/task/${taskId}`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${PIAPI_API_KEY}`
       }
-      
-      throw new Error(`Network error: ${fetchError.message}`);
-    }
+    });
 
     // Log do status da resposta para depuração
-    console.log(`[piapi-task-status] Status da resposta da API: ${apiResponse.status}`);
+    console.log(`[piapi-task-status] Status da resposta da API: ${response.status}`);
     
     // Ler o corpo da resposta como texto para análise
-    const responseText = await apiResponse.text();
+    const responseText = await response.text();
     console.log(`[piapi-task-status] Resposta bruta da API: ${responseText.substring(0, 200)}...`);
 
     // Verificar se a resposta foi bem-sucedida
-    if (!apiResponse.ok) {
+    if (!response.ok) {
       console.error(`[piapi-task-status] Erro na resposta da API:`, responseText);
-      
-      // If API error and we have task data, return it
-      if (taskData) {
-        console.log(`[piapi-task-status] Retornando dados existentes após erro de API`);
-        return new Response(
-          JSON.stringify({
-            taskId: taskData.task_id,
-            status: taskData.status,
-            mediaUrl: taskData.media_url,
-            error: `API error (${apiResponse.status}), returning cached data`
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       
       let errorMessage;
       try {
         const errorData = JSON.parse(responseText);
-        errorMessage = errorData.error?.message || `Error from PiAPI: ${apiResponse.statusText}`;
+        errorMessage = errorData.error?.message || `Error from PiAPI: ${response.statusText}`;
       } catch (e) {
-        errorMessage = `Error from PiAPI: ${apiResponse.statusText}`;
+        errorMessage = `Error from PiAPI: ${response.statusText}`;
       }
       
       throw new Error(errorMessage);
@@ -194,11 +161,6 @@ serve(async (req) => {
 
     console.log(`[piapi-task-status] Status mapeado: ${status}, URL da mídia: ${mediaUrl || 'não disponível'}`);
     
-    // Determine the percentage based on status
-    const percentage = status === 'completed' ? 100 : 
-                       status === 'processing' ? 50 :
-                       status === 'pending' ? 20 : 0;
-    
     // Atualizar o registro no banco de dados com as informações mais recentes
     if (status === 'completed' || status === 'failed') {
       console.log(`[piapi-task-status] Atualizando registro da tarefa no banco de dados`);
@@ -249,19 +211,6 @@ serve(async (req) => {
           console.log(`[piapi-task-status] Evento de mídia pronta criado com sucesso`);
         }
       }
-    } else {
-      // Update the task with the latest status
-      const { error: updateError } = await supabaseClient
-        .from("piapi_tasks")
-        .update({
-          status,
-          updated_at: new Date().toISOString()
-        })
-        .eq("task_id", taskId);
-
-      if (updateError) {
-        console.error(`[piapi-task-status] Erro ao atualizar tarefa em processamento:`, updateError);
-      }
     }
 
     // Retornar informações do status da tarefa
@@ -270,8 +219,7 @@ serve(async (req) => {
         taskId,
         status,
         mediaUrl,
-        error: errorMessage,
-        percentage
+        error: errorMessage
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

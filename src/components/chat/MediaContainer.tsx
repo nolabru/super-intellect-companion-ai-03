@@ -11,15 +11,13 @@ interface MediaContainerProps {
   mode: ChatMode;
   prompt: string;
   modelId?: string;
-  showUrlOnly?: boolean;
 }
 
 const MediaContainer: React.FC<MediaContainerProps> = ({ 
   mediaUrl,
   mode,
   prompt,
-  modelId,
-  showUrlOnly = false
+  modelId
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { saveMediaToGallery, saving } = useMediaGallery();
@@ -69,7 +67,6 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
           onSaveToGallery={handleSaveToGallery}
           onOpenInNewTab={handleOpenInNewTab}
           saving={saving}
-          showUrlOnly={showUrlOnly}
         />
       );
     case 'audio':

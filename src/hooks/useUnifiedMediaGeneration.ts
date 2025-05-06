@@ -1,4 +1,3 @@
-
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';
@@ -166,7 +165,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     }
     
     try {
-      // Use withRetry to make the check more reliable and handle 401 errors better
+      // Use withRetry to make the check more reliable
       const { data, error } = await withRetry(
         () => supabase.functions.invoke('apiframe-task-status', {
           body: { 
@@ -179,61 +178,6 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       
       if (error) {
         console.error('[useUnifiedMediaGeneration] Error checking timed out task:', error);
-        
-        // Check if this is an authentication error
-        if (error.message && (
-            error.message.includes('authorization') || 
-            error.message.includes('401') || 
-            error.message.includes('Authentication')
-        )) {
-          console.error('[useUnifiedMediaGeneration] Authentication error detected:', error);
-          // Try to use the direct database query as a fallback
-          const { data: dbData, error: dbError } = await supabase
-            .from('apiframe_tasks')
-            .select('*')
-            .eq('task_id', apiframeTaskId)
-            .single();
-            
-          if (dbError) {
-            console.error('[useUnifiedMediaGeneration] Failed to get task from database:', dbError);
-            throw error; // Re-throw the original error
-          }
-          
-          // If we found the task and it has a media_url, consider it complete
-          if (dbData && dbData.status === 'completed' && dbData.media_url) {
-            if (onProgress) onProgress(100);
-            
-            setIsGenerating(false);
-            setTimedOut(false);
-            setIsCheckingStatus(false);
-            setGeneratedMedia({
-              type: currentTask.type as any,
-              url: dbData.media_url
-            });
-            
-            if (showToasts) {
-              toast.success(`Vídeo recuperado do banco de dados com sucesso!`);
-            }
-            
-            if (onComplete) {
-              onComplete(dbData.media_url);
-            }
-            
-            // Update our local task state
-            setCurrentTask({
-              ...currentTask,
-              status: 'completed',
-              progress: 100,
-              result: dbData.media_url
-            });
-            
-            return true;
-          }
-          
-          // If we have a task but it's not complete, throw a more specific error
-          throw new Error('Authentication error: Unable to check task status directly. Using database fallback.');
-        }
-        
         throw error;
       }
       

@@ -1,8 +1,9 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GoogleAuthProvider } from "@/contexts/GoogleAuthContext";
 import { MediaProvider } from "@/contexts/MediaContext";
@@ -22,8 +23,6 @@ import CreatePost from "./pages/CreatePost";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
 import IdeogramPage from "./pages/IdeogramPage";
-import TestAPIFrame from './pages/TestAPIFrame';
-import VideoRecovery from './pages/VideoRecovery';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,85 +33,6 @@ const queryClient = new QueryClient({
   }
 });
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <Index />,
-  },
-  {
-    path: "/c/:conversationId",
-    element: <Index />,
-  },
-  {
-    path: "/auth",
-    element: <Auth />,
-  },
-  {
-    path: "/gallery",
-    element: (
-      <ProtectedRoute>
-        <MediaGallery />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/memory",
-    element: (
-      <ProtectedRoute>
-        <UserMemory />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/tokens",
-    element: (
-      <ProtectedRoute>
-        <TokensPlans />
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: "/admin",
-    element: <AdminPanel />,
-  },
-  {
-    path: "/analytics",
-    element: (
-      <AdminRoute>
-        <Analytics />
-      </AdminRoute>
-    ),
-  },
-  {
-    path: "/feed",
-    element: <NewsFeed />,
-  },
-  {
-    path: "/feed/new",
-    element: <CreatePost />,
-  },
-  {
-    path: "/post/:id",
-    element: <PostDetail />,
-  },
-  {
-    path: "/ideogram",
-    element: <IdeogramPage />,
-  },
-  {
-    path: "/test-api-frame",
-    element: <TestAPIFrame />,
-  },
-  {
-    path: "/video-recovery",
-    element: <VideoRecovery />,
-  },
-  {
-    path: "*",
-    element: <NotFound />,
-  },
-]);
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -122,7 +42,48 @@ const App = () => (
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <RouterProvider router={router} />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/c/:conversationId" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  
+                  {/* Rotas protegidas que exigem autenticação */}
+                  <Route path="/gallery" element={
+                    <ProtectedRoute>
+                      <MediaGallery />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/memory" element={
+                    <ProtectedRoute>
+                      <UserMemory />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/tokens" element={
+                    <ProtectedRoute>
+                      <TokensPlans />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Admin-protected routes */}
+                  <Route path="/admin" element={<AdminPanel />} />
+                  <Route path="/analytics" element={
+                    <AdminRoute>
+                      <Analytics />
+                    </AdminRoute>
+                  } />
+                  
+                  <Route path="/feed" element={<NewsFeed />} />
+                  <Route path="/feed/new" element={<CreatePost />} />
+                  <Route path="/post/:id" element={<PostDetail />} />
+                  
+                  {/* Ideogram route */}
+                  <Route path="/ideogram" element={<IdeogramPage />} />
+                  
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
             </TooltipProvider>
           </DndProvider>
         </MediaProvider>

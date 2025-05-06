@@ -22,7 +22,6 @@ export interface MessageType {
   mediaUrl?: string;
   audioData?: string;
   streaming?: boolean;
-  showUrlOnly?: boolean;
 }
 
 interface ChatMessageProps {
@@ -88,7 +87,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, highlightModel }) =>
             mode={message.mode}
             prompt={message.content}
             modelId={message.model}
-            showUrlOnly={message.showUrlOnly}
           />
         )}
       </div>

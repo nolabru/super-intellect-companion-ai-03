@@ -14,7 +14,6 @@ serve(async (req) => {
   }
 
   try {
-    // Check both environment variable names for better compatibility
     const API_FRAME_KEY = Deno.env.get("API_FRAME_KEY") || Deno.env.get("APIFRAME_API_KEY");
     if (!API_FRAME_KEY) {
       console.error("[apiframe-task-status] API_FRAME_KEY not configured");
