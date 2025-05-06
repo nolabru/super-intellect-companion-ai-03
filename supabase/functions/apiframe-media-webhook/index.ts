@@ -1,217 +1,164 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Initialize Supabase client
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
-  // Handle CORS preflight requests
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+  
+  // Handle OPTIONS request for CORS
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders
+    });
   }
 
-  // Initialize Supabase client
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") || "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-  );
-
   try {
-    console.log("[apiframe-media-webhook] Received webhook call");
+    console.log(`[apiframe-media-webhook] Received webhook call`);
     
-    // Parse the request body
-    let payload;
-    try {
-      payload = await req.json();
-    } catch (parseError) {
-      console.error("[apiframe-media-webhook] Error parsing webhook payload:", parseError);
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON payload" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+    // Get the payload
+    const payload = await req.json();
+    console.log(`[apiframe-media-webhook] Received webhook payload: ${JSON.stringify(payload)}`);
+    
+    // Extract task information
+    const { task_id, status, task_type } = payload;
+
+    if (!task_id) {
+      console.error(`[apiframe-media-webhook] No task ID in payload`);
+      throw new Error('No task ID provided in webhook payload');
     }
 
-    console.log("[apiframe-media-webhook] Received webhook payload:", JSON.stringify(payload).substring(0, 500));
-
-    // Extract relevant information from the webhook payload
-    const taskId = payload.task_id || payload.taskId || payload.id;
-    if (!taskId) {
-      console.error("[apiframe-media-webhook] No task ID in webhook payload");
-      return new Response(
-        JSON.stringify({ error: "No task ID in webhook payload" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
-
-    // Determine the status and media URL
-    let status = "processing";
+    console.log(`[apiframe-media-webhook] Processing task ${task_id} with status: ${status}`);
+    
     let mediaUrl = null;
-    let error = null;
-    let percentage = payload.percentage || 0;
-
-    // Handle different response formats
-    if (payload.status) {
-      // Standard format
-      if (["completed", "succeeded", "success", "done", "finished"].includes(payload.status.toLowerCase())) {
-        status = "completed";
-        console.log(`[apiframe-media-webhook] Task ${taskId} is completed`);
-      } else if (["failed", "failure", "error"].includes(payload.status.toLowerCase())) {
-        status = "failed";
-        error = payload.error || payload.message || "Task failed";
-        console.log(`[apiframe-media-webhook] Task ${taskId} has failed with error: ${error}`);
+    
+    // Extract media URL if available
+    if (status === 'finished' || status === 'completed') {
+      // Para resultados da API SUNO (música)
+      if (task_type === 'suno' && payload.songs && payload.songs.length > 0) {
+        // Preferir o video_url se disponível, senão usar audio_url
+        mediaUrl = payload.songs[0].video_url || payload.songs[0].audio_url;
+        console.log(`[apiframe-media-webhook] SUNO music ready, URL: ${mediaUrl?.substring(0, 50) || 'none'}...`);
       }
-
-      // Extract media URL from various possible locations
-      if (payload.video_url) {
-        mediaUrl = payload.video_url;
-      } else if (payload.image_urls && payload.image_urls.length > 0) {
-        mediaUrl = payload.image_urls[0];
-      } else if (payload.image_url) {
-        mediaUrl = payload.image_url;
-      } else if (payload.assets) {
-        // Handle assets structure
-        if (payload.assets.video) {
-          mediaUrl = payload.assets.video;
-        } else if (payload.assets.image) {
-          mediaUrl = payload.assets.image;
-        }
-      }
-      
-      if (mediaUrl) {
-        console.log(`[apiframe-media-webhook] Media URL found: ${mediaUrl.substring(0, 100)}...`);
-      } else {
-        console.log(`[apiframe-media-webhook] No media URL found in payload`);
-      }
-    }
-
-    console.log(`[apiframe-media-webhook] Processing task ${taskId} with status: ${status}`);
-
-    // Check if task exists in the database before updating
-    const { data: existingTask, error: checkError } = await supabaseClient
-      .from("apiframe_tasks")
-      .select("id, task_id, status, media_url")
-      .eq("task_id", taskId)
-      .single();
-
-    if (checkError) {
-      console.log(`[apiframe-media-webhook] Task ${taskId} not found in database, creating new entry`);
-      
-      // If task doesn't exist, create it
-      const { error: insertError } = await supabaseClient
-        .from("apiframe_tasks")
-        .insert({
-          task_id: taskId,
-          status: status,
-          media_url: mediaUrl,
-          error: error,
-          percentage: percentage,
-          model: payload.model || "apiframe-video", 
-          media_type: "video",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-        
-      if (insertError) {
-        console.error(`[apiframe-media-webhook] Error creating new task:`, insertError);
-        return new Response(
-          JSON.stringify({ error: "Error creating new task record", details: insertError }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-        );
+      // Para resultados padrão
+      else {
+        mediaUrl = payload.media_url || (payload.images && payload.images[0]);
+        console.log(`[apiframe-media-webhook] Media ready, URL: ${mediaUrl?.substring(0, 50) || 'none'}...`);
       }
     } else {
-      // Task exists, update it
-      console.log(`[apiframe-media-webhook] Updating existing task ${taskId} with status: ${status}`);
+      console.log(`[apiframe-media-webhook] No media URL found in payload`);
+    }
+    
+    // Check if task exists in database
+    const { data: existingTask, error: queryError } = await supabase
+      .from('apiframe_tasks')
+      .select('*')
+      .eq('task_id', task_id)
+      .single();
+    
+    if (queryError && queryError.code !== 'PGRST116') {
+      console.error(`[apiframe-media-webhook] Error checking existing task: ${queryError.message}`);
+    }
+    
+    if (existingTask) {
+      console.log(`[apiframe-media-webhook] Updating existing task ${task_id} with status: ${status}`);
       
-      // Only update the fields that are provided and not null
-      const updateFields: any = { updated_at: new Date().toISOString() };
+      // Update existing task
+      const { error: updateError } = await supabase
+        .from('apiframe_tasks')
+        .update({
+          status,
+          media_url: mediaUrl,
+          percentage: payload.percentage || (status === 'finished' ? 100 : 0),
+          metadata: payload, // Store full webhook payload in metadata
+          updated_at: new Date().toISOString()
+        })
+        .eq('task_id', task_id);
       
-      if (status) updateFields.status = status;
-      if (mediaUrl) updateFields.media_url = mediaUrl;
-      if (error) updateFields.error = error;
-      if (percentage) updateFields.percentage = percentage;
-      
-      const { error: updateError } = await supabaseClient
-        .from("apiframe_tasks")
-        .update(updateFields)
-        .eq("task_id", taskId);
-
       if (updateError) {
-        console.error(`[apiframe-media-webhook] Error updating task in database:`, updateError);
-        return new Response(
-          JSON.stringify({ error: "Database update error", details: updateError }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-        );
+        console.error(`[apiframe-media-webhook] Error updating task: ${updateError.message}`);
+        throw updateError;
+      }
+    } else {
+      console.log(`[apiframe-media-webhook] Creating new task record for ${task_id}`);
+      
+      // Create new task record
+      const { error: insertError } = await supabase
+        .from('apiframe_tasks')
+        .insert({
+          task_id,
+          status,
+          media_url: mediaUrl,
+          percentage: payload.percentage || (status === 'finished' ? 100 : 0),
+          task_type: task_type || 'unknown',
+          metadata: payload
+        });
+      
+      if (insertError) {
+        console.error(`[apiframe-media-webhook] Error inserting task: ${insertError.message}`);
+        throw insertError;
       }
     }
-
-    // Insert into media_ready_events table for additional processing
-    if (status === "completed" && mediaUrl) {
-      try {
-        // Check if the task has prompt and model information
-        const { data: taskData } = await supabaseClient
-          .from("apiframe_tasks")
-          .select("prompt, model")
-          .eq("task_id", taskId)
-          .single();
-
-        // Try to insert into media_ready_events
-        const { error: insertError } = await supabaseClient
-          .from("media_ready_events")
-          .insert({
-            task_id: taskId,
-            media_url: mediaUrl,
-            media_type: "video",
-            prompt: taskData?.prompt || "",
-            model: taskData?.model || payload.model || "apiframe-video"
-          });
-
-        if (insertError) {
-          console.error(`[apiframe-media-webhook] Error inserting media_ready_event:`, insertError);
-          
-          // Create the record with automatically generated UUID if the foreign key constraint failed
-          if (insertError.code === "23503") {
-            console.log(`[apiframe-media-webhook] Trying with an auto-generated ID instead of task_id`);
-            const { error: fallbackError } = await supabaseClient
-              .from("media_ready_events")
-              .insert({
-                media_url: mediaUrl,
-                media_type: "video",
-                prompt: taskData?.prompt || "",
-                model: taskData?.model || payload.model || "apiframe-video"
-              });
-              
-            if (fallbackError) {
-              console.error(`[apiframe-media-webhook] Fallback insert also failed:`, fallbackError);
-            } else {
-              console.log(`[apiframe-media-webhook] Successfully created media_ready_event with auto-generated ID`);
-            }
-          }
-        } else {
-          console.log(`[apiframe-media-webhook] Successfully created media_ready_event for task ${taskId}`);
-        }
-      } catch (mediaEventError) {
-        console.error(`[apiframe-media-webhook] Error handling media ready event:`, mediaEventError);
+    
+    // If task is finished, insert into media_ready_events for realtime subscriptions
+    if ((status === 'finished' || status === 'completed') && mediaUrl) {
+      console.log(`[apiframe-media-webhook] Inserting media_ready_event for task ${task_id}`);
+      
+      let mediaType = 'unknown';
+      if (task_type === 'ideogram') mediaType = 'image';
+      else if (task_type === 'kling-video' || task_type === 'kling-text') mediaType = 'video';
+      else if (task_type === 'suno') mediaType = 'audio';
+      
+      // Inserir os dados específicos da música para API SUNO
+      let mediaData = {};
+      if (task_type === 'suno' && payload.songs && payload.songs.length > 0) {
+        mediaData = {
+          lyrics: payload.songs[0].lyrics,
+          title: payload.title || payload.songs[0].title
+        };
+      }
+      
+      const { error: eventError } = await supabase
+        .from('media_ready_events')
+        .insert({
+          task_id,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          media_data: mediaData,
+        });
+      
+      if (eventError) {
+        console.error(`[apiframe-media-webhook] Error inserting media ready event: ${eventError.message}`);
+        // Don't throw error here, as we've already updated the task record
       }
     }
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `Webhook processed for task ${taskId}` 
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
+    
   } catch (error) {
-    console.error("[apiframe-media-webhook] Webhook processing error:", error);
-    return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: "Check edge function logs for more information" 
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-    );
+    console.error(`[apiframe-media-webhook] Error: ${error.message}`);
+    
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
+    });
   }
 });

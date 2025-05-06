@@ -22,6 +22,11 @@ export interface MessageType {
   mediaUrl?: string;
   audioData?: string;
   streaming?: boolean;
+  audioType?: 'speech' | 'music';
+  musicData?: {
+    lyrics?: string;
+    title?: string;
+  };
 }
 
 interface ChatMessageProps {
@@ -35,6 +40,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, highlightModel }) =>
   const isVideo = message.mode === 'video';
   const isError = message.error;
   const isStreaming = message.streaming;
+  const isMusic = message.audioType === 'music';
 
   const mediaUrl = React.useMemo(() => {
     if (message.mediaUrl) return message.mediaUrl;
@@ -45,6 +51,37 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, highlightModel }) =>
   const displayContent = React.useMemo(() => {
     return cleanMessageContent(message.content);
   }, [message.content]);
+  
+  // Extrair dados da música se disponível
+  const musicData = React.useMemo(() => {
+    if (isMusic && message.musicData) {
+      return message.musicData;
+    }
+    
+    // Tentar extrair dados da música do conteúdo da mensagem
+    if (isMusic && message.content) {
+      const musicInfo = {
+        lyrics: '',
+        title: ''
+      };
+      
+      // Extrair título (se presente)
+      const titleMatch = message.content.match(/título:\s*(.+?)(?:\n|$)/i);
+      if (titleMatch && titleMatch[1]) {
+        musicInfo.title = titleMatch[1].trim();
+      }
+      
+      // Extrair letra (se presente)
+      const lyricsMatch = message.content.match(/letra:\s*\n([\s\S]+?)(?:\n\n|$)/i);
+      if (lyricsMatch && lyricsMatch[1]) {
+        musicInfo.lyrics = lyricsMatch[1].trim();
+      }
+      
+      return musicInfo;
+    }
+    
+    return undefined;
+  }, [message.content, message.musicData, isMusic]);
   
   return (
     <div className={cn(
@@ -65,6 +102,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, highlightModel }) =>
           isUser={isUser}
           model={message.model}
           mode={message.mode}
+          audioType={message.audioType}
         />
         
         <ChatMessageContent 
@@ -87,6 +125,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, highlightModel }) =>
             mode={message.mode}
             prompt={message.content}
             modelId={message.model}
+            audioType={message.audioType}
+            musicData={musicData}
           />
         )}
       </div>

@@ -1,40 +1,36 @@
 
 import React from 'react';
 import { ChatMode } from '../ModeSelector';
-import { MessageSquare, Image, Film, Music } from 'lucide-react';
+import ModeIcon from './ModeIcon';
+import { Headphones } from 'lucide-react';
 
 interface MessageHeaderProps {
   isUser: boolean;
   model?: string;
   mode?: ChatMode;
+  audioType?: 'speech' | 'music';
 }
 
-const MessageHeader: React.FC<MessageHeaderProps> = ({
-  isUser,
-  model,
-  mode
-}) => {
-  // Only show header for AI messages
-  if (isUser) return null;
-  
-  // Get the appropriate icon based on the message mode
-  const getIcon = () => {
-    switch (mode) {
-      case 'image':
-        return <Image className="h-4 w-4 mr-1" />;
-      case 'video':
-        return <Film className="h-4 w-4 mr-1" />;
-      case 'audio':
-        return <Music className="h-4 w-4 mr-1" />;
-      default:
-        return <MessageSquare className="h-4 w-4 mr-1" />;
-    }
-  };
-  
+const MessageHeader: React.FC<MessageHeaderProps> = ({ isUser, model, mode, audioType }) => {
+  if (isUser) {
+    return <div className="text-sm opacity-70 mb-1">Você</div>;
+  }
+
   return (
-    <div className="flex items-center text-white/70 text-xs font-medium mb-2">
-      {getIcon()}
-      <span>{model || 'AI'}</span>
+    <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center">
+        <ModeIcon mode={mode} className="mr-1.5 h-3.5 w-3.5" />
+        <span className="text-sm opacity-70 flex items-center gap-1">
+          {model || 'Assistente'}
+          {mode === 'audio' && audioType === 'music' && (
+            <>
+              <span className="mx-1">•</span>
+              <Headphones className="h-3 w-3 mr-0.5" />
+              <span>Música</span>
+            </>
+          )}
+        </span>
+      </div>
     </div>
   );
 };

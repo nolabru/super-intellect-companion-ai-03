@@ -1,8 +1,8 @@
-
 import { useTaskManager, Task } from '@/hooks/useSimplifiedTaskManager';
 import { useSimplifiedMediaGeneration } from '@/hooks/useSimplifiedMediaGeneration';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { sunoService } from '@/services/sunoService';
 
 export interface MediaServiceOptions {
   service: 'ideogram' | 'auto';
@@ -190,6 +190,133 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
     }
   });
   
+  // Register audio processor for music generation using SUNO API
+  taskManager.registerTaskProcessor('audio', async (task: Task) => {
+    try {
+      const isSunoMusic = task.metadata?.params?.audioType === 'music' || 
+                          task.model?.includes('suno') || 
+                          task.model?.includes('chirp');
+      
+      if (isSunoMusic) {
+        // Esta é uma solicitação de música, vamos usar a API SUNO
+        taskManager.updateTask(task.id, {
+          metadata: {
+            ...task.metadata,
+            serviceType: 'suno-music'
+          },
+          progress: 5,
+          status: 'processing'
+        });
+        
+        // Preparar os parâmetros para a API SUNO
+        const params = {
+          prompt: task.prompt,
+          lyrics: task.metadata?.params?.lyrics,
+          model: task.metadata?.params?.sunoModel || 'chirp-v4',
+          make_instrumental: task.metadata?.params?.instrumental || false,
+          title: task.metadata?.params?.title,
+          tags: task.metadata?.params?.tags
+        };
+        
+        // Chamar o serviço SUNO para criar a tarefa
+        const sunoResult = await sunoService.generateMusic(params);
+        
+        // Atualizar a tarefa com o ID da tarefa SUNO
+        taskManager.updateTask(task.id, {
+          metadata: {
+            ...task.metadata,
+            sunoTaskId: sunoResult.taskId
+          },
+          progress: 15,
+          status: 'processing'
+        });
+        
+        // Se já temos músicas na resposta (improvável), retornar imediatamente
+        if (sunoResult.status === 'finished' && sunoResult.songs && sunoResult.songs.length > 0) {
+          return {
+            ...task,
+            status: 'completed',
+            progress: 100,
+            result: sunoResult.songs[0].video_url || sunoResult.songs[0].audio_url
+          };
+        }
+        
+        // Iniciar polling para atualizações de status
+        const maxPolls = 360; // 30 minutos em intervalos de 5 segundos
+        let pollCount = 0;
+        
+        return new Promise((resolve, reject) => {
+          const pollInterval = setInterval(async () => {
+            try {
+              pollCount++;
+              
+              // Verificar status da tarefa
+              const result = await sunoService.checkTaskStatus(sunoResult.taskId);
+              
+              // Atualizar progresso com base na contagem de polling se não houver porcentagem disponível
+              const estimatedProgress = Math.min(15 + (pollCount * 0.2), 95);
+              
+              // Atualizar status da tarefa
+              taskManager.updateTask(task.id, {
+                progress: result.percentage || estimatedProgress,
+                status: result.status || 'processing'
+              });
+              
+              // Se concluído, resolver com resultado
+              if (result.status === 'finished' && result.songs && result.songs.length > 0) {
+                clearInterval(pollInterval);
+                
+                // Preferir o vídeo com letra, mas usar áudio se o vídeo não estiver disponível
+                const mediaUrl = result.songs[0].video_url || result.songs[0].audio_url;
+                
+                if (!mediaUrl) {
+                  reject(new Error("Nenhuma URL de mídia disponível na resposta"));
+                  return;
+                }
+                
+                resolve({
+                  ...task,
+                  status: 'completed',
+                  progress: 100,
+                  result: mediaUrl
+                });
+              }
+              // Se falhou, rejeitar com erro
+              else if (result.status === 'failed') {
+                clearInterval(pollInterval);
+                reject(new Error(result.error || 'Falha na geração de música'));
+              }
+              // Se atingiu o número máximo de polls, timeout
+              else if (pollCount >= maxPolls) {
+                clearInterval(pollInterval);
+                reject(new Error('Geração de música atingiu o tempo limite após 30 minutos'));
+              }
+            } catch (error) {
+              console.error('[mediaServiceAdapter] Erro ao verificar status da tarefa SUNO:', error);
+              // Não interromper o polling por um único erro
+            }
+          }, 5000); // Verificar a cada 5 segundos
+        });
+      } else {
+        // Para outros tipos de áudio, usar implementação atual
+        return {
+          ...task,
+          status: 'failed',
+          progress: 0,
+          error: 'Geração de áudio genérico não está implementada ainda'
+        };
+      }
+    } catch (error) {
+      console.error('[mediaServiceAdapter] Erro no processador de tarefa de áudio:', error);
+      return {
+        ...task,
+        status: 'failed',
+        progress: 0,
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      };
+    }
+  });
+  
   // Helper function to check video task status
   const checkVideoTaskStatus = async (taskId: string) => {
     try {
@@ -212,16 +339,6 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
       throw error;
     }
   };
-
-  // Register audio processor as placeholder
-  taskManager.registerTaskProcessor('audio', async (task: Task) => {
-    return {
-      ...task,
-      status: 'failed',
-      progress: 0,
-      error: 'Audio generation is not supported at this time'
-    };
-  });
 
   // Main public methods
   return {
@@ -261,6 +378,15 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
       
     generateAudio: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
       taskManager.createTask('audio', model, prompt, { params, referenceUrl }),
+    
+    generateMusic: (prompt: string, model: string = 'chirp-v4', params?: any) => 
+      taskManager.createTask('audio', model, prompt, { 
+        params: { 
+          ...params, 
+          audioType: 'music',
+          sunoModel: model
+        } 
+      }),
     
     // Task management methods
     cancelTask: taskManager.cancelTask,
