@@ -1,3 +1,4 @@
+
 export interface ChatModel {
   id: string;
   displayName: string;
@@ -47,36 +48,24 @@ const VIDEO_MODELS: ChatModel[] = [
   }
 ];
 
-// Audio models
-const APIFRAME_AUDIO_MODELS: ChatModel[] = [
+// Suno audio models
+const SUNO_AUDIO_MODELS: ChatModel[] = [
   {
-    id: 'elevenlabs-v2',
-    displayName: 'ElevenLabs v2',
-    provider: 'apiframe',
+    id: 'chirp-v3-0',
+    displayName: 'Suno Chirp v3.0 (Básico)',
+    provider: 'suno',
     modes: ['audio'],
   },
   {
-    id: 'openai-tts-1',
-    displayName: 'OpenAI TTS-1',
-    provider: 'apiframe',
+    id: 'chirp-v3-5',
+    displayName: 'Suno Chirp v3.5 (Intermediário)',
+    provider: 'suno',
     modes: ['audio'],
   },
   {
-    id: 'coqui-xtts',
-    displayName: 'Coqui XTTS',
-    provider: 'apiframe',
-    modes: ['audio'],
-  },
-  {
-    id: 'musicgen',
-    displayName: 'Meta MusicGen',
-    provider: 'apiframe',
-    modes: ['audio'],
-  },
-  {
-    id: 'audiogen',
-    displayName: 'Meta AudioGen',
-    provider: 'apiframe',
+    id: 'chirp-v4',
+    displayName: 'Suno Chirp v4 (Avançado)',
+    provider: 'suno',
     modes: ['audio'],
   }
 ];
@@ -93,5 +82,5 @@ export const AVAILABLE_MODELS: ChatModel[] = [
   },
   ...IMAGE_MODELS,
   ...VIDEO_MODELS,
-  ...APIFRAME_AUDIO_MODELS
+  ...SUNO_AUDIO_MODELS
 ];

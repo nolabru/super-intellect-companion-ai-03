@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import {
@@ -11,21 +12,16 @@ import { Slider } from '@/components/ui/slider';
 import { AudioParameters as AudioParamsType } from '@/types/parameters';
 import { AVAILABLE_MODELS } from '@/constants';
 
-// Get APIFrame audio models from available models
+// Get only Suno AI audio models from available models
 const AUDIO_MODELS = AVAILABLE_MODELS
-  .filter(model => model.provider === 'apiframe' && model.modes.includes('audio'))
+  .filter(model => model.provider !== 'apiframe' && model.modes.includes('audio'))
   .map(model => ({ id: model.id, name: model.displayName }));
 
-// Keep the voice options for different models
+// Use only Suno voices
 const VOICES = [
-  { id: 'alloy', name: 'Alloy', model: 'openai-tts-1' },
-  { id: 'echo', name: 'Echo', model: 'openai-tts-1' },
-  { id: 'fable', name: 'Fable', model: 'openai-tts-1' },
-  { id: 'onyx', name: 'Onyx', model: 'openai-tts-1' },
-  { id: 'nova', name: 'Nova', model: 'openai-tts-1' },
-  { id: 'sarah', name: 'Sarah', model: 'elevenlabs-v2' },
-  { id: 'thomas', name: 'Thomas', model: 'elevenlabs-v2' },
-  { id: 'nicole', name: 'Nicole', model: 'elevenlabs-v2' }
+  { id: 'suno-voice-1', name: 'Suno Voice 1', model: 'chirp-v3-0' },
+  { id: 'suno-voice-2', name: 'Suno Voice 2', model: 'chirp-v3-5' },
+  { id: 'suno-voice-3', name: 'Suno Voice 3', model: 'chirp-v4' }
 ];
 
 interface AudioParametersProps {
@@ -40,8 +36,8 @@ const AudioParameters: React.FC<AudioParametersProps> = ({
   initialParams 
 }) => {
   const [params, setParams] = useState<AudioParamsType>({
-    model: initialParams?.model || 'elevenlabs',
-    voice: initialParams?.voice || 'sarah',
+    model: initialParams?.model || 'chirp-v4',
+    voice: initialParams?.voice || 'suno-voice-3',
     speed: initialParams?.speed || 1,
     pitch: initialParams?.pitch || 1
   });
