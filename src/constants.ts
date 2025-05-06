@@ -91,28 +91,7 @@ export const AVAILABLE_MODELS: ChatModel[] = [
       imageGeneration: true
     }
   },
-  {
-    id: 'claude-3-opus',
-    displayName: 'Claude 3 Opus',
-    provider: 'anthropic',
-    modes: ['text', 'image'],
-    capabilities: {
-      imageGeneration: false
-    }
-  },
-  {
-    id: 'gemini-pro',
-    displayName: 'Gemini Pro',
-    provider: 'google',
-    modes: ['text', 'image'],
-    capabilities: {
-      imageGeneration: false
-    }
-  },
-  // Add all image models (both Ideogram and Midjourney) 
   ...IMAGE_MODELS,
-  // Add KlingAI video models
   ...VIDEO_MODELS,
-  // Keep audio models
   ...APIFRAME_AUDIO_MODELS
 ];
