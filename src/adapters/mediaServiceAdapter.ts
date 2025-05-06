@@ -2,6 +2,7 @@
 import { useTaskManager, Task } from '@/hooks/useSimplifiedTaskManager';
 import { useSimplifiedMediaGeneration } from '@/hooks/useSimplifiedMediaGeneration';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface MediaServiceOptions {
   service: 'ideogram' | 'auto';
@@ -73,17 +74,146 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
     }
   });
 
-  // Register placeholder processors for video and audio
-  // These don't actually do anything yet - just placeholders
+  // Register video processor using API Frame
   taskManager.registerTaskProcessor('video', async (task: Task) => {
-    return {
-      ...task,
-      status: 'failed',
-      progress: 0,
-      error: 'Video generation is not supported at this time'
-    };
+    try {
+      taskManager.updateTask(task.id, {
+        metadata: {
+          ...task.metadata,
+          serviceType: 'apiframe-video'
+        },
+        progress: 5,
+        status: 'processing'
+      });
+      
+      const params = task.metadata?.params || {};
+      const referenceUrl = task.metadata?.referenceUrl;
+      const isImageToVideo = params.videoType === 'image-to-video' || !!referenceUrl;
+      
+      // Call the apiframe-video-create-task function
+      const { data, error } = await supabase.functions.invoke('apiframe-video-create-task', {
+        body: {
+          prompt: task.prompt,
+          model: task.model,
+          imageUrl: referenceUrl, // Pass the reference image if it's an image-to-video task
+          params: params
+        }
+      });
+      
+      if (error) {
+        console.error('[mediaServiceAdapter] Error creating video task:', error);
+        throw new Error(`Error creating video task: ${error.message || 'Unknown error'}`);
+      }
+      
+      if (!data.success || !data.taskId) {
+        console.error('[mediaServiceAdapter] Invalid response from video task creation:', data);
+        throw new Error('Failed to start video generation');
+      }
+      
+      // Update task with task ID from API Frame
+      taskManager.updateTask(task.id, {
+        metadata: {
+          ...task.metadata,
+          apiframeTaskId: data.taskId
+        },
+        progress: 15,
+        status: 'processing'
+      });
+      
+      // Start polling for status updates
+      const maxPolls = 60; // Maximum number of polls (10 minutes at 10s intervals)
+      let pollCount = 0;
+      
+      // Run initial poll immediately for faster response
+      const initialResult = await checkVideoTaskStatus(data.taskId);
+      if (initialResult.mediaUrl) {
+        return {
+          ...task,
+          status: 'completed',
+          progress: 100,
+          result: initialResult.mediaUrl
+        };
+      }
+      
+      // If not already complete, start polling
+      return new Promise((resolve, reject) => {
+        const pollInterval = setInterval(async () => {
+          try {
+            pollCount++;
+            
+            // Check task status
+            const result = await checkVideoTaskStatus(data.taskId);
+            
+            // Update progress based on poll count if no percentage available
+            const estimatedProgress = Math.min(15 + (pollCount * 1.4), 95);
+            
+            // Update task status
+            taskManager.updateTask(task.id, {
+              progress: result.percentage || estimatedProgress,
+              status: result.status || 'processing'
+            });
+            
+            // If complete, resolve with result
+            if (result.status === 'completed' && result.mediaUrl) {
+              clearInterval(pollInterval);
+              resolve({
+                ...task,
+                status: 'completed',
+                progress: 100,
+                result: result.mediaUrl
+              });
+            } 
+            // If failed, reject with error
+            else if (result.status === 'failed') {
+              clearInterval(pollInterval);
+              reject(new Error(result.error || 'Video generation failed'));
+            }
+            // If reached max polls, time out
+            else if (pollCount >= maxPolls) {
+              clearInterval(pollInterval);
+              reject(new Error('Video generation timed out after 10 minutes'));
+            }
+          } catch (error) {
+            console.error('[mediaServiceAdapter] Error polling video task status:', error);
+            // Don't stop polling on a single error
+          }
+        }, 10000); // Poll every 10 seconds
+      });
+    } catch (error) {
+      console.error('[mediaServiceAdapter] Error in video task processor:', error);
+      return {
+        ...task,
+        status: 'failed',
+        progress: 0,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   });
+  
+  // Helper function to check video task status
+  const checkVideoTaskStatus = async (taskId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('apiframe-task-status', {
+        body: { taskId }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      return {
+        status: data.status,
+        mediaUrl: data.mediaUrl,
+        error: data.error,
+        percentage: data.percentage || 0
+      };
+    } catch (error) {
+      console.error('[mediaServiceAdapter] Error checking task status:', error);
+      throw error;
+    }
+  };
 
+  // Register audio processor as placeholder
   taskManager.registerTaskProcessor('audio', async (task: Task) => {
     return {
       ...task,

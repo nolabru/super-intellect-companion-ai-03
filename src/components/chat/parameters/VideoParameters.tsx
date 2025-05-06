@@ -15,7 +15,7 @@ import { AVAILABLE_MODELS } from '@/constants';
 
 // Get APIFrame video models from available models
 const VIDEO_MODELS = AVAILABLE_MODELS
-  .filter(model => model.provider === 'apiframe' && model.modes.includes('video'))
+  .filter(model => model.modes.includes('video'))
   .map(model => ({ 
     id: model.id, 
     name: model.displayName,
@@ -34,7 +34,7 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   initialParams
 }) => {
   const [params, setParams] = useState<VideoParamsType>({
-    model: model || 'ray-2',
+    model: model || VIDEO_MODELS[0]?.id || 'kling-text',
     videoType: initialParams?.videoType || 'text-to-video',
     duration: initialParams?.duration || 3,
     resolution: initialParams?.resolution || '720p'
@@ -43,7 +43,14 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
   // Update params when model prop changes
   useEffect(() => {
     if (model && model !== params.model) {
-      setParams(prev => ({ ...prev, model }));
+      // Set the video type based on model (if it's an image-based model)
+      const isImageModel = model.includes('-image') || model.includes('-img');
+      
+      setParams(prev => ({ 
+        ...prev, 
+        model,
+        videoType: isImageModel ? 'image-to-video' : prev.videoType
+      }));
     }
   }, [model, params.model]);
 
@@ -60,13 +67,27 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
     onParamsChange(newParams);
   };
 
+  // Check if the selected model requires a reference image
+  const selectedModel = VIDEO_MODELS.find(m => m.id === params.model);
+  const modelRequiresReference = selectedModel?.requiresReference || false;
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label>Modelo</Label>
         <Select
           value={params.model}
-          onValueChange={(value) => handleParamChange('model', value)}
+          onValueChange={(value) => {
+            // Get model details
+            const model = VIDEO_MODELS.find(m => m.id === value);
+            
+            // If changing to an image-based model, automatically set type to image-to-video
+            if (model?.requiresReference) {
+              handleParamChange('videoType', 'image-to-video');
+            }
+            
+            handleParamChange('model', value);
+          }}
         >
           <SelectTrigger className="w-full bg-inventu-darker border-inventu-gray/30">
             <SelectValue placeholder="Selecione um modelo" />
@@ -89,14 +110,24 @@ const VideoParameters: React.FC<VideoParametersProps> = ({
           className="flex flex-col space-y-1"
         >
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="text-to-video" id="text-to-video" />
-            <Label htmlFor="text-to-video" className="flex items-center gap-2">
+            <RadioGroupItem 
+              value="text-to-video" 
+              id="text-to-video" 
+              disabled={modelRequiresReference}
+            />
+            <Label 
+              htmlFor="text-to-video" 
+              className={`flex items-center gap-2 ${modelRequiresReference ? 'opacity-50' : ''}`}
+            >
               <Type className="h-4 w-4" />
               <span>Texto para Vídeo</span>
             </Label>
           </div>
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="image-to-video" id="image-to-video" />
+            <RadioGroupItem 
+              value="image-to-video" 
+              id="image-to-video" 
+            />
             <Label htmlFor="image-to-video" className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4" />
               <span>Imagem para Vídeo</span>

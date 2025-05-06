@@ -31,6 +31,22 @@ const IMAGE_MODELS: ChatModel[] = [
   }
 ];
 
+// KlingAI video models through API Frame
+const VIDEO_MODELS: ChatModel[] = [
+  {
+    id: 'kling-text',
+    displayName: 'Kling AI (Texto para Vídeo)',
+    provider: 'apiframe',
+    modes: ['video']
+  },
+  {
+    id: 'kling-image',
+    displayName: 'Kling AI (Imagem para Vídeo)',
+    provider: 'apiframe',
+    modes: ['video']
+  }
+];
+
 // Audio models
 const APIFRAME_AUDIO_MODELS: ChatModel[] = [
   {
@@ -95,6 +111,8 @@ export const AVAILABLE_MODELS: ChatModel[] = [
   },
   // Add all image models (both Ideogram and Midjourney) 
   ...IMAGE_MODELS,
+  // Add KlingAI video models
+  ...VIDEO_MODELS,
   // Keep audio models
   ...APIFRAME_AUDIO_MODELS
 ];
