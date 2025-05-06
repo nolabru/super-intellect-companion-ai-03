@@ -1,8 +1,6 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
-import { LumaParams } from '@/components/LumaParamsButton';
 import { ApiResponse } from '@/hooks/useApiService';
 import { saveMessageToDatabase } from '@/utils/conversationUtils';
 import { validateChatMode, modelSupportsStreaming } from './chatModeUtils';
@@ -17,7 +15,7 @@ export const handleCompareModels = async (
   rightModelId: string,
   conversationId: string,
   files: string[] | undefined,
-  params: LumaParams | undefined,
+  params: any | undefined,
   conversationHistory: string | undefined,
   userId: string | undefined,
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>,
@@ -26,7 +24,7 @@ export const handleCompareModels = async (
     mode: ChatMode, 
     modelId: string, 
     files?: string[],
-    params?: LumaParams,
+    params?: any,
     enableStreaming?: boolean,
     streamListener?: (chunk: string) => void,
     conversationHistory?: string,
@@ -37,7 +35,7 @@ export const handleCompareModels = async (
     prompt: string,
     mediaType: string,
     modelId: string,
-    params?: LumaParams
+    params?: any
   ) => Promise<any>
 ) => {
   // Verificar suporte a streaming para ambos os modelos

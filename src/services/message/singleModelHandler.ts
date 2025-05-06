@@ -1,8 +1,6 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
-import { LumaParams } from '@/components/LumaParamsButton';
 import { ApiResponse } from '@/hooks/useApiService';
 import { ConversationType } from '@/types/conversation';
 import { saveMessageToDatabase } from '@/utils/conversationUtils';
@@ -19,7 +17,7 @@ export const handleSingleModelMessage = async (
   messages: MessageType[],
   conversations: ConversationType[],
   files: string[] | undefined,
-  params: LumaParams | undefined,
+  params: any | undefined,
   conversationHistory: string | undefined,
   userId: string | undefined,
   setMessages: React.Dispatch<React.SetStateAction<MessageType[]>>,
@@ -28,7 +26,7 @@ export const handleSingleModelMessage = async (
     mode: ChatMode, 
     modelId: string, 
     files?: string[],
-    params?: LumaParams,
+    params?: any,
     enableStreaming?: boolean,
     streamListener?: (chunk: string) => void,
     conversationHistory?: string,
@@ -39,7 +37,7 @@ export const handleSingleModelMessage = async (
     prompt: string,
     mediaType: string,
     modelId: string,
-    params?: LumaParams
+    params?: any
   ) => Promise<any>,
   skipUserMessage: boolean = false // Novo parâmetro para controlar a criação da mensagem do usuário
 ) => {

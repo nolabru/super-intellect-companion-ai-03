@@ -1,9 +1,19 @@
-
-import { supabase } from '@/integrations/supabase/client';
+import { ApiResponse } from '../useApiService';
 import { ChatMode } from '@/components/ModeSelector';
-import { LumaParams } from '@/components/LumaParamsButton';
-import { toast } from 'sonner';
-import { mediaStorageService } from './mediaStorageService';
+
+export interface ApiRequestService {
+  sendRequest: (
+    content: string,
+    mode: ChatMode, 
+    modelId: string, 
+    files?: string[],
+    params?: any,
+    enableStreaming?: boolean,
+    streamListener?: (chunk: string) => void,
+    conversationHistory?: string,
+    userId?: string
+  ) => Promise<ApiResponse>;
+}
 
 /**
  * Interface para resposta da API
@@ -39,7 +49,7 @@ export const apiRequestService = {
     mode: ChatMode, 
     modelId: string, 
     files?: string[],
-    params?: LumaParams,
+    params?: any,
     enableStreaming: boolean = false,
     streamListener?: StreamListener,
     conversationHistory?: string,

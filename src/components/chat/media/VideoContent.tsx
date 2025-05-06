@@ -2,40 +2,8 @@
 import React from 'react';
 import { ExternalLink, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Button } from '@/components/ui/button';
-
-interface MediaActionButtonProps {
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  variant?: 'default' | 'primary' | 'secondary';
-  loading?: boolean;
-}
-
-const MediaActionButton: React.FC<MediaActionButtonProps> = ({
-  onClick,
-  icon,
-  label,
-  variant = 'default',
-  loading = false
-}) => {
-  return (
-    <Button
-      onClick={onClick}
-      variant={variant === 'primary' ? 'default' : 'outline'}
-      size="sm"
-      disabled={loading}
-      className="flex items-center gap-1"
-    >
-      {loading ? (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-      ) : (
-        icon
-      )}
-      <span>{label}</span>
-    </Button>
-  );
-};
+import MediaActionButton from './MediaActionButton';
+import MediaLoading from './MediaLoading';
 
 interface VideoContentProps {
   src: string;
@@ -60,36 +28,35 @@ const VideoContent: React.FC<VideoContentProps> = ({
   
   return (
     <div className="mt-2 relative">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-inventu-darker/50 rounded-lg">
-          <div className="h-8 w-8 animate-spin text-inventu-gray border-2 border-inventu-gray border-t-transparent rounded-full" />
-        </div>
-      )}
-      <video 
-        src={src} 
-        className="max-w-full rounded-lg w-full max-h-80 object-contain" 
-        controls
-        onLoadedData={onLoad}
-        onError={onError}
-        playsInline
-      />
-      {!isLoading && (
-        <div className={`mt-2 flex ${isMobile ? 'flex-col gap-2' : 'justify-end gap-2'}`}>
-          <MediaActionButton
-            onClick={onSaveToGallery}
-            icon={<Save />}
-            label="Salvar na galeria"
-            variant="primary"
-            loading={saving}
+      {isLoading ? (
+        <MediaLoading message="Carregando vídeo..." />
+      ) : (
+        <>
+          <video 
+            src={src} 
+            className="max-w-full rounded-lg w-full max-h-80 object-contain" 
+            controls
+            onLoadedData={onLoad}
+            onError={onError}
+            playsInline
           />
-          
-          <MediaActionButton
-            onClick={onOpenInNewTab}
-            icon={<ExternalLink />}
-            label="Abrir em nova aba"
-            variant="secondary"
-          />
-        </div>
+          <div className={`mt-2 flex ${isMobile ? 'flex-col gap-2' : 'justify-end gap-2'}`}>
+            <MediaActionButton
+              onClick={onSaveToGallery}
+              icon={<Save />}
+              label="Salvar na galeria"
+              variant="primary"
+              loading={saving}
+            />
+            
+            <MediaActionButton
+              onClick={onOpenInNewTab}
+              icon={<ExternalLink />}
+              label="Abrir em nova aba"
+              variant="secondary"
+            />
+          </div>
+        </>
       )}
     </div>
   );

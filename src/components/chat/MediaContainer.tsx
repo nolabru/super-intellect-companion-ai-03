@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ChatMode } from '../ModeSelector';
 import ImageContent from './media/ImageContent';
 import AudioContent from './media/AudioContent';
+import VideoContent from './media/VideoContent';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 interface MediaContainerProps {
@@ -58,34 +59,15 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
       );
     case 'video':
       return (
-        <div>
-          <div className="relative aspect-video w-full overflow-hidden rounded-lg">
-            <video
-              src={mediaUrl}
-              controls
-              className="h-full w-full"
-              onLoadedData={handleLoad}
-              onError={handleError}
-            />
-          </div>
-          {!isLoading && (
-            <div className="mt-2 flex justify-end gap-2">
-              <button
-                onClick={handleOpenInNewTab}
-                className="flex items-center gap-1 rounded bg-gray-700 px-3 py-1.5 text-sm text-white hover:bg-gray-600"
-              >
-                Abrir em nova aba
-              </button>
-              <button
-                onClick={handleSaveToGallery}
-                disabled={saving}
-                className="flex items-center gap-1 rounded bg-indigo-700 px-3 py-1.5 text-sm text-white hover:bg-indigo-600 disabled:bg-indigo-900"
-              >
-                {saving ? 'Salvando...' : 'Salvar na galeria'}
-              </button>
-            </div>
-          )}
-        </div>
+        <VideoContent 
+          src={mediaUrl} 
+          onLoad={handleLoad} 
+          onError={handleError} 
+          isLoading={isLoading}
+          onSaveToGallery={handleSaveToGallery}
+          onOpenInNewTab={handleOpenInNewTab}
+          saving={saving}
+        />
       );
     case 'audio':
       return (

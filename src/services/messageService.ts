@@ -1,7 +1,6 @@
 
 import { MessageType } from '@/components/ChatMessage';
 import { ChatMode } from '@/components/ModeSelector';
-import { LumaParams } from '@/components/LumaParamsButton';
 import { useApiService } from '@/hooks/useApiService';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 import { ConversationType } from '@/types/conversation';
@@ -27,7 +26,7 @@ export const createMessageService = (
     messages: MessageType[],
     conversations: ConversationType[],
     files?: string[],
-    params?: LumaParams,
+    params?: any,
     conversationHistory?: string,
     userId?: string,
     skipUserMessage: boolean = false // Parâmetro para controlar se deve criar a mensagem do usuário
@@ -80,7 +79,7 @@ export const createMessageService = (
     conversationId: string,
     messages: MessageType[], // Parâmetro de mensagens
     files?: string[],
-    params?: LumaParams,
+    params?: any,
     conversationHistory?: string,
     userId?: string
   ) => {

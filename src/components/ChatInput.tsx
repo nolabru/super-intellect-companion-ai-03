@@ -2,13 +2,11 @@
 import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { toast } from '@/components/ui/use-toast';
 import { ChatMode } from './ModeSelector';
-import { LumaParams, defaultLumaParams } from './LumaParamsButton';
-import LumaParamsButton from './LumaParamsButton';
-import { canModelGenerateImages } from './ModelSelector';
 import FilePreview from './chat/FilePreview';
 import ImageGenerationTip from './chat/ImageGenerationTip';
 import MessageInput from './chat/MessageInput';
 import { useGenerationParams } from '@/hooks/useGenerationParams';
+import { canModelGenerateImages } from './ModelSelector';
 
 interface ChatInputProps {
   onSendMessage: (message: string, files?: string[], params?: any) => void;
@@ -29,7 +27,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const [files, setFiles] = useState<File[]>([]);
   const [filePreviewUrls, setFilePreviewUrls] = useState<string[]>([]);
   const [isSending, setIsSending] = useState(false);
-  const [lumaParams, setLumaParams] = useState<LumaParams>(defaultLumaParams);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { params: generationParams, updateParams } = useGenerationParams({
@@ -64,13 +61,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
         setIsSending(true);
         const fileUrls = await uploadFiles();
         
-        // Include Luma parameters if using a Luma model
-        const params = model.includes('luma') ? lumaParams : generationParams;
-        
+        // Use generation parameters
         onSendMessage(
           message.trim() || `[${mode} anexado]`, 
           fileUrls.length > 0 ? fileUrls : undefined,
-          params
+          generationParams
         );
         
         setMessage('');
@@ -92,7 +87,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
         description: "Por favor, insira uma mensagem ou anexe um arquivo compatível com o modo selecionado.",
       });
     }
-  }, [message, files, mode, model, lumaParams, generationParams, onSendMessage, hasActiveConversation, onCreateConversation]);
+  }, [message, files, mode, model, generationParams, onSendMessage, hasActiveConversation, onCreateConversation]);
 
   const handleAttachment = useCallback(() => {
     if (!hasActiveConversation) {
@@ -187,25 +182,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
     return filePreviewUrls;
   };
 
-  const handleLumaParamsChange = useCallback((params: LumaParams) => {
-    setLumaParams(params);
-  }, []);
-
   const fileInput = useRef<HTMLInputElement>(null);
 
   return (
     <div className="relative w-full space-y-3">
-      {model && model.includes('luma') && (mode === 'image' || mode === 'video') && (
-        <div className="flex justify-end">
-          <LumaParamsButton 
-            mode={mode} 
-            model={model} 
-            params={lumaParams} 
-            onParamsChange={handleLumaParamsChange} 
-          />
-        </div>
-      )}
-      
       <ImageGenerationTip show={isImageGenerationModel && files.length === 0} />
       
       <FilePreview 
