@@ -1,5 +1,8 @@
-import { ApiResponse } from '../useApiService';
+
 import { ChatMode } from '@/components/ModeSelector';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { mediaStorageService } from './mediaStorageService';
 
 export interface ApiRequestService {
   sendRequest: (

@@ -89,9 +89,9 @@ export const mediaStorageService = {
       // Se não conseguir determinar, adivinhar pelo tipo
       if (url.includes('video')) return 'mp4';
       if (url.includes('audio')) return 'mp3';
-      return 'png'; // Mudado de jpg para png para DALL-E
+      return 'png'; // Default to png
     } catch (e) {
-      return 'png'; // Fallback para DALL-E (mudado de bin para png)
+      return 'png'; // Default to png
     }
   },
   
@@ -111,7 +111,7 @@ export const mediaStorageService = {
       'audio/wav': 'wav'
     };
     
-    return map[contentType] || 'png'; // Padrão para DALL-E (mudado de jpg para png)
+    return map[contentType] || 'png';
   },
   
   /**
@@ -124,7 +124,7 @@ export const mediaStorageService = {
       case 'audio':
         return 'audio/mpeg';
       case 'image':
-        return 'image/png'; // Mudado de image/jpeg para image/png para DALL-E
+        return 'image/png';
       default:
         return 'application/octet-stream';
     }
