@@ -126,7 +126,7 @@ serve(async (req) => {
                   media_url: apiData.video_url,
                   media_type: "video",
                   prompt: taskData.prompt || "Vídeo gerado pela API Frame",
-                  user_id: taskData.user_id,
+                  user_id: taskData.user_id || "unknown",
                   model_id: taskData.model || "apiframe",
                   metadata: {
                     source: "apiframe",

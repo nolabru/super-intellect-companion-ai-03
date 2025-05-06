@@ -77,67 +77,79 @@ const MediaGallery: React.FC = () => {
       }
       
       // If enabled, fetch additional items from piapi_tasks that are not in gallery
-      const {
-        data: piapiTasks,
-        error: piapiError
-      } = await supabase.from('piapi_tasks')
-        .select('id, media_url, media_type, created_at, prompt, status, user_id')
-        .eq('status', 'completed')
-        .order('created_at', { ascending: false });
-      
-      if (!piapiError && piapiTasks && piapiTasks.length > 0) {
-        // Filter out items that might already be in the gallery
-        const existingUrls = new Set(allMediaItems.map(item => item.media_url));
+      try {
+        // Select only the columns we need
+        const {
+          data: piapiTasks,
+          error: piapiError
+        } = await supabase.from('piapi_tasks')
+          .select('id, media_url, media_type, created_at, prompt, status, user_id')
+          .eq('status', 'completed')
+          .order('created_at', { ascending: false });
         
-        const formattedPiapiMedia = piapiTasks
-          .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
-          .map(item => ({
-            id: item.id,
-            url: item.media_url || '',
-            media_url: item.media_url || '',
-            type: item.media_type as 'image' | 'video' | 'audio',
-            media_type: item.media_type as 'image' | 'video' | 'audio',
-            created_at: item.created_at,
-            prompt: item.prompt || '',
-            user_id: item.user_id || user.id
-          }));
-        
-        if (formattedPiapiMedia.length > 0) {
-          console.log(`Found ${formattedPiapiMedia.length} additional items in piapi_tasks`);
-          allMediaItems = [...allMediaItems, ...formattedPiapiMedia];
+        if (!piapiError && piapiTasks && piapiTasks.length > 0) {
+          // Filter out items that might already be in the gallery
+          const existingUrls = new Set(allMediaItems.map(item => item.media_url));
+          
+          const formattedPiapiMedia = piapiTasks
+            .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
+            .map(item => ({
+              id: item.id,
+              url: item.media_url || '',
+              media_url: item.media_url || '',
+              type: item.media_type as 'image' | 'video' | 'audio',
+              media_type: item.media_type as 'image' | 'video' | 'audio',
+              created_at: item.created_at,
+              prompt: item.prompt || '',
+              user_id: item.user_id || user.id
+            }));
+          
+          if (formattedPiapiMedia.length > 0) {
+            console.log(`Found ${formattedPiapiMedia.length} additional items in piapi_tasks`);
+            allMediaItems = [...allMediaItems, ...formattedPiapiMedia];
+          }
         }
+      } catch (piapiQueryError) {
+        console.error('Error querying piapi_tasks:', piapiQueryError);
+        // Continue execution even if this part fails
       }
       
       // Fetch additional items from apiframe_tasks that are not in gallery
-      const {
-        data: apiframeTasks,
-        error: apiframeError
-      } = await supabase.from('apiframe_tasks')
-        .select('task_id, media_url, media_type, created_at, prompt, status, user_id, percentage')
-        .eq('status', 'finished')
-        .order('created_at', { ascending: false });
-      
-      if (!apiframeError && apiframeTasks && apiframeTasks.length > 0) {
-        // Filter out items that might already be in the gallery
-        const existingUrls = new Set(allMediaItems.map(item => item.media_url));
+      try {
+        // Select only the columns we need
+        const {
+          data: apiframeTasks,
+          error: apiframeError
+        } = await supabase.from('apiframe_tasks')
+          .select('task_id, media_url, media_type, created_at, prompt, status, user_id')
+          .eq('status', 'finished')
+          .order('created_at', { ascending: false });
         
-        const formattedApiframeMedia = apiframeTasks
-          .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
-          .map(item => ({
-            id: item.task_id,
-            url: item.media_url || '',
-            media_url: item.media_url || '',
-            type: item.media_type as 'image' | 'video' | 'audio',
-            media_type: item.media_type as 'image' | 'video' | 'audio',
-            created_at: item.created_at,
-            prompt: item.prompt || '',
-            user_id: item.user_id || user.id
-          }));
-        
-        if (formattedApiframeMedia.length > 0) {
-          console.log(`Found ${formattedApiframeMedia.length} additional items in apiframe_tasks`);
-          allMediaItems = [...allMediaItems, ...formattedApiframeMedia];
+        if (!apiframeError && apiframeTasks && apiframeTasks.length > 0) {
+          // Filter out items that might already be in the gallery
+          const existingUrls = new Set(allMediaItems.map(item => item.media_url));
+          
+          const formattedApiframeMedia = apiframeTasks
+            .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
+            .map(item => ({
+              id: item.task_id,
+              url: item.media_url || '',
+              media_url: item.media_url || '',
+              type: item.media_type as 'image' | 'video' | 'audio',
+              media_type: item.media_type as 'image' | 'video' | 'audio',
+              created_at: item.created_at,
+              prompt: item.prompt || '',
+              user_id: item.user_id || user.id
+            }));
+          
+          if (formattedApiframeMedia.length > 0) {
+            console.log(`Found ${formattedApiframeMedia.length} additional items in apiframe_tasks`);
+            allMediaItems = [...allMediaItems, ...formattedApiframeMedia];
+          }
         }
+      } catch (apiframeQueryError) {
+        console.error('Error querying apiframe_tasks:', apiframeQueryError);
+        // Continue execution even if this part fails
       }
       
       // Sort all items by created_at

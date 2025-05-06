@@ -165,6 +165,32 @@ serve(async (req) => {
       } else {
         console.log(`[piapi-media-webhook] Evento de mídia pronta criado com sucesso`);
       }
+
+      // Salvar automaticamente na galeria
+      const galleryItemId = crypto.randomUUID();
+      
+      const { error: galleryError } = await supabaseClient
+        .from("media_gallery")
+        .insert({
+          id: galleryItemId,
+          media_url: mediaUrl,
+          media_type: taskData.media_type,
+          prompt: taskData.prompt || "Mídia gerada pela PiAPI",
+          user_id: taskData.user_id || "unknown",
+          model_id: taskData.model || "unknown", 
+          metadata: {
+            source: "piapi",
+            task_id: payload.task_id,
+            params: taskData.params,
+            auto_saved: true
+          }
+        });
+        
+      if (galleryError) {
+        console.error(`[piapi-media-webhook] Erro ao salvar mídia na galeria:`, galleryError);
+      } else {
+        console.log(`[piapi-media-webhook] Mídia salva automaticamente na galeria: ${galleryItemId}`);
+      }
     }
 
     // Retornar confirmação de processamento bem-sucedido
