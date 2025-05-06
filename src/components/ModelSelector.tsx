@@ -1,4 +1,5 @@
 
+// Atualizar o arquivo ModelSelector para incluir o modo "music"
 import React from 'react';
 import {
   Select,
@@ -39,7 +40,8 @@ export const getProviderDisplayName = (provider: string): string => {
     'apiframe': 'API Frame',
     'minimax': 'MiniMax',
     'elevenlabs': 'ElevenLabs',
-    'luma': 'Luma AI'
+    'luma': 'Luma AI',
+    'suno': 'Suno AI'
   };
   
   return providerNames[provider] || provider;

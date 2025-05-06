@@ -12,10 +12,11 @@ interface ChatFooterProps {
   isMobile: boolean;
   leftModel: string;
   rightModel: string;
+  availableModels?: string[];
   onModeChange: (mode: ChatMode) => void;
   onToggleCompare: () => void;
   onToggleLink: () => void;
-  onParamsChange: (params: any) => void;
+  onModelChange: (model: string) => void;
   onSendMessage: (content: string, files?: string[], params?: any, targetModel?: string) => void;
   hasActiveConversation?: boolean;
   onCreateConversation?: () => void;
@@ -28,10 +29,11 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
   isMobile,
   leftModel,
   rightModel,
+  availableModels,
   onModeChange,
   onToggleCompare,
   onToggleLink,
-  onParamsChange,
+  onModelChange,
   onSendMessage,
   hasActiveConversation = true,
   onCreateConversation
@@ -51,7 +53,8 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
         onModeChange={onModeChange}
         onToggleCompare={onToggleCompare}
         onToggleLink={onToggleLink}
-        onParamsChange={onParamsChange}
+        onModelChange={onModelChange}
+        availableModels={availableModels}
       />
       
       {(!comparing || isLinked || isMobile) && (

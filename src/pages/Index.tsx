@@ -55,9 +55,8 @@ const Index: React.FC = () => {
 
   // Create a new conversation if there isn't one and we're not already creating one
   useEffect(() => {
-    // Função para criar nova conversa apenas uma vez
+    // Function to create new conversation only once
     const createNewConversation = async () => {
-      // Utiliza ref para garantir que apenas uma criação aconteça
       if (creatingConversationRef.current) return;
       
       try {
@@ -68,7 +67,6 @@ const Index: React.FC = () => {
         
         if (success) {
           console.log('[Index] New conversation created successfully');
-          // Apenas uma notificação de sucesso
           toast.success('Nova conversa criada com sucesso');
         } else {
           console.error('[Index] Failed to create new conversation');
@@ -79,14 +77,12 @@ const Index: React.FC = () => {
         toast.error('Erro ao criar nova conversa');
       } finally {
         setCreatingConversation(false);
-        // Mantém o ref true para evitar novas tentativas neste ciclo
         setTimeout(() => {
           creatingConversationRef.current = false;
         }, 1000);
       }
     };
     
-    // Verificações para criar nova conversa
     if (
       !creatingConversation &&
       !creatingConversationRef.current &&
@@ -112,7 +108,6 @@ const Index: React.FC = () => {
       setCreatingConversation(true);
       creatingConversationRef.current = true;
       
-      // Usar um ID temporário para o toast para poder atualizá-lo depois
       const toastId = toast.loading('Criando nova conversa...');
       
       const success = await conversation.createNewConversation();
@@ -131,7 +126,6 @@ const Index: React.FC = () => {
       toast.error('Erro ao criar nova conversa');
     } finally {
       setCreatingConversation(false);
-      // Mantém o ref true por um curto período para prevenir cliques duplos
       setTimeout(() => {
         creatingConversationRef.current = false;
       }, 1000);
@@ -214,8 +208,9 @@ const Index: React.FC = () => {
               onModeChange={handleModeChange}
               onToggleCompare={toggleComparing}
               onToggleLink={toggleLink}
-              onParamsChange={handleParamsChange}
+              onModelChange={handleLeftModelChange}
               onSendMessage={handleSendMessage}
+              availableModels={availableModels}
               hasActiveConversation={hasActiveConversation}
               onCreateConversation={handleCreateConversation}
             />

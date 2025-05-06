@@ -3,7 +3,7 @@ import React, { memo } from 'react';
 import RefinedModeSelector from './RefinedModeSelector';
 import CompareModelsButton from '../CompareModelsButton';
 import LinkToggleButton from '../LinkToggleButton';
-import ParametersManager from './parameters/ParametersManager';
+import ModelSelector from '../ModelSelector';
 import { ChatMode } from '../ModeSelector';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +16,8 @@ interface ChatControlsProps {
   onModeChange: (mode: ChatMode) => void;
   onToggleCompare: () => void;
   onToggleLink: () => void;
-  onParamsChange: (params: any) => void;
+  onModelChange: (model: string) => void;
+  availableModels?: string[];
 }
 
 const ChatControls: React.FC<ChatControlsProps> = ({
@@ -28,8 +29,13 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onModeChange,
   onToggleCompare,
   onToggleLink,
-  onParamsChange
+  onModelChange,
+  availableModels
 }) => {
+  // Separar os modelos se estamos comparando
+  const modelIds = model.split(',');
+  const leftModel = modelIds[0] || '';
+  
   return (
     <div className={cn(
       "px-4 py-3 space-y-3 backdrop-blur-xl bg-black/5 border-t border-white/10",
@@ -45,13 +51,14 @@ const ChatControls: React.FC<ChatControlsProps> = ({
             onChange={onModeChange} 
           />
           
-          {activeMode !== 'text' && (
-            <ParametersManager
+          {/* Seletor de modelo movido para cima */}
+          {availableModels && availableModels.length > 0 && (
+            <ModelSelector
               mode={activeMode}
-              model={model}
-              onParamsChange={onParamsChange}
-              variant="icon"
-              className="flex-shrink-0"
+              selectedModel={leftModel}
+              onChange={onModelChange}
+              availableModels={availableModels}
+              className="max-w-48"
             />
           )}
         </div>
