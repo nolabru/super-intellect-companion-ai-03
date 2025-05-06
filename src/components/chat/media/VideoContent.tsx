@@ -36,6 +36,8 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const [isManuallyChecking, setIsManuallyChecking] = useState(false);
   const [checkAttempts, setCheckAttempts] = useState(0);
+  const [lastCheckTime, setLastCheckTime] = useState<number>(0);
+  const [isDbCheckActive, setIsDbCheckActive] = useState(false);
   
   const { 
     checkTimedOutTask, 
@@ -47,6 +49,12 @@ const VideoContent: React.FC<VideoContentProps> = ({
       setHasTimedOut(false);
       if (onVideoReady) onVideoReady(mediaUrl);
       if (onLoad) onLoad();
+      
+      // Reset checking states
+      setIsManuallyChecking(false);
+      setIsDbCheckActive(false);
+      
+      toast.success("Vídeo concluído com sucesso!");
     }
   });
   
@@ -54,13 +62,14 @@ const VideoContent: React.FC<VideoContentProps> = ({
   useEffect(() => {
     let intervalId: number | undefined;
     
-    if (hasTimedOut && taskId && !videoUrl && checkAttempts < 10) {
+    if (hasTimedOut && taskId && !videoUrl && checkAttempts < 20) {
       // Set initial checking state
       setIsManuallyChecking(true);
       
       // Initial check
       const doCheck = async () => {
-        console.log(`[VideoContent] Checking timed out task ${taskId} (attempt ${checkAttempts + 1}/10)`);
+        console.log(`[VideoContent] Checking timed out task ${taskId} (attempt ${checkAttempts + 1}/20)`);
+        setLastCheckTime(Date.now());
         
         try {
           const success = await checkTimedOutTask();
@@ -73,6 +82,12 @@ const VideoContent: React.FC<VideoContentProps> = ({
           
           // Increment attempts counter
           setCheckAttempts(prev => prev + 1);
+          
+          // If we've tried several times with the normal API, try a direct DB check
+          if (checkAttempts > 5 && !isDbCheckActive) {
+            setIsDbCheckActive(true);
+            console.log('[VideoContent] Switching to direct DB check strategy');
+          }
         } catch (error) {
           console.error('[VideoContent] Error during check:', error);
         } finally {
@@ -87,8 +102,12 @@ const VideoContent: React.FC<VideoContentProps> = ({
       intervalId = window.setInterval(async () => {
         // Only check if not already checking and still in timed out state
         if (!isManuallyChecking && !isCheckingStatus && hasTimedOut && !videoUrl) {
-          setIsManuallyChecking(true);
-          await doCheck();
+          // Ensure we don't check too frequently (minimum 10 seconds between checks)
+          const now = Date.now();
+          if (now - lastCheckTime >= 10000) {
+            setIsManuallyChecking(true);
+            await doCheck();
+          }
         }
       }, 15000); // Check every 15 seconds
     }
@@ -96,7 +115,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
     return () => {
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask, isCheckingStatus, isManuallyChecking]);
+  }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask, isCheckingStatus, isManuallyChecking, lastCheckTime, isDbCheckActive]);
 
   const handleTimeout = () => {
     setHasTimedOut(true);
@@ -109,9 +128,17 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const handleRetry = async () => {
     setIsManuallyChecking(true);
     try {
+      // Log extra info for debugging
+      console.log(`[VideoContent] Manual retry triggered for task ${taskId}`);
+      console.log(`[VideoContent] Current attempts: ${checkAttempts}`);
+      
       const success = await checkTimedOutTask();
       if (success) {
         toast.success("Vídeo concluído com sucesso!");
+      } else {
+        toast.info("Vídeo ainda em processamento", { 
+          description: "Continuaremos verificando automaticamente"
+        });
       }
     } catch (error) {
       console.error('[VideoContent] Error during retry:', error);

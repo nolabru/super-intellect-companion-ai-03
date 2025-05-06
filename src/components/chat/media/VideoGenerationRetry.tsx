@@ -21,13 +21,16 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
   autoRetry = true,
   autoRetryInterval = 15000
 }) => {
+  // Aumentado o número máximo de tentativas de 10 para 20
+  const MAX_AUTO_ATTEMPTS = 20;
+  
   // Add automatic retry effect
   useEffect(() => {
     let intervalId: NodeJS.Timeout | undefined;
     
     // If autoRetry is enabled and not currently checking and attempts are below max,
     // start automatic retry interval
-    if (autoRetry && !isChecking && attempts < 10) {
+    if (autoRetry && !isChecking && attempts < MAX_AUTO_ATTEMPTS) {
       intervalId = setInterval(() => {
         console.log('Automatic retry triggered');
         onRetry();
@@ -37,7 +40,7 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [autoRetry, isChecking, attempts, onRetry, autoRetryInterval]);
+  }, [autoRetry, isChecking, attempts, onRetry, autoRetryInterval, MAX_AUTO_ATTEMPTS]);
   
   return (
     <div className="flex flex-col items-center justify-center p-6 my-4 bg-inventu-darker/20 rounded-lg border border-inventu-gray/20">
@@ -52,9 +55,9 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
       <div className="w-full mt-4">
         <div className="flex justify-between text-xs text-inventu-gray mb-1">
           <span>Verificação automática</span>
-          <span>{attempts}/10 verificações</span>
+          <span>{attempts}/{MAX_AUTO_ATTEMPTS} verificações</span>
         </div>
-        <Progress value={Math.min((attempts / 10) * 100, 100)} className="h-2" />
+        <Progress value={Math.min((attempts / MAX_AUTO_ATTEMPTS) * 100, 100)} className="h-2" />
       </div>
       
       <div className="mt-4 flex items-center gap-2">
@@ -64,20 +67,21 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
         </p>
       </div>
       
-      {attempts >= 10 && (
+      <Button 
+        variant="outline"
+        className="flex items-center gap-2 mt-4"
+        onClick={onRetry}
+        disabled={isChecking}
+      >
+        <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
+        {isChecking ? 'Verificando...' : 'Verificar manualmente'}
+      </Button>
+      
+      {attempts >= MAX_AUTO_ATTEMPTS && (
         <div className="mt-4 flex flex-col items-center">
           <p className="text-xs text-amber-400/80 mb-2 text-center">
-            Verificações automáticas esgotadas. Use o botão abaixo para verificar manualmente.
+            Verificações automáticas esgotadas. Você pode continuar verificando manualmente.
           </p>
-          <Button 
-            variant="outline"
-            className="flex items-center gap-2"
-            onClick={onRetry}
-            disabled={isChecking}
-          >
-            <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
-            {isChecking ? 'Verificando...' : 'Verificar manualmente'}
-          </Button>
         </div>
       )}
     </div>

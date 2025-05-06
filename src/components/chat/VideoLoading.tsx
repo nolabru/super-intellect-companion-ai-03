@@ -21,14 +21,20 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
   useEffect(() => {
     if (isLoading && isVideo) {
       // Set a timeout to notify when loading exceeds the time limit
+      // Adicionado log para debug
+      console.log('[VideoLoading] Setting timeout for 10 minutes');
+      
       const timeoutId = setTimeout(() => {
-        console.log('Video loading timeout exceeded');
+        console.log('[VideoLoading] Video loading timeout exceeded after 10 minutes');
         if (onTimeout) {
           onTimeout();
         }
       }, 600000); // 10 minute timeout (increased from 3 minutes)
 
-      return () => clearTimeout(timeoutId);
+      return () => {
+        console.log('[VideoLoading] Clearing timeout');
+        clearTimeout(timeoutId);
+      };
     }
   }, [isLoading, isVideo, onTimeout]);
 
