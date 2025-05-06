@@ -1,17 +1,13 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { useChatServiceAdapter } from '@/adapters/chatServiceAdapter';
+import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { MessageType } from '@/components/ChatMessage';
 import { useConversation } from './useConversation';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChatMode } from '@/components/ModeSelector';
-import { toast } from 'sonner';
-import { createMessageService } from '@/services/messageService';
-import { useApiService } from '@/hooks/useApiService';
-import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 export function useMessageSending(
-  activeMode: ChatMode = 'text',
+  activeMode = 'text',
   comparing = false,
   isLinked = false,
   leftModel = 'gpt-3.5-turbo',
@@ -30,18 +26,9 @@ export function useMessageSending(
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const { user } = useAuth();
   
-  // Replace the adapters with direct service hooks
-  const apiService = useApiService();
-  const mediaGallery = useMediaGallery();
+  const chatService = useChatServiceAdapter();
+  const mediaService = useMediaServiceAdapter();
   const conversation = useConversation();
-  
-  // Create message service using our available services
-  const messageService = createMessageService(
-    apiService,
-    mediaGallery,
-    (newMessages: MessageType[]) => setMessages(newMessages),
-    setApiKeyError
-  );
   
   // Add a new state for tracking if we should show URLs only
   const [showUrlOnly, setShowUrlOnly] = useState<boolean>(false);
@@ -97,14 +84,8 @@ export function useMessageSending(
 
     setMessages(prevMessages => [...prevMessages, userMessage]);
 
-    // Optimistically update conversation - use updateTitle instead of updateConversation
-    if (conversation.updateTitle && currentConversationId) {
-      try {
-        conversation.updateTitle(currentConversationId, content);
-      } catch (error) {
-        console.error('Error updating conversation title:', error);
-      }
-    }
+    // Optimistically update conversation
+    conversation.updateConversation(currentConversationId, content);
 
     // Prepare AI message
     const aiMessageBase: Partial<MessageType> = {
@@ -135,41 +116,78 @@ export function useMessageSending(
       let responseContent = '';
       setStreaming(true);
 
-      // Use the conversation object's improved message handling instead
-      if (comparing && !isLinked) {
-        // For comparison mode (not linked)
-        await messageService.handleCompareModels(
-          content,
-          modeToUse as ChatMode,
-          leftModel,
-          rightModel,
-          currentConversationId || '',
-          messages,
-          files,
-          params
+      await chatService.sendMessage(
+        content,
+        modelToUse,
+        modeToUse,
+        files,
+        params,
+        newAbortController.signal,
+        (partialResponse: string) => {
+          responseContent += partialResponse;
+          aiMessage = {
+            ...aiMessage,
+            content: responseContent,
+            loading: false,
+            streaming: true
+          };
+
+          setMessages(prevMessages => {
+            const updatedMessages = prevMessages.map(msg =>
+              msg.id === aiMessage.id ? aiMessage : msg
+            );
+            return updatedMessages;
+          });
+        }
+      );
+
+      aiMessage = {
+        ...aiMessage,
+        content: responseContent,
+        loading: false,
+        streaming: false,
+        model: modelToUse
+      };
+
+      setMessages(prevMessages => {
+        const updatedMessages = prevMessages.map(msg =>
+          msg.id === aiMessage.id ? aiMessage : msg
         );
-      } else {
-        // For single model or linked comparison
-        await messageService.handleSingleModelMessage(
+        return updatedMessages;
+      });
+
+      // Handle media generation if needed
+      if (modeToUse === 'image' || modeToUse === 'video' || modeToUse === 'audio') {
+        aiMessage = {
+          ...aiMessage,
+          loading: true,
+          content: 'Gerando mídia...'
+        };
+
+        setMessages(prevMessages => {
+          const updatedMessages = prevMessages.map(msg =>
+            msg.id === aiMessage.id ? aiMessage : msg
+          );
+          return updatedMessages;
+        });
+
+        const mediaParams = {
+          ...params,
+          outputMode: modeToUse
+        };
+
+        // Generate media and update the message
+        mediaService.generateMedia(
+          modeToUse,
           content,
-          modeToUse as ChatMode,
           modelToUse,
-          currentConversationId || '',
-          messages,
-          conversation.conversations || [],
-          files,
-          params,
-          undefined,
-          user?.id,
-          false
+          mediaParams
         );
       }
 
       // Save the messages to the database
-      if (currentConversationId && conversation.saveUserMessage) {
-        await conversation.saveUserMessage(userMessage, currentConversationId);
-      }
-
+      await conversation.saveMessage(currentConversationId, userMessage);
+      await conversation.saveMessage(currentConversationId, aiMessage);
     } catch (error: any) {
       console.error('Error sending message:', error);
       let errorMessage = 'Erro ao enviar mensagem';
@@ -183,21 +201,18 @@ export function useMessageSending(
         errorMessage = 'Requisição abortada.';
       }
 
-      // Fix the type error by using a function update to modify the message with the error
+      aiMessage = {
+        ...aiMessage,
+        content: errorMessage,
+        loading: false,
+        error: true
+      };
+
       setMessages(prevMessages => {
-        return prevMessages.map(msg =>
-          msg.id === aiMessage.id ? {
-            ...msg,
-            content: errorMessage,
-            loading: false,
-            error: true
-          } : msg
+        const updatedMessages = prevMessages.map(msg =>
+          msg.id === aiMessage.id ? aiMessage : msg
         );
-      });
-      
-      toast.error("Erro ao enviar mensagem", {
-        description: errorMessage,
-        duration: 4000
+        return updatedMessages;
       });
     } finally {
       setStreaming(false);

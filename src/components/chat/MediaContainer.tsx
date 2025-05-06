@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ChatMode } from '../ModeSelector';
 import ImageContent from './media/ImageContent';
 import AudioContent from './media/AudioContent';
-import VideoContentImproved from './media/VideoContentImproved';
+import VideoContent from './media/VideoContent';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 
 interface MediaContainerProps {
@@ -61,7 +61,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
       );
     case 'video':
       return (
-        <VideoContentImproved 
+        <VideoContent 
           src={mediaUrl} 
           onLoad={handleLoad} 
           onError={handleError} 

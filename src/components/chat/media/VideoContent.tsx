@@ -501,26 +501,6 @@ const VideoContent: React.FC<VideoContentProps> = ({
     );
   }
 
-  // Fix line 561 - we need to add the missing required parameters
-  // This line is likely part of a function that's showing a button for registering recovered videos
-  const handleRegisterRecoveredVideo = async () => {
-    if (videoUrl) {
-      // Call registerRecoveredVideo with all required parameters (adding a default description if none available)
-      const success = await registerRecoveredVideo(
-        videoUrl,
-        'Vídeo recuperado manualmente', // Add default prompt/description
-        undefined, // Optional user ID
-        taskId // Optional task ID
-      );
-      
-      if (success) {
-        toast.success("Vídeo registrado na galeria com sucesso!");
-      } else {
-        toast.error("Erro ao registrar vídeo na galeria");
-      }
-    }
-  };
-  
   if (videoUrl) {
     return (
       <div className="w-full">
@@ -576,7 +556,14 @@ const VideoContent: React.FC<VideoContentProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleRegisterRecoveredVideo}
+              onClick={async () => {
+                if (videoUrl) {
+                  const success = await registerRecoveredVideo(videoUrl);
+                  if (success) {
+                    toast.success("Vídeo registrado na galeria com sucesso!");
+                  }
+                }
+              }}
               title="Registrar vídeo recuperado"
             >
               <Save className="h-4 w-4 mr-1" />
