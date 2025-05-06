@@ -52,9 +52,12 @@ const ChatControls: React.FC<ChatControlsProps> = ({
     onInputChange('');
   };
 
+  // Show parameters button only for image and video modes
+  const showParametersButton = mode !== 'text' && mode !== 'audio' && mode !== 'music';
+
   return (
     <div className={cn("relative", className)}>
-      {mode !== 'text' && (
+      {showParametersButton && (
         <Collapsible
           open={isParametersOpen}
           onOpenChange={setIsParametersOpen}
@@ -89,6 +92,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
                       mode === 'image' ? "Descreva a imagem que deseja gerar..." :
                       mode === 'video' ? "Descreva o vídeo que deseja gerar..." :
                       mode === 'audio' ? "Digite o texto que deseja converter para áudio..." :
+                      mode === 'music' ? "Descreva a música que deseja gerar..." :
                       "Digite sua mensagem..."}
           className="min-h-[60px] max-h-[200px] bg-inventu-card border-inventu-gray/30"
           value={inputValue || ''} // Ensure value is never undefined

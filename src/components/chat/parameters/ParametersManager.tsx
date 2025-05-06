@@ -35,6 +35,7 @@ const ParametersManager: React.FC<ParametersManagerProps> = ({
       case 'video':
         return (
           <VideoParameters 
+            model="luma-ai"
             onParamsChange={handleParamChange} 
             initialParams={params} 
           />

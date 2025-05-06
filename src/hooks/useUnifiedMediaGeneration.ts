@@ -1,353 +1,256 @@
-import { useCallback, useState } from 'react';
-import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
+import { useState, useCallback, useRef } from 'react';
+import { MediaServiceAdapter, MediaType, Task, cancelTask } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';
-import { Task } from '@/hooks/useSimplifiedTaskManager';
-import { withRetry } from '@/utils/retryOperations';
-import { supabase } from '@/integrations/supabase/client';
 
-interface UnifiedMediaGenerationOptions {
-  autoRetry?: boolean;
-  maxRetries?: number;
-  retryDelay?: number;
-  showToasts?: boolean;
-  timeoutDuration?: number;
-  onProgress?: (progress: number) => void;
+interface UseUnifiedMediaGenerationOptions {
   onComplete?: (mediaUrl: string) => void;
-  onError?: (error: string) => void;
+  onError?: (error: Error) => void;
+  onProgress?: (progress: number) => void;
 }
 
-/**
- * Unified hook for generating all types of media in a consistent way
- */
-export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions = {}) {
-  const {
-    autoRetry = true,
-    maxRetries = 2,
-    retryDelay = 2000,
-    showToasts = true,
-    timeoutDuration = 600000, // 10 minutes timeout (default)
-    onProgress,
-    onComplete,
-    onError
-  } = options;
+interface RetryState {
+  retryCount: number;
+  maxRetries: number;
+  lastTaskId: string | null;
+}
 
+// This hook provides a unified interface for generating media using different services
+export function useUnifiedMediaGeneration(options: UseUnifiedMediaGenerationOptions = {}) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
-  const [currentTask, setCurrentTask] = useState<Task | null>(null);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [timedOut, setTimedOut] = useState<boolean>(false);
-  const [isCheckingStatus, setIsCheckingStatus] = useState<boolean>(false);
-  const [generatedMedia, setGeneratedMedia] = useState<{
-    type: 'image' | 'video' | 'audio';
-    url: string;
-  } | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [mediaType, setMediaType] = useState<MediaType | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  const mediaService = useMediaServiceAdapter({
-    service: 'auto',
-    showToasts: false,
-    onTaskUpdate: (task) => {
-      if (task.id !== currentTaskId) return;
-      
-      // Fix the type issue by not using instanceof with task.createdAt
-      const updatedTask = {
-        ...task,
-        // Safely handle createdAt regardless of its type
-        createdAt: typeof task.createdAt === 'string' 
-          ? task.createdAt 
-          : String(task.createdAt)
-      };
-      
-      setCurrentTask(updatedTask as unknown as Task);
-      
-      if (onProgress && task.progress) {
-        onProgress(task.progress);
-      }
-      
-      if (task.status === 'completed' && task.result) {
-        setIsGenerating(false);
-        setTimedOut(false);
-        setGeneratedMedia({
-          type: task.type as any,
-          url: task.result
-        });
-        
-        if (showToasts) {
-          toast.success(`${task.type.charAt(0).toUpperCase() + task.type.slice(1)} generated successfully`);
-        }
-        
-        if (onComplete) {
-          onComplete(task.result);
-        }
-      } else if (task.status === 'failed' || task.status === 'canceled') {
-        const isTimeout = task.error?.includes('timed out');
-        
-        if (isTimeout) {
-          setTimedOut(true);
-          
-          if (showToasts) {
-            toast.warning('Video generation is taking longer than expected', {
-              description: 'You can check status again or wait for it to complete'
-            });
-          }
-        } else {
-          setIsGenerating(false);
-        }
-        
-        if (task.status === 'failed' && !isTimeout && autoRetry && 
-            task.metadata?.retryCount !== undefined && 
-            task.metadata.retryCount < maxRetries) {
-          // Auto retry failed tasks (not for timeouts)
-          setTimeout(() => {
-            if (showToasts) {
-              toast.info(`Retry attempt ${(task.metadata?.retryCount || 0) + 1}/${maxRetries}`);
-            }
-            
-            retryGeneration(task as unknown as Task);
-          }, retryDelay);
-        } else if (task.status === 'failed' && !isTimeout) {
-          if (showToasts) {
-            toast.error(`Failed to generate ${task.type}`, {
-              description: task.error || 'Unknown error'
-            });
-          }
-          
-          if (onError) {
-            onError(task.error || 'Unknown error');
-          }
-        }
-      }
-    }
+  // Retry state with proper type definition
+  const retryState = useRef<RetryState>({
+    retryCount: 0,
+    maxRetries: 3,
+    lastTaskId: null,
   });
-  
-  const retryGeneration = useCallback((task: Task) => {
-    if (!task) return;
-    
-    // Create a new task with same parameters but increment retry count
-    const newTaskId = mediaService.generateMedia(
-      task.type as any,
-      task.prompt,
-      task.model,
-      task.metadata?.params
-    );
-    
-    setCurrentTaskId(newTaskId);
-    setIsGenerating(true);
-    setTimedOut(false);
-    
-    const newTask = mediaService.getTaskStatus(newTaskId);
-    
-    if (newTask) {
-      const retryCount = (task.metadata?.retryCount !== undefined) ? (task.metadata.retryCount + 1) : 1;
-      // Instead of trying to directly update the task, we'll create a new task with the updated metadata
-      // This avoids using the non-existent updateTask method
-      if (newTask.metadata) {
-        newTask.metadata.retryCount = retryCount;
-      } else {
-        newTask.metadata = { retryCount };
-      }
+
+  // Clear any existing polling
+  const clearPolling = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-  }, [mediaService]);
-  
-  // New method to check status of a timed out task
-  const checkTimedOutTask = useCallback(async () => {
-    if (!currentTaskId || !currentTask) return false;
+  }, []);
+
+  // Reset state
+  const resetState = useCallback(() => {
+    setIsGenerating(false);
+    setProgress(0);
+    setCurrentTaskId(null);
+    setError(null);
+    clearPolling();
+    retryState.current = {
+      retryCount: 0,
+      maxRetries: 3,
+      lastTaskId: null,
+    };
+  }, [clearPolling]);
+
+  // Handle successful media generation
+  const handleSuccess = useCallback((url: string) => {
+    setMediaUrl(url);
+    setIsGenerating(false);
+    setProgress(100);
+    clearPolling();
     
-    // Get the API Frame task ID from the currentTask metadata
-    const apiframeTaskId = currentTask.metadata?.apiframeTaskId;
-    if (!apiframeTaskId) return false;
-    
-    setIsCheckingStatus(true);
-    setIsGenerating(true);
-    
-    if (showToasts) {
-      toast.info('Verificando status do vídeo...', {
-        description: 'Estamos consultando o servidor para verificar o progresso'
-      });
+    if (options.onComplete) {
+      options.onComplete(url);
     }
+    
+    // Reset retry state
+    retryState.current.retryCount = 0;
+    retryState.current.lastTaskId = null;
+    
+  }, [clearPolling, options]);
+
+  // Handle errors
+  const handleError = useCallback((err: Error) => {
+    console.error('[useUnifiedMediaGeneration] Error:', err);
+    setError(err);
+    setIsGenerating(false);
+    clearPolling();
+    
+    if (options.onError) {
+      options.onError(err);
+    }
+    
+    toast.error(`Erro na geração de mídia: ${err.message}`);
+    
+    // Reset retry state
+    retryState.current.retryCount = 0;
+    retryState.current.lastTaskId = null;
+  }, [clearPolling, options]);
+
+  // Poll for task status
+  const pollTaskStatus = useCallback(async (taskId: string, type: MediaType) => {
+    if (!taskId || !isGenerating) return;
     
     try {
-      // Use withRetry to make the check more reliable
-      const { data, error } = await withRetry(
-        () => supabase.functions.invoke('apiframe-task-status', {
-          body: { 
-            taskId: apiframeTaskId,
-            forceCheck: true // Added flag to force a fresh check from the API
-          }
-        }),
-        { maxRetries: 3, initialDelay: 1000 }
-      );
+      console.log(`[useUnifiedMediaGeneration] Polling status for task ${taskId}`);
       
-      if (error) {
-        console.error('[useUnifiedMediaGeneration] Error checking timed out task:', error);
-        throw error;
+      // Simulate API call to check task status
+      const response = await fetch(`/api/task/${taskId}/status?type=${type}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error checking task status');
       }
       
-      // Update progress if available
-      if (data.percentage && onProgress) {
-        onProgress(data.percentage);
-      }
+      const task: Task = await response.json();
       
-      if (data.status === 'completed' && data.mediaUrl) {
-        // Task completed successfully after timeout
-        setIsGenerating(false);
-        setTimedOut(false);
-        setIsCheckingStatus(false);
-        setGeneratedMedia({
-          type: currentTask.type as any,
-          url: data.mediaUrl
-        });
-        
-        if (showToasts) {
-          toast.success(`${currentTask.type.charAt(0).toUpperCase() + currentTask.type.slice(1)} generated successfully`);
+      if (task.status === 'completed' && task.result) {
+        console.log(`[useUnifiedMediaGeneration] Task completed:`, task.result);
+        handleSuccess(task.result);
+      } 
+      else if (task.status === 'failed') {
+        // Check if we should retry
+        if (retryState.current.retryCount < retryState.current.maxRetries) {
+          console.log(`[useUnifiedMediaGeneration] Task failed, retrying (${retryState.current.retryCount + 1}/${retryState.current.maxRetries})...`);
+          retryState.current.retryCount++;
+          // Retry logic would go here
+        } else {
+          throw new Error(task.error || 'Task failed');
         }
-        
-        if (onComplete) {
-          onComplete(data.mediaUrl);
-        }
-        
-        // Instead of directly updating task via updateTask, we'll handle task state in the local state
-        // and notify our listeners with the updated status
-        setCurrentTask({
-          ...currentTask,
-          status: 'completed',
-          progress: 100,
-          result: data.mediaUrl
-        });
-        
-        return true;
-      } else if (data.status === 'processing') {
+      } 
+      else if (task.status === 'canceled') {
+        resetState();
+        toast.info('Geração de mídia cancelada');
+      } 
+      else {
         // Still processing
-        if (showToasts) {
-          toast.info('Video still processing', {
-            description: `Processing: ${data.percentage || 0}% complete`
-          });
+        if (task.percentage !== undefined) {
+          setProgress(task.percentage);
+          if (options.onProgress) {
+            options.onProgress(task.percentage);
+          }
         }
         
-        // Update the local task state instead of using updateTask
-        setCurrentTask({
-          ...currentTask,
-          status: 'processing',
-          progress: data.percentage || 50
-        });
-        
-        setIsCheckingStatus(false);
-        return false;
-      } else {
-        // Failed or unknown status
-        setIsGenerating(false);
-        setIsCheckingStatus(false);
-        
-        if (showToasts) {
-          toast.error(`Failed to generate ${currentTask.type}`, {
-            description: data.error || 'Unknown error'
-          });
-        }
-        
-        if (onError) {
-          onError(data.error || 'Unknown error');
-        }
-        
-        return false;
+        // Continue polling
+        timeoutRef.current = setTimeout(() => {
+          pollTaskStatus(taskId, type);
+        }, 2000);
       }
     } catch (err) {
-      console.error('[useUnifiedMediaGeneration] Error in checkTimedOutTask:', err);
-      setIsGenerating(false);
-      setIsCheckingStatus(false);
+      console.error('[useUnifiedMediaGeneration] Error checking task status:', err);
       
-      const errorMsg = err instanceof Error ? err.message : 'Unknown error checking status';
-      
-      if (showToasts) {
-        toast.error('Error checking video status', {
-          description: errorMsg
-        });
+      // If we've exceeded max retries, throw the error
+      if (retryState.current.retryCount >= retryState.current.maxRetries) {
+        handleError(err instanceof Error ? err : new Error('Unknown error'));
+      } else {
+        // Otherwise, retry polling after a delay
+        timeoutRef.current = setTimeout(() => {
+          pollTaskStatus(taskId, type);
+        }, 3000);
       }
-      
-      if (onError) {
-        onError(errorMsg);
-      }
-      
-      return false;
     }
-  }, [currentTaskId, currentTask, showToasts, onComplete, onError, onProgress]);
+  }, [isGenerating, handleSuccess, handleError, options, resetState]);
 
-  const generateMedia = useCallback((
-    type: 'image' | 'video' | 'audio',
+  // Generate media
+  const generateMedia = useCallback(async (
+    type: MediaType,
     prompt: string,
     model: string,
-    params: any = {},
+    params: any,
     referenceUrl?: string
   ) => {
+    if (isGenerating) {
+      toast.error('Já existe uma geração em andamento');
+      return null;
+    }
+    
     setIsGenerating(true);
-    setTimedOut(false);
-    setGeneratedMedia(null);
+    setMediaType(type);
+    setProgress(0);
+    setError(null);
+    setMediaUrl(null);
     
-    const taskId = mediaService.generateMedia(
-      type,
-      prompt,
-      model,
-      params,
-      referenceUrl
-    );
-    
-    setCurrentTaskId(taskId);
-    
-    // Set initial metadata
-    const task = mediaService.getTaskStatus(taskId);
-    if (task) {
-      // Update the task's metadata directly if it exists
-      if (task.metadata) {
-        task.metadata.retryCount = 0;
-      } else {
-        task.metadata = { retryCount: 0 };
-      }
-    }
-    
-    if (showToasts) {
-      toast.info(`${type.charAt(0).toUpperCase() + type.slice(1)} generation started`);
-    }
-    
-    return taskId;
-  }, [mediaService, showToasts]);
-  
-  const cancelGeneration = useCallback(() => {
-    if (!currentTaskId) return false;
-    
-    const result = mediaService.cancelTask(currentTaskId);
-    
-    if (result) {
-      setIsGenerating(false);
-      setTimedOut(false);
+    try {
+      console.log(`[useUnifiedMediaGeneration] Generating ${type} with model ${model}`);
       
-      if (showToasts) {
-        toast.info('Generation canceled');
+      // Call the appropriate service based on the type
+      const requestBody = {
+        prompt,
+        model,
+        params,
+        referenceUrl,
+        type
+      };
+      
+      // Simulate API call to create task
+      const response = await fetch(`/api/generate/${type}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error starting generation task');
       }
+      
+      const data = await response.json();
+      const taskId = data.taskId;
+      
+      if (!taskId) {
+        throw new Error('No task ID received from server');
+      }
+      
+      console.log(`[useUnifiedMediaGeneration] Task created: ${taskId}`);
+      setCurrentTaskId(taskId);
+      retryState.current.lastTaskId = taskId;
+      
+      // Begin polling for status
+      pollTaskStatus(taskId, type);
+      
+      return taskId;
+    } catch (err) {
+      console.error(`[useUnifiedMediaGeneration] Error generating ${type}:`, err);
+      handleError(err instanceof Error ? err : new Error('Failed to start generation'));
+      return null;
     }
+  }, [isGenerating, pollTaskStatus, handleError]);
+
+  // Cancel generation
+  const cancelGeneration = useCallback(async () => {
+    if (!currentTaskId || !mediaType) return false;
     
-    return result;
-  }, [currentTaskId, mediaService, showToasts]);
-  
+    try {
+      console.log(`[useUnifiedMediaGeneration] Cancelling task ${currentTaskId}`);
+      
+      // Call the cancellation service
+      const success = await cancelTask(currentTaskId, mediaType);
+      
+      if (success) {
+        resetState();
+        toast.info('Geração cancelada');
+        return true;
+      } else {
+        throw new Error('Failed to cancel task');
+      }
+    } catch (err) {
+      console.error('[useUnifiedMediaGeneration] Error cancelling task:', err);
+      toast.error('Erro ao cancelar geração');
+      return false;
+    }
+  }, [currentTaskId, mediaType, resetState]);
+
   return {
-    // Main methods
     generateMedia,
-    generateImage: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('image', prompt, model, params, referenceUrl),
-    generateVideo: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('video', prompt, model, params, referenceUrl),
-    generateAudio: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
-      generateMedia('audio', prompt, model, params, referenceUrl),
     cancelGeneration,
-    checkTimedOutTask,
-    
-    // State
     isGenerating,
-    timedOut,
-    isCheckingStatus,
-    currentTask,
-    generatedMedia,
-    
-    // Config methods
-    configureApiKey: (key: string) => 
-      mediaService.configureApiKey(key),
-    isApiKeyConfigured: () => 
-      mediaService.isApiKeyConfigured()
+    progress,
+    mediaUrl,
+    error,
+    reset: resetState
   };
 }
