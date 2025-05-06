@@ -23,7 +23,7 @@ const actionTypes = {
   REMOVE_TOAST: "REMOVE_TOAST",
 } as const
 
-// Map to track active toasts by content
+// Map to track active toasts by content hash
 const activeToastsByContent = new Map<string, string>();
 let count = 0
 
@@ -72,6 +72,14 @@ const addToRemoveQueue = (toastId: string) => {
   }, TOAST_REMOVE_DELAY)
 
   toastTimeouts.set(toastId, timeout)
+}
+
+// Generate a unique content hash for a toast
+const generateContentHash = (toast: Partial<ToasterToast>): string => {
+  const titleStr = typeof toast.title === 'string' ? toast.title : '';
+  const descStr = typeof toast.description === 'string' ? toast.description : '';
+  const variantStr = toast.variant || 'default';
+  return `${titleStr}|${descStr}|${variantStr}`;
 }
 
 export const reducer = (state: State, action: Action): State => {
@@ -164,16 +172,14 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
-  // Check if there's already a toast with the same content
-  const contentKey = 
-    (typeof props.title === 'string' ? props.title : '') + 
-    '|' + 
-    (typeof props.description === 'string' ? props.description : '');
+  // Generate a content hash for deduplication
+  const contentHash = generateContentHash(props);
   
-  if (contentKey && activeToastsByContent.has(contentKey)) {
+  if (contentHash && activeToastsByContent.has(contentHash)) {
     // If a toast with the same content exists, don't create a new one
+    console.log('[Toast] Preventing duplicate toast:', contentHash);
     return {
-      id: activeToastsByContent.get(contentKey) || '',
+      id: activeToastsByContent.get(contentHash) || '',
       dismiss: () => {},
       update: () => {},
     };
@@ -182,8 +188,8 @@ function toast({ ...props }: Toast) {
   const id = genId()
 
   // Register this toast in the content map
-  if (contentKey) {
-    activeToastsByContent.set(contentKey, id);
+  if (contentHash) {
+    activeToastsByContent.set(contentHash, id);
   }
 
   const update = (props: ToasterToast) =>
@@ -196,8 +202,8 @@ function toast({ ...props }: Toast) {
     dispatch({ type: "DISMISS_TOAST", toastId: id })
     
     // Remove from the map when explicitly dismissed
-    if (contentKey) {
-      activeToastsByContent.delete(contentKey);
+    if (contentHash) {
+      activeToastsByContent.delete(contentHash);
     }
   }
 

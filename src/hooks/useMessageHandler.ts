@@ -75,9 +75,6 @@ export function useMessageHandler(
         
         // Save to database and gallery
         await saveMessageToDatabase(updatedMessage, currentConversationId!);
-        if (result.data.mediaUrl) {
-          await mediaGallery.saveMediaToGallery(result.data.mediaUrl, prompt, 'image', modelId);
-        }
         
         return true;
       } 
@@ -292,11 +289,6 @@ export function useMessageHandler(
             
             // Save the message with the media URL to the database for persistence
             await saveMessageToDatabase(updatedMessage, currentConversationId);
-            
-            // Save to gallery
-            if (mediaUrl) {
-              await mediaGallery.saveMediaToGallery(mediaUrl, content, 'image', modelId);
-            }
           } 
           else if (result.data.taskId) {
             // We have a task ID (likely from Midjourney) - need to poll for status

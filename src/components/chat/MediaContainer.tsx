@@ -1,43 +1,67 @@
 
-import React, { useState } from 'react';
-import { ChatMode } from '../ModeSelector';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useMediaGallery } from '@/hooks/useMediaGallery';
 import ImageContent from './media/ImageContent';
 import VideoContent from './media/VideoContent';
 import AudioContent from './media/AudioContent';
-import { useMediaGallery } from '@/hooks/useMediaGallery';
+import MediaErrorDisplay from './media/MediaErrorDisplay';
+import MediaLoading from './media/MediaLoading';
+import { ChatMode } from '@/components/ModeSelector';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MediaContainerProps {
   mediaUrl: string;
   mode: ChatMode;
   prompt: string;
   modelId?: string;
-  progress?: number;
 }
 
-const MediaContainer: React.FC<MediaContainerProps> = ({ 
-  mediaUrl,
-  mode,
-  prompt,
-  modelId,
-  progress
-}) => {
+const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt, modelId }) => {
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [alreadySaved, setAlreadySaved] = useState(false);
   const { saveMediaToGallery, saving } = useMediaGallery();
+  const { user } = useAuth();
   
-  const handleLoad = () => {
-    setIsLoading(false);
-  };
-  
-  const handleError = (e: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement | HTMLAudioElement>) => {
-    setIsLoading(false);
-    console.error('Error loading media:', e);
-  };
+  useEffect(() => {
+    // Check if this media is already saved in the gallery
+    const checkIfSaved = async () => {
+      if (!user || !mediaUrl) return;
+      
+      try {
+        // Look for the media in the gallery by URL
+        const { data, error } = await supabase
+          .from('media_gallery')
+          .select('id')
+          .eq('media_url', mediaUrl)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (data) {
+          setAlreadySaved(true);
+        }
+      } catch (err) {
+        console.error('Error checking if media is saved:', err);
+      }
+    };
+    
+    checkIfSaved();
+  }, [mediaUrl, user]);
   
   const handleSaveToGallery = async () => {
+    if (alreadySaved) {
+      toast.info("Esta mídia já foi salva na galeria");
+      return;
+    }
+    
     try {
       await saveMediaToGallery(mediaUrl, prompt, mode, modelId);
+      setAlreadySaved(true);
     } catch (error) {
       console.error('Error saving to gallery:', error);
+      toast.error('Erro ao salvar na galeria');
     }
   };
   
@@ -45,48 +69,59 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
     window.open(mediaUrl, '_blank');
   };
   
-  // Return the appropriate media component based on the mode
-  switch (mode) {
-    case 'image':
-      return (
-        <ImageContent 
-          src={mediaUrl} 
-          onLoad={handleLoad} 
-          onError={handleError} 
-          isLoading={isLoading}
-          onSaveToGallery={handleSaveToGallery}
-          onOpenInNewTab={handleOpenInNewTab}
-          saving={saving}
-        />
-      );
-    case 'video':
-      return (
-        <VideoContent 
-          src={mediaUrl} 
-          onLoad={handleLoad} 
-          onError={handleError} 
-          isLoading={isLoading}
-          onSaveToGallery={handleSaveToGallery}
-          onOpenInNewTab={handleOpenInNewTab}
-          saving={saving}
-          progress={progress}
-        />
-      );
-    case 'audio':
-      return (
-        <AudioContent 
-          src={mediaUrl} 
-          onLoad={handleLoad} 
-          onError={handleError} 
-          isLoading={isLoading}
-          onSaveToGallery={handleSaveToGallery}
-          onOpenInNewTab={handleOpenInNewTab}
-          saving={saving}
-        />
-      );
-    default:
-      return null;
+  const handleMediaLoad = () => {
+    setIsLoading(false);
+  };
+  
+  const handleMediaError = () => {
+    setIsLoading(false);
+    setError('Não foi possível carregar a mídia');
+  };
+  
+  if (error) {
+    return <MediaErrorDisplay error={error} />;
   }
+  
+  if (mode === 'image') {
+    return (
+      <ImageContent
+        src={mediaUrl}
+        onLoad={handleMediaLoad}
+        onError={handleMediaError}
+        isLoading={isLoading}
+        onSaveToGallery={handleSaveToGallery}
+        onOpenInNewTab={handleOpenInNewTab}
+        saving={saving}
+        alreadySaved={alreadySaved}
+      />
+    );
+  } else if (mode === 'video') {
+    return (
+      <VideoContent
+        src={mediaUrl}
+        onLoad={handleMediaLoad}
+        onError={handleMediaError}
+        isLoading={isLoading}
+        onSaveToGallery={handleSaveToGallery}
+        onOpenInNewTab={handleOpenInNewTab}
+        saving={saving}
+      />
+    );
+  } else if (mode === 'audio') {
+    return (
+      <AudioContent
+        src={mediaUrl}
+        onLoad={handleMediaLoad}
+        onError={handleMediaError}
+        isLoading={isLoading}
+        onSaveToGallery={handleSaveToGallery}
+        onOpenInNewTab={handleOpenInNewTab}
+        saving={saving}
+      />
+    );
+  }
+  
+  return <MediaLoading />;
 };
 
 export default MediaContainer;
