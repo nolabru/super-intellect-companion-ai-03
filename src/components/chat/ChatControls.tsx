@@ -30,7 +30,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   onSendMessage,
   isLoading = false,
   mode,
-  inputValue,
+  inputValue = '', // Add default value here to prevent undefined
   onInputChange,
   onModeChange,
   onStopGeneration,
@@ -45,7 +45,8 @@ const ChatControls: React.FC<ChatControlsProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!inputValue.trim() || isLoading || disabled) return;
+    // Ensure inputValue is not undefined before calling trim()
+    if (!inputValue || !inputValue.trim() || isLoading || disabled) return;
     
     onSendMessage(inputValue, params);
     onInputChange('');
@@ -90,7 +91,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
                       mode === 'audio' ? "Digite o texto que deseja converter para áudio..." :
                       "Digite sua mensagem..."}
           className="min-h-[60px] max-h-[200px] bg-inventu-card border-inventu-gray/30"
-          value={inputValue}
+          value={inputValue || ''} // Ensure value is never undefined
           onChange={(e) => onInputChange(e.target.value)}
           disabled={isLoading || disabled}
           autoFocus={autoFocus}
@@ -109,7 +110,7 @@ const ChatControls: React.FC<ChatControlsProps> = ({
           <Button 
             type="submit"
             size="icon"
-            disabled={!inputValue.trim() || isLoading || disabled}
+            disabled={!inputValue?.trim() || isLoading || disabled} // Add null check with ?. operator
           >
             {isLoading ? 
               <Loader2 className="h-5 w-5 animate-spin" /> : 
