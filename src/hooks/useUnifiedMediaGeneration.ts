@@ -1,4 +1,3 @@
-
 import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';

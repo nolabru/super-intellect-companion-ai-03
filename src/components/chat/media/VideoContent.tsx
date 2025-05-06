@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
 import VideoGenerationRetry from './VideoGenerationRetry';
 import VideoLoading from '../VideoLoading';
 import { Button } from '@/components/ui/button';
-import { Save, ExternalLink } from 'lucide-react';
+import { Save, ExternalLink, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface VideoContentProps {
   src?: string;
@@ -33,6 +34,9 @@ const VideoContent: React.FC<VideoContentProps> = ({
 }) => {
   const [videoUrl, setVideoUrl] = useState<string | undefined>(src);
   const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [isManuallyChecking, setIsManuallyChecking] = useState(false);
+  const [checkAttempts, setCheckAttempts] = useState(0);
+  
   const { 
     checkTimedOutTask, 
     isCheckingStatus,
@@ -46,12 +50,55 @@ const VideoContent: React.FC<VideoContentProps> = ({
     }
   });
 
+  // Add periodic auto-checking when in timed out state to recover from webhook failures
+  useEffect(() => {
+    let intervalId: number | undefined;
+    
+    if (hasTimedOut && taskId && !videoUrl && checkAttempts < 5) {
+      // Auto-check every 30 seconds for a maximum of 5 attempts
+      intervalId = window.setInterval(async () => {
+        setIsManuallyChecking(true);
+        console.log(`[VideoContent] Auto-checking timed out task ${taskId} (attempt ${checkAttempts + 1}/5)`);
+        
+        try {
+          await checkTimedOutTask();
+          setCheckAttempts(prev => prev + 1);
+        } catch (error) {
+          console.error('[VideoContent] Error during auto-check:', error);
+        } finally {
+          setIsManuallyChecking(false);
+        }
+      }, 30000); // Check every 30 seconds
+    }
+    
+    return () => {
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask]);
+
   const handleTimeout = () => {
     setHasTimedOut(true);
+    toast.info(
+      "O vídeo está demorando mais que o esperado", 
+      { description: "Estamos verificando automaticamente o progresso a cada 30 segundos" }
+    );
   };
   
   const handleRetry = async () => {
-    await checkTimedOutTask();
+    setIsManuallyChecking(true);
+    try {
+      const success = await checkTimedOutTask();
+      if (success) {
+        toast.success("Vídeo concluído com sucesso!");
+      }
+    } catch (error) {
+      console.error('[VideoContent] Error during retry:', error);
+      toast.error("Erro ao verificar o status do vídeo", {
+        description: error instanceof Error ? error.message : "Tente novamente mais tarde"
+      });
+    } finally {
+      setIsManuallyChecking(false);
+    }
   };
 
   const handleVideoLoad = () => {
@@ -66,7 +113,9 @@ const VideoContent: React.FC<VideoContentProps> = ({
     return (
       <VideoGenerationRetry 
         onRetry={handleRetry} 
-        isChecking={isCheckingStatus}
+        isChecking={isCheckingStatus || isManuallyChecking}
+        message="O tempo de geração do vídeo excedeu o limite. Estamos verificando automaticamente o status a cada 30 segundos. Você também pode verificar manualmente usando o botão abaixo."
+        attempts={checkAttempts}
       />
     );
   }

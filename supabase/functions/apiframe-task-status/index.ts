@@ -7,13 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Define API endpoints to try - for better compatibility
-const API_ENDPOINTS = [
-  "https://api.apiframe.ai/v1/tasks/status",
-  "https://api.apiframe.pro/v1/tasks/status",
-  "https://api.apiframe.pro/fetch"
-];
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -21,33 +14,26 @@ serve(async (req) => {
   }
 
   try {
-    // Use the same environment variable names as the other functions
-    const APIFRAME_API_KEY = Deno.env.get("API_FRAME_KEY") || Deno.env.get("APIFRAME_API_KEY");
-    if (!APIFRAME_API_KEY) {
-      console.error("[apiframe-task-status] API_FRAME_KEY or APIFRAME_API_KEY not configured");
-      throw new Error("APIFRAME API key not configured");
+    const API_FRAME_KEY = Deno.env.get("API_FRAME_KEY") || Deno.env.get("APIFRAME_API_KEY");
+    if (!API_FRAME_KEY) {
+      console.error("[apiframe-task-status] API_FRAME_KEY not configured");
+      throw new Error("API_FRAME_KEY not configured");
     }
 
-    // Initialize Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") || "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-    );
-
-    // Extract taskId and forceCheck from request body
+    // Extract task ID from request body
     let requestBody;
     try {
       requestBody = await req.json();
     } catch (parseError) {
       console.error("[apiframe-task-status] Error parsing request body:", parseError);
       return new Response(
-        JSON.stringify({ error: "Invalid request body - JSON parsing failed" }),
+        JSON.stringify({ error: "Invalid request body" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-    
-    const { taskId, forceCheck = false } = requestBody;
 
+    const { taskId, forceCheck = false } = requestBody;
+    
     if (!taskId) {
       console.error("[apiframe-task-status] Task ID is required");
       return new Response(
@@ -56,239 +42,270 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[apiframe-task-status] Checking status for task: ${taskId}, forceCheck: ${forceCheck}`);
+    console.log(`[apiframe-task-status] Checking status of task: ${taskId}, forceCheck: ${forceCheck}`);
+    
+    // Initialize Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") || "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
+    );
 
-    // First check database cache only if we're not forcing a check
-    let taskData = null;
-    let dbError = null;
-
+    // First, check if we already have the completed task in the database
+    // Skip this check if forceCheck is true
     if (!forceCheck) {
-      const result = await supabaseClient
+      const { data: dbTask, error: dbError } = await supabaseClient
         .from("apiframe_tasks")
         .select("*")
         .eq("task_id", taskId)
-        .maybeSingle();
+        .single();
         
-      taskData = result.data;
-      dbError = result.error;
-
-      if (dbError) {
-        console.error(`[apiframe-task-status] Error fetching task from database:`, dbError);
-      } else if (taskData) {
-        console.log(`[apiframe-task-status] Found task record:`, {
-          id: taskData.task_id,
-          status: taskData.status,
-          hasUrl: !!taskData.media_url
-        });
-        
-        // Return cached result if task is in final state and we're not forcing a check
-        if ((taskData.status === 'completed' || taskData.status === 'failed') && !forceCheck) {
-          return new Response(
-            JSON.stringify({
-              taskId: taskData.task_id,
-              status: taskData.status,
-              mediaUrl: taskData.media_url,
-              error: taskData.error
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-    } else {
-      console.log(`[apiframe-task-status] Force check requested, bypassing database cache`);
-    }
-
-    // Try each endpoint until one works
-    let apiResponse = null;
-    let apiData = null;
-    let successfulEndpoint = null;
-    let errorMessages = [];
-    
-    for (const endpoint of API_ENDPOINTS) {
-      try {
-        console.log(`[apiframe-task-status] Trying endpoint: ${endpoint}`);
-        
-        // Use consistent payload format, but adapt based on endpoint
-        const requestPayload = endpoint.includes('/fetch') 
-          ? { task_id: taskId }
-          : { taskId: taskId };
-        
-        apiResponse = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${APIFRAME_API_KEY}`,
-            "Accept": "application/json"
-          },
-          body: JSON.stringify(requestPayload)
-        });
-        
-        console.log(`[apiframe-task-status] Response from ${endpoint}: ${apiResponse.status} ${apiResponse.statusText}`);
-        
-        if (apiResponse.ok) {
-          const contentType = apiResponse.headers.get("content-type");
-          if (contentType && contentType.includes("application/json")) {
-            apiData = await apiResponse.json();
-            successfulEndpoint = endpoint;
-            console.log(`[apiframe-task-status] Successfully used endpoint: ${endpoint}`);
-            console.log(`[apiframe-task-status] Response data:`, JSON.stringify(apiData).substring(0, 200));
-            break;
-          } else {
-            const textResponse = await apiResponse.text();
-            console.error(`[apiframe-task-status] Received non-JSON response from ${endpoint}:`, textResponse.substring(0, 500));
-            errorMessages.push(`Endpoint ${endpoint} returned non-JSON response`);
-          }
-        } else {
-          const errorText = await apiResponse.text();
-          console.error(`[apiframe-task-status] Error from ${endpoint}:`, errorText.substring(0, 500));
-          errorMessages.push(`Endpoint ${endpoint} error: ${apiResponse.status} ${apiResponse.statusText}`);
-        }
-      } catch (endpointError) {
-        console.error(`[apiframe-task-status] Error with endpoint ${endpoint}:`, endpointError);
-        errorMessages.push(`Network error with ${endpoint}: ${endpointError.message}`);
-      }
-    }
-    
-    // If no endpoints worked
-    if (!successfulEndpoint) {
-      console.error(`[apiframe-task-status] All API endpoints failed. Errors:`, errorMessages.join('; '));
-      
-      // Return the last known status from database if available
-      if (taskData) {
-        console.log(`[apiframe-task-status] Falling back to database status due to API failure`);
+      if (!dbError && dbTask && dbTask.status === "completed" && dbTask.media_url) {
+        console.log(`[apiframe-task-status] Task ${taskId} already completed in database with URL: ${dbTask.media_url}`);
         return new Response(
           JSON.stringify({
-            taskId: taskData.task_id,
-            status: taskData.status,
-            mediaUrl: taskData.media_url,
-            error: taskData.error,
-            apiError: `Failed to check task status: ${errorMessages.join('; ')}`
+            taskId,
+            status: "completed",
+            mediaUrl: dbTask.media_url,
+            percentage: 100
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      throw new Error(`Failed to check task status: ${errorMessages.join('; ')}`);
     }
 
-    console.log(`[apiframe-task-status] APIframe response:`, JSON.stringify(apiData).substring(0, 200) + "...");
-    
-    // Map APIframe status to our format - handle multiple possible response formats
-    let status = apiData.status;
-    let mediaUrl = null;
-    let errorMessage = null;
-    let percentage = apiData.percentage || 0;
+    // Try first with the /fetch endpoint which is more reliable
+    let apiResponse;
+    let responseData;
+    let isSuccess = false;
 
-    // Handle various response formats to extract image URLs
-    if (apiData.task_id || apiData.taskId || apiData.id) {
-      // Check for image_urls array
-      if (apiData.image_urls && apiData.image_urls.length > 0) {
-        status = "completed";
-        mediaUrl = apiData.image_urls[0];
-      } 
-      // Check for singular image_url
-      else if (apiData.image_url) {
-        status = "completed";
-        mediaUrl = apiData.image_url;
+    console.log(`[apiframe-task-status] Trying endpoint: https://api.apiframe.pro/fetch`);
+    try {
+      apiResponse = await fetch("https://api.apiframe.pro/fetch", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${API_FRAME_KEY}`
+        },
+        body: JSON.stringify({ task_id: taskId })
+      });
+
+      console.log(`[apiframe-task-status] Response from https://api.apiframe.pro/fetch: ${apiResponse.status} ${apiResponse.statusText}`);
+      
+      if (apiResponse.ok) {
+        responseData = await apiResponse.json();
+        isSuccess = true;
+        console.log(`[apiframe-task-status] Successfully used endpoint: https://api.apiframe.pro/fetch`);
+      } else {
+        const errorText = await apiResponse.text();
+        console.error(`[apiframe-task-status] Error from https://api.apiframe.pro/fetch: ${errorText}`);
       }
-      // Check for video_url
-      else if (apiData.video_url) {
-        status = "completed";
-        mediaUrl = apiData.video_url;
+    } catch (fetchError) {
+      console.error(`[apiframe-task-status] Error with fetch endpoint:`, fetchError);
+    }
+
+    // Fall back to the status endpoint if fetch failed
+    if (!isSuccess) {
+      try {
+        console.log(`[apiframe-task-status] Trying fallback endpoint: https://api.apiframe.pro/status`);
+        apiResponse = await fetch("https://api.apiframe.pro/status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${API_FRAME_KEY}`
+          },
+          body: JSON.stringify({ task_id: taskId })
+        });
+        
+        console.log(`[apiframe-task-status] Response from status endpoint: ${apiResponse.status} ${apiResponse.statusText}`);
+        
+        if (apiResponse.ok) {
+          responseData = await apiResponse.json();
+          isSuccess = true;
+          console.log(`[apiframe-task-status] Successfully used fallback endpoint`);
+        } else {
+          const errorText = await apiResponse.text();
+          console.error(`[apiframe-task-status] Error from status endpoint: ${errorText}`);
+        }
+      } catch (statusError) {
+        console.error(`[apiframe-task-status] Error with status endpoint:`, statusError);
       }
-      // Check for audio_url
-      else if (apiData.audio_url) {
-        status = "completed";
-        mediaUrl = apiData.audio_url;
+    }
+
+    // If both endpoints failed, try a direct API Frame call to the official endpoint
+    if (!isSuccess) {
+      try {
+        console.log(`[apiframe-task-status] Trying direct endpoint with task ID: ${taskId}`);
+        apiResponse = await fetch(`https://api.apiframe.pro/task/${taskId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${API_FRAME_KEY}`
+          }
+        });
+        
+        console.log(`[apiframe-task-status] Response from direct endpoint: ${apiResponse.status} ${apiResponse.statusText}`);
+        
+        if (apiResponse.ok) {
+          responseData = await apiResponse.json();
+          isSuccess = true;
+          console.log(`[apiframe-task-status] Successfully used direct endpoint`);
+        } else {
+          const errorText = await apiResponse.text();
+          console.error(`[apiframe-task-status] Error from direct endpoint: ${errorText}`);
+        }
+      } catch (directError) {
+        console.error(`[apiframe-task-status] Error with direct endpoint:`, directError);
       }
-      // Check for assets structure (used by some providers)
-      else if (apiData.assets) {
-        if (apiData.assets.image) {
-          status = "completed";
-          mediaUrl = apiData.assets.image;
-        } else if (apiData.assets.video) {
-          status = "completed";
-          mediaUrl = apiData.assets.video;
-        } else if (apiData.assets.audio) {
-          status = "completed";
-          mediaUrl = apiData.assets.audio;
+    }
+
+    // If all API calls failed, return error
+    if (!isSuccess || !responseData) {
+      console.error(`[apiframe-task-status] All endpoints failed for task: ${taskId}`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Unable to retrieve task status from API Frame",
+          status: "unknown" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+
+    // Parse response data
+    console.log(`[apiframe-task-status] Response data:`, responseData);
+    const status = responseData.status?.toLowerCase() || "processing";
+    const mediaUrl = responseData.video_url || responseData.output?.media_url || null;
+    const percentage = responseData.percentage || 0;
+    
+    console.log(`[apiframe-task-status] APIframe response: ${JSON.stringify(responseData).substring(0, 100)}...`);
+
+    // Update task in database if status has changed
+    if (status === "finished" || status === "completed" || status === "succeeded" || status === "success") {
+      if (mediaUrl) {
+        // Update the task record with completed status and media URL
+        const { error: updateError } = await supabaseClient
+          .from("apiframe_tasks")
+          .update({
+            status: "completed",
+            media_url: mediaUrl,
+            updated_at: new Date().toISOString(),
+            percentage: 100
+          })
+          .eq("task_id", taskId);
+
+        if (updateError) {
+          console.error(`[apiframe-task-status] Error updating task in database:`, updateError);
+        } else {
+          console.log(`[apiframe-task-status] Successfully updated task to completed`);
+          
+          // Insert into media_ready_events table
+          try {
+            const { data: taskData } = await supabaseClient
+              .from("apiframe_tasks")
+              .select("prompt, model")
+              .eq("task_id", taskId)
+              .single();
+              
+            const { error: eventError } = await supabaseClient
+              .from("media_ready_events")
+              .insert({
+                task_id: taskId,
+                media_url: mediaUrl,
+                media_type: "video",
+                model: taskData?.model || "apiframe-video",
+                prompt: taskData?.prompt || ""
+              });
+              
+            if (eventError) {
+              console.error(`[apiframe-task-status] Error inserting media ready event:`, eventError);
+            } else {
+              console.log(`[apiframe-task-status] Successfully created media ready event`);
+            }
+          } catch (eventCreateError) {
+            console.error(`[apiframe-task-status] Error creating media ready event:`, eventCreateError);
+          }
         }
       }
-      
-      // Handle status text mapping
-      if (apiData.status === "succeeded" || apiData.status === "success" || apiData.status === "complete") {
-        status = "completed";
-      } else if (apiData.status === "failed" || apiData.status === "failure" || apiData.status === "error") {
-        status = "failed";
-        errorMessage = apiData.error?.message || apiData.message || apiData.error || "Task failed";
-      } else if (apiData.status === "processing" || apiData.status === "in_progress") {
-        status = "processing";
-        // Try to get percentage from different fields
-        percentage = apiData.percentage || apiData.progress || apiData.completion || 0;
-      } else if (apiData.status === "pending" || apiData.status === "queued" || apiData.status === "waiting") {
-        status = "pending";
-      }
 
-      // Always update database regardless of previous state
+      return new Response(
+        JSON.stringify({
+          taskId,
+          status: "completed",
+          mediaUrl,
+          percentage: 100
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } 
+    else if (status === "processing" || status === "pending") {
+      // Update the task status in database
       const { error: updateError } = await supabaseClient
         .from("apiframe_tasks")
         .update({
-          status,
-          media_url: mediaUrl,
+          status: "processing",
+          updated_at: new Date().toISOString(),
+          percentage
+        })
+        .eq("task_id", taskId);
+
+      if (updateError) {
+        console.error(`[apiframe-task-status] Error updating task status:`, updateError);
+      } else {
+        console.log(`[apiframe-task-status] Successfully updated task status to processing`);
+      }
+
+      return new Response(
+        JSON.stringify({
+          taskId,
+          status: "processing",
+          percentage
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    else if (status === "failed" || status === "error") {
+      const errorMessage = responseData.error || "Task failed without specific error message";
+      
+      // Update the task status in database
+      const { error: updateError } = await supabaseClient
+        .from("apiframe_tasks")
+        .update({
+          status: "failed",
           error: errorMessage,
           updated_at: new Date().toISOString()
         })
         .eq("task_id", taskId);
 
       if (updateError) {
-        console.error(`[apiframe-task-status] Error updating task:`, updateError);
+        console.error(`[apiframe-task-status] Error updating failed task:`, updateError);
       } else {
-        console.log(`[apiframe-task-status] Successfully updated task status to ${status}`);
+        console.log(`[apiframe-task-status] Updated task as failed`);
       }
-      
-      // If task just completed, insert media ready event
-      if (status === 'completed' && mediaUrl && (!taskData || taskData.status !== 'completed')) {
-        console.log(`[apiframe-task-status] Creating media_ready_event for newly completed task`);
-        
-        const { error: insertError } = await supabaseClient
-          .from("media_ready_events")
-          .insert({
-            task_id: taskId,
-            media_url: mediaUrl,
-            media_type: 'video',
-            model: apiData.model || 'apiframe-video'
-          });
-          
-        if (insertError) {
-          console.error(`[apiframe-task-status] Error inserting media_ready_event:`, insertError);
-        } else {
-          console.log(`[apiframe-task-status] Successfully created media_ready_event`);
-        }
-      }
-    }
 
-    return new Response(
-      JSON.stringify({
-        taskId,
-        status,
-        mediaUrl,
-        error: errorMessage,
-        percentage,
-        endpoint: successfulEndpoint
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      return new Response(
+        JSON.stringify({
+          taskId,
+          status: "failed",
+          error: errorMessage
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    else {
+      return new Response(
+        JSON.stringify({
+          taskId,
+          status: "unknown",
+          originalStatus: status
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
   } catch (error) {
-    console.error("[apiframe-task-status] Error:", error);
+    console.error(`[apiframe-task-status] Unexpected error:`, error);
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: "Check the edge function logs for more information"
+        error: error instanceof Error ? error.message : "An unknown error occurred"
       }),
-      { 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }, 
-        status: 500 
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
 });
