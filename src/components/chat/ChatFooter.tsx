@@ -6,7 +6,7 @@ import ChatInput from '../ChatInput';
 import ChatControls from './ChatControls';
 
 interface ChatFooterProps {
-  mode: ChatMode;
+  activeMode: ChatMode;
   comparing: boolean;
   isLinked: boolean;
   isMobile: boolean;
@@ -22,7 +22,7 @@ interface ChatFooterProps {
 }
 
 const ChatFooter: React.FC<ChatFooterProps> = ({
-  mode,
+  activeMode,
   comparing,
   isLinked,
   isMobile,
@@ -43,7 +43,7 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
       "contain-layout transform-gpu will-change-transform"
     )}>
       <ChatControls
-        mode={mode}
+        activeMode={activeMode}
         comparing={comparing}
         isLinked={isLinked}
         isMobile={isMobile}
@@ -61,7 +61,7 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
         )}>
           <ChatInput 
             onSendMessage={onSendMessage} 
-            mode={mode}
+            mode={activeMode}
             model={comparing ? `${leftModel} e ${rightModel}` : leftModel}
             hasActiveConversation={hasActiveConversation}
             onCreateConversation={onCreateConversation}

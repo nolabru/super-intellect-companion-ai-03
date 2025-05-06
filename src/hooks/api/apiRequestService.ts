@@ -63,58 +63,11 @@ export const apiRequestService = {
                                 modelId.includes('gemini')) &&
                                streamListener !== undefined;
         
-        // Tratar o caso específico de geração de vídeo com Kling AI
-        if (mode === 'video' && modelId === 'kling-v1-5') {
-          console.log(`[apiRequestService] Iniciando geração de vídeo com Kling AI`);
-          
-          // Ensure duration is valid for Kling API (5 or 10 seconds only)
-          const validParams = { ...params };
-          
-          // Verificar se a duração é um número e se é válida (5 ou 10)
-          const currentDuration = typeof validParams?.duration === 'number' ? validParams.duration : 5;
-          const durationInSeconds = currentDuration !== 5 && currentDuration !== 10 ? "5s" : `${currentDuration}s`;
-          
-          console.log(`[apiRequestService] Usando duração: ${durationInSeconds} (convertido de ${currentDuration})`);
-          
-          // Chamar a edge function específica para Kling AI
-          const { data, error } = await supabase.functions.invoke('apiframe-kling-video', {
-            body: {
-              prompt: content,
-              params: { 
-                ...validParams,
-                duration: durationInSeconds  // Convert to string format with "s" suffix
-              },
-              generationType: "text2video"
-            },
-          });
-          
-          if (error) {
-            console.error('[apiRequestService] Erro na chamada para apiframe-kling-video:', error);
-            throw new Error(`Erro na geração de vídeo: ${error.message || 'Falha na comunicação com o servidor'}`);
-          }
-          
-          if (!data || !data.success) {
-            throw new Error(data?.error || 'Falha na geração de vídeo');
-          }
-          
-          console.log('[apiRequestService] Resposta da geração de vídeo:', data);
-          
-          // Criar uma resposta compatível com o formato esperado
-          return {
-            content: `Vídeo sendo gerado com a prompt: "${content}". Seu vídeo logo estará pronto.`,
-            files: data.mediaUrl ? [data.mediaUrl] : undefined,
-            modeSwitch: {
-              newMode: 'video',
-              newModel: modelId
-            }
-          };
-        }
-        
-        // Preparar os dados da requisição para outros modelos
+        // Preparar os dados da requisição
         const requestBody = {
-          prompt: content, // Aqui modificamos para usar 'prompt' em vez de 'content'
+          content,
           mode,
-          model: modelId,
+          modelId,
           files,
           params,
           userId, // Usar userId passado 

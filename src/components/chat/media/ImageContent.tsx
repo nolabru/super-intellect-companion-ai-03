@@ -1,9 +1,8 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ExternalLink, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 
 interface MediaActionButtonProps {
   onClick: () => void;
@@ -46,7 +45,6 @@ interface ImageContentProps {
   onSaveToGallery: () => void;
   onOpenInNewTab: () => void;
   saving: boolean;
-  alreadySaved?: boolean;
 }
 
 const ImageContent: React.FC<ImageContentProps> = ({
@@ -56,21 +54,9 @@ const ImageContent: React.FC<ImageContentProps> = ({
   isLoading,
   onSaveToGallery,
   onOpenInNewTab,
-  saving,
-  alreadySaved = false
+  saving
 }) => {
   const isMobile = useIsMobile();
-  const [saved, setSaved] = useState(alreadySaved);
-  
-  const handleSave = () => {
-    if (saved) {
-      toast.info("Esta imagem já foi salva na galeria");
-      return;
-    }
-    
-    onSaveToGallery();
-    setSaved(true);
-  };
   
   return (
     <div className="mt-2 relative">
@@ -89,9 +75,9 @@ const ImageContent: React.FC<ImageContentProps> = ({
       {!isLoading && (
         <div className={`mt-2 flex ${isMobile ? 'flex-col gap-2' : 'justify-end gap-2'}`}>
           <MediaActionButton
-            onClick={handleSave}
+            onClick={onSaveToGallery}
             icon={<Save />}
-            label={saved ? "Salva na galeria" : "Salvar na galeria"}
+            label="Salvar na galeria"
             variant="primary"
             loading={saving}
           />
