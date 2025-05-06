@@ -1,3 +1,4 @@
+
 import { useCallback, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageType } from '@/components/ChatMessage';
@@ -76,7 +77,7 @@ export function useMessageHandler(
         // Save to database and gallery
         await saveMessageToDatabase(updatedMessage, currentConversationId!);
         if (result.data.mediaUrl) {
-          await mediaGallery.saveMediaToGallery(result.data.mediaUrl, prompt, 'image', modelId);
+          await mediaGallery.saveMediaToGallery(result.data.mediaUrl, prompt, mode, modelId);
         }
         
         return true;
@@ -152,6 +153,91 @@ export function useMessageHandler(
     }
   };
 
+  // NEW: Handle video generation using apiframe-video-create-task
+  const handleVideoGeneration = async (content: string, modelId: string, params: any = {}, imageUrl?: string) => {
+    try {
+      const loadingMessageId = uuidv4();
+      mediaGenerationMessageId.current = loadingMessageId;
+      mediaType.current = 'video';
+      
+      // Add loading message
+      const loadingMessage: MessageType = {
+        id: loadingMessageId,
+        content: `Gerando vídeo com ${modelId}...`,
+        sender: 'assistant',
+        timestamp: new Date().toISOString(),
+        model: modelId,
+        mode: 'video',
+        loading: true
+      };
+      
+      setMessages(prev => [...prev, loadingMessage]);
+      
+      // Call apiframe-video-create-task directly
+      const result = await supabase.functions.invoke('apiframe-video-create-task', {
+        body: {
+          prompt: content,
+          model: modelId,
+          imageUrl: imageUrl, // Pass image URL if this is an image-to-video task
+          params: params
+        }
+      });
+      
+      if (result.error) {
+        throw new Error(`Erro ao criar tarefa de vídeo: ${result.error.message || 'Erro desconhecido'}`);
+      }
+      
+      console.log('[useMessageHandler] Video task created:', result.data);
+      
+      if (!result.data.success || !result.data.taskId) {
+        throw new Error('Falha ao iniciar geração de vídeo: Resposta inválida do servidor');
+      }
+      
+      // Start polling for task status
+      pollTaskStatus(result.data.taskId, loadingMessageId, modelId, 'video', content)
+        .catch(err => {
+          console.error('[useMessageHandler] Error in video generation:', err);
+          toast.error('Erro ao gerar vídeo', {
+            description: err instanceof Error ? err.message : 'Erro desconhecido'
+          });
+        });
+      
+      // Deduct tokens
+      if (user?.id) {
+        try {
+          await supabase.functions.invoke('user-tokens', {
+            body: {
+              action: 'consume',
+              model_id: modelId,
+              mode: 'video'
+            }
+          });
+        } catch (err) {
+          console.error('[useMessageHandler] Error consuming tokens for video:', err);
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('[useMessageHandler] Error handling video generation:', err);
+      toast.error('Erro ao iniciar geração de vídeo', {
+        description: err instanceof Error ? err.message : 'Erro desconhecido'
+      });
+      
+      setMessages(prev => [...prev, {
+        id: uuidv4(),
+        content: `Erro ao gerar vídeo: ${err instanceof Error ? err.message : 'Erro desconhecido'}`,
+        sender: 'assistant',
+        timestamp: new Date().toISOString(),
+        model: modelId,
+        mode: 'video',
+        error: true
+      }]);
+      
+      return false;
+    }
+  };
+
   const sendMessage = useCallback(async (
     content: string,
     mode: ChatMode = 'text',
@@ -209,8 +295,13 @@ export function useMessageHandler(
       
       let modeSwitch = null;
       
+      // NEW: Check if this is a video generation request
+      if (mode === 'video' && modelId.includes('kling')) {
+        console.log('[useMessageHandler] Handling video generation directly');
+        await handleVideoGeneration(content, modelId, params);
+      }
       // Handle image generation for Ideogram V2 and Midjourney
-      if (mode === 'image' && (modelId === 'ideogram-v2' || modelId === 'midjourney')) {
+      else if (mode === 'image' && (modelId === 'ideogram-v2' || modelId === 'midjourney')) {
         try {
           const loadingMessageId = uuidv4();
           mediaGenerationMessageId.current = loadingMessageId;
