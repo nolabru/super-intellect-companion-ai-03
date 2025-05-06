@@ -2,12 +2,15 @@ import { useCallback, useState } from 'react';
 import { useMediaServiceAdapter } from '@/adapters/mediaServiceAdapter';
 import { toast } from 'sonner';
 import { Task } from '@/hooks/useSimplifiedTaskManager';
+import { withRetry } from '@/utils/retryOperations';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnifiedMediaGenerationOptions {
   autoRetry?: boolean;
   maxRetries?: number;
   retryDelay?: number;
   showToasts?: boolean;
+  timeoutDuration?: number;
   onProgress?: (progress: number) => void;
   onComplete?: (mediaUrl: string) => void;
   onError?: (error: string) => void;
@@ -22,6 +25,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     maxRetries = 2,
     retryDelay = 2000,
     showToasts = true,
+    timeoutDuration = 600000, // 10 minutes timeout (default)
     onProgress,
     onComplete,
     onError
@@ -30,6 +34,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [currentTask, setCurrentTask] = useState<Task | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [timedOut, setTimedOut] = useState<boolean>(false);
   const [generatedMedia, setGeneratedMedia] = useState<{
     type: 'image' | 'video' | 'audio';
     url: string;
@@ -58,6 +63,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       
       if (task.status === 'completed' && task.result) {
         setIsGenerating(false);
+        setTimedOut(false);
         setGeneratedMedia({
           type: task.type as any,
           url: task.result
@@ -71,12 +77,24 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
           onComplete(task.result);
         }
       } else if (task.status === 'failed' || task.status === 'canceled') {
-        setIsGenerating(false);
+        const isTimeout = task.error?.includes('timed out');
         
-        if (task.status === 'failed' && autoRetry && 
+        if (isTimeout) {
+          setTimedOut(true);
+          
+          if (showToasts) {
+            toast.warning('Video generation is taking longer than expected', {
+              description: 'You can check status again or wait for it to complete'
+            });
+          }
+        } else {
+          setIsGenerating(false);
+        }
+        
+        if (task.status === 'failed' && !isTimeout && autoRetry && 
             task.metadata?.retryCount !== undefined && 
             task.metadata.retryCount < maxRetries) {
-          // Auto retry failed tasks
+          // Auto retry failed tasks (not for timeouts)
           setTimeout(() => {
             if (showToasts) {
               toast.info(`Retry attempt ${(task.metadata?.retryCount || 0) + 1}/${maxRetries}`);
@@ -84,7 +102,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
             
             retryGeneration(task as unknown as Task);
           }, retryDelay);
-        } else if (task.status === 'failed') {
+        } else if (task.status === 'failed' && !isTimeout) {
           if (showToasts) {
             toast.error(`Failed to generate ${task.type}`, {
               description: task.error || 'Unknown error'
@@ -112,6 +130,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     
     setCurrentTaskId(newTaskId);
     setIsGenerating(true);
+    setTimedOut(false);
     
     const newTask = mediaService.getTaskStatus(newTaskId);
     
@@ -124,6 +143,106 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
       };
     }
   }, [mediaService]);
+  
+  // New method to check status of a timed out task
+  const checkTimedOutTask = useCallback(async () => {
+    if (!currentTaskId || !currentTask) return;
+    
+    // Get the API Frame task ID from the currentTask metadata
+    const apiframeTaskId = currentTask.metadata?.apiframeTaskId;
+    if (!apiframeTaskId) return;
+    
+    setIsGenerating(true);
+    
+    try {
+      // Use withRetry to make the check more reliable
+      const { data, error } = await withRetry(
+        () => supabase.functions.invoke('apiframe-task-status', {
+          body: { taskId: apiframeTaskId }
+        }),
+        { maxRetries: 3, initialDelay: 1000 }
+      );
+      
+      if (error) {
+        console.error('[useUnifiedMediaGeneration] Error checking timed out task:', error);
+        throw error;
+      }
+      
+      if (data.status === 'completed' && data.mediaUrl) {
+        // Task completed successfully after timeout
+        setIsGenerating(false);
+        setTimedOut(false);
+        setGeneratedMedia({
+          type: currentTask.type as any,
+          url: data.mediaUrl
+        });
+        
+        if (showToasts) {
+          toast.success(`${currentTask.type.charAt(0).toUpperCase() + currentTask.type.slice(1)} generated successfully`);
+        }
+        
+        if (onComplete) {
+          onComplete(data.mediaUrl);
+        }
+        
+        // Update the task status
+        mediaService.updateTask && mediaService.updateTask(currentTaskId, {
+          status: 'completed',
+          progress: 100,
+          result: data.mediaUrl
+        });
+        
+        return true;
+      } else if (data.status === 'processing') {
+        // Still processing
+        if (showToasts) {
+          toast.info('Video still processing', {
+            description: `Processing: ${data.percentage || 0}% complete`
+          });
+        }
+        
+        // Update the task status
+        mediaService.updateTask && mediaService.updateTask(currentTaskId, {
+          status: 'processing',
+          progress: data.percentage || 50
+        });
+        
+        return false;
+      } else {
+        // Failed or unknown status
+        setIsGenerating(false);
+        
+        if (showToasts) {
+          toast.error(`Failed to generate ${currentTask.type}`, {
+            description: data.error || 'Unknown error'
+          });
+        }
+        
+        if (onError) {
+          onError(data.error || 'Unknown error');
+        }
+        
+        return false;
+      }
+    } catch (err) {
+      console.error('[useUnifiedMediaGeneration] Error in checkTimedOutTask:', err);
+      setIsGenerating(false);
+      
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error checking status';
+      
+      if (showToasts) {
+        toast.error('Error checking video status', {
+          description: errorMsg
+        });
+      }
+      
+      if (onError) {
+        onError(errorMsg);
+      }
+      
+      return false;
+    }
+  }, [currentTaskId, currentTask, mediaService, showToasts, onComplete, onError]);
 
   const generateMedia = useCallback((
     type: 'image' | 'video' | 'audio',
@@ -133,6 +252,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     referenceUrl?: string
   ) => {
     setIsGenerating(true);
+    setTimedOut(false);
     setGeneratedMedia(null);
     
     const taskId = mediaService.generateMedia(
@@ -169,6 +289,7 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     
     if (result) {
       setIsGenerating(false);
+      setTimedOut(false);
       
       if (showToasts) {
         toast.info('Generation canceled');
@@ -188,9 +309,11 @@ export function useUnifiedMediaGeneration(options: UnifiedMediaGenerationOptions
     generateAudio: (prompt: string, model: string, params?: any, referenceUrl?: string) => 
       generateMedia('audio', prompt, model, params, referenceUrl),
     cancelGeneration,
+    checkTimedOutTask,
     
     // State
     isGenerating,
+    timedOut,
     currentTask,
     generatedMedia,
     

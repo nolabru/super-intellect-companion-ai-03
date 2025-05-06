@@ -24,7 +24,7 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
         if (onTimeout) {
           onTimeout();
         }
-      }, 180000); // 3 minute timeout
+      }, 600000); // 10 minute timeout (increased from 3 minutes)
 
       return () => clearTimeout(timeoutId);
     }
@@ -43,8 +43,8 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
         </p>
         <p className="text-sm text-inventu-gray mt-2 text-center">
           {isKliginVideo
-            ? "O processo pode levar entre 30 segundos e 3 minutos dependendo da complexidade. O processamento ocorre nos servidores da Kligin e estamos aguardando a resposta."
-            : "Isso pode levar um momento. Por favor, aguarde."}
+            ? "O processo pode levar entre 30 segundos e 10 minutos dependendo da complexidade. O processamento ocorre nos servidores da Kligin e estamos aguardando a resposta."
+            : "Isso pode levar até 10 minutos para vídeos mais complexos. Por favor, aguarde."}
         </p>
         <div className="mt-4 h-2 w-full bg-inventu-darker rounded-full overflow-hidden">
           <div 

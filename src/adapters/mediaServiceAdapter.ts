@@ -121,7 +121,7 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
       });
       
       // Start polling for status updates
-      const maxPolls = 60; // Maximum number of polls (10 minutes at 10s intervals)
+      const maxPolls = 120; // Maximum number of polls (20 minutes at 10s intervals, increased from 10 minutes)
       let pollCount = 0;
       
       // Run initial poll immediately for faster response
@@ -145,7 +145,7 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
             const result = await checkVideoTaskStatus(data.taskId);
             
             // Update progress based on poll count if no percentage available
-            const estimatedProgress = Math.min(15 + (pollCount * 1.4), 95);
+            const estimatedProgress = Math.min(15 + (pollCount * 0.7), 95); // Adjusted to spread over 20 minutes
             
             // Update task status
             taskManager.updateTask(task.id, {
@@ -171,7 +171,7 @@ export function useMediaServiceAdapter(options: MediaServiceOptions = { service:
             // If reached max polls, time out
             else if (pollCount >= maxPolls) {
               clearInterval(pollInterval);
-              reject(new Error('Video generation timed out after 10 minutes'));
+              reject(new Error('Video generation timed out after 20 minutes'));
             }
           } catch (error) {
             console.error('[mediaServiceAdapter] Error polling video task status:', error);
