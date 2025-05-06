@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -79,19 +78,19 @@ const MediaGallery: React.FC = () => {
       // If enabled, fetch additional items from piapi_tasks that are not in gallery
       try {
         // Select only the columns we need
-        const {
-          data: piapiTasks,
-          error: piapiError
-        } = await supabase.from('piapi_tasks')
+        const piapiResponse = await supabase.from('piapi_tasks')
           .select('id, media_url, media_type, created_at, prompt, status, user_id')
           .eq('status', 'completed')
           .order('created_at', { ascending: false });
         
-        if (!piapiError && piapiTasks && piapiTasks.length > 0) {
+        if (piapiResponse.error) {
+          // Log the error but continue execution
+          console.error('Error querying piapi_tasks:', piapiResponse.error);
+        } else if (piapiResponse.data && piapiResponse.data.length > 0) {
           // Filter out items that might already be in the gallery
           const existingUrls = new Set(allMediaItems.map(item => item.media_url));
           
-          const formattedPiapiMedia = piapiTasks
+          const formattedPiapiMedia = piapiResponse.data
             .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
             .map(item => ({
               id: item.id,
@@ -117,19 +116,19 @@ const MediaGallery: React.FC = () => {
       // Fetch additional items from apiframe_tasks that are not in gallery
       try {
         // Select only the columns we need
-        const {
-          data: apiframeTasks,
-          error: apiframeError
-        } = await supabase.from('apiframe_tasks')
+        const apiframeResponse = await supabase.from('apiframe_tasks')
           .select('task_id, media_url, media_type, created_at, prompt, status, user_id')
           .eq('status', 'finished')
           .order('created_at', { ascending: false });
         
-        if (!apiframeError && apiframeTasks && apiframeTasks.length > 0) {
+        if (apiframeResponse.error) {
+          // Log the error but continue execution
+          console.error('Error querying apiframe_tasks:', apiframeResponse.error);
+        } else if (apiframeResponse.data && apiframeResponse.data.length > 0) {
           // Filter out items that might already be in the gallery
           const existingUrls = new Set(allMediaItems.map(item => item.media_url));
           
-          const formattedApiframeMedia = apiframeTasks
+          const formattedApiframeMedia = apiframeResponse.data
             .filter(item => item.media_url && !existingUrls.has(item.media_url) && item.user_id === user.id)
             .map(item => ({
               id: item.task_id,

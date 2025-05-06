@@ -176,7 +176,7 @@ serve(async (req) => {
           media_url: mediaUrl,
           media_type: taskData.media_type,
           prompt: taskData.prompt || "Mídia gerada pela PiAPI",
-          user_id: taskData.user_id || "unknown",
+          user_id: taskData.user_id || null, // Changed from "unknown" to null if user_id is missing
           model_id: taskData.model || "unknown", 
           metadata: {
             source: "piapi",
