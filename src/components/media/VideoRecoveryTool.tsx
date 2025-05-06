@@ -1,4 +1,5 @@
 
+// Fix the alert variant type issue
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -287,7 +288,10 @@ const VideoRecoveryTool: React.FC<VideoRecoveryToolProps> = ({
             </div>
             
             {videoUrl && (
-              <Alert variant={isValidUrl === true ? "success" : isValidUrl === false ? "destructive" : "default"}>
+              <Alert 
+                variant={isValidUrl === true ? "default" : "destructive"}
+                className={isValidUrl === true ? "bg-green-900/20 border-green-700/30" : undefined}
+              >
                 <div className="flex items-center">
                   {isValidUrl === true && <CheckCircle2 className="h-4 w-4 mr-2" />}
                   {isValidUrl === false && <XCircle className="h-4 w-4 mr-2" />}

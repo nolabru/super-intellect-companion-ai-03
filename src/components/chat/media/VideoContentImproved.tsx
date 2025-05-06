@@ -3,9 +3,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, ExternalLink, Copy, RefreshCw, Link as LinkIcon } from 'lucide-react';
 import VideoGenerationRetry from './VideoGenerationRetry';
-import VideoLoading from '../VideoLoading';
 import { toast } from 'sonner';
 import { recoverVideo, registerRecoveredVideo, isVideoUrlValid } from '@/utils/videoRecoveryUtils';
+
+// Create a simple VideoLoading component to fix the TypeScript error
+const VideoLoading: React.FC = () => {
+  return (
+    <div className="w-full aspect-video rounded-lg bg-black/20 flex items-center justify-center">
+      <RefreshCw className="h-6 w-6 text-white/50 animate-spin" />
+    </div>
+  );
+};
 
 interface VideoContentProps {
   src: string;

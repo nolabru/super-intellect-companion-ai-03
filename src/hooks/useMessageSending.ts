@@ -39,7 +39,7 @@ export function useMessageSending(
   const messageService = createMessageService(
     apiService,
     mediaGallery,
-    setMessages,
+    (newMessages: MessageType[]) => setMessages(newMessages),
     setApiKeyError
   );
   

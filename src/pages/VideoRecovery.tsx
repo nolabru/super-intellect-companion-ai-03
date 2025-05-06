@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useChatState } from '@/hooks/useChatState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Info, CheckCircle, Copy, ExternalLink, Tool } from 'lucide-react';
+import { ArrowLeft, Info, CheckCircle, Copy, ExternalLink, Wrench } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -160,7 +160,7 @@ const VideoRecoveryPage: React.FC = () => {
             <Card className="p-6">
               <div className="text-center py-8">
                 <div className="mx-auto w-12 h-12 rounded-full bg-blue-900/20 flex items-center justify-center mb-4">
-                  <Tool className="h-6 w-6 text-blue-400" />
+                  <Wrench className="h-6 w-6 text-blue-400" />
                 </div>
                 <h3 className="text-lg font-medium">Funcionalidade em Desenvolvimento</h3>
                 <p className="text-gray-400 mt-2 max-w-md mx-auto">
