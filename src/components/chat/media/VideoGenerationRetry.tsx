@@ -1,15 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface VideoGenerationRetryProps {
   onRetry: () => void;
   message?: string;
+  isChecking?: boolean;
 }
 
 const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
   onRetry,
+  isChecking = false,
   message = "O tempo de geração do vídeo excedeu o limite. Não se preocupe, o vídeo pode ainda estar sendo processado no servidor."
 }) => {
   return (
@@ -25,9 +27,10 @@ const VideoGenerationRetry: React.FC<VideoGenerationRetryProps> = ({
         variant="outline"
         className="mt-4 flex items-center gap-2"
         onClick={onRetry}
+        disabled={isChecking}
       >
-        <RefreshCw className="h-4 w-4" />
-        Verificar novamente
+        <RefreshCw className={`h-4 w-4 ${isChecking ? 'animate-spin' : ''}`} />
+        {isChecking ? 'Verificando...' : 'Verificar novamente'}
       </Button>
     </div>
   );

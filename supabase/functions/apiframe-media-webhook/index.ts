@@ -20,6 +20,8 @@ serve(async (req) => {
   );
 
   try {
+    console.log("[apiframe-media-webhook] Received webhook call");
+    
     // Parse the request body
     let payload;
     try {
@@ -54,9 +56,11 @@ serve(async (req) => {
       // Standard format
       if (["completed", "succeeded", "success", "done", "finished"].includes(payload.status.toLowerCase())) {
         status = "completed";
+        console.log(`[apiframe-media-webhook] Task ${taskId} is completed`);
       } else if (["failed", "failure", "error"].includes(payload.status.toLowerCase())) {
         status = "failed";
         error = payload.error || payload.message || "Task failed";
+        console.log(`[apiframe-media-webhook] Task ${taskId} has failed with error: ${error}`);
       }
 
       // Extract media URL from various possible locations
@@ -74,12 +78,15 @@ serve(async (req) => {
           mediaUrl = payload.assets.image;
         }
       }
+      
+      if (mediaUrl) {
+        console.log(`[apiframe-media-webhook] Media URL found: ${mediaUrl.substring(0, 100)}...`);
+      } else {
+        console.log(`[apiframe-media-webhook] No media URL found in payload`);
+      }
     }
 
     console.log(`[apiframe-media-webhook] Processing task ${taskId} with status: ${status}`);
-    if (mediaUrl) {
-      console.log(`[apiframe-media-webhook] Media URL: ${mediaUrl.substring(0, 100)}...`);
-    }
 
     // Update the task in the database
     const { error: updateError } = await supabaseClient

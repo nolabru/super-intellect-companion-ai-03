@@ -21,7 +21,7 @@ serve(async (req) => {
   }
 
   try {
-    // FIXED: Use the same environment variable names as the other functions
+    // Use the same environment variable names as the other functions
     const APIFRAME_API_KEY = Deno.env.get("API_FRAME_KEY") || Deno.env.get("APIFRAME_API_KEY");
     if (!APIFRAME_API_KEY) {
       console.error("[apiframe-task-status] API_FRAME_KEY or APIFRAME_API_KEY not configured");
@@ -34,7 +34,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Extract taskId from request body
+    // Extract taskId and forceCheck from request body
     let requestBody;
     try {
       requestBody = await req.json();
@@ -46,7 +46,7 @@ serve(async (req) => {
       );
     }
     
-    const { taskId } = requestBody;
+    const { taskId, forceCheck = false } = requestBody;
 
     if (!taskId) {
       console.error("[apiframe-task-status] Task ID is required");
@@ -56,36 +56,46 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[apiframe-task-status] Checking status for task: ${taskId}`);
+    console.log(`[apiframe-task-status] Checking status for task: ${taskId}, forceCheck: ${forceCheck}`);
 
-    // First check database cache
-    const { data: taskData, error: dbError } = await supabaseClient
-      .from("apiframe_tasks")
-      .select("*")
-      .eq("task_id", taskId)
-      .maybeSingle();  // Using maybeSingle instead of single for better error handling
+    // First check database cache only if we're not forcing a check
+    let taskData = null;
+    let dbError = null;
 
-    if (dbError) {
-      console.error(`[apiframe-task-status] Error fetching task from database:`, dbError);
-    } else if (taskData) {
-      console.log(`[apiframe-task-status] Found task record:`, {
-        id: taskData.task_id,
-        status: taskData.status,
-        hasUrl: !!taskData.media_url
-      });
-      
-      // Return cached result if task is in final state
-      if (taskData.status === 'completed' || taskData.status === 'failed') {
-        return new Response(
-          JSON.stringify({
-            taskId: taskData.task_id,
-            status: taskData.status,
-            mediaUrl: taskData.media_url,
-            error: taskData.error
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    if (!forceCheck) {
+      const result = await supabaseClient
+        .from("apiframe_tasks")
+        .select("*")
+        .eq("task_id", taskId)
+        .maybeSingle();
+        
+      taskData = result.data;
+      dbError = result.error;
+
+      if (dbError) {
+        console.error(`[apiframe-task-status] Error fetching task from database:`, dbError);
+      } else if (taskData) {
+        console.log(`[apiframe-task-status] Found task record:`, {
+          id: taskData.task_id,
+          status: taskData.status,
+          hasUrl: !!taskData.media_url
+        });
+        
+        // Return cached result if task is in final state and we're not forcing a check
+        if ((taskData.status === 'completed' || taskData.status === 'failed') && !forceCheck) {
+          return new Response(
+            JSON.stringify({
+              taskId: taskData.task_id,
+              status: taskData.status,
+              mediaUrl: taskData.media_url,
+              error: taskData.error
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
+    } else {
+      console.log(`[apiframe-task-status] Force check requested, bypassing database cache`);
     }
 
     // Try each endpoint until one works
@@ -142,6 +152,22 @@ serve(async (req) => {
     // If no endpoints worked
     if (!successfulEndpoint) {
       console.error(`[apiframe-task-status] All API endpoints failed. Errors:`, errorMessages.join('; '));
+      
+      // Return the last known status from database if available
+      if (taskData) {
+        console.log(`[apiframe-task-status] Falling back to database status due to API failure`);
+        return new Response(
+          JSON.stringify({
+            taskId: taskData.task_id,
+            status: taskData.status,
+            mediaUrl: taskData.media_url,
+            error: taskData.error,
+            apiError: `Failed to check task status: ${errorMessages.join('; ')}`
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       throw new Error(`Failed to check task status: ${errorMessages.join('; ')}`);
     }
 
@@ -203,36 +229,40 @@ serve(async (req) => {
         status = "pending";
       }
 
-      // Update database if task exists
-      if (taskData) {
-        const { error: updateError } = await supabaseClient
-          .from("apiframe_tasks")
-          .update({
-            status,
-            media_url: mediaUrl,
-            error: errorMessage,
-            updated_at: new Date().toISOString()
-          })
-          .eq("task_id", taskId);
+      // Always update database regardless of previous state
+      const { error: updateError } = await supabaseClient
+        .from("apiframe_tasks")
+        .update({
+          status,
+          media_url: mediaUrl,
+          error: errorMessage,
+          updated_at: new Date().toISOString()
+        })
+        .eq("task_id", taskId);
 
-        if (updateError) {
-          console.error(`[apiframe-task-status] Error updating task:`, updateError);
-        }
+      if (updateError) {
+        console.error(`[apiframe-task-status] Error updating task:`, updateError);
       } else {
-        // Insert a new record if it doesn't exist
+        console.log(`[apiframe-task-status] Successfully updated task status to ${status}`);
+      }
+      
+      // If task just completed, insert media ready event
+      if (status === 'completed' && mediaUrl && (!taskData || taskData.status !== 'completed')) {
+        console.log(`[apiframe-task-status] Creating media_ready_event for newly completed task`);
+        
         const { error: insertError } = await supabaseClient
-          .from("apiframe_tasks")
+          .from("media_ready_events")
           .insert({
             task_id: taskId,
-            status,
             media_url: mediaUrl,
-            error: errorMessage,
-            model: 'midjourney',
-            media_type: 'image'
+            media_type: 'video',
+            model: apiData.model || 'apiframe-video'
           });
           
         if (insertError) {
-          console.error(`[apiframe-task-status] Error inserting new task:`, insertError);
+          console.error(`[apiframe-task-status] Error inserting media_ready_event:`, insertError);
+        } else {
+          console.log(`[apiframe-task-status] Successfully created media_ready_event`);
         }
       }
     }
@@ -252,7 +282,7 @@ serve(async (req) => {
     console.error("[apiframe-task-status] Error:", error);
     return new Response(
       JSON.stringify({ 
-        error: error.message || "Unknown error",
+        error: error instanceof Error ? error.message : "Unknown error",
         details: "Check the edge function logs for more information"
       }),
       { 

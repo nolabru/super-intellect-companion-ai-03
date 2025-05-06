@@ -6,6 +6,7 @@ interface VideoLoadingProps {
   isLoading: boolean;
   isVideo: boolean;
   model: string;
+  progress?: number;
   onTimeout?: () => void;
 }
 
@@ -13,6 +14,7 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
   isLoading, 
   isVideo, 
   model,
+  progress,
   onTimeout 
 }) => {
   // Add timeout effect for video loading
@@ -32,6 +34,7 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
 
   if (isLoading && isVideo) {
     const isKliginVideo = model === 'kligin-video';
+    const hasProgress = typeof progress === 'number' && progress > 0;
     
     return (
       <div className="flex flex-col items-center justify-center p-6 my-4 bg-inventu-darker/20 rounded-lg border border-inventu-gray/20">
@@ -47,14 +50,24 @@ const VideoLoading: React.FC<VideoLoadingProps> = ({
             : "Isso pode levar até 10 minutos para vídeos mais complexos. Por favor, aguarde."}
         </p>
         <div className="mt-4 h-2 w-full bg-inventu-darker rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-inventu-blue opacity-80"
-            style={{
-              width: '30%',
-              animation: 'progressAnimation 2s ease-in-out infinite'
-            }}
-          ></div>
+          {hasProgress ? (
+            <div 
+              className="h-full bg-inventu-blue opacity-80 transition-all duration-500"
+              style={{ width: `${Math.min(100, progress)}%` }}
+            ></div>
+          ) : (
+            <div 
+              className="h-full bg-inventu-blue opacity-80"
+              style={{
+                width: '30%',
+                animation: 'progressAnimation 2s ease-in-out infinite'
+              }}
+            ></div>
+          )}
         </div>
+        {hasProgress && (
+          <p className="text-xs text-inventu-gray mt-1">{Math.round(progress)}% concluído</p>
+        )}
         <style>
           {`
             @keyframes progressAnimation {
