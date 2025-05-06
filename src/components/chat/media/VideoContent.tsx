@@ -4,8 +4,10 @@ import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
 import VideoGenerationRetry from './VideoGenerationRetry';
 import VideoLoading from '../VideoLoading';
 import { Button } from '@/components/ui/button';
-import { Save, ExternalLink } from 'lucide-react';
+import { Save, ExternalLink, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { recoverVideo, registerRecoveredVideo, isVideoUrlValid } from '@/utils/videoRecoveryUtils';
+import { withRetry } from '@/utils/retryOperations';
 
 interface VideoContentProps {
   src?: string;
@@ -40,6 +42,8 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const [isDbCheckActive, setIsDbCheckActive] = useState(false);
   const [persistentLoading, setPersistentLoading] = useState(false);
   const [authErrors, setAuthErrors] = useState(0);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [videoRecovered, setVideoRecovered] = useState(false);
   
   const { 
     checkTimedOutTask, 
@@ -61,6 +65,29 @@ const VideoContent: React.FC<VideoContentProps> = ({
       toast.success("Vídeo concluído com sucesso!");
     }
   });
+
+  // Verificação de recuperação de vídeos completamente gerados
+  useEffect(() => {
+    // Só executar se temos uma URL de vídeo que não foi carregada pela recuperação manual
+    if (videoUrl && !videoRecovered && !isRecovering) {
+      const verifyAndRecoverVideo = async () => {
+        try {
+          // Verificar se a URL é válida
+          const isValid = await isVideoUrlValid(videoUrl);
+          
+          if (isValid && taskId) {
+            console.log(`[VideoContent] Recuperando informações para vídeo válido: ${videoUrl}`);
+            // Registrar silenciosamente no banco de dados
+            await recoverVideo(videoUrl, taskId);
+          }
+        } catch (error) {
+          console.error('[VideoContent] Erro ao verificar vídeo:', error);
+        }
+      };
+      
+      verifyAndRecoverVideo();
+    }
+  }, [videoUrl, taskId, videoRecovered, isRecovering]);
   
   // Enhanced continuous checking system for timed out videos
   useEffect(() => {
@@ -197,12 +224,167 @@ const VideoContent: React.FC<VideoContentProps> = ({
     }
   };
 
+  // Nova função para tentar recuperar o vídeo diretamente pela URL
+  const handleRecoverVideo = async () => {
+    if (!taskId) {
+      toast.error("Não é possível recuperar um vídeo sem o ID da tarefa");
+      return;
+    }
+    
+    setIsRecovering(true);
+    toast.loading("Tentando recuperar vídeo...");
+    
+    try {
+      // Tentar recuperação com retry
+      const result = await withRetry(
+        async () => {
+          // Se já temos uma URL, tentar usá-la diretamente
+          if (src) {
+            const recovered = await recoverVideo(src, taskId);
+            if (recovered.success) {
+              return recovered;
+            }
+          }
+          
+          // Se não temos URL ou falhou, criar possíveis URLs baseadas no taskId
+          // Essas são URLs comuns de serviços de geração de vídeo
+          const possibleUrls = [
+            `https://storage.googleapis.com/piapi-videos/${taskId}.mp4`,
+            `https://storage.googleapis.com/piapi-results/${taskId}.mp4`,
+            `https://assets.midjourney.video/${taskId}.mp4`,
+            `https://storage.googleapis.com/tech-ai-videos/${taskId}.mp4`,
+            `https://api.apiframe.com/output/${taskId}.mp4`
+          ];
+          
+          // Tentar cada uma das URLs possíveis
+          for (const url of possibleUrls) {
+            console.log(`[VideoContent] Tentando recuperar de URL: ${url}`);
+            const result = await recoverVideo(url, taskId);
+            if (result.success) {
+              return result;
+            }
+          }
+          
+          throw new Error("Não foi possível encontrar o vídeo em nenhuma URL conhecida");
+        },
+        {
+          maxRetries: 3,
+          initialDelay: 1000,
+          useExponentialBackoff: true,
+          logRetries: true
+        }
+      );
+      
+      // Se recuperou com sucesso
+      if (result.success && result.url) {
+        toast.dismiss();
+        toast.success("Vídeo recuperado com sucesso!");
+        setVideoUrl(result.url);
+        setVideoRecovered(true);
+        setHasTimedOut(false);
+        setPersistentLoading(false);
+        
+        if (onVideoReady) onVideoReady(result.url);
+      } else {
+        toast.dismiss();
+        toast.error("Não foi possível recuperar o vídeo");
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Erro ao recuperar vídeo", {
+        description: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+      console.error('[VideoContent] Erro na recuperação de vídeo:', error);
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
+  // Função para recuperar vídeo por URL direta especificada pelo usuário
+  const handleRecoverByUrl = async (url: string) => {
+    if (!url) return;
+    
+    setIsRecovering(true);
+    toast.loading("Verificando URL do vídeo...");
+    
+    try {
+      // Verificar se é uma URL válida
+      const isValid = await isVideoUrlValid(url);
+      
+      if (isValid) {
+        // Se tem taskId, registrar no banco
+        if (taskId) {
+          await recoverVideo(url, taskId);
+        }
+        
+        // Atualizar interface
+        toast.dismiss();
+        toast.success("Vídeo recuperado com sucesso!");
+        setVideoUrl(url);
+        setVideoRecovered(true);
+        setHasTimedOut(false);
+        setPersistentLoading(false);
+        
+        if (onVideoReady) onVideoReady(url);
+      } else {
+        toast.dismiss();
+        toast.error("URL de vídeo inválida ou inacessível");
+      }
+    } catch (error) {
+      toast.dismiss();
+      toast.error("Erro ao verificar URL do vídeo", {
+        description: error instanceof Error ? error.message : "Erro desconhecido"
+      });
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
   const handleVideoLoad = () => {
     if (onLoad) onLoad();
   };
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     if (onError) onError(e);
+  };
+
+  // Renderizar botão de recuperação quando o vídeo tiver problemas de carregamento
+  const renderRecoveryOptions = () => {
+    return (
+      <div className="mt-4 space-y-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRecoverVideo}
+          disabled={isRecovering}
+          className="w-full"
+        >
+          <RefreshCcw className="h-4 w-4 mr-2" />
+          {isRecovering ? 'Tentando recuperar...' : 'Tentar recuperar vídeo'}
+        </Button>
+        
+        <div className="flex gap-2 mt-2">
+          <input 
+            type="text"
+            placeholder="Cole uma URL de vídeo diretamente..."
+            className="flex-1 px-3 py-2 text-sm border border-border rounded-md bg-background"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleRecoverByUrl((e.target as HTMLInputElement).value);
+              }
+            }}
+          />
+          <Button size="sm" onClick={(e) => {
+            const input = (e.target as HTMLElement).closest('div')?.querySelector('input');
+            if (input) {
+              handleRecoverByUrl(input.value);
+            }
+          }}>
+            Verificar
+          </Button>
+        </div>
+      </div>
+    );
   };
   
   // Show a special message when authentication errors occur
@@ -225,6 +407,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
         attempts={checkAttempts}
         autoRetry={true}
         autoRetryInterval={10000}
+        additionalContent={renderRecoveryOptions()}
       />
     );
   }
@@ -278,6 +461,26 @@ const VideoContent: React.FC<VideoContentProps> = ({
               >
                 <ExternalLink className="h-4 w-4 mr-1" />
                 Abrir
+              </Button>
+            )}
+
+            {/* Adicionar botão para recuperar no banco se foi recuperado manualmente */}
+            {videoRecovered && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  if (videoUrl) {
+                    const success = await registerRecoveredVideo(videoUrl);
+                    if (success) {
+                      toast.success("Vídeo registrado na galeria com sucesso!");
+                    }
+                  }
+                }}
+                title="Registrar vídeo recuperado"
+              >
+                <Save className="h-4 w-4 mr-1" />
+                Registrar
               </Button>
             )}
           </div>
