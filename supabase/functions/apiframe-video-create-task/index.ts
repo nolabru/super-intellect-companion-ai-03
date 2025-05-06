@@ -7,8 +7,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// API Frame endpoints
+// API Frame endpoint - Updated to use the correct endpoint
 const APIFRAME_BASE_URL = "https://api.apiframe.pro";
+const APIFRAME_ENDPOINT = "/kling-imagine";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -59,30 +60,28 @@ serve(async (req) => {
     const webhookUrl = `${supabaseUrl}/functions/v1/apiframe-media-webhook`;
     console.log(`[apiframe-video-create-task] Using webhook URL: ${webhookUrl}`);
 
-    // Configure API request based on the model type
-    let endpoint: string;
-    let payload: Record<string, any>;
+    // Configure unified payload for the kling-imagine endpoint
+    const endpoint = `${APIFRAME_BASE_URL}${APIFRAME_ENDPOINT}`;
+    let payload: Record<string, any> = {
+      webhook_url: webhookUrl
+    };
     
-    // Determine which API Frame endpoint to use based on the model
-    if (model === 'kling-text') {
-      endpoint = `${APIFRAME_BASE_URL}/kling/text`;
+    // Determine request type based on model and available inputs
+    if (model === 'kling-image' && imageUrl) {
+      // Image-to-video
       payload = {
-        prompt: prompt,
-        webhook_url: webhookUrl
-      };
-    } else if (model === 'kling-image') {
-      endpoint = `${APIFRAME_BASE_URL}/kling/image`;
-      payload = {
+        ...payload,
+        type: "image", // Specify type as image
         image_url: imageUrl,
-        prompt: prompt || "Generate video from this image",
-        webhook_url: webhookUrl
+        prompt: prompt || "Generate video from this image"
       };
     } else {
-      console.error(`[apiframe-video-create-task] Unsupported model: ${model}`);
-      return new Response(
-        JSON.stringify({ error: "Unsupported video model" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+      // Text-to-video (default)
+      payload = {
+        ...payload,
+        type: "text", // Specify type as text
+        prompt: prompt
+      };
     }
     
     // Add optional parameters if provided
