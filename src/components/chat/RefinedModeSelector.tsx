@@ -10,12 +10,14 @@ interface RefinedModeSelectorProps {
   activeMode: ChatMode;
   onChange: (mode: ChatMode) => void;
   className?: string;
+  compact?: boolean;
 }
 
 const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({ 
   activeMode, 
   onChange, 
-  className 
+  className,
+  compact
 }) => {
   const isTouchDevice = useTouchDevice();
   

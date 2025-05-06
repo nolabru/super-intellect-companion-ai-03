@@ -27,15 +27,16 @@ const ParametersManager: React.FC<ParametersManagerProps> = ({
       case 'image':
         return (
           <ImageParameters 
-            onChange={handleParamChange} 
-            params={params} 
+            model="ideogram-v2"
+            onParamsChange={handleParamChange} 
+            initialParams={params} 
           />
         );
       case 'video':
         return (
           <VideoParameters 
-            onChange={handleParamChange} 
-            params={params} 
+            onParamsChange={handleParamChange} 
+            initialParams={params} 
           />
         );
       case 'audio':
@@ -43,6 +44,13 @@ const ParametersManager: React.FC<ParametersManagerProps> = ({
           <AudioParameters 
             onChange={handleParamChange} 
             params={params} 
+          />
+        );
+      case 'music':
+        return (
+          <MusicParameters 
+            onChange={handleParamChange}
+            params={params}
           />
         );
       default:

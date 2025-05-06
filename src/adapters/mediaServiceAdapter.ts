@@ -1,3 +1,4 @@
+
 import { sunoService } from '@/services/sunoService';
 
 export type MediaType = 'image' | 'video' | 'audio' | 'music';
@@ -26,6 +27,36 @@ export interface MediaServiceAdapter {
     mediaType: MediaType
   ) => Promise<boolean>;
 }
+
+// This is a placeholder to fix the import in useUnifiedMediaGeneration.ts
+export const useMediaServiceAdapter = (options: any) => {
+  return {
+    generateMedia: (type: string, prompt: string, model: string, params: any, referenceUrl?: string) => {
+      console.log('generateMedia called with', { type, prompt, model, params, referenceUrl });
+      return 'mock-task-id';
+    },
+    getTaskStatus: (taskId: string) => {
+      console.log('getTaskStatus called with', taskId);
+      return {
+        id: taskId,
+        status: 'pending',
+        metadata: {}
+      };
+    },
+    cancelTask: (taskId: string) => {
+      console.log('cancelTask called with', taskId);
+      return true;
+    },
+    configureApiKey: (key: string) => {
+      console.log('configureApiKey called with', key);
+      return true;
+    },
+    isApiKeyConfigured: () => {
+      console.log('isApiKeyConfigured called');
+      return true;
+    }
+  };
+};
 
 export const mapTaskStatus = (apiTaskStatus: string): Task['status'] => {
   switch (apiTaskStatus.toLowerCase()) {

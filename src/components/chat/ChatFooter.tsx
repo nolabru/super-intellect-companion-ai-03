@@ -47,22 +47,22 @@ const ChatFooter: React.FC<ChatFooterProps> = ({
     <div className="relative flex flex-col gap-2 px-4 py-3 border-t border-inventu-gray/20 bg-gradient-to-b from-inventu-dark to-inventu-darker">
       <div className="flex items-center justify-between gap-2">
         <RefinedModeSelector 
-          mode={activeMode} 
-          onModeChange={onModeChange} 
+          activeMode={activeMode} 
+          onChange={onModeChange} 
           compact={isMobile}
         />
         
         <div className="flex items-center gap-2">
           <CompareModelsButton 
-            comparing={comparing} 
-            onToggle={onToggleCompare} 
+            isComparing={comparing} 
+            onToggleCompare={onToggleCompare} 
             compact={isMobile}
           />
           
           {comparing && !isMobile && (
             <LinkToggleButton 
-              linked={isLinked} 
-              onToggle={onToggleLink} 
+              isLinked={isLinked} 
+              onToggleLink={onToggleLink} 
               disabled={isMobile}
             />
           )}

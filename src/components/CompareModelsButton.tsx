@@ -6,11 +6,13 @@ import { IOSButton } from '@/components/ui/ios-button';
 export interface CompareModelsButtonProps {
   isComparing: boolean;
   onToggleCompare: () => void;
+  compact?: boolean;
 }
 
 const CompareModelsButton: React.FC<CompareModelsButtonProps> = ({ 
   onToggleCompare, 
-  isComparing 
+  isComparing,
+  compact
 }) => {
   return (
     <IOSButton
