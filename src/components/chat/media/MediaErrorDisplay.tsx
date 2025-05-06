@@ -1,52 +1,46 @@
 
 import React from 'react';
-import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { ChatMode } from '@/components/ModeSelector';
+import { AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react';
 
 interface MediaErrorDisplayProps {
-  error: string;
   onRetry: () => void;
-  onOpenInNewTab: () => void;
-  mediaUrl: string;
-  mode: ChatMode;
+  onOpenInNewTab?: () => void;
+  mediaUrl?: string | null;
+  mode: string;
 }
 
-const MediaErrorDisplay: React.FC<MediaErrorDisplayProps> = ({
-  error,
-  onRetry,
-  onOpenInNewTab,
-  mediaUrl,
-  mode
+const MediaErrorDisplay: React.FC<MediaErrorDisplayProps> = ({ 
+  onRetry, 
+  onOpenInNewTab, 
+  mediaUrl, 
+  mode 
 }) => {
   return (
-    <div className="mt-2 p-4 bg-red-950/20 border border-red-500/30 rounded-lg text-center">
-      <div className="flex flex-col items-center gap-2">
-        <AlertCircle className="h-8 w-8 text-red-500 mb-1" />
-        <h3 className="text-sm font-medium text-red-500">Erro ao carregar {mode === 'image' ? 'imagem' : mode === 'video' ? 'vídeo' : 'áudio'}</h3>
-        <p className="text-xs text-red-400/80 mb-3">{error}</p>
-        
-        <div className="flex flex-wrap gap-2 justify-center">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={onRetry}
-            className="flex items-center gap-1"
-          >
-            <RefreshCw className="h-3 w-3 mr-1" />
-            Tentar novamente
-          </Button>
-          
-          <Button
-            variant="outline"
-            size="sm"
+    <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+      <p className="text-sm text-red-400 flex items-start">
+        <AlertTriangle size={16} className="mr-2 mt-0.5 flex-shrink-0" />
+        <span>
+          Não foi possível carregar a mídia.
+          {mode === 'video' && " Isso pode ocorrer porque o vídeo ainda está sendo processado."}
+        </span>
+      </p>
+      <div className="mt-2 flex space-x-2">
+        <button 
+          onClick={onRetry}
+          className="text-xs bg-red-900/40 hover:bg-red-900/60 text-white py-1 px-2 rounded flex items-center"
+        >
+          <RefreshCw size={12} className="mr-1" />
+          Tentar novamente
+        </button>
+        {mediaUrl && onOpenInNewTab && (
+          <button 
             onClick={onOpenInNewTab}
-            className="flex items-center gap-1 border-red-500/30 hover:bg-red-500/10"
+            className="text-xs bg-inventu-darker/50 hover:bg-inventu-darker/80 text-white py-1 px-2 rounded flex items-center"
           >
-            <ExternalLink className="h-3 w-3 mr-1" />
-            Abrir em nova aba
-          </Button>
-        </div>
+            <ExternalLink size={12} className="mr-1" />
+            Abrir link diretamente
+          </button>
+        )}
       </div>
     </div>
   );

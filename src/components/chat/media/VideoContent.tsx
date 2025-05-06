@@ -1,10 +1,9 @@
 
 import React, { useState } from 'react';
-import { ExternalLink, Save, CheckCircle } from 'lucide-react';
+import { ExternalLink, Save } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import VideoLoading from '../VideoLoading';
-import { toast } from '@/hooks/toast';
 
 interface MediaActionButtonProps {
   onClick: () => void;
@@ -12,7 +11,6 @@ interface MediaActionButtonProps {
   label: string;
   variant?: 'default' | 'primary' | 'secondary';
   loading?: boolean;
-  disabled?: boolean;
 }
 
 const MediaActionButton: React.FC<MediaActionButtonProps> = ({
@@ -20,15 +18,14 @@ const MediaActionButton: React.FC<MediaActionButtonProps> = ({
   icon,
   label,
   variant = 'default',
-  loading = false,
-  disabled = false
+  loading = false
 }) => {
   return (
     <Button
       onClick={onClick}
       variant={variant === 'primary' ? 'default' : 'outline'}
       size="sm"
-      disabled={loading || disabled}
+      disabled={loading}
       className="flex items-center gap-1"
     >
       {loading ? (
@@ -50,7 +47,6 @@ interface VideoContentProps {
   onOpenInNewTab: () => void;
   saving: boolean;
   progress?: number;
-  alreadySaved?: boolean;
 }
 
 const VideoContent: React.FC<VideoContentProps> = ({
@@ -61,8 +57,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   onSaveToGallery,
   onOpenInNewTab,
   saving,
-  progress,
-  alreadySaved = false
+  progress
 }) => {
   const isMobile = useIsMobile();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -108,21 +103,13 @@ const VideoContent: React.FC<VideoContentProps> = ({
       </div>
       
       <div className={`mt-2 flex ${isMobile ? 'flex-col gap-2' : 'justify-end gap-2'}`}>
-        {alreadySaved ? (
-          <div className="flex items-center text-green-500 mr-auto">
-            <CheckCircle className="h-4 w-4 mr-1" />
-            <span className="text-sm">Salvo na galeria</span>
-          </div>
-        ) : (
-          <MediaActionButton
-            onClick={onSaveToGallery}
-            icon={<Save className="h-4 w-4" />}
-            label="Salvar na galeria"
-            variant="primary"
-            loading={saving}
-            disabled={alreadySaved}
-          />
-        )}
+        <MediaActionButton
+          onClick={onSaveToGallery}
+          icon={<Save className="h-4 w-4" />}
+          label="Salvar na galeria"
+          variant="primary"
+          loading={saving}
+        />
         
         <MediaActionButton
           onClick={onOpenInNewTab}

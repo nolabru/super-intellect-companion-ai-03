@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { toast } from '@/hooks/toast';
+import { toast } from 'sonner';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 import ImageContent from './media/ImageContent';
 import VideoContent from './media/VideoContent';
@@ -16,10 +16,9 @@ interface MediaContainerProps {
   mode: ChatMode;
   prompt: string;
   modelId?: string;
-  progress?: number;
 }
 
-const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt, modelId, progress }) => {
+const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt, modelId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alreadySaved, setAlreadySaved] = useState(false);
@@ -53,27 +52,16 @@ const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt,
   
   const handleSaveToGallery = async () => {
     if (alreadySaved) {
-      toast({
-        title: "Mídia já salva",
-        description: "Esta mídia já foi salva na galeria"
-      });
+      toast.info("Esta mídia já foi salva na galeria");
       return;
     }
     
     try {
       await saveMediaToGallery(mediaUrl, prompt, mode, modelId);
       setAlreadySaved(true);
-      toast({
-        title: "Sucesso",
-        description: "Mídia salva na galeria com sucesso"
-      });
     } catch (error) {
       console.error('Error saving to gallery:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar na galeria",
-        variant: "destructive"
-      });
+      toast.error('Erro ao salvar na galeria');
     }
   };
   
@@ -90,33 +78,8 @@ const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt,
     setError('Não foi possível carregar a mídia');
   };
   
-  const handleRetry = () => {
-    setIsLoading(true);
-    setError(null);
-    // Force reload by appending a timestamp to the URL
-    // This technique helps bypass browser caching
-    const reloadUrl = mediaUrl.includes('?') 
-      ? `${mediaUrl}&t=${Date.now()}` 
-      : `${mediaUrl}?t=${Date.now()}`;
-    
-    // For this example, we'll simulate reloading by setting a timeout
-    setTimeout(() => {
-      // Here you would normally update the mediaUrl with reloadUrl
-      // but for demonstration purposes, we'll just reset the loading state
-      setIsLoading(false);
-    }, 1500);
-  };
-  
   if (error) {
-    return (
-      <MediaErrorDisplay 
-        error={error} 
-        onRetry={handleRetry}
-        onOpenInNewTab={handleOpenInNewTab}
-        mediaUrl={mediaUrl}
-        mode={mode}
-      />
-    );
+    return <MediaErrorDisplay error={error} />;
   }
   
   if (mode === 'image') {
@@ -142,8 +105,6 @@ const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt,
         onSaveToGallery={handleSaveToGallery}
         onOpenInNewTab={handleOpenInNewTab}
         saving={saving}
-        progress={progress}
-        alreadySaved={alreadySaved}
       />
     );
   } else if (mode === 'audio') {
