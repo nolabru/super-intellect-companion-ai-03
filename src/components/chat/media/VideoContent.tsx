@@ -39,6 +39,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const [lastCheckTime, setLastCheckTime] = useState<number>(0);
   const [isDbCheckActive, setIsDbCheckActive] = useState(false);
   const [persistentLoading, setPersistentLoading] = useState(false);
+  const [authErrors, setAuthErrors] = useState(0);
   
   const { 
     checkTimedOutTask, 
@@ -55,6 +56,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
       // Reset checking states
       setIsManuallyChecking(false);
       setIsDbCheckActive(false);
+      setAuthErrors(0);
       
       toast.success("Vídeo concluído com sucesso!");
     }
@@ -97,7 +99,20 @@ const VideoContent: React.FC<VideoContentProps> = ({
             console.log('[VideoContent] Switching to direct DB check strategy');
           }
         } catch (error) {
-          console.error('[VideoContent] Error during check:', error);
+          // Check if error is authentication related
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          if (errorMsg.includes('authorization') || errorMsg.includes('401')) {
+            setAuthErrors(prev => prev + 1);
+            console.error('[VideoContent] Authentication error during check:', error);
+            
+            // After multiple auth errors, try a different approach
+            if (authErrors > 3) {
+              setIsDbCheckActive(true);
+              console.log('[VideoContent] Multiple auth errors - switching to direct DB check strategy');
+            }
+          } else {
+            console.error('[VideoContent] Error during check:', error);
+          }
         } finally {
           setIsManuallyChecking(false);
         }
@@ -124,7 +139,7 @@ const VideoContent: React.FC<VideoContentProps> = ({
       if (intervalId) window.clearInterval(intervalId);
     };
   }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask, isCheckingStatus, 
-      isManuallyChecking, lastCheckTime, isDbCheckActive, persistentLoading, currentTask]);
+      isManuallyChecking, lastCheckTime, isDbCheckActive, persistentLoading, currentTask, authErrors]);
 
   // Additional effect to monitor progress and prevent premature timeout for videos at high progress
   useEffect(() => {
@@ -154,6 +169,9 @@ const VideoContent: React.FC<VideoContentProps> = ({
       console.log(`[VideoContent] Manual retry triggered for task ${taskId}`);
       console.log(`[VideoContent] Current attempts: ${checkAttempts}`);
       
+      // Reset auth errors counter on manual retry
+      setAuthErrors(0);
+      
       const success = await checkTimedOutTask();
       if (success) {
         toast.success("Vídeo concluído com sucesso!");
@@ -167,6 +185,13 @@ const VideoContent: React.FC<VideoContentProps> = ({
       toast.error("Erro ao verificar o status do vídeo", {
         description: error instanceof Error ? error.message : "Tente novamente mais tarde"
       });
+      
+      // Check if error is authentication related
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      if (errorMsg.includes('authorization') || errorMsg.includes('401')) {
+        setAuthErrors(prev => prev + 1);
+        console.error('[VideoContent] Authentication error during manual check:', error);
+      }
     } finally {
       setIsManuallyChecking(false);
     }
@@ -179,16 +204,24 @@ const VideoContent: React.FC<VideoContentProps> = ({
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     if (onError) onError(e);
   };
+  
+  // Show a special message when authentication errors occur
+  const getRetryMessage = () => {
+    if (authErrors > 3) {
+      return "Estamos encontrando dificuldades para verificar o status do vídeo devido a um problema de autenticação. Estamos usando uma verificação alternativa.";
+    } else if (persistentLoading) {
+      return "O vídeo está em fase final de processamento (95% ou mais). Estamos verificando automaticamente o status a cada 10 segundos.";
+    } else {
+      return "O tempo de geração do vídeo excedeu o limite. Estamos verificando automaticamente o status a cada 10 segundos.";
+    }
+  };
 
   if (!videoUrl && !isLoading && (hasTimedOut || persistentLoading)) {
     return (
       <VideoGenerationRetry 
         onRetry={handleRetry}
         isChecking={isCheckingStatus || isManuallyChecking}
-        message={persistentLoading 
-          ? "O vídeo está em fase final de processamento (95% ou mais). Estamos verificando automaticamente o status a cada 10 segundos."
-          : "O tempo de geração do vídeo excedeu o limite. Estamos verificando automaticamente o status a cada 10 segundos."
-        }
+        message={getRetryMessage()}
         attempts={checkAttempts}
         autoRetry={true}
         autoRetryInterval={10000}
