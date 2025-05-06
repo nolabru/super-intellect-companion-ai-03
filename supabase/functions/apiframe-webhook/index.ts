@@ -59,7 +59,7 @@ serve(async (req) => {
 
     // Adicionar URL do vídeo se disponível
     if (videoUrl) {
-      updateData.result_url = videoUrl;
+      updateData.media_url = videoUrl;
     }
 
     const { error: updateError } = await supabase
@@ -77,6 +77,7 @@ serve(async (req) => {
 
     // Se o vídeo estiver pronto, salvar no media_ready_events para notificar o frontend
     if (status === "finished" && videoUrl) {
+      // 1. Inserir na tabela media_ready_events para notificações em tempo real
       const { error: insertError } = await supabase
         .from("media_ready_events")
         .insert({
@@ -88,6 +89,38 @@ serve(async (req) => {
 
       if (insertError) {
         console.error(`Erro ao inserir evento de mídia pronta: ${insertError.message}`);
+      }
+
+      // 2. NOVO: Inserir automaticamente na media_gallery para armazenamento permanente
+      // Buscar informações adicionais da tarefa para armazenar na galeria
+      const { data: userData } = await supabase.auth.admin.getUserByClaims({ 
+        role: 'authenticated'
+      });
+      
+      // Gerar um ID único para o item da galeria
+      const galleryItemId = crypto.randomUUID();
+      
+      const { error: galleryError } = await supabase
+        .from("media_gallery")
+        .insert({
+          id: galleryItemId,
+          media_url: videoUrl,
+          media_type: "video",
+          prompt: existingTask.prompt || "Vídeo gerado pela API Frame",
+          user_id: existingTask.user_id || userData?.id, // Usar ID do usuário da tarefa ou admin
+          model_id: existingTask.model || "apiframe",
+          metadata: {
+            source: "apiframe",
+            task_id: taskId,
+            params: existingTask.params,
+            auto_saved: true
+          }
+        });
+
+      if (galleryError) {
+        console.error(`Erro ao salvar vídeo na galeria: ${galleryError.message}`);
+      } else {
+        console.log(`Vídeo salvo automaticamente na galeria: ${galleryItemId}`);
       }
     }
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/toast';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
 import ImageContent from './media/ImageContent';
 import VideoContent from './media/VideoContent';
@@ -16,9 +16,10 @@ interface MediaContainerProps {
   mode: ChatMode;
   prompt: string;
   modelId?: string;
+  progress?: number;
 }
 
-const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt, modelId }) => {
+const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt, modelId, progress }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alreadySaved, setAlreadySaved] = useState(false);
@@ -52,16 +53,27 @@ const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt,
   
   const handleSaveToGallery = async () => {
     if (alreadySaved) {
-      toast.info("Esta mídia já foi salva na galeria");
+      toast({
+        title: "Mídia já salva",
+        description: "Esta mídia já foi salva na galeria"
+      });
       return;
     }
     
     try {
       await saveMediaToGallery(mediaUrl, prompt, mode, modelId);
       setAlreadySaved(true);
+      toast({
+        title: "Sucesso",
+        description: "Mídia salva na galeria com sucesso"
+      });
     } catch (error) {
       console.error('Error saving to gallery:', error);
-      toast.error('Erro ao salvar na galeria');
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar na galeria",
+        variant: "destructive"
+      });
     }
   };
   
@@ -130,6 +142,8 @@ const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt,
         onSaveToGallery={handleSaveToGallery}
         onOpenInNewTab={handleOpenInNewTab}
         saving={saving}
+        progress={progress}
+        alreadySaved={alreadySaved}
       />
     );
   } else if (mode === 'audio') {
