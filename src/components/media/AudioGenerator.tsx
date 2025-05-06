@@ -3,16 +3,45 @@ import React, { useState, useEffect } from 'react';
 import UnifiedMediaGenerator from './UnifiedMediaGenerator';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 
 // Updated audio models data
 const AUDIO_MODELS = [
-  { id: 'chirp-v4', name: 'Suno Music (Chirp v4)' },
-  { id: 'chirp-v3-5', name: 'Suno Music (Chirp v3.5)' },
-  { id: 'chirp-v3-0', name: 'Suno Music (Chirp v3.0)' }
+  { id: 'elevenlabs-v2', name: 'ElevenLabs v2' },
+  { id: 'openai-tts-1', name: 'OpenAI TTS-1' },
+  { id: 'coqui-xtts', name: 'Coqui XTTS' },
+  { id: 'musicgen', name: 'MusicGen (Music)' },
+  { id: 'audiogen', name: 'AudioGen (Sound Effects)' }
 ];
+
+// Voice options for different models
+const VOICES = {
+  'elevenlabs-v2': [
+    { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah' },
+    { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam' },
+    { id: 'jsCqWAovK2LkecY7zXl4', name: 'Nicole' },
+    { id: 'XB0fDUnXU5powFXDhCwa', name: 'Thomas' },
+    { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam' },
+    { id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel' }
+  ],
+  'openai-tts-1': [
+    { id: 'alloy', name: 'Alloy' },
+    { id: 'echo', name: 'Echo' },
+    { id: 'fable', name: 'Fable' },
+    { id: 'onyx', name: 'Onyx' },
+    { id: 'nova', name: 'Nova' },
+    { id: 'shimmer', name: 'Shimmer' }
+  ],
+  'coqui-xtts': [
+    { id: 'default', name: 'Default' }
+  ],
+  'musicgen': [
+    { id: 'default', name: 'Default' }
+  ],
+  'audiogen': [
+    { id: 'default', name: 'Default' }
+  ]
+};
 
 interface AudioGeneratorProps {
   onAudioGenerated?: (audioUrl: string) => void;
@@ -20,102 +49,90 @@ interface AudioGeneratorProps {
 
 const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => {
   const [selectedModel, setSelectedModel] = useState(AUDIO_MODELS[0].id);
-  const [generationMode, setGenerationMode] = useState<'prompt' | 'lyrics'>('prompt');
-  const [prompt, setPrompt] = useState('');
-  const [lyrics, setLyrics] = useState('');
-  const [isInstrumental, setIsInstrumental] = useState(false);
-  const [title, setTitle] = useState('');
-  const [tags, setTags] = useState('');
+  const [selectedVoice, setSelectedVoice] = useState(VOICES['elevenlabs-v2'][0].id);
+  const [stability, setStability] = useState(0.5);
+  const [clarity, setClarity] = useState(0.5);
   
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
+    
+    // Reset voice selection based on model
+    const voices = VOICES[model as keyof typeof VOICES] || [];
+    if (voices.length > 0) {
+      setSelectedVoice(voices[0].id);
+    } else {
+      setSelectedVoice('');
+    }
   };
   
-  const getAdditionalParams = () => {
-    return {
-      audioType: 'music',
-      sunoModel: selectedModel,
-      make_instrumental: isInstrumental,
-      title,
-      tags,
-      ...(generationMode === 'prompt' ? { prompt } : { lyrics })
-    };
-  };
+  useEffect(() => {
+    handleModelChange(selectedModel);
+  }, []);
   
   const ParamControls = () => {
+    // Only show voice selector and sliders for TTS models
+    if (!['elevenlabs-v2', 'openai-tts-1', 'coqui-xtts'].includes(selectedModel)) {
+      return (
+        <div className="text-sm text-muted-foreground italic">
+          {selectedModel === 'musicgen' ? 
+            "Music generation parameters applied automatically" : 
+            "Sound generation parameters applied automatically"}
+        </div>
+      );
+    }
+    
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label>Modo de Geração</Label>
-          <div className="flex items-center space-x-2">
-            <Label className={generationMode === 'prompt' ? 'text-primary' : 'text-muted-foreground'}>
-              Descrição
-            </Label>
-            <Switch
-              checked={generationMode === 'lyrics'}
-              onCheckedChange={(checked) => setGenerationMode(checked ? 'lyrics' : 'prompt')}
-            />
-            <Label className={generationMode === 'lyrics' ? 'text-primary' : 'text-muted-foreground'}>
-              Letra
-            </Label>
-          </div>
+        <div>
+          <Label htmlFor="voiceSelector">Voice</Label>
+          <Select
+            value={selectedVoice}
+            onValueChange={setSelectedVoice}
+          >
+            <SelectTrigger id="voiceSelector">
+              <SelectValue placeholder="Select a voice" />
+            </SelectTrigger>
+            <SelectContent>
+              {(VOICES[selectedModel as keyof typeof VOICES] || []).map((voice) => (
+                <SelectItem key={voice.id} value={voice.id}>
+                  {voice.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         
-        {generationMode === 'prompt' ? (
-          <div>
-            <Label htmlFor="prompt">Descrição da Música</Label>
-            <Textarea
-              id="prompt"
-              placeholder="Descreva o estilo e tema da música..."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              className="h-20"
-            />
-          </div>
-        ) : (
-          <div>
-            <Label htmlFor="lyrics">Letra da Música</Label>
-            <Textarea
-              id="lyrics"
-              placeholder="Digite a letra completa da música..."
-              value={lyrics}
-              onChange={(e) => setLyrics(e.target.value)}
-              className="h-24"
-            />
-          </div>
+        {selectedModel === 'elevenlabs-v2' && (
+          <>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="stability-slider">Stability: {stability.toFixed(2)}</Label>
+              </div>
+              <Slider
+                id="stability-slider"
+                min={0}
+                max={1}
+                step={0.01}
+                value={[stability]}
+                onValueChange={(value) => setStability(value[0])}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <Label htmlFor="clarity-slider">Clarity: {clarity.toFixed(2)}</Label>
+              </div>
+              <Slider
+                id="clarity-slider"
+                min={0}
+                max={1}
+                step={0.01}
+                value={[clarity]}
+                onValueChange={(value) => setClarity(value[0])}
+              />
+            </div>
+          </>
         )}
-        
-        <div>
-          <Label htmlFor="title">Título da Música (opcional)</Label>
-          <Input
-            id="title"
-            placeholder="Título da música"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="tags">Tags de Estilo (opcional)</Label>
-          <Input
-            id="tags"
-            placeholder="Ex: rock, pop, rap, eletrônico"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Separe os estilos musicais com vírgulas
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Switch
-            id="instrumental"
-            checked={isInstrumental}
-            onCheckedChange={setIsInstrumental}
-          />
-          <Label htmlFor="instrumental">Somente Instrumental (sem voz)</Label>
-        </div>
       </div>
     );
   };
@@ -123,13 +140,23 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({ onAudioGenerated }) => 
   return (
     <UnifiedMediaGenerator
       mediaType="audio"
-      title="Gerador de Música com IA"
+      title="AI Audio Generator"
       models={AUDIO_MODELS}
       defaultModel={selectedModel}
       onModelChange={handleModelChange}
       onMediaGenerated={onAudioGenerated}
       paramControls={<ParamControls />}
-      additionalParams={getAdditionalParams()}
+      additionalParams={{ 
+        voice: selectedVoice,
+        stability,
+        clarity,
+        modelType: ['musicgen', 'audiogen'].includes(selectedModel) ? 'music' : 'speech',
+        // Importante: parâmetros específicos para TTS
+        voice_id: selectedModel === 'elevenlabs-v2' ? selectedVoice : undefined,
+        similarity_boost: selectedModel === 'elevenlabs-v2' ? clarity : undefined,
+        speed: selectedModel === 'openai-tts-1' ? 1.0 : undefined,
+        language: selectedModel === 'coqui-xtts' ? 'pt' : undefined
+      }}
     />
   );
 };

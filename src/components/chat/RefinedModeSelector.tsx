@@ -1,7 +1,7 @@
 
 import React, { memo } from 'react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Text, Image, Video, AudioLines, PhoneCall, Music } from 'lucide-react';
+import { Text, Image, Video, AudioLines, PhoneCall } from 'lucide-react';
 import { ChatMode } from '../ModeSelector';
 import { cn } from '@/lib/utils';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
@@ -10,14 +10,12 @@ interface RefinedModeSelectorProps {
   activeMode: ChatMode;
   onChange: (mode: ChatMode) => void;
   className?: string;
-  compact?: boolean;
 }
 
 const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({ 
   activeMode, 
   onChange, 
-  className,
-  compact
+  className 
 }) => {
   const isTouchDevice = useTouchDevice();
   
@@ -27,7 +25,7 @@ const RefinedModeSelector: React.FC<RefinedModeSelectorProps> = ({
     { value: 'image', icon: Image, label: 'Imagem' },
     { value: 'video', icon: Video, label: 'Vídeo' },
     { value: 'audio', icon: AudioLines, label: 'Áudio' },
-    { value: 'music', icon: Music, label: 'Música' }
+    { value: 'call', icon: PhoneCall, label: 'Chamada' }
   ];
 
   const handleItemClick = (value: string) => {

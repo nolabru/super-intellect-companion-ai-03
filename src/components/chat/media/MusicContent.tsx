@@ -3,60 +3,9 @@ import React, { useState } from 'react';
 import { Loader2, Music, Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-interface MediaActionButtonProps {
-  onClick: () => void;
-  icon: React.ReactNode;
-  loading?: boolean;
-  label: string;
-  variant?: "ghost" | "link" | "default" | "destructive" | "outline" | "secondary" | null | undefined;
-}
-
-const MediaActionButton: React.FC<MediaActionButtonProps> = ({
-  onClick,
-  icon,
-  loading = false,
-  label,
-  variant = "outline"
-}) => {
-  return (
-    <Button
-      variant={variant}
-      size="sm"
-      onClick={onClick}
-      disabled={loading}
-      className="flex items-center gap-1 text-xs"
-    >
-      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : icon}
-      <span>{label}</span>
-    </Button>
-  );
-};
-
-interface MediaLoadingProps {
-  text: string;
-}
-
-const MediaLoading: React.FC<MediaLoadingProps> = ({ text }) => {
-  return (
-    <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
-      <Loader2 className="h-8 w-8 mb-4 animate-spin" />
-      <p>{text}</p>
-    </div>
-  );
-};
-
-interface MediaErrorDisplayProps {
-  text: string;
-}
-
-const MediaErrorDisplay: React.FC<MediaErrorDisplayProps> = ({ text }) => {
-  return (
-    <div className="flex flex-col items-center justify-center py-10 text-destructive">
-      <p>{text}</p>
-    </div>
-  );
-};
+import MediaActionButton from './MediaActionButton';
+import MediaLoading from './MediaLoading';
+import MediaErrorDisplay from './MediaErrorDisplay';
 
 interface MusicContentProps {
   src: string;
@@ -143,7 +92,6 @@ const MusicContent: React.FC<MusicContentProps> = ({
                 icon={<Download size={16} />}
                 loading={saving}
                 label="Salvar na galeria"
-                variant="outline"
               />
             )}
           </div>
@@ -196,7 +144,6 @@ const MusicContent: React.FC<MusicContentProps> = ({
                 icon={<Download size={16} />}
                 loading={saving}
                 label="Salvar"
-                variant="outline"
               />
             )}
             
@@ -215,7 +162,6 @@ const MusicContent: React.FC<MusicContentProps> = ({
               onClick={() => window.open(src, '_blank')}
               icon={<ExternalLink size={16} />}
               label="Abrir"
-              variant="outline"
             />
           </div>
         </div>
