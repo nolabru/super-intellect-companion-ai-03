@@ -22,7 +22,7 @@ serve(async (req) => {
     }
 
     // Obter parâmetros da requisição
-    const { prompt, imageUrl, endImageUrl, generationType = "text2video", params = {} } = await req.json();
+    const { prompt, imageUrl, endImageUrl, generationType = "text2video", params = {}, userId } = await req.json();
     
     // Validar parâmetros obrigatórios
     if (!prompt && generationType === "text2video") {
@@ -35,6 +35,14 @@ serve(async (req) => {
     if (generationType === "image2video" && !imageUrl) {
       return new Response(
         JSON.stringify({ error: "É necessário fornecer image_url para image2video" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Validar user_id
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "É necessário fornecer userId" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
@@ -129,6 +137,9 @@ serve(async (req) => {
           prompt,
           status: "processing",
           percentage: 0,
+          user_id: userId,
+          media_type: "video",
+          model: params.model || "kling-v1-5",
           params: {
             ...params,
             generationType,
@@ -139,6 +150,13 @@ serve(async (req) => {
 
       if (insertError) {
         console.error(`Erro ao inserir registro da tarefa: ${insertError.message}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Falha ao registrar tarefa", 
+            message: insertError.message 
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
     }
 
