@@ -4,7 +4,7 @@ import { useUnifiedMediaGeneration } from '@/hooks/useUnifiedMediaGeneration';
 import VideoGenerationRetry from './VideoGenerationRetry';
 import VideoLoading from '../VideoLoading';
 import { Button } from '@/components/ui/button';
-import { Save, ExternalLink, RefreshCw } from 'lucide-react';
+import { Save, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface VideoContentProps {
@@ -49,38 +49,60 @@ const VideoContent: React.FC<VideoContentProps> = ({
       if (onLoad) onLoad();
     }
   });
-
-  // Add periodic auto-checking when in timed out state to recover from webhook failures
+  
+  // Enhanced continuous checking system for timed out videos
   useEffect(() => {
     let intervalId: number | undefined;
     
-    if (hasTimedOut && taskId && !videoUrl && checkAttempts < 5) {
-      // Auto-check every 30 seconds for a maximum of 5 attempts
-      intervalId = window.setInterval(async () => {
-        setIsManuallyChecking(true);
-        console.log(`[VideoContent] Auto-checking timed out task ${taskId} (attempt ${checkAttempts + 1}/5)`);
+    if (hasTimedOut && taskId && !videoUrl && checkAttempts < 10) {
+      // Set initial checking state
+      setIsManuallyChecking(true);
+      
+      // Initial check
+      const doCheck = async () => {
+        console.log(`[VideoContent] Checking timed out task ${taskId} (attempt ${checkAttempts + 1}/10)`);
         
         try {
-          await checkTimedOutTask();
+          const success = await checkTimedOutTask();
+          
+          // If successful, no need for further checks
+          if (success) {
+            console.log('[VideoContent] Task completed successfully after check');
+            return;
+          }
+          
+          // Increment attempts counter
           setCheckAttempts(prev => prev + 1);
         } catch (error) {
-          console.error('[VideoContent] Error during auto-check:', error);
+          console.error('[VideoContent] Error during check:', error);
         } finally {
           setIsManuallyChecking(false);
         }
-      }, 30000); // Check every 30 seconds
+      };
+      
+      // Run initial check
+      doCheck();
+      
+      // Set up periodic checks every 15 seconds
+      intervalId = window.setInterval(async () => {
+        // Only check if not already checking and still in timed out state
+        if (!isManuallyChecking && !isCheckingStatus && hasTimedOut && !videoUrl) {
+          setIsManuallyChecking(true);
+          await doCheck();
+        }
+      }, 15000); // Check every 15 seconds
     }
     
     return () => {
       if (intervalId) window.clearInterval(intervalId);
     };
-  }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask]);
+  }, [hasTimedOut, taskId, videoUrl, checkAttempts, checkTimedOutTask, isCheckingStatus, isManuallyChecking]);
 
   const handleTimeout = () => {
     setHasTimedOut(true);
     toast.info(
       "O vídeo está demorando mais que o esperado", 
-      { description: "Estamos verificando automaticamente o progresso a cada 30 segundos" }
+      { description: "Estamos verificando automaticamente o progresso a cada 15 segundos" }
     );
   };
   
@@ -112,10 +134,12 @@ const VideoContent: React.FC<VideoContentProps> = ({
   if (!videoUrl && !isLoading && hasTimedOut) {
     return (
       <VideoGenerationRetry 
-        onRetry={handleRetry} 
+        onRetry={handleRetry}
         isChecking={isCheckingStatus || isManuallyChecking}
-        message="O tempo de geração do vídeo excedeu o limite. Estamos verificando automaticamente o status a cada 30 segundos. Você também pode verificar manualmente usando o botão abaixo."
+        message="O tempo de geração do vídeo excedeu o limite. Estamos verificando automaticamente o status a cada 15 segundos."
         attempts={checkAttempts}
+        autoRetry={true}
+        autoRetryInterval={15000}
       />
     );
   }
