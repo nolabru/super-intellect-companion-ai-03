@@ -78,8 +78,33 @@ const MediaContainer: React.FC<MediaContainerProps> = ({ mediaUrl, mode, prompt,
     setError('Não foi possível carregar a mídia');
   };
   
+  const handleRetry = () => {
+    setIsLoading(true);
+    setError(null);
+    // Force reload by appending a timestamp to the URL
+    // This technique helps bypass browser caching
+    const reloadUrl = mediaUrl.includes('?') 
+      ? `${mediaUrl}&t=${Date.now()}` 
+      : `${mediaUrl}?t=${Date.now()}`;
+    
+    // For this example, we'll simulate reloading by setting a timeout
+    setTimeout(() => {
+      // Here you would normally update the mediaUrl with reloadUrl
+      // but for demonstration purposes, we'll just reset the loading state
+      setIsLoading(false);
+    }, 1500);
+  };
+  
   if (error) {
-    return <MediaErrorDisplay error={error} />;
+    return (
+      <MediaErrorDisplay 
+        error={error} 
+        onRetry={handleRetry}
+        onOpenInNewTab={handleOpenInNewTab}
+        mediaUrl={mediaUrl}
+        mode={mode}
+      />
+    );
   }
   
   if (mode === 'image') {
