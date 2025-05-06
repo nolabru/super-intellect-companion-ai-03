@@ -33,15 +33,27 @@ const ParametersManager: React.FC<ParametersManagerProps> = ({ mode, onChange, p
         </TabsList>
         
         <TabsContent value="image">
-          <ImageParameters params={params} />
+          <ImageParameters 
+            model={params.model || ''} 
+            onParamsChange={onChange}
+            initialParams={params}
+          />
         </TabsContent>
         
         <TabsContent value="video">
-          <VideoParameters params={params} />
+          <VideoParameters 
+            model={params.model || ''} 
+            onParamsChange={onChange}
+            initialParams={params}
+          />
         </TabsContent>
         
         <TabsContent value="audio">
-          <AudioParameters params={params} />
+          <AudioParameters 
+            model={params.model || ''} 
+            onParamsChange={onChange}
+            initialParams={params}
+          />
         </TabsContent>
         
         <TabsContent value="text">

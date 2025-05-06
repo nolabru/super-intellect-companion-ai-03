@@ -5,7 +5,6 @@ import ImageContent from './media/ImageContent';
 import AudioContent from './media/AudioContent';
 import VideoContent from './media/VideoContent';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
-import MusicContent from './media/MusicContent';
 
 interface MediaContainerProps {
   mediaUrl: string;
@@ -24,8 +23,7 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
   mode,
   prompt,
   modelId,
-  audioType = 'speech',
-  musicData
+  audioType = 'speech'
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const { saveMediaToGallery, saving } = useMediaGallery();
@@ -80,23 +78,6 @@ const MediaContainer: React.FC<MediaContainerProps> = ({
         />
       );
     case 'audio':
-      // Para áudio do tipo música, renderizar o componente de música
-      if (audioType === 'music') {
-        return (
-          <MusicContent
-            src={mediaUrl}
-            onLoad={handleLoad}
-            onError={handleError}
-            isLoading={isLoading}
-            onSaveToGallery={handleSaveToGallery}
-            saving={saving}
-            lyrics={musicData?.lyrics}
-            title={musicData?.title}
-          />
-        );
-      }
-      
-      // Para áudio normal, renderizar o componente de áudio padrão
       return (
         <AudioContent 
           src={mediaUrl} 
