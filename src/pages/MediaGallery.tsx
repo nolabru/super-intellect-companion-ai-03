@@ -35,7 +35,7 @@ const MediaGallery: React.FC = () => {
     deleteMediaFromGallery
   } = useMediaGallery();
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // State to trigger refreshes
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Estado para forçar recarregamento
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -45,15 +45,15 @@ const MediaGallery: React.FC = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // When the page becomes visible again, trigger a refresh
+        // Quando a página torna-se visível novamente, forçar recarga
         setRefreshTrigger(prev => prev + 1);
       }
     };
 
-    // Add event listener for visibility change
+    // Adicionar evento para mudança de visibilidade
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Clean up the event listener when component unmounts
+    // Limpar o listener quando o componente desmonta
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -64,14 +64,17 @@ const MediaGallery: React.FC = () => {
       navigate('/auth');
       return;
     }
+    
+    console.log('Iniciando fetchMedia, refreshTrigger:', refreshTrigger);
     fetchMedia();
-  }, [user, navigate, refreshTrigger]); // Added refreshTrigger to dependencies
+  }, [user, navigate, refreshTrigger]); // Adicionado refreshTrigger às dependências
 
   const fetchMedia = async () => {
     try {
       setLoading(true);
+      console.log('Buscando mídia da galeria...');
 
-      // Fetch from media_gallery table instead of apiframe_tasks
+      // Buscar da tabela media_gallery
       const {
         data: galleryItems,
         error: galleryError
@@ -80,11 +83,13 @@ const MediaGallery: React.FC = () => {
       });
       
       if (galleryError) {
-        console.error('Error fetching media gallery:', galleryError);
+        console.error('Erro ao buscar galeria de mídia:', galleryError);
         throw galleryError;
       }
 
-      // If no items found in media_gallery, try to fetch from piapi_tasks
+      console.log('Itens de galeria encontrados:', galleryItems?.length || 0);
+
+      // Se não encontrar itens em media_gallery, tentar buscar de piapi_tasks
       if (!galleryItems || galleryItems.length === 0) {
         const {
           data: piapiTasks,
@@ -94,7 +99,7 @@ const MediaGallery: React.FC = () => {
         });
         
         if (piapiError) {
-          console.error('Error fetching PIAPI tasks:', piapiError);
+          console.error('Erro ao buscar tarefas PIAPI:', piapiError);
           throw piapiError;
         }
         
@@ -109,9 +114,10 @@ const MediaGallery: React.FC = () => {
           user_id: user?.id || ''
         }));
         
+        console.log('Itens formatados de piapi_tasks:', formattedPiapiMedia.length);
         setMediaItems(formattedPiapiMedia);
       } else {
-        // Format data from the media_gallery table
+        // Formatar dados da tabela media_gallery
         const formattedGalleryMedia = galleryItems.map(item => ({
           id: item.id,
           url: item.media_url || '',
@@ -125,10 +131,11 @@ const MediaGallery: React.FC = () => {
           folder_id: item.folder_id
         }));
         
+        console.log('Itens formatados de media_gallery:', formattedGalleryMedia.length);
         setMediaItems(formattedGalleryMedia);
       }
     } catch (error) {
-      console.error('Error fetching media:', error);
+      console.error('Erro ao buscar mídia:', error);
       toast.error('Não foi possível carregar sua galeria de mídia');
     } finally {
       setLoading(false);
@@ -139,26 +146,29 @@ const MediaGallery: React.FC = () => {
     try {
       console.log('Iniciando exclusão de mídia com ID:', id);
       
-      // Use the hook's delete function that properly handles both storage and DB
+      // Usar a função de exclusão do hook que gerencia corretamente tanto o storage quanto o DB
       const success = await deleteMediaFromGallery(id);
       
       if (success) {
         console.log('Mídia excluída com sucesso, atualizando UI');
         
-        // Update UI immediately by filtering out the deleted item
+        // Atualizar UI imediatamente removendo o item excluído
         setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
         toast.success('Arquivo excluído com sucesso');
         
-        // Close the detail popup if the deleted item was selected
+        // Fechar o popup de detalhes se o item excluído estava selecionado
         if (selectedItem?.id === id) {
           setSelectedItem(null);
         }
+        
+        // Forçar recarga para garantir que os dados estão sincronizados
+        setRefreshTrigger(prev => prev + 1);
       } else {
         console.error('A função deleteMediaFromGallery retornou false');
         throw new Error('Falha ao excluir o arquivo');
       }
     } catch (error) {
-      console.error('Error deleting media:', error);
+      console.error('Erro ao excluir mídia:', error);
       toast.error('Erro ao excluir o arquivo');
     }
   };

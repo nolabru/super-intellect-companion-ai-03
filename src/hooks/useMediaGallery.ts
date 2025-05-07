@@ -180,7 +180,7 @@ export const useMediaGallery = () => {
       if (deleting) return false; // Prevent multiple deletion attempts
       
       setDeleting(true);
-      console.log('Deleting media with ID:', mediaId);
+      console.log('Deletando mídia com ID:', mediaId);
 
       // Get the media item to find out storage path
       const { data: mediaItem, error: fetchError } = await supabase
@@ -190,9 +190,11 @@ export const useMediaGallery = () => {
         .single();
 
       if (fetchError) {
-        console.error('Error fetching media item:', fetchError);
+        console.error('Erro ao buscar item de mídia:', fetchError);
         throw fetchError;
       }
+
+      console.log('Mídia encontrada:', mediaItem);
 
       // Check if this media is stored in our storage
       if (mediaItem?.media_url && mediaItem.media_url.includes('media_gallery')) {
@@ -205,26 +207,26 @@ export const useMediaGallery = () => {
           const bucketPath = pathParts.slice(pathParts.indexOf('media_gallery') + 1).join('/');
           
           if (bucketPath) {
-            console.log('Removing file from storage:', bucketPath);
+            console.log('Removendo arquivo do storage:', bucketPath);
             // Delete the file from storage
             const { error: storageError } = await supabase.storage
               .from('media_gallery')
               .remove([bucketPath]);
               
             if (storageError) {
-              console.warn('Failed to delete file from storage:', storageError);
+              console.warn('Falha ao excluir arquivo do storage:', storageError);
               // Continue with database deletion even if storage deletion fails
             } else {
-              console.log('Successfully removed file from storage');
+              console.log('Arquivo removido com sucesso do storage');
             }
           }
         } catch (storageError) {
-          console.warn('Error parsing storage URL:', storageError);
+          console.warn('Erro ao analisar URL do storage:', storageError);
           // Continue with database deletion even if storage deletion fails
         }
       }
 
-      console.log('Proceeding with database record deletion for ID:', mediaId);
+      console.log('Prosseguindo com a exclusão do registro no banco de dados para o ID:', mediaId);
 
       // Delete the record from the database
       const { error: deleteError } = await supabase
@@ -233,14 +235,14 @@ export const useMediaGallery = () => {
         .eq('id', mediaId);
 
       if (deleteError) {
-        console.error('Error deleting media from database:', deleteError);
+        console.error('Erro ao excluir mídia do banco de dados:', deleteError);
         throw deleteError;
       }
 
-      console.log('Media deleted successfully from database:', mediaId);
+      console.log('Mídia excluída com sucesso do banco de dados:', mediaId);
       return true;
     } catch (error) {
-      console.error('Error deleting media from gallery:', error);
+      console.error('Erro ao excluir mídia da galeria:', error);
       return false;
     } finally {
       setDeleting(false);
