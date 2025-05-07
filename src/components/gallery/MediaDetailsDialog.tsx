@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -69,7 +70,8 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
           <div className="space-y-2">
             <h3 className="text-lg font-medium text-white px-[2px]">{item.title || 'Sem título'}</h3>
             {item.prompt && <div className="bg-inventu-darker p-3 rounded-md border border-inventu-gray/20">
-                <p className="text-sm text-inventu-gray/90">prompt</p>
+                <p className="text-sm text-inventu-gray/90 mb-1">prompt</p>
+                <p className="text-sm text-white">{item.prompt}</p>
               </div>}
             <div className="flex flex-wrap gap-2 text-xs text-inventu-gray/70">
               <span>Criado em: {formattedDate}</span>
