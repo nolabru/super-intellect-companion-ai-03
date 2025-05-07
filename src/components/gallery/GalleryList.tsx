@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
-import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2, MoreHorizontal, Pencil } from 'lucide-react';
+import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2, MoreVertical, Pencil } from 'lucide-react';
 import { useMediaFolders } from '@/hooks/useMediaFolders';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
+
 type GalleryListProps = {
   media: MediaItem[];
   onDeleteItem: (id: string) => Promise<void>;
@@ -134,12 +135,12 @@ const GalleryList: React.FC<GalleryListProps> = ({
           {parentFolders.map(folder => <ContextMenu key={folder.id}>
               <ContextMenuTrigger>
                 <div className="relative bg-inventu-card border border-inventu-gray/10 rounded-lg p-6 cursor-pointer hover:border-inventu-gray/70 transition-colors flex flex-col items-center group">
-                  {/* Dropdown menu trigger (three dots) */}
+                  {/* Dropdown menu trigger - Changed from MoreHorizontal to MoreVertical */}
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="h-4 w-4" />
+                          <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-inventu-dark border-inventu-gray/30 text-white">
