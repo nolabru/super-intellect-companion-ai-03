@@ -1,3 +1,4 @@
+
 import React from 'react';
 import UserMenu from './UserMenu';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   title
 }) => {
   const isMobile = useIsMobile();
+  
+  // Get just the base title without the folder part
+  const baseTitle = title?.includes(' - ') 
+    ? title.split(' - ')[0] 
+    : title;
+  
   return <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-inventu-darker/80 backdrop-blur-lg">
       <div className="flex h-16 items-center gap-4 px-4 sm:px-[24px] py-[36px]">
         {onToggleSidebar && <Button onClick={onToggleSidebar} size="icon" variant="ghost" className="shrink-0 text-inventu-gray hover:text-white hover:bg-white/10" title={sidebarOpen ? "Fechar menu" : "Abrir menu"}>
@@ -29,10 +36,10 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               <img src="/lovable-uploads/b1250762-3348-4894-88d0-86f5c9aa1709.png" alt="InventuAi Logo" className="h-8 w-auto" />
             </Link>
             
-            {title && <div className="md:block">
+            {baseTitle && <div className="md:block">
                 <div className="flex items-center gap-1">
                   <div className="h-4 w-px bg-white/10" />
-                  <span className="text-[14px] font-medium text-white/90 mx-[5px]">{title}</span>
+                  <span className="text-[14px] font-medium text-white/90 mx-[5px]">{baseTitle}</span>
                 </div>
               </div>}
           </div>

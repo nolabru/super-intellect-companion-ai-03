@@ -193,9 +193,7 @@ const MediaGallery: React.FC = () => {
   };
   // Find current folder name
   const currentFolder = folders.find(f => f.id === currentFolderId);
-  const pageTitle = currentFolder 
-    ? `Galeria de Mídias - ${currentFolder.name}`
-    : 'Galeria de Mídias';
+  const pageTitle = 'Galeria de Mídias';
     
   return <div className="flex min-h-screen w-full bg-inventu-darker">
       {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
