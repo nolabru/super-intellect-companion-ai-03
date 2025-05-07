@@ -98,7 +98,8 @@ const MediaGallery: React.FC = () => {
           created_at: item.created_at,
           prompt: item.prompt || '',
           title: item.prompt || undefined,
-          user_id: item.user_id
+          user_id: item.user_id,
+          folder_id: item.folder_id
         }));
         
         setMediaItems(formattedGalleryMedia);

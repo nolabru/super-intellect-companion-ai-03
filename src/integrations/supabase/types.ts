@@ -117,9 +117,42 @@ export type Database = {
         }
         Relationships: []
       }
+      media_folders: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          parent_folder_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "media_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_gallery: {
         Row: {
           created_at: string
+          folder_id: string | null
           id: string
           media_type: string
           media_url: string
@@ -130,6 +163,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          folder_id?: string | null
           id?: string
           media_type: string
           media_url: string
@@ -140,6 +174,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          folder_id?: string | null
           id?: string
           media_type?: string
           media_url?: string
@@ -148,7 +183,15 @@ export type Database = {
           prompt?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "media_gallery_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "media_folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       media_ready_events: {
         Row: {
