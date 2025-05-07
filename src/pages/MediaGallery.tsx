@@ -12,6 +12,8 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import { MediaItem } from '@/types/gallery';
 import GalleryList from '@/components/gallery/GalleryList';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
+import { useMediaFolders } from '@/hooks/useMediaFolders';
+
 export type GalleryFilters = {
   mediaType: string[];
   dateRange: {
@@ -34,6 +36,8 @@ const MediaGallery: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Estado para forçar recarregamento
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set()); // Rastrear IDs em processo de exclusão
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const { folders } = useMediaFolders();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -187,6 +191,12 @@ const MediaGallery: React.FC = () => {
   const handleItemClick = (item: MediaItem) => {
     setSelectedItem(item);
   };
+  // Find current folder name
+  const currentFolder = folders.find(f => f.id === currentFolderId);
+  const pageTitle = currentFolder 
+    ? `Galeria de Mídias - ${currentFolder.name}`
+    : 'Galeria de Mídias';
+    
   return <div className="flex min-h-screen w-full bg-inventu-darker">
       {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
@@ -199,14 +209,30 @@ const MediaGallery: React.FC = () => {
         </div>}
 
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
-        <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Galeria de Mídias" showHeader={true}>
+        <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title={pageTitle} showHeader={true}>
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-6 px-0 py-0">
               <div className="flex items-center mb-0 py-0 px-0 my-0 mx-0">
-                <h1 className="px-0 text-xl font-medium">Galeria de Mídias</h1>
+                <h1 className="px-0 text-xl font-medium">
+                  Galeria de Mídias
+                  {currentFolder && (
+                    <span className="ml-2 text-inventu-gray/70">
+                      &rsaquo; {currentFolder.name}
+                    </span>
+                  )}
+                </h1>
               </div>
               
-              <GalleryList media={mediaItems} onDeleteItem={handleDeleteMedia} loading={loading} onItemClick={handleItemClick} selectedItem={selectedItem} onCloseDetails={() => setSelectedItem(null)} />
+              <GalleryList 
+                media={mediaItems} 
+                onDeleteItem={handleDeleteMedia} 
+                loading={loading} 
+                onItemClick={handleItemClick} 
+                selectedItem={selectedItem} 
+                onCloseDetails={() => setSelectedItem(null)} 
+                currentFolderId={currentFolderId}
+                onFolderChange={setCurrentFolderId}
+              />
             </div>
           </ScrollArea>
         </MainLayout>
