@@ -7,6 +7,7 @@ import { Download, X, Trash, FolderIcon, ExternalLink } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import MediaPreview from '@/components/media/MediaPreview';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 interface MediaDetailsDialogProps {
   item: MediaItem;
   onClose?: () => void;
@@ -14,6 +15,7 @@ interface MediaDetailsDialogProps {
   folders?: MediaFolder[];
   onMove?: (mediaId: string, folderId: string | null) => Promise<boolean>;
 }
+
 const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   item,
   onClose,
@@ -102,7 +104,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="flex justify-start items-center">
+        <DialogFooter className="flex justify-start items-center sm:justify-start">
           <TooltipProvider>
             <div className="flex gap-2">
               {/* 1. Botão Abrir em nova aba */}
@@ -175,4 +177,5 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
 export default MediaDetailsDialog;
