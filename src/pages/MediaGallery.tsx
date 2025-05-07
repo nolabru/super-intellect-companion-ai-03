@@ -201,7 +201,7 @@ const MediaGallery: React.FC = () => {
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
         <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Galeria de Mídias" showHeader={true}>
           <ScrollArea className="h-[calc(100vh-4rem)]">
-            <div className="p-6 px-[24px] py-[24px]">
+            <div className="p-6 px-0 py-0">
               <div className="flex items-center mb-0 py-0 px-0 my-0 mx-0">
                 <h1 className="px-0 text-xl font-medium">Galeria de Mídias</h1>
               </div>
