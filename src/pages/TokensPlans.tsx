@@ -137,7 +137,7 @@ const TokensPlans = () => {
                       <CardDescription className="text-stone-600">Your current token usage and balance</CardDescription>
                     </CardHeader>
                     <CardContent className="px-0 py-0 mx-0 my-0">
-                      <div className="mt-4">
+                      <div className="mt-5">
                         <div className="flex items-center justify-between ">
                           <div className="flex items-center">
                             <Coins className="h-5 w-5 mr-2 text-inventu-blue" />
@@ -170,7 +170,7 @@ const TokensPlans = () => {
                       <CardDescription className="text-stone-600">Available plans and options</CardDescription>
                     </CardHeader>
                     <CardContent className="px-0 mx-0 my-0 py-0">
-                      <p className="mt-4">
+                      <p className="mt-5">
                         Contact us for information about purchasing additional tokens or upgrading your plan.
                       </p>
                     </CardContent>
@@ -186,7 +186,7 @@ const TokensPlans = () => {
                 <h2 className="text-xl text-white mb-3 font-medium px-0 mx-0 my-0 py-0">Token Usage Guide</h2>
                 <Card className="bg-inventu-dark border-inventu-gray/30 px-0 py-0">
                   <CardContent className="pt-6 px-0 py-0">
-                    <div className="space-y-0 my-0 mx-0 px-[18px] py-[18px]">
+                    <div className="px-[18px] py-[18px]">
                       <p className="py-0 px-0 mx-0 my-0 font-medium text-lg">Tokens are consumed when you use AI features:</p>
                       <ul className="mt-3">
                         <li className="text-stone-600">Text generation: 50-100 tokens per request</li>
@@ -194,7 +194,7 @@ const TokensPlans = () => {
                         <li className="text-stone-600">Audio processing: 300 tokens per minute</li>
                         <li className="text-stone-600">Video processing: 500 tokens per minute</li>
                       </ul>
-                      <p className="mt-3 text-base font-normal text-stone-400">
+                      <p className="mt-3 text-base font-normal text-stone-400 text-justify">
                         Your tokens will reset automatically on a monthly basis.
                       </p>
                     </div>
