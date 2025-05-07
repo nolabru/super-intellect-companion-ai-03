@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
@@ -244,12 +243,11 @@ export const useMediaGallery = () => {
       // PARTE CRÍTICA: Exclusão do registro do banco de dados
       console.log('[deleteMediaFromGallery] Prosseguindo com a exclusão do registro no banco de dados para o ID:', mediaId);
       
-      // Usar o método delete do Supabase com RPC para garantir que a exclusão seja confirmada
-      const { error: deleteError, count } = await supabase
+      // Corrigindo a parte com erro: removendo o select('count') que causa o erro de função agregada
+      const { error: deleteError } = await supabase
         .from('media_gallery')
         .delete()
-        .eq('id', mediaId)
-        .select('count');  // Conta quantos registros foram afetados
+        .eq('id', mediaId);
 
       if (deleteError) {
         console.error('[deleteMediaFromGallery] Erro ao excluir mídia do banco de dados:', deleteError);
@@ -257,12 +255,17 @@ export const useMediaGallery = () => {
         return false;
       }
       
-      // Verificar se algum registro foi excluído
-      if (count === 0) {
-        console.warn('[deleteMediaFromGallery] Nenhum registro foi excluído, o item pode não existir mais');
-        // Ainda consideramos como sucesso se o item já não estiver mais lá
-        toast.success("Arquivo excluído com sucesso");
-        return true;
+      // Verificar se o item ainda existe para confirmar a exclusão
+      const { data: checkItem } = await supabase
+        .from('media_gallery')
+        .select('id')
+        .eq('id', mediaId)
+        .maybeSingle();
+        
+      if (checkItem) {
+        console.warn('[deleteMediaFromGallery] ALERTA: Item ainda existe no banco de dados após exclusão:', mediaId);
+        toast.error("Não foi possível excluir o arquivo completamente");
+        return false;
       }
       
       console.log('[deleteMediaFromGallery] Mídia excluída com sucesso do banco de dados');

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -169,9 +168,10 @@ const MediaGallery: React.FC = () => {
         console.error('[MediaGallery] A função deleteMediaFromGallery retornou false');
         // Re-fetch para garantir que a UI está sincronizada com o banco de dados
         await fetchMedia();
+        // Não mostrar toast de erro aqui, o hook já mostra
       } else {
         console.log('[MediaGallery] Mídia excluída com sucesso');
-        // Nada mais a fazer aqui, já atualizamos a UI preventivamente
+        // Não mostrar toast de sucesso aqui, o hook já mostra
       }
     } catch (error) {
       console.error('[MediaGallery] Erro ao excluir mídia:', error);

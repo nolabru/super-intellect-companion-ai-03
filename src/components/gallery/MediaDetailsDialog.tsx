@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -75,19 +74,21 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   };
 
   const handleMoveToFolder = async (folderId: string | null) => {
-    if (onMove) {
-      try {
-        console.log('[MediaDetailsDialog] Movendo mídia com ID:', item.id, 'para pasta:', folderId || 'raiz');
-        const success = await onMove(item.id, folderId);
-        if (success) {
-          toast.success('Arquivo movido com sucesso');
-          // Fechar o diálogo após mover com sucesso
-          onClose?.();
-        }
-      } catch (error) {
-        console.error('[MediaDetailsDialog] Erro ao mover mídia:', error);
-        toast.error('Não foi possível mover o arquivo');
+    if (!onMove) return;
+    
+    try {
+      toast.loading('Movendo arquivo...');
+      console.log('[MediaDetailsDialog] Movendo mídia com ID:', item.id, 'para pasta:', folderId || 'raiz');
+      const success = await onMove(item.id, folderId);
+      
+      if (success) {
+        // Não mostramos toast aqui, já é mostrado na função onMove
+        // Fechar o diálogo após mover com sucesso
+        onClose?.();
       }
+    } catch (error) {
+      console.error('[MediaDetailsDialog] Erro ao mover mídia:', error);
+      toast.error('Não foi possível mover o arquivo');
     }
   };
 
@@ -96,7 +97,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
     if (onDelete) {
       // Primeiro fechamos o diálogo para evitar problemas com estado inconsistente
       onClose?.();
-      // Depois chamamos a função de exclusão
+      // Depois chamamos a função de exclusão com um pequeno timeout
       setTimeout(() => {
         onDelete();
       }, 100);
