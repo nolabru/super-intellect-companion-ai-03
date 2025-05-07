@@ -62,7 +62,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
           <MediaPreview mediaUrl={mediaUrl} mediaType={mediaType as 'image' | 'video' | 'audio'} />
 
           <div className="space-y-2">
-            <h3 className="text-lg font-medium text-white">{item.title || 'Sem título'}</h3>
+            <h3 className="text-lg font-medium text-white px-[2px]">{item.title || 'Sem título'}</h3>
             {item.prompt && <div className="bg-inventu-darker p-3 rounded-md border border-inventu-gray/20">
                 <p className="text-sm text-inventu-gray/90">{item.prompt}</p>
               </div>}
