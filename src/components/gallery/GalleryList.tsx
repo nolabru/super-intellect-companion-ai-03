@@ -2,13 +2,16 @@
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
-import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed } from 'lucide-react';
+import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2 } from 'lucide-react';
 import { useMediaFolders } from '@/hooks/useMediaFolders';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MediaDetailsDialog from './MediaDetailsDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { toast } from '@/hooks/use-toast';
 
 type GalleryListProps = {
   media: MediaItem[];
@@ -30,6 +33,8 @@ const GalleryList: React.FC<GalleryListProps> = ({
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [confirmDeleteFolderId, setConfirmDeleteFolderId] = useState<string | null>(null);
+  
   const { 
     folders, 
     loading: foldersLoading, 
@@ -45,6 +50,19 @@ const GalleryList: React.FC<GalleryListProps> = ({
     if (newFolder) {
       setNewFolderDialogOpen(false);
       setNewFolderName('');
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    const success = await deleteFolder(folderId);
+    if (success) {
+      if (currentFolderId === folderId) {
+        setCurrentFolderId(null);
+      }
+      toast({
+        title: "Pasta excluída",
+        description: "A pasta foi excluída com sucesso.",
+      });
     }
   };
 
@@ -127,14 +145,26 @@ const GalleryList: React.FC<GalleryListProps> = ({
       {parentFolders.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 px-3 mb-4">
           {parentFolders.map(folder => (
-            <div 
-              key={folder.id}
-              className="bg-inventu-card border border-inventu-gray/30 rounded-lg p-3 cursor-pointer hover:border-inventu-gray/50 transition-colors flex flex-col items-center"
-              onClick={() => setCurrentFolderId(folder.id)}
-            >
-              <FolderClosed className="h-10 w-10 text-inventu-blue/70 mb-2" />
-              <p className="text-sm font-medium text-center truncate w-full">{folder.name}</p>
-            </div>
+            <ContextMenu key={folder.id}>
+              <ContextMenuTrigger>
+                <div 
+                  className="bg-inventu-card border border-inventu-gray/30 rounded-lg p-3 cursor-pointer hover:border-inventu-gray/50 transition-colors flex flex-col items-center"
+                  onClick={() => setCurrentFolderId(folder.id)}
+                >
+                  <FolderClosed className="h-10 w-10 text-inventu-blue/70 mb-2" />
+                  <p className="text-sm font-medium text-center truncate w-full">{folder.name}</p>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="bg-inventu-dark border-inventu-gray/30 text-white">
+                <ContextMenuItem 
+                  className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive"
+                  onClick={() => setConfirmDeleteFolderId(folder.id)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir pasta
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           ))}
         </div>
       )}
@@ -164,6 +194,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
         </div>
       )}
 
+      {/* Dialog for creating new folder */}
       <Dialog open={newFolderDialogOpen} onOpenChange={setNewFolderDialogOpen}>
         <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-md">
           <DialogHeader>
@@ -195,6 +226,40 @@ const GalleryList: React.FC<GalleryListProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation dialog for deleting folders */}
+      <AlertDialog 
+        open={!!confirmDeleteFolderId} 
+        onOpenChange={(open) => !open && setConfirmDeleteFolderId(null)}
+      >
+        <AlertDialogContent className="bg-inventu-dark border-inventu-gray/30 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Excluir pasta</AlertDialogTitle>
+            <AlertDialogDescription className="text-inventu-gray/80">
+              Esta ação irá mover todos os arquivos da pasta para a raiz e excluir a pasta. Tem certeza que deseja continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              className="bg-inventu-darker text-white border-inventu-gray/30 hover:bg-inventu-gray/20"
+              onClick={() => setConfirmDeleteFolderId(null)}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90" 
+              onClick={() => {
+                if (confirmDeleteFolderId) {
+                  handleDeleteFolder(confirmDeleteFolderId);
+                  setConfirmDeleteFolderId(null);
+                }
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {selectedItem && (
         <MediaDetailsDialog 
