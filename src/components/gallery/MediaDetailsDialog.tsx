@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import { format } from 'date-fns';
-import { Download, X, Trash, FolderIcon } from 'lucide-react';
+import { Download, X, Trash, FolderIcon, ExternalLink } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import MediaPreview from '@/components/media/MediaPreview';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -40,6 +41,14 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
     link.click();
     document.body.removeChild(link);
   };
+  
+  const handleOpenInNewTab = () => {
+    const url = item.url || item.media_url;
+    if (url) {
+      window.open(url, '_blank');
+    }
+  };
+  
   const handleMoveToFolder = async (folderId: string | null) => {
     if (onMove) {
       await onMove(item.id, folderId);
@@ -113,6 +122,17 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                       </DropdownMenuItem>)}
                   </DropdownMenuContent>
                 </DropdownMenu>}
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" onClick={handleOpenInNewTab}>
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Abrir em nova aba</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </TooltipProvider>
           
