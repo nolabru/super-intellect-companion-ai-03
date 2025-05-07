@@ -73,7 +73,7 @@ const UserMemory: React.FC = () => {
             </div>}
 
           {/* Content container with padding optimized for both mobile and desktop */}
-          <div className="py-[24px] px-[22px]">
+          <div className="px-[27px] py-[20px]">
             {!isMobile && <h1 className="text-2xl font-bold mb-6 text-white">Gestão de Memória do Usuário</h1>}
             
             {!isMobile && <p className="mb-6 text-gray-300">
