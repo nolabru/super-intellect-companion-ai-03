@@ -149,7 +149,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
                         </DropdownMenuItem>
                         <DropdownMenuItem className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive" onClick={() => setConfirmDeleteFolderId(folder.id)}>
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir pasta
+                          Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -169,7 +169,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
                 </ContextMenuItem>
                 <ContextMenuItem className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive" onClick={() => setConfirmDeleteFolderId(folder.id)}>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Excluir pasta
+                  Excluir
                 </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>)}
