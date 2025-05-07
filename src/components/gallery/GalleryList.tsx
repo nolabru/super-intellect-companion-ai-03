@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
-import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2, MoreVertical, Pencil } from 'lucide-react';
+import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2, MoreVertical, Pencil, ArrowLeft } from 'lucide-react';
 import { useMediaFolders } from '@/hooks/useMediaFolders';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -12,6 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
+
 type GalleryListProps = {
   media: MediaItem[];
   onDeleteItem: (id: string) => Promise<void>;
@@ -117,7 +118,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
           const currentFolder = folders.find(f => f.id === currentFolderId);
           setCurrentFolderId(currentFolder?.parent_folder_id || null);
         }}>
-              <FolderOpen className="h-4 w-4" />
+              <ArrowLeft className="h-4 w-4" />
               <span>Voltar</span>
             </Button>}
           <h2 className="px-0 text-stone-600 text-base font-normal">
