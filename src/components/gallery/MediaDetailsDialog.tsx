@@ -63,23 +63,32 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
       }, 100);
     }).catch(error => {
       console.error('Download failed:', error);
+      toast({
+        title: "Erro ao baixar",
+        description: "Não foi possível baixar o arquivo.",
+        variant: "destructive"
+      });
     });
   };
+
   const handleOpenInNewTab = () => {
     const url = item.url || item.media_url;
     if (url) {
       window.open(url, '_blank');
     }
   };
+
   const handleMoveToFolder = async (folderId: string | null) => {
     if (onMove) {
       await onMove(item.id, folderId);
     }
   };
+
   const createdDate = new Date(item.created_at);
   const formattedDate = format(createdDate, 'dd/MM/yyyy HH:mm');
   const mediaType = item.type || item.media_type || 'image';
   const mediaUrl = item.url || item.media_url || '';
+
   return <Dialog open={true} onOpenChange={() => onClose?.()}>
       <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between my-0 px-0 mx-0 py-[6px]">
@@ -148,7 +157,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                   </DropdownMenuContent>
                 </DropdownMenu>}
               
-              {/* 3. Botão Baixar - Moved up before Excluir */}
+              {/* 3. Botão Baixar - Improved download function */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button onClick={handleDownload}>
@@ -161,7 +170,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                 </TooltipContent>
               </Tooltip>
               
-              {/* 4. Botão Excluir - Moved down after Baixar */}
+              {/* 4. Botão Excluir */}
               {onDelete && <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="destructive" onClick={onDelete}>

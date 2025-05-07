@@ -80,6 +80,57 @@ export function revokeObjectUrls(urls: string[]): void {
 }
 
 /**
+ * Downloads a media file from a URL
+ * @param url URL of the media to download
+ * @param mediaType Type of media (image, video, audio)
+ * @param title Optional title to use in the filename
+ * @returns Promise that resolves when download is complete
+ */
+export function downloadMediaFromUrl(url: string, mediaType: string, title?: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!url) {
+      reject(new Error('No URL provided'));
+      return;
+    }
+    
+    fetch(url)
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.blob();
+      })
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        
+        const extension = mediaType === 'image' ? 'png' : 
+                          mediaType === 'video' ? 'mp4' : 
+                          mediaType === 'audio' ? 'mp3' : 'file';
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const safeTitle = (title || 'media').replace(/[^a-z0-9]/gi, '-').substring(0, 30);
+        
+        link.download = `${safeTitle}-${timestamp}.${extension}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 100);
+        
+        resolve();
+      })
+      .catch(error => {
+        console.error('Download failed:', error);
+        reject(error);
+      });
+  });
+}
+
+/**
  * Creates a readable label based on chat mode
  * @param mode The current chat mode
  * @returns Human-readable label

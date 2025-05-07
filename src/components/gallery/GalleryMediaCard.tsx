@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import { TrashIcon, FolderIcon, ExternalLinkIcon, MoreVertical, Download } from 'lucide-react';
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
+
 type GalleryMediaCardProps = {
   item: MediaItem;
   onDelete: (id: string) => Promise<void>;
@@ -13,6 +13,7 @@ type GalleryMediaCardProps = {
   folders?: MediaFolder[];
   onClick?: () => void;
 };
+
 const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
   item,
   onDelete,
@@ -21,6 +22,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
   onClick
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
@@ -29,30 +31,54 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
       setIsDeleting(false);
     }
   };
+
   const handleMoveToFolder = async (folderId: string | null) => {
     if (onMove) {
       await onMove(item.id, folderId);
     }
   };
+
   const handleDownload = () => {
     const url = item.url || item.media_url;
     if (!url) return;
-    const link = document.createElement('a');
-    link.href = url;
 
-    // Get file extension from URL or use default based on media type
-    const mediaType = item.type || item.media_type;
-    const extension = mediaType === 'image' ? 'png' : mediaType === 'video' ? 'mp4' : 'mp3';
+    // Create a fetch request to get the file as a blob
+    fetch(url).then(response => response.blob()).then(blob => {
+      // Create a temporary URL for the blob
+      const blobUrl = URL.createObjectURL(blob);
 
-    // Generate filename with timestamp to make it unique
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const title = item.title || item.prompt || 'media';
-    const safeTitle = title.replace(/[^a-z0-9]/gi, '-').substring(0, 30);
-    link.download = `${safeTitle}-${timestamp}.${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Create a link element
+      const link = document.createElement('a');
+      link.href = blobUrl;
+
+      // Get file extension from URL or use default based on media type
+      const mediaType = item.type || item.media_type;
+      const extension = mediaType === 'image' ? 'png' : mediaType === 'video' ? 'mp4' : 'mp3';
+
+      // Generate filename with timestamp to make it unique
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const title = item.title || item.prompt || 'media';
+      const safeTitle = title.replace(/[^a-z0-9]/gi, '-').substring(0, 30);
+
+      // Set download attribute to force download instead of navigation
+      link.download = `${safeTitle}-${timestamp}.${extension}`;
+
+      // Append to body and trigger click
+      document.body.appendChild(link);
+      link.click();
+
+      // Clean up
+      document.body.removeChild(link);
+
+      // Release the URL created earlier
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
+    }).catch(error => {
+      console.error('Download failed:', error);
+    });
   };
+
   const getMediaContent = () => {
     const url = item.url || item.media_url;
     if (!url) return null;
@@ -73,8 +99,10 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
         </div>;
     }
   };
+
   const createdDate = new Date(item.created_at);
   const formattedDate = format(createdDate, 'dd/MM/yyyy');
+
   return <div className="bg-inventu-card border border-inventu-gray/30 rounded-md overflow-hidden transition-all hover:border-inventu-gray/50 cursor-pointer" onClick={onClick}>
       <div className="relative aspect-video">
         {getMediaContent()}
@@ -111,20 +139,16 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
                   </DropdownMenuPortal>
                 </DropdownMenuSub>}
               
-              
-              
-              {/* 3. Baixar - Moved up before Excluir */}
+              {/* 3. Baixar - Improved download function */}
               <DropdownMenuItem className="cursor-pointer" onClick={e => {
-              e.stopPropagation();
-              handleDownload();
-            }}>
+                e.stopPropagation();
+                handleDownload();
+              }}>
                 <Download className="h-4 w-4 mr-2" />
                 Baixar
               </DropdownMenuItem>
               
-              
-              
-              {/* 4. Excluir - Moved down after Baixar */}
+              {/* 4. Excluir */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500" onSelect={e => e.preventDefault()}>
@@ -161,4 +185,5 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
       </div>
     </div>;
 };
+
 export default GalleryMediaCard;
