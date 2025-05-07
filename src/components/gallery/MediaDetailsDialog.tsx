@@ -89,8 +89,9 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
             <div className="flex gap-2">
               {onDelete && <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="destructive" size="icon" onClick={onDelete}>
-                      <Trash className="h-4 w-4" />
+                    <Button variant="destructive" onClick={onDelete}>
+                      <Trash className="h-4 w-4 mr-1" />
+                      Excluir
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -125,8 +126,9 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
               
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={handleOpenInNewTab}>
-                    <ExternalLink className="h-4 w-4" />
+                  <Button variant="outline" onClick={handleOpenInNewTab}>
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Abrir em nova aba
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
