@@ -12,7 +12,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
-
 type GalleryListProps = {
   media: MediaItem[];
   onDeleteItem: (id: string) => Promise<void>;
@@ -23,7 +22,6 @@ type GalleryListProps = {
   currentFolderId?: string | null;
   onFolderChange?: (folderId: string | null) => void;
 };
-
 const GalleryList: React.FC<GalleryListProps> = ({
   media,
   onDeleteItem,
@@ -37,7 +35,6 @@ const GalleryList: React.FC<GalleryListProps> = ({
   // Use the prop value if provided, otherwise use local state
   const [localFolderId, setLocalFolderId] = useState<string | null>(null);
   const currentFolderId = propsFolderId !== undefined ? propsFolderId : localFolderId;
-  
   const setCurrentFolderId = (folderId: string | null) => {
     if (onFolderChange) {
       onFolderChange(folderId);
@@ -45,14 +42,12 @@ const GalleryList: React.FC<GalleryListProps> = ({
       setLocalFolderId(folderId);
     }
   };
-
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [confirmDeleteFolderId, setConfirmDeleteFolderId] = useState<string | null>(null);
   const [renameFolderDialogOpen, setRenameFolderDialogOpen] = useState(false);
   const [folderToRename, setFolderToRename] = useState<MediaFolder | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
-  
   const {
     folders,
     loading: foldersLoading,
@@ -101,11 +96,9 @@ const GalleryList: React.FC<GalleryListProps> = ({
   const handleMoveMedia = async (mediaId: string, folderId: string | null) => {
     return await moveMediaToFolder(mediaId, folderId);
   };
-  
   const currentFolder = folders.find(f => f.id === currentFolderId);
   const parentFolders = currentFolderId ? folders.filter(f => f.parent_folder_id === currentFolderId) : folders.filter(f => !f.parent_folder_id);
   const currentFolderMedia = currentFolderId ? media.filter(item => item.folder_id === currentFolderId) : media.filter(item => !item.folder_id);
-  
   if (loading) {
     return <div className="flex justify-center items-center min-h-[40vh] px-4">
       <div className="animate-pulse flex flex-col items-center">
@@ -130,7 +123,6 @@ const GalleryList: React.FC<GalleryListProps> = ({
       </Button>
     </div>;
   }
-  
   return <>
       <div className="flex justify-between items-center mb-3 py-0 px-0">
         <div className="flex items-center gap-2">
@@ -141,9 +133,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
               <ArrowLeft className="h-4 w-4" />
               <span>Voltar</span>
             </Button>}
-          <h2 className="px-0 text-stone-600 text-base font-normal">
-            {currentFolderId ? currentFolder?.name : 'Todos os arquivos'}
-          </h2>
+          
         </div>
         
         {!currentFolderId && <Button variant="outline" size="sm" className="border-inventu-gray/30" onClick={() => setNewFolderDialogOpen(true)}>
