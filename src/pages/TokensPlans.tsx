@@ -138,7 +138,7 @@ const TokensPlans = () => {
                     </CardHeader>
                     <CardContent className="px-0 py-0 mx-0 my-0">
                       <div className="mt-4">
-                        <div className="flex items-center justify-between px-0 py-0 my-0 mx-0">
+                        <div className="flex items-center justify-between ">
                           <div className="flex items-center">
                             <Coins className="h-5 w-5 mr-2 text-inventu-blue" />
                             <span>Available Tokens</span>
