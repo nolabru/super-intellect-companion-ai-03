@@ -143,7 +143,7 @@ const MediaGallery: React.FC = () => {
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-6 px-[12px] py-[20px]">
               <div className="flex items-center mb-6 px-0 py-0">
-                <h1 className="text-[24px] font-bold px-[11px]">Galeria de Mídias</h1>
+                <h1 className="text-[24px] font-bold px-[14px]">Galeria de Mídias</h1>
               </div>
               
               <GalleryList media={mediaItems} onDeleteItem={handleDeleteMedia} loading={loading} onItemClick={handleItemClick} selectedItem={selectedItem} onCloseDetails={() => setSelectedItem(null)} />

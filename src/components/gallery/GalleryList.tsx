@@ -12,7 +12,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
-
 type GalleryListProps = {
   media: MediaItem[];
   onDeleteItem: (id: string) => Promise<void>;
@@ -121,7 +120,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
               <FolderOpen className="h-4 w-4" />
               <span>Voltar</span>
             </Button>}
-          <h2 className="text-lg font-medium">
+          <h2 className="text-lg font-medium px-[4px]">
             {currentFolderId ? currentFolder?.name : 'Todos os arquivos'}
           </h2>
         </div>
@@ -131,7 +130,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
         </Button>
       </div>
       
-      {parentFolders.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 px-3 mb-4">
+      {parentFolders.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4 px-[15px]">
           {parentFolders.map(folder => <ContextMenu key={folder.id}>
               <ContextMenuTrigger>
                 <div className="relative bg-inventu-card border border-inventu-gray/10 rounded-lg p-6 cursor-pointer hover:border-inventu-gray/70 transition-colors flex flex-col items-center group">
