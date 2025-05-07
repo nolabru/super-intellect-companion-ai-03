@@ -46,7 +46,7 @@ const UserMenu: React.FC = () => {
               <span>Serviços de IA</span>
             </DropdownMenuItem>}
           
-          <DropdownMenuSeparator />
+          
           
           <DropdownMenuItem onClick={handleSignOut} className="text-white/90 hover:text-white focus:text-white cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />
