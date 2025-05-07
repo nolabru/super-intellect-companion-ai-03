@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,7 @@ import { Download, X, Trash, FolderIcon, ExternalLink } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import MediaPreview from '@/components/media/MediaPreview';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface MediaDetailsDialogProps {
   item: MediaItem;
@@ -81,29 +80,22 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   const handleMoveToFolder = async (folderId: string | null) => {
     if (onMove) {
       try {
-        console.log('Movendo mídia com ID:', item.id, 'para pasta:', folderId || 'raiz');
+        console.log('[MediaDetailsDialog] Movendo mídia com ID:', item.id, 'para pasta:', folderId || 'raiz');
         const success = await onMove(item.id, folderId);
         if (success) {
-          toast({
-            title: "Mídia movida",
-            description: "Arquivo movido com sucesso."
-          });
+          toast.success('Arquivo movido com sucesso');
           // Fechar o diálogo após mover com sucesso
           onClose?.();
         }
       } catch (error) {
-        console.error('Erro ao mover mídia:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível mover o arquivo.",
-          variant: "destructive"
-        });
+        console.error('[MediaDetailsDialog] Erro ao mover mídia:', error);
+        toast.error('Não foi possível mover o arquivo');
       }
     }
   };
 
   const handleDelete = () => {
-    console.log('Iniciando exclusão de mídia a partir do diálogo de detalhes, ID:', item.id);
+    console.log('[MediaDetailsDialog] Iniciando exclusão de mídia a partir do di��logo de detalhes, ID:', item.id);
     if (onDelete) {
       // Primeiro fechamos o diálogo para evitar problemas com estado inconsistente
       onClose?.();

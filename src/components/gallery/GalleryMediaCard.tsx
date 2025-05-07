@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 type GalleryMediaCardProps = {
   item: MediaItem;
@@ -32,8 +33,18 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
     
     try {
       setIsDeleting(true);
-      console.log('Chamando onDelete para o item com ID:', item.id);
+      console.log('[GalleryMediaCard] Chamando onDelete para o item com ID:', item.id);
+      
+      // Mostrar toast para informar que a exclusão está em andamento
+      toast.loading('Excluindo arquivo...');
+      
       await onDelete(item.id);
+      
+      // Não precisamos mostrar um toast de sucesso aqui porque o toast já é mostrado
+      // na função deleteMediaFromGallery do hook useMediaGallery
+    } catch (error) {
+      console.error('[GalleryMediaCard] Erro ao excluir mídia:', error);
+      toast.error('Erro ao excluir o arquivo');
     } finally {
       setIsDeleting(false);
     }
@@ -46,7 +57,18 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
     }
     
     if (onMove) {
-      await onMove(item.id, folderId);
+      try {
+        toast.loading('Movendo arquivo...');
+        const success = await onMove(item.id, folderId);
+        if (success) {
+          toast.success('Arquivo movido com sucesso');
+        } else {
+          toast.error('Não foi possível mover o arquivo');
+        }
+      } catch (error) {
+        console.error('[GalleryMediaCard] Erro ao mover arquivo:', error);
+        toast.error('Erro ao mover o arquivo');
+      }
     }
   };
 
@@ -89,7 +111,8 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
         URL.revokeObjectURL(blobUrl);
       }, 100);
     }).catch(error => {
-      console.error('Download failed:', error);
+      console.error('[GalleryMediaCard] Download failed:', error);
+      toast.error('Erro ao baixar o arquivo');
     });
   };
 
