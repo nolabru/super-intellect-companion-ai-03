@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -90,7 +91,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
         <DialogFooter className="flex justify-between items-center">
           <TooltipProvider>
             <div className="flex gap-2">
-              
+              {/* 1. Botão Abrir em nova aba */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button variant="outline" onClick={handleOpenInNewTab}>
@@ -103,6 +104,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                 </TooltipContent>
               </Tooltip>
               
+              {/* 2. Botão Mover para pasta */}
               {onMove && folders && <DropdownMenu>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -122,12 +124,13 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                       Raiz (sem pasta)
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-inventu-gray/20" />
-                    {folders.map(folder => <DropdownMenuItem key={folder.id} className="cursor-pointer" disabled={item.folder_id === item.id} onClick={() => handleMoveToFolder(folder.id)}>
+                    {folders.map(folder => <DropdownMenuItem key={folder.id} className="cursor-pointer" disabled={item.folder_id === folder.id} onClick={() => handleMoveToFolder(folder.id)}>
                         {folder.name}
                       </DropdownMenuItem>)}
                   </DropdownMenuContent>
                 </DropdownMenu>}
               
+              {/* 3. Botão Excluir */}
               {onDelete && <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="destructive" onClick={onDelete}>
@@ -142,6 +145,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
             </div>
           </TooltipProvider>
           
+          {/* 4. Botão Baixar */}
           <Button onClick={handleDownload} className="ml-auto">
             <Download className="h-4 w-4 mr-2" />
             Baixar
