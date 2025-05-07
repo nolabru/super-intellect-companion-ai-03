@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -87,17 +86,18 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
         <DialogFooter className="flex justify-between items-center">
           <TooltipProvider>
             <div className="flex gap-2">
-              {onDelete && <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="destructive" onClick={onDelete}>
-                      <Trash className="h-4 w-4 mr-1" />
-                      Excluir
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Excluir mídia</p>
-                  </TooltipContent>
-                </Tooltip>}
+              
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" onClick={handleOpenInNewTab}>
+                    <ExternalLink className="h-4 w-4 mr-1" />
+                    Abrir em nova aba
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Abrir em nova aba</p>
+                </TooltipContent>
+              </Tooltip>
               
               {onMove && folders && <DropdownMenu>
                   <Tooltip>
@@ -124,17 +124,17 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                   </DropdownMenuContent>
                 </DropdownMenu>}
               
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" onClick={handleOpenInNewTab}>
-                    <ExternalLink className="h-4 w-4 mr-1" />
-                    Abrir em nova aba
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Abrir em nova aba</p>
-                </TooltipContent>
-              </Tooltip>
+              {onDelete && <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="destructive" onClick={onDelete}>
+                      <Trash className="h-4 w-4 mr-1" />
+                      Excluir
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Excluir mídia</p>
+                  </TooltipContent>
+                </Tooltip>}
             </div>
           </TooltipProvider>
           
@@ -146,4 +146,5 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
 export default MediaDetailsDialog;
