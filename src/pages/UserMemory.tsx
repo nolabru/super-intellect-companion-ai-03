@@ -59,7 +59,7 @@ const UserMemory: React.FC = () => {
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
         <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Memória do Usuário" />
         
-        <main className="flex-1">
+        <main className="flex-1 px-[24px] py-[24px]">
           {/* Mobile Title */}
           {isMobile && <div className={cn("sticky top-16 z-20 px-4 py-3 backdrop-blur-lg transition-all duration-200", isScrolled ? "bg-inventu-darker/80 shadow-md" : "bg-transparent")}>
               <div className="flex items-center justify-center">
