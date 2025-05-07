@@ -177,7 +177,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
       
       {currentFolderMedia.length > 0 ? <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 p-0 sm:p-0 px-0 py-0">
           {currentFolderMedia.map(item => <GalleryMediaCard key={item.id} item={item} onDelete={onDeleteItem} onMove={handleMoveMedia} folders={folders} onClick={() => onItemClick?.(item)} />)}
-        </div> : <div className="flex flex-col items-center justify-center text-center min-h-[30vh] px-6">
+        </div> : <div className="flex flex-col items-center justify-center text-center min-h-[60vh] p-6">
           <div className="bg-inventu-gray/5 rounded-full p-4 mb-4">
             <AlertCircle className="h-8 w-8 text-inventu-gray/40" />
           </div>
