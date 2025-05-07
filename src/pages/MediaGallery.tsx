@@ -162,17 +162,16 @@ const MediaGallery: React.FC = () => {
         setSelectedItem(null);
       }
       
-      // Usar a função de exclusão do hook que gerencia corretamente tanto o storage quanto o DB
+      // Usar a função de exclusão do hook
       const success = await deleteMediaFromGallery(id);
       
       if (!success) {
         console.error('[MediaGallery] A função deleteMediaFromGallery retornou false');
-        // Re-fetch para restaurar o estado consistente da UI
+        // Re-fetch para garantir que a UI está sincronizada com o banco de dados
         await fetchMedia();
       } else {
-        console.log('[MediaGallery] Mídia excluída com sucesso, atualizando UI');
-        // Forçamos novo fetch para garantir consistência
-        setRefreshTrigger(prev => prev + 1);
+        console.log('[MediaGallery] Mídia excluída com sucesso');
+        // Nada mais a fazer aqui, já atualizamos a UI preventivamente
       }
     } catch (error) {
       console.error('[MediaGallery] Erro ao excluir mídia:', error);
