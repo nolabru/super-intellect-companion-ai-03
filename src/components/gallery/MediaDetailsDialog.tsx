@@ -58,7 +58,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
           </Button>
         </DialogHeader>
         
-        <div className="grid gap-6 py-4">
+        <div className="grid gap-6 py-0">
           <MediaPreview mediaUrl={mediaUrl} mediaType={mediaType as 'image' | 'video' | 'audio'} />
 
           <div className="space-y-2">
