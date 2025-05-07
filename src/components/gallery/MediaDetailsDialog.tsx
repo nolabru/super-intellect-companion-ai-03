@@ -7,6 +7,7 @@ import { Download, X, Trash, FolderIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import MediaPreview from '@/components/media/MediaPreview';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 interface MediaDetailsDialogProps {
   item: MediaItem;
   onClose?: () => void;
@@ -14,6 +15,7 @@ interface MediaDetailsDialogProps {
   folders?: MediaFolder[];
   onMove?: (mediaId: string, folderId: string | null) => Promise<boolean>;
 }
+
 const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   item,
   onClose,
@@ -40,15 +42,18 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
     link.click();
     document.body.removeChild(link);
   };
+
   const handleMoveToFolder = async (folderId: string | null) => {
     if (onMove) {
       await onMove(item.id, folderId);
     }
   };
+
   const createdDate = new Date(item.created_at);
   const formattedDate = format(createdDate, 'dd/MM/yyyy HH:mm');
   const mediaType = item.type || item.media_type || 'image';
   const mediaUrl = item.url || item.media_url || '';
+
   return <Dialog open={true} onOpenChange={() => onClose?.()}>
       <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between my-0 px-0 mx-0 py-[6px]">
@@ -64,7 +69,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
           <div className="space-y-2">
             <h3 className="text-lg font-medium text-white px-[2px]">{item.title || 'Sem título'}</h3>
             {item.prompt && <div className="bg-inventu-darker p-3 rounded-md border border-inventu-gray/20">
-                <p className="text-sm text-inventu-gray/90">{item.prompt}</p>
+                <p className="text-sm text-inventu-gray/90">prompt</p>
               </div>}
             <div className="flex flex-wrap gap-2 text-xs text-inventu-gray/70">
               <span>Criado em: {formattedDate}</span>
@@ -123,4 +128,5 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
       </DialogContent>
     </Dialog>;
 };
+
 export default MediaDetailsDialog;
