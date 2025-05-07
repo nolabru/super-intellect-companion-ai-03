@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import { TrashIcon, FolderIcon, ExternalLinkIcon, MoreVertical, Download } from 'lucide-react';
@@ -174,7 +175,21 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
               
               <DropdownMenuSeparator className="bg-inventu-gray/20" />
               
-              {/* 3. Excluir */}
+              {/* 3. Baixar - Moved up before Excluir */}
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload();
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Baixar
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator className="bg-inventu-gray/20" />
+              
+              {/* 4. Excluir - Moved down after Baixar */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem 
@@ -204,20 +219,6 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              
-              <DropdownMenuSeparator className="bg-inventu-gray/20" />
-              
-              {/* 4. Baixar */}
-              <DropdownMenuItem 
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDownload();
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Baixar
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

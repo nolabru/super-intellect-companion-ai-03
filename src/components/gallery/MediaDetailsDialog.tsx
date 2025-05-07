@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -153,7 +154,20 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                   </DropdownMenuContent>
                 </DropdownMenu>}
               
-              {/* 3. Botão Excluir */}
+              {/* 3. Botão Baixar - Moved up before Excluir */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button onClick={handleDownload}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Baixar mídia</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              {/* 4. Botão Excluir - Moved down after Baixar */}
               {onDelete && <Tooltip>
                   <TooltipTrigger asChild>
                     <Button variant="destructive" onClick={onDelete}>
@@ -167,12 +181,6 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                 </Tooltip>}
             </div>
           </TooltipProvider>
-          
-          {/* 4. Botão Baixar */}
-          <Button onClick={handleDownload} className="ml-auto">
-            <Download className="h-4 w-4 mr-2" />
-            Baixar
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>;
