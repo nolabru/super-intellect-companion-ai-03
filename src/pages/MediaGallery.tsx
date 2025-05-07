@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +13,7 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import { MediaItem } from '@/types/gallery';
 import GalleryList from '@/components/gallery/GalleryList';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
+
 export type GalleryFilters = {
   mediaType: string[];
   dateRange: {
@@ -19,6 +21,7 @@ export type GalleryFilters = {
     to?: Date;
   };
 };
+
 const MediaGallery: React.FC = () => {
   const {
     user
@@ -32,16 +35,38 @@ const MediaGallery: React.FC = () => {
     deleteMediaFromGallery
   } = useMediaGallery();
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // New state to trigger refreshes
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  // Handle page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // When the page becomes visible again, trigger a refresh
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+
+    // Add event listener for visibility change
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Clean up the event listener when component unmounts
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
     fetchMedia();
-  }, [user, navigate]);
+  }, [user, navigate, refreshTrigger]); // Added refreshTrigger to dependencies
+
   const fetchMedia = async () => {
     try {
       setLoading(true);
@@ -53,6 +78,7 @@ const MediaGallery: React.FC = () => {
       } = await supabase.from('media_gallery').select('*').eq('user_id', user?.id).order('created_at', {
         ascending: false
       });
+      
       if (galleryError) {
         console.error('Error fetching media gallery:', galleryError);
         throw galleryError;
@@ -66,10 +92,12 @@ const MediaGallery: React.FC = () => {
         } = await supabase.from('piapi_tasks').select('id, media_url, media_type, created_at, prompt').eq('status', 'completed').order('created_at', {
           ascending: false
         });
+        
         if (piapiError) {
           console.error('Error fetching PIAPI tasks:', piapiError);
           throw piapiError;
         }
+        
         const formattedPiapiMedia = (piapiTasks || []).map(item => ({
           id: item.id,
           url: item.media_url || '',
@@ -80,6 +108,7 @@ const MediaGallery: React.FC = () => {
           prompt: item.prompt || '',
           user_id: user?.id || ''
         }));
+        
         setMediaItems(formattedPiapiMedia);
       } else {
         // Format data from the media_gallery table
@@ -95,6 +124,7 @@ const MediaGallery: React.FC = () => {
           user_id: item.user_id,
           folder_id: item.folder_id
         }));
+        
         setMediaItems(formattedGalleryMedia);
       }
     } catch (error) {
@@ -104,18 +134,24 @@ const MediaGallery: React.FC = () => {
       setLoading(false);
     }
   };
+
   const handleDeleteMedia = async (id: string) => {
     try {
       // Use the hook's delete function that properly handles both storage and DB
       const success = await deleteMediaFromGallery(id);
+      
       if (success) {
         // Update UI immediately by filtering out the deleted item
         setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
         toast.success('Arquivo excluído com sucesso');
+        
         // Close the detail popup if the deleted item was selected
         if (selectedItem?.id === id) {
           setSelectedItem(null);
         }
+        
+        // Force a refresh of the data to ensure sync with the database
+        fetchMedia();
       } else {
         throw new Error('Falha ao excluir o arquivo');
       }
@@ -124,9 +160,11 @@ const MediaGallery: React.FC = () => {
       toast.error('Erro ao excluir o arquivo');
     }
   };
+
   const handleItemClick = (item: MediaItem) => {
     setSelectedItem(item);
   };
+
   return <div className="flex min-h-screen w-full bg-inventu-darker">
       {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
@@ -153,4 +191,5 @@ const MediaGallery: React.FC = () => {
       </div>
     </div>;
 };
+
 export default MediaGallery;

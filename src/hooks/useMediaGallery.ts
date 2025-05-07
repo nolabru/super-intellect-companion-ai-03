@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
@@ -179,6 +180,7 @@ export const useMediaGallery = () => {
       if (deleting) return false; // Prevent multiple deletion attempts
       
       setDeleting(true);
+      console.log('Deleting media with ID:', mediaId);
 
       // Get the media item to find out storage path
       const { data: mediaItem, error: fetchError } = await supabase
@@ -193,7 +195,7 @@ export const useMediaGallery = () => {
       }
 
       // Check if this media is stored in our storage
-      if (mediaItem.media_url && mediaItem.media_url.includes('media_gallery')) {
+      if (mediaItem?.media_url && mediaItem.media_url.includes('media_gallery')) {
         try {
           // Extract the path from the URL
           const storageUrl = new URL(mediaItem.media_url);
@@ -212,6 +214,8 @@ export const useMediaGallery = () => {
             if (storageError) {
               console.warn('Failed to delete file from storage:', storageError);
               // Continue with database deletion even if storage deletion fails
+            } else {
+              console.log('Successfully removed file from storage');
             }
           }
         } catch (storageError) {
@@ -219,6 +223,8 @@ export const useMediaGallery = () => {
           // Continue with database deletion even if storage deletion fails
         }
       }
+
+      console.log('Proceeding with database record deletion for ID:', mediaId);
 
       // Delete the record from the database
       const { error: deleteError } = await supabase
@@ -231,7 +237,7 @@ export const useMediaGallery = () => {
         throw deleteError;
       }
 
-      console.log('Media deleted successfully:', mediaId);
+      console.log('Media deleted successfully from database:', mediaId);
       return true;
     } catch (error) {
       console.error('Error deleting media from gallery:', error);
