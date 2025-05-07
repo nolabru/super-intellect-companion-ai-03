@@ -80,7 +80,37 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
 
   const handleMoveToFolder = async (folderId: string | null) => {
     if (onMove) {
-      await onMove(item.id, folderId);
+      try {
+        console.log('Movendo mídia com ID:', item.id, 'para pasta:', folderId || 'raiz');
+        const success = await onMove(item.id, folderId);
+        if (success) {
+          toast({
+            title: "Mídia movida",
+            description: "Arquivo movido com sucesso."
+          });
+          // Fechar o diálogo após mover com sucesso
+          onClose?.();
+        }
+      } catch (error) {
+        console.error('Erro ao mover mídia:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível mover o arquivo.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const handleDelete = () => {
+    console.log('Iniciando exclusão de mídia a partir do diálogo de detalhes, ID:', item.id);
+    if (onDelete) {
+      // Primeiro fechamos o diálogo para evitar problemas com estado inconsistente
+      onClose?.();
+      // Depois chamamos a função de exclusão
+      setTimeout(() => {
+        onDelete();
+      }, 100);
     }
   };
 
@@ -173,7 +203,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
               {/* 4. Botão Excluir */}
               {onDelete && <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="destructive" onClick={onDelete}>
+                    <Button variant="destructive" onClick={handleDelete}>
                       <Trash className="h-4 w-4 mr-1" />
                       Excluir
                     </Button>

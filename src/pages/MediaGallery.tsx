@@ -35,7 +35,7 @@ const MediaGallery: React.FC = () => {
     deleteMediaFromGallery
   } = useMediaGallery();
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // New state to trigger refreshes
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // State to trigger refreshes
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -137,10 +137,14 @@ const MediaGallery: React.FC = () => {
 
   const handleDeleteMedia = async (id: string) => {
     try {
+      console.log('Iniciando exclusão de mídia com ID:', id);
+      
       // Use the hook's delete function that properly handles both storage and DB
       const success = await deleteMediaFromGallery(id);
       
       if (success) {
+        console.log('Mídia excluída com sucesso, atualizando UI');
+        
         // Update UI immediately by filtering out the deleted item
         setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
         toast.success('Arquivo excluído com sucesso');
@@ -149,10 +153,8 @@ const MediaGallery: React.FC = () => {
         if (selectedItem?.id === id) {
           setSelectedItem(null);
         }
-        
-        // Force a refresh of the data to ensure sync with the database
-        fetchMedia();
       } else {
+        console.error('A função deleteMediaFromGallery retornou false');
         throw new Error('Falha ao excluir o arquivo');
       }
     } catch (error) {

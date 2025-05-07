@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import { TrashIcon, FolderIcon, ExternalLinkIcon, MoreVertical, Download } from 'lucide-react';
@@ -23,22 +24,35 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async () => {
+  const handleDelete = async (e?: React.MouseEvent) => {
+    // Impedir a propagação do evento para evitar que o card seja clicado
+    if (e) {
+      e.stopPropagation();
+    }
+    
     try {
       setIsDeleting(true);
+      console.log('Chamando onDelete para o item com ID:', item.id);
       await onDelete(item.id);
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleMoveToFolder = async (folderId: string | null) => {
+  const handleMoveToFolder = async (folderId: string | null, e?: React.MouseEvent) => {
+    // Impedir a propagação do evento para evitar que o card seja clicado
+    if (e) {
+      e.stopPropagation();
+    }
+    
     if (onMove) {
       await onMove(item.id, folderId);
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
     const url = item.url || item.media_url;
     if (!url) return;
 
@@ -115,24 +129,33 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-inventu-dark text-white border-inventu-gray/30 my-0 mx-0 py-[6px] px-[6px]">
               {/* 1. Abrir em nova aba */}
-              <DropdownMenuItem className="cursor-pointer" onClick={() => window.open(item.url || item.media_url, '_blank')}>
+              <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
+                e.stopPropagation();
+                window.open(item.url || item.media_url, '_blank');
+              }}>
                 <ExternalLinkIcon className="h-4 w-4 mr-2" />
                 Abrir em nova aba
               </DropdownMenuItem>
               
               {/* 2. Mover para pasta */}
               {onMove && folders && <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="cursor-pointer">
+                  <DropdownMenuSubTrigger className="cursor-pointer" onClick={e => e.stopPropagation()}>
                     <FolderIcon className="h-4 w-4 mr-2" />
                     Mover para pasta
                   </DropdownMenuSubTrigger>
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent className="bg-inventu-dark text-white border-inventu-gray/30">
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => handleMoveToFolder(null)}>
+                      <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
+                        e.stopPropagation();
+                        handleMoveToFolder(null, e);
+                      }}>
                         Raiz (sem pasta)
                       </DropdownMenuItem>
                       <DropdownMenuSeparator className="bg-inventu-gray/20" />
-                      {folders.map(folder => <DropdownMenuItem key={folder.id} className="cursor-pointer" disabled={item.folder_id === folder.id} onClick={() => handleMoveToFolder(folder.id)}>
+                      {folders.map(folder => <DropdownMenuItem key={folder.id} className="cursor-pointer" disabled={item.folder_id === folder.id} onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveToFolder(folder.id, e);
+                        }}>
                           {folder.name}
                         </DropdownMenuItem>)}
                     </DropdownMenuSubContent>
@@ -140,9 +163,9 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
                 </DropdownMenuSub>}
               
               {/* 3. Baixar - Improved download function */}
-              <DropdownMenuItem className="cursor-pointer" onClick={e => {
+              <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
                 e.stopPropagation();
-                handleDownload();
+                handleDownload(e);
               }}>
                 <Download className="h-4 w-4 mr-2" />
                 Baixar
@@ -151,12 +174,12 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
               {/* 4. Excluir */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500" onSelect={e => e.preventDefault()}>
+                  <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500" onSelect={e => e.preventDefault()} onClick={e => e.stopPropagation()}>
                     <TrashIcon className="h-4 w-4 mr-2" />
                     Excluir
                   </DropdownMenuItem>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="bg-inventu-dark border-inventu-gray/30">
+                <AlertDialogContent className="bg-inventu-dark border-inventu-gray/30" onClick={e => e.stopPropagation()}>
                   <AlertDialogHeader>
                     <AlertDialogTitle className="text-white">Excluir mídia</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -164,8 +187,11 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="border-inventu-gray/30">Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-500 hover:bg-red-600 focus:bg-red-600">
+                    <AlertDialogCancel className="border-inventu-gray/30" onClick={e => e.stopPropagation()}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(e);
+                    }} disabled={isDeleting} className="bg-red-500 hover:bg-red-600 focus:bg-red-600">
                       {isDeleting ? 'Excluindo...' : 'Excluir'}
                     </AlertDialogAction>
                   </AlertDialogFooter>
