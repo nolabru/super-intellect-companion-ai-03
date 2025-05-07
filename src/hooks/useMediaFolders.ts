@@ -71,6 +71,29 @@ export const useMediaFolders = () => {
     }
   };
 
+  // Rename a folder
+  const renameFolder = async (folderId: string, newName: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('media_folders')
+        .update({ name: newName })
+        .eq('id', folderId);
+      
+      if (error) throw error;
+      
+      // Update state
+      setFolders(prev => prev.map(folder => 
+        folder.id === folderId ? { ...folder, name: newName } : folder
+      ));
+      
+      return true;
+    } catch (err) {
+      console.error('Error renaming folder:', err);
+      toast.error('Failed to rename folder');
+      return false;
+    }
+  };
+
   // Delete a folder
   const deleteFolder = async (folderId: string): Promise<boolean> => {
     try {
@@ -134,6 +157,7 @@ export const useMediaFolders = () => {
     loading,
     error,
     createFolder,
+    renameFolder,
     deleteFolder,
     moveMediaToFolder,
     refreshFolders: fetchFolders

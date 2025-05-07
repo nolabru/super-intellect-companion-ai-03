@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
-import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2 } from 'lucide-react';
+import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2, MoreHorizontal, Pencil } from 'lucide-react';
 import { useMediaFolders } from '@/hooks/useMediaFolders';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import MediaDetailsDialog from './MediaDetailsDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 
 type GalleryListProps = {
@@ -34,13 +35,17 @@ const GalleryList: React.FC<GalleryListProps> = ({
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [confirmDeleteFolderId, setConfirmDeleteFolderId] = useState<string | null>(null);
+  const [renameFolderDialogOpen, setRenameFolderDialogOpen] = useState(false);
+  const [folderToRename, setFolderToRename] = useState<MediaFolder | null>(null);
+  const [renameFolderName, setRenameFolderName] = useState('');
   
   const { 
     folders, 
     loading: foldersLoading, 
     createFolder, 
     deleteFolder, 
-    moveMediaToFolder 
+    moveMediaToFolder,
+    renameFolder
   } = useMediaFolders();
 
   const handleCreateFolder = async () => {
@@ -62,6 +67,26 @@ const GalleryList: React.FC<GalleryListProps> = ({
       toast({
         title: "Pasta excluída",
         description: "A pasta foi excluída com sucesso.",
+      });
+    }
+  };
+
+  const openRenameDialog = (folder: MediaFolder) => {
+    setFolderToRename(folder);
+    setRenameFolderName(folder.name);
+    setRenameFolderDialogOpen(true);
+  };
+
+  const handleRenameFolder = async () => {
+    if (!folderToRename || !renameFolderName.trim()) return;
+    
+    const success = await renameFolder(folderToRename.id, renameFolderName);
+    if (success) {
+      setRenameFolderDialogOpen(false);
+      setFolderToRename(null);
+      toast({
+        title: "Pasta renomeada",
+        description: "A pasta foi renomeada com sucesso.",
       });
     }
   };
@@ -147,15 +172,56 @@ const GalleryList: React.FC<GalleryListProps> = ({
           {parentFolders.map(folder => (
             <ContextMenu key={folder.id}>
               <ContextMenuTrigger>
-                <div 
-                  className="bg-inventu-card border border-inventu-gray/30 rounded-lg p-3 cursor-pointer hover:border-inventu-gray/50 transition-colors flex flex-col items-center"
-                  onClick={() => setCurrentFolderId(folder.id)}
-                >
-                  <FolderClosed className="h-10 w-10 text-inventu-blue/70 mb-2" />
-                  <p className="text-sm font-medium text-center truncate w-full">{folder.name}</p>
+                <div className="relative bg-inventu-card border border-inventu-gray/30 rounded-lg p-3 cursor-pointer hover:border-inventu-gray/50 transition-colors flex flex-col items-center group">
+                  {/* Dropdown menu trigger (three dots) */}
+                  <div className="absolute top-2 right-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="bg-inventu-dark border-inventu-gray/30 text-white">
+                        <DropdownMenuItem 
+                          className="cursor-pointer"
+                          onClick={() => openRenameDialog(folder)}
+                        >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Renomear
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive"
+                          onClick={() => setConfirmDeleteFolderId(folder.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Excluir pasta
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  {/* Folder content that opens the folder when clicked */}
+                  <div 
+                    className="w-full flex flex-col items-center"
+                    onClick={() => setCurrentFolderId(folder.id)}
+                  >
+                    <FolderClosed className="h-10 w-10 text-inventu-blue/70 mb-2" />
+                    <p className="text-sm font-medium text-center truncate w-full">{folder.name}</p>
+                  </div>
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent className="bg-inventu-dark border-inventu-gray/30 text-white">
+                <ContextMenuItem 
+                  className="cursor-pointer"
+                  onClick={() => openRenameDialog(folder)}
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Renomear
+                </ContextMenuItem>
                 <ContextMenuItem 
                   className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive"
                   onClick={() => setConfirmDeleteFolderId(folder.id)}
@@ -222,6 +288,39 @@ const GalleryList: React.FC<GalleryListProps> = ({
             </Button>
             <Button onClick={handleCreateFolder}>
               Criar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for renaming folder */}
+      <Dialog open={renameFolderDialogOpen} onOpenChange={setRenameFolderDialogOpen}>
+        <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Renomear pasta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="rename-folder-name">Novo nome da pasta</Label>
+              <Input 
+                id="rename-folder-name" 
+                placeholder="Ex: Imagens favoritas"
+                value={renameFolderName}
+                onChange={(e) => setRenameFolderName(e.target.value)}
+                className="bg-inventu-darker border-inventu-gray/30"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setRenameFolderDialogOpen(false)}
+              className="border-inventu-gray/30"
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleRenameFolder}>
+              Renomear
             </Button>
           </DialogFooter>
         </DialogContent>
