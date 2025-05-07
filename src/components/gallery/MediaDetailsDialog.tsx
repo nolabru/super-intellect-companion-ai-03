@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -28,21 +27,45 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   const handleDownload = () => {
     const url = item.url || item.media_url;
     if (!url) return;
-    const link = document.createElement('a');
-    link.href = url;
-
-    // Get file extension from URL or use default based on media type
-    const mediaType = item.type || item.media_type;
-    const extension = mediaType === 'image' ? 'png' : mediaType === 'video' ? 'mp4' : 'mp3';
-
-    // Generate filename with timestamp to make it unique
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const title = item.title || item.prompt || 'media';
-    const safeTitle = title.replace(/[^a-z0-9]/gi, '-').substring(0, 30);
-    link.download = `${safeTitle}-${timestamp}.${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    
+    // Create a fetch request to get the file as a blob
+    fetch(url)
+      .then(response => response.blob())
+      .then(blob => {
+        // Create a temporary URL for the blob
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Create a link element
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        
+        // Get file extension from URL or use default based on media type
+        const mediaType = item.type || item.media_type;
+        const extension = mediaType === 'image' ? 'png' : mediaType === 'video' ? 'mp4' : 'mp3';
+        
+        // Generate filename with timestamp to make it unique
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const title = item.title || item.prompt || 'media';
+        const safeTitle = title.replace(/[^a-z0-9]/gi, '-').substring(0, 30);
+        
+        // Set download attribute to force download instead of navigation
+        link.download = `${safeTitle}-${timestamp}.${extension}`;
+        
+        // Append to body and trigger click
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        
+        // Release the URL created earlier
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 100);
+      })
+      .catch(error => {
+        console.error('Download failed:', error);
+      });
   };
   
   const handleOpenInNewTab = () => {
