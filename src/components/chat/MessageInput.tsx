@@ -6,6 +6,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useTouchDevice } from '@/hooks/useTouchDevice';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 interface MessageInputProps {
   message: string;
   setMessage: (message: string) => void;
@@ -76,6 +78,8 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const isTouchDevice = useTouchDevice();
   const isMobile = useIsMobile();
   const [hasApiError, setHasApiError] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const placeholder = useMemo(() => {
     if (!hasActiveConversation) {
       return "Crie uma conversa para começar...";
@@ -124,6 +128,17 @@ const MessageInput: React.FC<MessageInputProps> = ({
   }, [message, cursorPosition, isMobile]);
   const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (!hasActiveConversation) {
+      if (!user) {
+        toast.info("Faça login para continuar", {
+          description: "É necessário estar logado para criar uma conversa.",
+          action: {
+            label: "Fazer login",
+            onClick: () => navigate('/auth', { state: { from: location.pathname } })
+          },
+          duration: 4000
+        });
+        return;
+      }
       toast.info("Crie uma conversa primeiro", {
         description: "É necessário criar uma conversa antes de começar a digitar.",
         action: onCreateConversation ? {
@@ -147,6 +162,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
   const insertCommand = (command: string) => {
     if (!hasActiveConversation) {
+      if (!user) {
+        toast.info("Faça login para continuar", {
+          description: "É necessário estar logado para criar uma conversa.",
+          action: {
+            label: "Fazer login",
+            onClick: () => navigate('/auth', { state: { from: location.pathname } })
+          }
+        });
+        return;
+      }
       toast.info("Crie uma conversa primeiro", {
         description: "É necessário criar uma conversa antes de usar comandos.",
         action: onCreateConversation ? {
@@ -183,6 +208,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
   const handleSendWithError = () => {
     if (!hasActiveConversation) {
+      if (!user) {
+        toast.info("Faça login para continuar", {
+          description: "É necessário estar logado para criar uma conversa.",
+          action: {
+            label: "Fazer login",
+            onClick: () => navigate('/auth', { state: { from: location.pathname } })
+          }
+        });
+        return;
+      }
       toast.info("Crie uma conversa primeiro", {
         description: "É necessário criar uma conversa antes de enviar mensagens.",
         action: onCreateConversation ? {
@@ -228,7 +263,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
             </div>)}
         </div>
       </div>;
-  }, [showCommandMenu, commandMenuPosition, message, cursorPosition, isGoogleConnected, isMobile, hasActiveConversation, onCreateConversation]);
+  }, [showCommandMenu, commandMenuPosition, message, cursorPosition, isGoogleConnected, isMobile, hasActiveConversation, onCreateConversation, navigate, user]);
 
   // Show alert banner when there's no active conversation
   const showNoConversationBanner = !hasActiveConversation;
@@ -244,11 +279,23 @@ const MessageInput: React.FC<MessageInputProps> = ({
       {showNoConversationBanner && <div className="px-3 py-2 border-t border-blue-500/30 mb-1 rounded-t-lg flex items-center bg-inventu-darker">
           <AlertTriangle className="h-4 w-4 text-blue-300 mr-2 flex-shrink-0" />
           <span className="text-blue-100 text-xs font-medium">
-            Crie uma conversa para começar a interagir.
+            {!user ? "Faça login para criar uma conversa." : "Crie uma conversa para começar a interagir."}
           </span>
-          {onCreateConversation && <button onClick={onCreateConversation} className="ml-auto text-xs text-white rounded px-[16px] bg-inventu-card py-[10px] transition-all duration-200 hover:bg-inventu-blue">
-            Criar Conversa
-          </button>}
+          {!user ? (
+            <button 
+              onClick={() => navigate('/auth', { state: { from: location.pathname } })}
+              className="ml-auto text-xs text-white rounded px-[16px] bg-inventu-card py-[10px] transition-all duration-200 hover:bg-inventu-blue"
+            >
+              Fazer Login
+            </button>
+          ) : onCreateConversation && (
+            <button 
+              onClick={onCreateConversation} 
+              className="ml-auto text-xs text-white rounded px-[16px] bg-inventu-card py-[10px] transition-all duration-200 hover:bg-inventu-blue"
+            >
+              Criar Conversa
+            </button>
+          )}
         </div>}
       
       <div className={cn("relative flex items-center gap-2 p-1.5", isFocused && "ring-1 ring-white/30", (showApiErrorBanner || showNoConversationBanner) && "rounded-t-none", !hasActiveConversation && "bg-black/40 opacity-80")} ref={containerRef}>

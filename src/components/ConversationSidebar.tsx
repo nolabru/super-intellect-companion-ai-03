@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { History, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -163,6 +164,15 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     processingRef.current.newConversation = true;
     
     console.log('[ConversationSidebar] Criando nova conversa');
+
+    // Check if user is logged in
+    if (!user) {
+      console.log('[ConversationSidebar] Usuário não está logado, redirecionando para a página de login');
+      toast.info('Faça login para criar uma nova conversa');
+      navigate('/auth', { state: { from: location.pathname } });
+      processingRef.current.newConversation = false;
+      return;
+    }
 
     // Feedback visual imediato - limpar mensagens
     clearMessages();

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getModelsByMode } from '@/components/ModelSelector';
@@ -63,6 +64,14 @@ const Index: React.FC = () => {
         console.log('[Index] No conversation selected. Creating a new one...');
         creatingConversationRef.current = true;
         setCreatingConversation(true);
+        
+        // Check if user is logged in
+        if (!user) {
+          console.log('[Index] User not logged in, redirecting to auth page');
+          navigate('/auth', { state: { from: location.pathname } });
+          return;
+        }
+        
         const success = await conversation.createNewConversation();
         
         if (success) {
@@ -98,11 +107,20 @@ const Index: React.FC = () => {
     creatingConversation,
     currentConversationId,
     conversationId,
-    navigate
+    navigate,
+    user
   ]);
 
   const handleCreateConversation = async () => {
     if (creatingConversation || creatingConversationRef.current) return;
+    
+    // Check if user is logged in
+    if (!user) {
+      console.log('[Index] User not logged in, redirecting to auth page');
+      toast.info('Faça login para criar uma nova conversa');
+      navigate('/auth', { state: { from: location.pathname } });
+      return;
+    }
     
     try {
       setCreatingConversation(true);
