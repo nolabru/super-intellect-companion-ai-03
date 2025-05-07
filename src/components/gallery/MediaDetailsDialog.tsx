@@ -64,7 +64,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
           <div className="space-y-2">
             
             {item.prompt && <div className="bg-inventu-darker p-3 rounded-md border border-inventu-gray/20">
-                <p className="text-sm text-inventu-gray/90 mb-1 font-normal">prompt</p>
+                <p className="text-inventu-gray/90 mb-1 font-normal text-sm">prompt</p>
                 <p className="text-sm text-white">{item.prompt}</p>
               </div>}
             <div className="flex flex-wrap gap-2 text-xs text-inventu-gray/70">
