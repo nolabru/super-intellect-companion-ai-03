@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MediaFolder } from '@/types/gallery';
 import { toast } from 'sonner';
@@ -9,6 +9,8 @@ export const useMediaFolders = () => {
   const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef<string | null>(null);
   const { user } = useAuth();
 
   // Fetch user's folders
@@ -96,14 +98,33 @@ export const useMediaFolders = () => {
 
   // Delete a folder
   const deleteFolder = async (folderId: string): Promise<boolean> => {
+    // Prevent multiple deletion operations on the same folder
+    if (deleting || deletingRef.current === folderId) {
+      console.log(`Already deleting folder ${folderId}, ignoring duplicate request`);
+      return false;
+    }
+
     try {
+      // Set deleting state and reference
+      setDeleting(true);
+      deletingRef.current = folderId;
+      
+      // Show deletion in progress toast
+      const toastId = toast.loading('Deleting folder...');
+      
       // First move all media in this folder back to root
       const { error: updateError } = await supabase
         .from('media_gallery')
         .update({ folder_id: null })
         .eq('folder_id', folderId);
       
-      if (updateError) throw updateError;
+      if (updateError) {
+        toast.error('Failed to update media in folder', { id: toastId });
+        throw updateError;
+      }
+      
+      // Allow UI to update before deletion
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Then delete the folder
       const { error } = await supabase
@@ -111,16 +132,32 @@ export const useMediaFolders = () => {
         .delete()
         .eq('id', folderId);
       
-      if (error) throw error;
+      if (error) {
+        toast.error('Failed to delete folder', { id: toastId });
+        throw error;
+      }
       
-      // Update state
+      // Update state - do this before showing success to prevent UI jumps
       setFolders(prev => prev.filter(folder => folder.id !== folderId));
-      toast.success('Folder deleted successfully');
+      
+      // Show success message
+      toast.success('Folder deleted successfully', { id: toastId });
+      
+      // Add a small delay to allow state updates to propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       return true;
     } catch (err) {
       console.error('Error deleting folder:', err);
-      toast.error('Failed to delete folder');
+      toast.error('Failed to delete folder: ' + 
+        (err instanceof Error ? err.message : 'Unknown error'));
       return false;
+    } finally {
+      // Reset deletion state and reference with a slight delay
+      setTimeout(() => {
+        setDeleting(false);
+        deletingRef.current = null;
+      }, 500);
     }
   };
 
@@ -156,6 +193,7 @@ export const useMediaFolders = () => {
     folders,
     loading,
     error,
+    deleting,
     createFolder,
     renameFolder,
     deleteFolder,

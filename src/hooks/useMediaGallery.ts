@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { withRetry } from '@/utils/retryOperations';
 export const useMediaGallery = () => {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef<string | null>(null);
   
   /**
    * Faz download da mídia e salva no Supabase Storage
@@ -170,11 +171,21 @@ export const useMediaGallery = () => {
    * Deletes media from gallery and storage with improved verification and retry logic
    */
   const deleteMediaFromGallery = async (mediaId: string): Promise<boolean> => {
+    // Prevent multiple deletion operations on the same media
+    if (deleting || deletingRef.current === mediaId) {
+      console.warn(`[deleteMediaFromGallery] Already deleting media ${mediaId}, ignoring duplicate request`);
+      return false;
+    }
+
     try {
-      if (deleting) return false; // Prevent multiple deletion attempts
-      
+      // Set deleting state and reference
       setDeleting(true);
-      console.log('[deleteMediaFromGallery] Iniciando exclusão de mídia com ID:', mediaId);
+      deletingRef.current = mediaId;
+      
+      console.log('[deleteMediaFromGallery] Starting deletion of media with ID:', mediaId);
+      
+      // Show deletion in progress toast
+      const toastId = toast.loading('Deletando mídia...');
 
       // Get the media item to find out storage path
       const { data: mediaItem, error: fetchError } = await supabase
@@ -184,19 +195,19 @@ export const useMediaGallery = () => {
         .maybeSingle();
 
       if (fetchError) {
-        console.error('[deleteMediaFromGallery] Erro ao buscar item de mídia:', fetchError);
-        toast.error("Não foi possível encontrar o item para exclusão");
+        console.error('[deleteMediaFromGallery] Error fetching media item:', fetchError);
+        toast.error("Não foi possível encontrar o item para exclusão", { id: toastId });
         return false;
       }
 
       if (!mediaItem) {
-        // O item já pode ter sido excluído, consideramos isso um sucesso
-        console.log('[deleteMediaFromGallery] Item não encontrado com o ID:', mediaId);
-        toast.success("Item excluído com sucesso");
+        // The item may have already been deleted, consider this a success
+        console.log('[deleteMediaFromGallery] Item not found with ID:', mediaId);
+        toast.success("Item excluído com sucesso", { id: toastId });
         return true;
       }
 
-      console.log('[deleteMediaFromGallery] Mídia encontrada:', mediaItem);
+      console.log('[deleteMediaFromGallery] Media found:', mediaItem);
 
       // Check if this media is stored in our storage
       if (mediaItem?.media_url && mediaItem.media_url.includes('media_gallery')) {
@@ -209,7 +220,7 @@ export const useMediaGallery = () => {
           const bucketPath = pathParts.slice(pathParts.indexOf('media_gallery') + 1).join('/');
           
           if (bucketPath) {
-            console.log('[deleteMediaFromGallery] Removendo arquivo do storage:', bucketPath);
+            console.log('[deleteMediaFromGallery] Removing file from storage:', bucketPath);
             
             // Delete the file from storage with retry
             await withRetry(
@@ -219,49 +230,52 @@ export const useMediaGallery = () => {
                   .remove([bucketPath]);
                   
                 if (storageError) {
-                  console.warn('[deleteMediaFromGallery] Falha ao excluir arquivo do storage:', storageError);
+                  console.warn('[deleteMediaFromGallery] Failed to delete file from storage:', storageError);
                   throw storageError;
                 }
                 
-                console.log('[deleteMediaFromGallery] Arquivo removido com sucesso do storage');
+                console.log('[deleteMediaFromGallery] File successfully removed from storage');
                 return true;
               },
               {
                 maxRetries: 3,
                 initialDelay: 300,
                 onRetry: (error, attemptNumber) => {
-                  console.log(`[deleteMediaFromGallery] Tentativa ${attemptNumber} de excluir arquivo do storage após erro:`, error);
+                  console.log(`[deleteMediaFromGallery] Attempt ${attemptNumber} to delete file from storage after error:`, error);
                 }
               }
             );
           }
         } catch (storageError) {
-          console.warn('[deleteMediaFromGallery] Erro ao analisar URL do storage:', storageError);
+          console.warn('[deleteMediaFromGallery] Error parsing storage URL:', storageError);
           // Continue with database deletion even if storage deletion fails
         }
       }
 
+      // Add a small delay before database operations to ensure storage operations complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Implement retry logic for database deletion
-      return await withRetry(
+      const success = await withRetry(
         async () => {
-          // PARTE CRÍTICA: Exclusão do registro do banco de dados
-          console.log('[deleteMediaFromGallery] Tentando excluir registro do banco de dados para o ID:', mediaId);
+          // CRITICAL PART: Delete record from database
+          console.log('[deleteMediaFromGallery] Attempting to delete database record for ID:', mediaId);
           
-          // Primeira etapa: exclusão do registro
+          // First step: delete the record
           const { error: deleteError } = await supabase
             .from('media_gallery')
             .delete()
             .eq('id', mediaId);
 
           if (deleteError) {
-            console.error('[deleteMediaFromGallery] Erro ao excluir mídia do banco de dados:', deleteError);
-            toast.error("Erro ao excluir o arquivo: " + deleteError.message);
-            throw deleteError; // Lançar erro para acionar retry
+            console.error('[deleteMediaFromGallery] Error deleting media from database:', deleteError);
+            toast.error("Error deleting the file: " + deleteError.message, { id: toastId });
+            throw deleteError; // Throw error to trigger retry
           }
           
-          // Segunda etapa: verificar se o item ainda existe
-          // Usar single é arriscado pois causa erro se não existir, usar maybeSingle
-          // Adicionar pequeno delay para permitir que a operação seja propagada
+          // Second step: verify item no longer exists
+          // Using maybeSingle is safer as it doesn't throw if no item exists
+          // Add small delay to allow operation to propagate
           await new Promise(resolve => setTimeout(resolve, 300));
           
           const { data: checkItem } = await supabase
@@ -271,12 +285,16 @@ export const useMediaGallery = () => {
             .maybeSingle();
             
           if (checkItem) {
-            console.warn('[deleteMediaFromGallery] ALERTA: Item ainda existe no banco de dados após exclusão:', mediaId);
-            throw new Error('Item still exists after deletion'); // Para retry
+            console.warn('[deleteMediaFromGallery] WARNING: Item still exists in database after deletion:', mediaId);
+            throw new Error('Item still exists after deletion'); // For retry
           }
           
-          console.log('[deleteMediaFromGallery] Mídia excluída com sucesso do banco de dados');
-          toast.success("Arquivo excluído com sucesso");
+          console.log('[deleteMediaFromGallery] Media successfully deleted from database');
+          toast.success("Arquivo excluído com sucesso", { id: toastId });
+          
+          // Add a small delay to let toast appear before state changes
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
           return true;
         },
         {
@@ -285,25 +303,31 @@ export const useMediaGallery = () => {
           factor: 1.5,
           retryCondition: (error) => {
             // Retry on specific errors that indicate the operation might succeed if retried
-            console.log('[deleteMediaFromGallery] Avaliando retry para erro:', error);
+            console.log('[deleteMediaFromGallery] Evaluating retry for error:', error);
             return true;
           },
           onRetry: (error, attemptNumber) => {
-            console.log(`[deleteMediaFromGallery] Tentativa ${attemptNumber} de excluir registro no banco de dados após erro:`, error);
+            console.log(`[deleteMediaFromGallery] Attempt ${attemptNumber} to delete record in database after error:`, error);
           }
         }
       ).catch((finalError) => {
-        console.error('[deleteMediaFromGallery] Falha em todas as tentativas de excluir mídia:', finalError);
-        toast.error("Não foi possível excluir o arquivo após várias tentativas");
+        console.error('[deleteMediaFromGallery] Failed all attempts to delete media:', finalError);
+        toast.error("Não foi possível excluir o arquivo após várias tentativas", { id: toastId });
         return false;
       });
+
+      return success;
     } catch (error) {
-      console.error('[deleteMediaFromGallery] Erro ao excluir mídia da galeria:', error);
+      console.error('[deleteMediaFromGallery] Error deleting media from gallery:', error);
       toast.error("Erro ao excluir o arquivo: " + 
         (error instanceof Error ? error.message : "Erro desconhecido"));
       return false;
     } finally {
-      setDeleting(false);
+      // Reset deletion state and reference with slight delay
+      setTimeout(() => {
+        setDeleting(false);
+        deletingRef.current = null;
+      }, 500);
     }
   };
 

@@ -1,238 +1,222 @@
 
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
-import { TrashIcon, FolderIcon, ExternalLinkIcon, MoreVertical, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { ptBR } from 'date-fns/locale';
+import { MoreHorizontal, Trash2, ExternalLink, FolderClosed, FolderOpen } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
-type GalleryMediaCardProps = {
+interface GalleryMediaCardProps {
   item: MediaItem;
   onDelete: (id: string) => Promise<void>;
+  onClick?: () => void;
   onMove?: (mediaId: string, folderId: string | null) => Promise<boolean>;
   folders?: MediaFolder[];
-  onClick?: () => void;
-};
+  disabled?: boolean;
+}
 
-const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
-  item,
-  onDelete,
+const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ 
+  item, 
+  onDelete, 
+  onClick,
   onMove,
   folders = [],
-  onClick
+  disabled = false
 }) => {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [moveFolderDialogOpen, setMoveFolderDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
 
-  const handleDelete = async (e?: React.MouseEvent) => {
-    // Impedir a propagação do evento para evitar que o card seja clicado
-    if (e) {
-      e.stopPropagation();
-    }
+  const handleDelete = async () => {
+    if (isDeleting || disabled) return;
     
     try {
       setIsDeleting(true);
-      console.log('[GalleryMediaCard] Chamando onDelete para o item com ID:', item.id);
-      
-      // Mostrar toast para informar que a exclusão está em andamento
-      toast.loading('Excluindo arquivo...');
-      
       await onDelete(item.id);
-      
-      // Não precisamos mostrar um toast de sucesso aqui porque o toast já é mostrado
-      // na função deleteMediaFromGallery do hook useMediaGallery
-    } catch (error) {
-      console.error('[GalleryMediaCard] Erro ao excluir mídia:', error);
-      toast.error('Erro ao excluir o arquivo');
+      setConfirmDelete(false);
     } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleMoveToFolder = async (folderId: string | null, e?: React.MouseEvent) => {
-    // Impedir a propagação do evento para evitar que o card seja clicado
-    if (e) {
-      e.stopPropagation();
-    }
-    
-    if (onMove) {
-      try {
-        toast.loading('Movendo arquivo...');
-        const success = await onMove(item.id, folderId);
-        if (success) {
-          toast.success('Arquivo movido com sucesso');
-        } else {
-          toast.error('Não foi possível mover o arquivo');
-        }
-      } catch (error) {
-        console.error('[GalleryMediaCard] Erro ao mover arquivo:', error);
-        toast.error('Erro ao mover o arquivo');
-      }
-    }
-  };
-
-  const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    const url = item.url || item.media_url;
-    if (!url) return;
-
-    // Create a fetch request to get the file as a blob
-    fetch(url).then(response => response.blob()).then(blob => {
-      // Create a temporary URL for the blob
-      const blobUrl = URL.createObjectURL(blob);
-
-      // Create a link element
-      const link = document.createElement('a');
-      link.href = blobUrl;
-
-      // Get file extension from URL or use default based on media type
-      const mediaType = item.type || item.media_type;
-      const extension = mediaType === 'image' ? 'png' : mediaType === 'video' ? 'mp4' : 'mp3';
-
-      // Generate filename with timestamp to make it unique
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const title = item.title || item.prompt || 'media';
-      const safeTitle = title.replace(/[^a-z0-9]/gi, '-').substring(0, 30);
-
-      // Set download attribute to force download instead of navigation
-      link.download = `${safeTitle}-${timestamp}.${extension}`;
-
-      // Append to body and trigger click
-      document.body.appendChild(link);
-      link.click();
-
-      // Clean up
-      document.body.removeChild(link);
-
-      // Release the URL created earlier
+      // Add a delay before resetting to prevent UI flicker
       setTimeout(() => {
-        URL.revokeObjectURL(blobUrl);
-      }, 100);
-    }).catch(error => {
-      console.error('[GalleryMediaCard] Download failed:', error);
-      toast.error('Erro ao baixar o arquivo');
-    });
+        setIsDeleting(false);
+      }, 500);
+    }
   };
-
-  const getMediaContent = () => {
-    const url = item.url || item.media_url;
-    if (!url) return null;
-    const mediaType = item.type || item.media_type;
-    if (mediaType === 'image') {
-      return <img src={url} alt={item.title || 'Media item'} className="absolute inset-0 w-full h-full object-cover rounded-t-md" />;
-    } else if (mediaType === 'video') {
-      return <video src={url} className="absolute inset-0 w-full h-full object-cover rounded-t-md" muted loop playsInline />;
-    } else if (mediaType === 'audio') {
-      return <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-inventu-card rounded-t-md">
-          <div className="w-16 h-16 bg-inventu-blue/30 rounded-full flex items-center justify-center">
-            <div className="w-8 h-8 bg-inventu-blue rounded-full"></div>
-          </div>
-        </div>;
-    } else {
-      return <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-inventu-card rounded-t-md">
-          <div className="text-inventu-gray/50 text-xl">Arquivo não suportado</div>
-        </div>;
+  
+  const handleMoveToFolder = async (folderId: string | null) => {
+    if (!onMove || isMoving || disabled) return;
+    
+    try {
+      setIsMoving(true);
+      const success = await onMove(item.id, folderId);
+      if (success) {
+        setMoveFolderDialogOpen(false);
+      }
+    } finally {
+      setTimeout(() => {
+        setIsMoving(false);
+      }, 500);
     }
   };
 
-  const createdDate = new Date(item.created_at);
-  const formattedDate = format(createdDate, 'dd/MM/yyyy');
+  const formattedDate = item.created_at 
+    ? format(new Date(item.created_at), "d 'de' MMMM, yyyy", { locale: ptBR })
+    : '';
 
-  return <div className="bg-inventu-card border border-inventu-gray/30 rounded-md overflow-hidden transition-all hover:border-inventu-gray/50 cursor-pointer" onClick={onClick}>
-      <div className="relative aspect-video">
-        {getMediaContent()}
-        <div className="absolute top-2 right-2" onClick={e => e.stopPropagation()}>
+  // Format for image display
+  const imageUrl = item.url || item.media_url || '';
+  const isVideo = item.type === 'video' || item.media_type === 'video';
+  const isAudio = item.type === 'audio' || item.media_type === 'audio';
+
+  // Get folder name if this media is in a folder
+  const currentFolder = folders.find(f => f.id === item.folder_id);
+  
+  return (
+    <>
+      <div className="group relative bg-inventu-card rounded-lg overflow-hidden border border-inventu-gray/10 hover:border-inventu-gray/30 transition-colors">
+        {/* Media preview */}
+        <div 
+          className="aspect-square w-full overflow-hidden cursor-pointer" 
+          onClick={disabled ? undefined : onClick}
+        >
+          {isVideo ? (
+            <video 
+              src={imageUrl} 
+              className="w-full h-full object-cover"
+              controls={false}
+            />
+          ) : isAudio ? (
+            <div className="w-full h-full flex items-center justify-center bg-inventu-darker">
+              <audio 
+                src={imageUrl} 
+                className="w-3/4" 
+                controls
+              />
+            </div>
+          ) : (
+            <img 
+              src={imageUrl} 
+              alt={item.prompt || 'Media'} 
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          )}
+        </div>
+
+        {/* Overlay with actions */}
+        <div className="absolute top-2 right-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="bg-black/30 hover:bg-black/50 text-white rounded-full h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 bg-inventu-dark/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                disabled={disabled}
+              >
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-inventu-dark text-white border-inventu-gray/30 my-0 mx-0 py-[6px] px-[6px]">
-              {/* 1. Abrir em nova aba */}
-              <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
-                e.stopPropagation();
-                window.open(item.url || item.media_url, '_blank');
-              }}>
-                <ExternalLinkIcon className="h-4 w-4 mr-2" />
+            <DropdownMenuContent className="bg-inventu-dark border-inventu-gray/30 text-white">
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => window.open(imageUrl, '_blank')}
+                disabled={disabled}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
                 Abrir em nova aba
               </DropdownMenuItem>
-              
-              {/* 2. Mover para pasta */}
-              {onMove && folders && <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="cursor-pointer" onClick={e => e.stopPropagation()}>
-                    <FolderIcon className="h-4 w-4 mr-2" />
-                    Mover para pasta
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent className="bg-inventu-dark text-white border-inventu-gray/30">
-                      <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
-                        e.stopPropagation();
-                        handleMoveToFolder(null, e);
-                      }}>
-                        Raiz (sem pasta)
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-inventu-gray/20" />
-                      {folders.map(folder => <DropdownMenuItem key={folder.id} className="cursor-pointer" disabled={item.folder_id === folder.id} onClick={(e) => {
-                          e.stopPropagation();
-                          handleMoveToFolder(folder.id, e);
-                        }}>
-                          {folder.name}
-                        </DropdownMenuItem>)}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>}
-              
-              {/* 3. Baixar - Improved download function */}
-              <DropdownMenuItem className="cursor-pointer" onClick={(e) => {
-                e.stopPropagation();
-                handleDownload(e);
-              }}>
-                <Download className="h-4 w-4 mr-2" />
-                Baixar
+              {folders.length > 0 && (
+                <DropdownMenuItem 
+                  className="cursor-pointer"
+                  onClick={() => setMoveFolderDialogOpen(true)}
+                  disabled={disabled}
+                >
+                  <FolderClosed className="h-4 w-4 mr-2" />
+                  Mover para pasta
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem 
+                className="cursor-pointer text-destructive"
+                onClick={() => setConfirmDelete(true)}
+                disabled={disabled}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Excluir
               </DropdownMenuItem>
-              
-              {/* 4. Excluir */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500" onSelect={e => e.preventDefault()} onClick={e => e.stopPropagation()}>
-                    <TrashIcon className="h-4 w-4 mr-2" />
-                    Excluir
-                  </DropdownMenuItem>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="bg-inventu-dark border-inventu-gray/30" onClick={e => e.stopPropagation()}>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="text-white">Excluir mídia</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tem certeza que deseja excluir este item? Esta ação não pode ser desfeita.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="border-inventu-gray/30" onClick={e => e.stopPropagation()}>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(e);
-                    }} disabled={isDeleting} className="bg-red-500 hover:bg-red-600 focus:bg-red-600">
-                      {isDeleting ? 'Excluindo...' : 'Excluir'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/* Folder indicator if in a folder */}
+        {currentFolder && (
+          <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1 text-xs flex items-center">
+            <FolderOpen className="h-3 w-3 mr-1" />
+            <span className="truncate">{currentFolder.name}</span>
+          </div>
+        )}
       </div>
-      <div className="p-3">
-        <div className="text-sm font-medium truncate">
-          {item.title || item.prompt || 'Sem título'}
-        </div>
-        <div className="text-xs text-inventu-gray/70 mt-1">
-          {formattedDate}
-        </div>
-      </div>
-    </div>;
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Excluir mídia</DialogTitle>
+            <DialogDescription className="text-inventu-gray/80">
+              Esta ação é irreversível. Tem certeza que deseja excluir esta mídia?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(false)} className="border-inventu-gray/30">
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting && <span className="mr-2 h-4 w-4 animate-spin">◌</span>}
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move to folder dialog */}
+      <Dialog open={moveFolderDialogOpen} onOpenChange={setMoveFolderDialogOpen}>
+        <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Mover para pasta</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Button 
+              variant={item.folder_id === null ? "secondary" : "outline"}
+              onClick={() => handleMoveToFolder(null)}
+              disabled={isMoving}
+              className="justify-start"
+            >
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Raiz (Sem pasta)
+            </Button>
+            {folders.map(folder => (
+              <Button 
+                key={folder.id}
+                variant={item.folder_id === folder.id ? "secondary" : "outline"}
+                onClick={() => handleMoveToFolder(folder.id)}
+                disabled={isMoving || item.folder_id === folder.id}
+                className="justify-start"
+              >
+                <FolderClosed className="mr-2 h-4 w-4" />
+                {folder.name}
+              </Button>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveFolderDialogOpen(false)} className="border-inventu-gray/30">
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 };
 
 export default GalleryMediaCard;

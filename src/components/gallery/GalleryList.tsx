@@ -1,17 +1,19 @@
-import React, { useState } from 'react';
+
+import React, { useState, useRef } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
-import { AlertCircle, Image, FolderPlus, FolderOpen, FolderClosed, Trash2, MoreVertical, Pencil, ArrowLeft } from 'lucide-react';
+import { AlertCircle, Image, FolderPlus, FolderClosed, Trash2, MoreVertical, Pencil, ArrowLeft, Loader2 } from 'lucide-react';
 import { useMediaFolders } from '@/hooks/useMediaFolders';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MediaDetailsDialog from './MediaDetailsDialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
+
 type GalleryListProps = {
   media: MediaItem[];
   onDeleteItem: (id: string) => Promise<void>;
@@ -22,6 +24,7 @@ type GalleryListProps = {
   currentFolderId?: string | null;
   onFolderChange?: (folderId: string | null) => void;
 };
+
 const GalleryList: React.FC<GalleryListProps> = ({
   media,
   onDeleteItem,
@@ -35,6 +38,9 @@ const GalleryList: React.FC<GalleryListProps> = ({
   // Use the prop value if provided, otherwise use local state
   const [localFolderId, setLocalFolderId] = useState<string | null>(null);
   const currentFolderId = propsFolderId !== undefined ? propsFolderId : localFolderId;
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deletingItemRef = useRef<string | null>(null);
+  
   const setCurrentFolderId = (folderId: string | null) => {
     if (onFolderChange) {
       onFolderChange(folderId);
@@ -48,14 +54,17 @@ const GalleryList: React.FC<GalleryListProps> = ({
   const [renameFolderDialogOpen, setRenameFolderDialogOpen] = useState(false);
   const [folderToRename, setFolderToRename] = useState<MediaFolder | null>(null);
   const [renameFolderName, setRenameFolderName] = useState('');
+  
   const {
     folders,
     loading: foldersLoading,
+    deleting: deletingFolder,
     createFolder,
     deleteFolder,
     moveMediaToFolder,
     renameFolder
   } = useMediaFolders();
+
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
     const newFolder = await createFolder(newFolderName, currentFolderId);
@@ -64,23 +73,46 @@ const GalleryList: React.FC<GalleryListProps> = ({
       setNewFolderName('');
     }
   };
+
   const handleDeleteFolder = async (folderId: string) => {
-    const success = await deleteFolder(folderId);
-    if (success) {
-      if (currentFolderId === folderId) {
-        setCurrentFolderId(null);
-      }
+    if (deletingFolder) {
       toast({
-        title: "Pasta excluída",
-        description: "A pasta foi excluída com sucesso."
+        title: "Operation in progress",
+        description: "Please wait for the current operation to complete"
       });
+      return;
+    }
+    
+    try {
+      setIsDeleting(true);
+      const success = await deleteFolder(folderId);
+      
+      if (success) {
+        if (currentFolderId === folderId) {
+          // Reset folder ID with a small delay
+          setTimeout(() => {
+            setCurrentFolderId(null);
+          }, 300);
+        }
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to delete folder",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setConfirmDeleteFolderId(null);
     }
   };
+
   const openRenameDialog = (folder: MediaFolder) => {
     setFolderToRename(folder);
     setRenameFolderName(folder.name);
     setRenameFolderDialogOpen(true);
   };
+  
   const handleRenameFolder = async () => {
     if (!folderToRename || !renameFolderName.trim()) return;
     const success = await renameFolder(folderToRename.id, renameFolderName);
@@ -93,12 +125,44 @@ const GalleryList: React.FC<GalleryListProps> = ({
       });
     }
   };
+
+  const handleMediaDelete = async (mediaId: string) => {
+    // Prevent multiple deletion operations on the same item
+    if (isDeleting || deletingItemRef.current === mediaId) {
+      toast({
+        title: "Operation in progress",
+        description: "Please wait for the current operation to complete"
+      });
+      return;
+    }
+    
+    try {
+      setIsDeleting(true);
+      deletingItemRef.current = mediaId;
+      
+      // Close details if the deleted item was selected
+      if (selectedItem?.id === mediaId) {
+        onCloseDetails?.();
+      }
+      
+      await onDeleteItem(mediaId);
+    } finally {
+      // Reset deletion state with a small delay
+      setTimeout(() => {
+        setIsDeleting(false);
+        deletingItemRef.current = null;
+      }, 500);
+    }
+  };
+  
   const handleMoveMedia = async (mediaId: string, folderId: string | null) => {
     return await moveMediaToFolder(mediaId, folderId);
   };
+
   const currentFolder = folders.find(f => f.id === currentFolderId);
   const parentFolders = currentFolderId ? folders.filter(f => f.parent_folder_id === currentFolderId) : folders.filter(f => !f.parent_folder_id);
   const currentFolderMedia = currentFolderId ? media.filter(item => item.folder_id === currentFolderId) : media.filter(item => !item.folder_id);
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-[40vh] px-4">
       <div className="animate-pulse flex flex-col items-center">
@@ -108,6 +172,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
       </div>
     </div>;
   }
+
   if (media.length === 0 && folders.length === 0) {
     return <div className="flex flex-col items-center justify-center text-center min-h-[70vh] px-6 my-0 py-[40px]">
       <div className="bg-inventu-gray/5 rounded-full p-6 mb-6">
@@ -123,43 +188,76 @@ const GalleryList: React.FC<GalleryListProps> = ({
       </Button>
     </div>;
   }
+
   return <>
       <div className="flex justify-start items-center mt-3 py-0 px-0 mb-3">
         <div className="flex items-center gap-2">
-          {currentFolderId && <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => {
-          const currentFolder = folders.find(f => f.id === currentFolderId);
-          setCurrentFolderId(currentFolder?.parent_folder_id || null);
-        }}>
+          {currentFolderId && <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex items-center gap-2" 
+            onClick={() => {
+              const currentFolder = folders.find(f => f.id === currentFolderId);
+              setCurrentFolderId(currentFolder?.parent_folder_id || null);
+            }}
+            disabled={deletingFolder || isDeleting}
+          >
               <ArrowLeft className="h-4 w-4" />
               <span>Voltar</span>
             </Button>}
-          
         </div>
         
-        {!currentFolderId && <Button variant="outline" size="sm" className="border-inventu-gray/30" onClick={() => setNewFolderDialogOpen(true)}>
+        {!currentFolderId && <Button 
+          variant="outline" 
+          size="sm" 
+          className="border-inventu-gray/30" 
+          onClick={() => setNewFolderDialogOpen(true)}
+          disabled={deletingFolder || isDeleting}
+        >
           <FolderPlus className="h-4 w-4 mr-2" />
           Nova pasta
         </Button>}
       </div>
       
+      {/* System Busy Indicator */}
+      {(deletingFolder || isDeleting) && (
+        <div className="bg-inventu-gray/10 text-white px-3 py-2 rounded-md mb-4 flex items-center">
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          <span className="text-sm">Operação em andamento, aguarde...</span>
+        </div>
+      )}
+      
       {parentFolders.length > 0 && <div className="grid grid-cols-6 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 px-0">
           {parentFolders.map(folder => <ContextMenu key={folder.id}>
               <ContextMenuTrigger>
                 <div className="relative bg-inventu-card border border-inventu-gray/10 rounded-lg p-6 cursor-pointer hover:border-inventu-gray/70 transition-colors flex flex-col items-center group">
-                  {/* Dropdown menu trigger - Changed from MoreHorizontal to MoreVertical */}
+                  {/* Dropdown menu trigger */}
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          disabled={deletingFolder || isDeleting}
+                        >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="bg-inventu-dark border-inventu-gray/30 text-white">
-                        <DropdownMenuItem className="cursor-pointer" onClick={() => openRenameDialog(folder)}>
+                        <DropdownMenuItem 
+                          className="cursor-pointer" 
+                          onClick={() => openRenameDialog(folder)}
+                          disabled={deletingFolder || isDeleting}
+                        >
                           <Pencil className="h-4 w-4 mr-2" />
                           Renomear
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive" onClick={() => setConfirmDeleteFolderId(folder.id)}>
+                        <DropdownMenuItem 
+                          className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive" 
+                          onClick={() => setConfirmDeleteFolderId(folder.id)}
+                          disabled={deletingFolder || isDeleting}
+                        >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Excluir
                         </DropdownMenuItem>
@@ -168,18 +266,29 @@ const GalleryList: React.FC<GalleryListProps> = ({
                   </div>
                   
                   {/* Folder content that opens the folder when clicked */}
-                  <div className="w-full flex flex-col items-center" onClick={() => setCurrentFolderId(folder.id)}>
+                  <div 
+                    className="w-full flex flex-col items-center" 
+                    onClick={() => !deletingFolder && !isDeleting && setCurrentFolderId(folder.id)}
+                  >
                     <FolderClosed className="h-8 w-8 text-inventu-blue/100 mb-2" />
                     <p className="text-sm font-medium text-center truncate w-full">{folder.name}</p>
                   </div>
                 </div>
               </ContextMenuTrigger>
               <ContextMenuContent className="bg-inventu-dark border-inventu-gray/30 text-white">
-                <ContextMenuItem className="cursor-pointer" onClick={() => openRenameDialog(folder)}>
+                <ContextMenuItem 
+                  className="cursor-pointer" 
+                  onClick={() => openRenameDialog(folder)}
+                  disabled={deletingFolder || isDeleting}
+                >
                   <Pencil className="h-4 w-4 mr-2" />
                   Renomear
                 </ContextMenuItem>
-                <ContextMenuItem className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive" onClick={() => setConfirmDeleteFolderId(folder.id)}>
+                <ContextMenuItem 
+                  className="cursor-pointer text-destructive hover:text-destructive focus:text-destructive" 
+                  onClick={() => setConfirmDeleteFolderId(folder.id)}
+                  disabled={deletingFolder || isDeleting}
+                >
                   <Trash2 className="h-4 w-4 mr-2" />
                   Excluir
                 </ContextMenuItem>
@@ -188,7 +297,17 @@ const GalleryList: React.FC<GalleryListProps> = ({
         </div>}
       
       {currentFolderMedia.length > 0 ? <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 p-0 sm:p-0 px-0 py-0">
-          {currentFolderMedia.map(item => <GalleryMediaCard key={item.id} item={item} onDelete={onDeleteItem} onMove={handleMoveMedia} folders={folders} onClick={() => onItemClick?.(item)} />)}
+          {currentFolderMedia.map(item => 
+            <GalleryMediaCard 
+              key={item.id} 
+              item={item} 
+              onDelete={handleMediaDelete} 
+              onMove={handleMoveMedia} 
+              folders={folders} 
+              onClick={() => !isDeleting && !deletingFolder && onItemClick?.(item)} 
+              disabled={isDeleting || deletingFolder}
+            />
+          )}
         </div> : <div className="flex flex-col items-center justify-center text-center min-h-[60vh] p-6">
           <div className="bg-inventu-gray/5 rounded-full p-4 mb-4">
             <AlertCircle className="h-8 w-8 text-inventu-gray/40" />
@@ -258,19 +377,24 @@ const GalleryList: React.FC<GalleryListProps> = ({
             <AlertDialogCancel className="bg-inventu-darker text-white border-inventu-gray/30 hover:bg-inventu-gray/20" onClick={() => setConfirmDeleteFolderId(null)}>
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => {
-            if (confirmDeleteFolderId) {
-              handleDeleteFolder(confirmDeleteFolderId);
-              setConfirmDeleteFolderId(null);
-            }
-          }}>
+            <AlertDialogAction 
+              className="bg-destructive hover:bg-destructive/90" 
+              onClick={() => {
+                if (confirmDeleteFolderId) {
+                  handleDeleteFolder(confirmDeleteFolderId);
+                }
+              }}
+              disabled={deletingFolder || isDeleting}
+            >
+              {deletingFolder ? <Loader2 className="h-4 w-4 mr-2 animate-spin inline" /> : null}
               Excluir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {selectedItem && <MediaDetailsDialog item={selectedItem} onClose={onCloseDetails} onDelete={() => onDeleteItem(selectedItem.id)} folders={folders} onMove={handleMoveMedia} />}
+      {selectedItem && <MediaDetailsDialog item={selectedItem} onClose={onCloseDetails} onDelete={() => handleMediaDelete(selectedItem.id)} folders={folders} onMove={handleMoveMedia} />}
     </>;
 };
+
 export default GalleryList;

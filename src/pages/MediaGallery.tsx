@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -21,6 +22,7 @@ export type GalleryFilters = {
     to?: Date;
   };
 };
+
 const MediaGallery: React.FC = () => {
   const {
     user
@@ -31,13 +33,15 @@ const MediaGallery: React.FC = () => {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const {
-    deleteMediaFromGallery
+    deleteMediaFromGallery,
+    deleting: deletingMedia
   } = useMediaGallery();
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0); // Estado para forçar recarregamento
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set()); // Rastrear IDs em processo de exclusão
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const { folders } = useMediaFolders();
+  const { folders, deleting: deletingFolder } = useMediaFolders();
+  const isOperationInProgressRef = useRef(false);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -47,16 +51,16 @@ const MediaGallery: React.FC = () => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        // Quando a página torna-se visível novamente, forçar recarga
-        console.log('[MediaGallery] Página visível novamente, recarregando dados...');
+        // When the page becomes visible again, force reload
+        console.log('[MediaGallery] Page visible again, reloading data...');
         setRefreshTrigger(prev => prev + 1);
       }
     };
 
-    // Adicionar evento para mudança de visibilidade
+    // Add event for visibility change
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Limpar o listener quando o componente desmonta
+    // Clean up listener when component unmounts
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
@@ -65,37 +69,40 @@ const MediaGallery: React.FC = () => {
   // Cleanup effect for component unmount
   useEffect(() => {
     return () => {
-      console.log('[MediaGallery] Componente desmontado, limpando listeners');
+      console.log('[MediaGallery] Component unmounted, cleaning up listeners');
     };
   }, []);
+  
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
-    console.log('[MediaGallery] Iniciando fetchMedia, refreshTrigger:', refreshTrigger);
+    console.log('[MediaGallery] Starting fetchMedia, refreshTrigger:', refreshTrigger);
     fetchMedia();
-  }, [user, navigate, refreshTrigger]); // Adicionado refreshTrigger às dependências
+  }, [user, navigate, refreshTrigger]);
 
   const fetchMedia = async () => {
     try {
       setLoading(true);
-      console.log('[MediaGallery] Buscando mídia da galeria...');
+      console.log('[MediaGallery] Fetching media gallery...');
 
-      // Buscar da tabela media_gallery
+      // Fetch from media_gallery table
       const {
         data: galleryItems,
         error: galleryError
       } = await supabase.from('media_gallery').select('*').eq('user_id', user?.id).order('created_at', {
         ascending: false
       });
+      
       if (galleryError) {
-        console.error('[MediaGallery] Erro ao buscar galeria de mídia:', galleryError);
+        console.error('[MediaGallery] Error fetching media gallery:', galleryError);
         throw galleryError;
       }
-      console.log('[MediaGallery] Itens de galeria encontrados:', galleryItems?.length || 0);
+      
+      console.log('[MediaGallery] Gallery items found:', galleryItems?.length || 0);
 
-      // Se não encontrar itens em media_gallery, tentar buscar de piapi_tasks
+      // If no items found in media_gallery, try to fetch from piapi_tasks
       if (!galleryItems || galleryItems.length === 0) {
         const {
           data: piapiTasks,
@@ -103,10 +110,12 @@ const MediaGallery: React.FC = () => {
         } = await supabase.from('piapi_tasks').select('id, media_url, media_type, created_at, prompt').eq('status', 'completed').order('created_at', {
           ascending: false
         });
+        
         if (piapiError) {
-          console.error('[MediaGallery] Erro ao buscar tarefas PIAPI:', piapiError);
+          console.error('[MediaGallery] Error fetching PIAPI tasks:', piapiError);
           throw piapiError;
         }
+        
         const formattedPiapiMedia = (piapiTasks || []).map(item => ({
           id: item.id,
           url: item.media_url || '',
@@ -117,10 +126,11 @@ const MediaGallery: React.FC = () => {
           prompt: item.prompt || '',
           user_id: user?.id || ''
         }));
-        console.log('[MediaGallery] Itens formatados de piapi_tasks:', formattedPiapiMedia.length);
+        
+        console.log('[MediaGallery] Formatted items from piapi_tasks:', formattedPiapiMedia.length);
         setMediaItems(formattedPiapiMedia);
       } else {
-        // Formatar dados da tabela media_gallery
+        // Format data from media_gallery table
         const formattedGalleryMedia = galleryItems.map(item => ({
           id: item.id,
           url: item.media_url || '',
@@ -133,64 +143,80 @@ const MediaGallery: React.FC = () => {
           user_id: item.user_id,
           folder_id: item.folder_id
         }));
-        console.log('[MediaGallery] Itens formatados de media_gallery:', formattedGalleryMedia.length);
+        
+        console.log('[MediaGallery] Formatted items from media_gallery:', formattedGalleryMedia.length);
         setMediaItems(formattedGalleryMedia);
       }
     } catch (error) {
-      console.error('[MediaGallery] Erro ao buscar mídia:', error);
+      console.error('[MediaGallery] Error fetching media:', error);
       toast.error('Não foi possível carregar sua galeria de mídia');
     } finally {
       setLoading(false);
     }
   };
+  
   const handleDeleteMedia = useCallback(async (id: string) => {
+    if (isOperationInProgressRef.current || deletingMedia || deletingFolder) {
+      console.log('[MediaGallery] Operation already in progress, ignoring request');
+      toast.error('Operação em andamento, aguarde...');
+      return;
+    }
+
     try {
-      // Verificar se esta mídia já está em processo de exclusão
+      // Check if this media is already being deleted
       if (deletingIds.has(id)) {
-        console.log('[MediaGallery] Exclusão já em andamento para o ID:', id);
+        console.log('[MediaGallery] Deletion already in progress for ID:', id);
         return;
       }
-      console.log('[MediaGallery] Iniciando exclusão de mídia com ID:', id);
+      
+      console.log('[MediaGallery] Starting media deletion with ID:', id);
+      isOperationInProgressRef.current = true;
 
-      // Adicionar ID à lista de exclusões em andamento
+      // Add ID to list of ongoing deletions
       setDeletingIds(prev => new Set(prev).add(id));
 
-      // Atualizar UI imediatamente removendo o item antes de fazer a operação
+      // Update UI immediately by removing the item before doing the operation
       setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
 
-      // Fechar o popup de detalhes se o item excluído estava selecionado
+      // Close details popup if the deleted item was selected
       if (selectedItem?.id === id) {
         setSelectedItem(null);
       }
 
-      // Usar a função de exclusão do hook
+      // Use the delete function from the hook
       const success = await deleteMediaFromGallery(id);
+      
       if (!success) {
-        console.error('[MediaGallery] A função deleteMediaFromGallery retornou false');
-        // Re-fetch para garantir que a UI está sincronizada com o banco de dados
+        console.error('[MediaGallery] deleteMediaFromGallery function returned false');
+        // Re-fetch to ensure UI is synchronized with the database
         await fetchMedia();
-        // Não mostrar toast de erro aqui, o hook já mostra
       } else {
-        console.log('[MediaGallery] Mídia excluída com sucesso');
-        // Não mostrar toast de sucesso aqui, o hook já mostra
+        console.log('[MediaGallery] Media deleted successfully');
       }
     } catch (error) {
-      console.error('[MediaGallery] Erro ao excluir mídia:', error);
+      console.error('[MediaGallery] Error deleting media:', error);
       toast.error('Erro ao excluir o arquivo');
-      // Re-fetch para restaurar o estado consistente da UI
+      // Re-fetch to restore consistent UI state
       await fetchMedia();
     } finally {
-      // Remover ID da lista de exclusões em andamento
-      setDeletingIds(prev => {
-        const updated = new Set(prev);
-        updated.delete(id);
-        return updated;
-      });
+      // Remove ID from list of ongoing deletions with delay
+      setTimeout(() => {
+        setDeletingIds(prev => {
+          const updated = new Set(prev);
+          updated.delete(id);
+          return updated;
+        });
+        isOperationInProgressRef.current = false;
+      }, 500);
     }
-  }, [deleteMediaFromGallery, selectedItem, fetchMedia, deletingIds]);
+  }, [deleteMediaFromGallery, selectedItem, fetchMedia, deletingIds, deletingMedia, deletingFolder]);
+  
   const handleItemClick = (item: MediaItem) => {
-    setSelectedItem(item);
+    if (!isOperationInProgressRef.current) {
+      setSelectedItem(item);
+    }
   };
+  
   // Find current folder name
   const currentFolder = folders.find(f => f.id === currentFolderId);
   const pageTitle = 'Galeria de Mídias';
@@ -237,4 +263,5 @@ const MediaGallery: React.FC = () => {
       </div>
     </div>;
 };
+
 export default MediaGallery;

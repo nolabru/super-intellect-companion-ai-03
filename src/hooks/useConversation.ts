@@ -19,14 +19,18 @@ export function useConversation() {
   const messagesState = useConversationMessages();
   const navigate = useNavigate();
   
-  // Flag para prevenir múltiplas operações de carregamento simultâneas
+  // Flag to prevent multiple simultaneous loading operations
   const loadingRef = useRef(false);
-  // Rastrear se o carregamento inicial foi realizado
+  // Track if initial loading has been done
   const [initialLoadDone, setInitialLoadDone] = useState(false);
-  // Rastrear o último ID de conversa carregado para evitar carregamentos redundantes
+  // Track the last loaded conversation ID to avoid redundant loading
   const lastLoadedConversationRef = useRef<string | null>(null);
   // Flag to prevent multiple conversation deletion operations
   const deletingRef = useRef(false);
+  // Track if any critical operation is in progress
+  const isOperationInProgressRef = useRef(false);
+  // State to track deletion operation
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const { 
     conversations,
@@ -53,14 +57,14 @@ export function useConversation() {
     removeLoadingMessages
   } = messagesState;
 
-  // Integração com o sistema de navegação baseado em URL
+  // Integration with URL-based navigation system
   const { navigateToConversation, navigateToNewConversation } = useConversationNavigation(
     currentConversationId,
     setCurrentConversationId,
     conversations
   );
 
-  // Hook de manipulação de mensagens
+  // Message handling hook
   const { sendMessage, isSending } = useMessageHandler(
     messages,
     setMessages,
@@ -71,32 +75,33 @@ export function useConversation() {
     handleTitleUpdate.bind(null, conversations, updateConversationTitle)
   );
 
-  // Função clara e explícita para carregar mensagens de uma conversa
+  // Clear and explicit function to load conversation messages
   const loadConversationMessages = useCallback(async (conversationId: string) => {
-    console.log(`[useConversation] Carregando mensagens para conversa: ${conversationId}`);
+    console.log(`[useConversation] Loading messages for conversation: ${conversationId}`);
     
     if (!conversationId) {
-      console.log('[useConversation] ID de conversa inválido, ignorando carregamento');
+      console.log('[useConversation] Invalid conversation ID, ignoring load');
       return false;
     }
     
-    if (loadingRef.current) {
-      console.log('[useConversation] Já está carregando mensagens, ignorando requisição');
+    if (loadingRef.current || isOperationInProgressRef.current) {
+      console.log('[useConversation] Already loading messages or operation in progress, ignoring request');
       return false;
     }
     
     try {
-      // Definir flag para prevenir múltiplas chamadas
+      // Set flag to prevent multiple calls
       loadingRef.current = true;
+      isOperationInProgressRef.current = true;
       setLoading(true);
       
-      // Limpar mensagens antes de carregar novas para feedback visual imediato
+      // Clear messages before loading new ones for immediate visual feedback
       clearMessages();
       
-      // Atualizar a referência da última conversa carregada
+      // Update the reference of the last loaded conversation
       lastLoadedConversationRef.current = conversationId;
       
-      // Carregar mensagens para a conversa selecionada
+      // Load messages for the selected conversation
       const success = await loadMessages(
         conversationId,
         setLoading,
@@ -107,27 +112,30 @@ export function useConversation() {
       
       if (success) {
         setInitialLoadDone(true);
-        console.log(`[useConversation] Carregamento de mensagens concluído para conversa: ${conversationId}`);
+        console.log(`[useConversation] Message loading completed for conversation: ${conversationId}`);
         return true;
       } else {
-        console.error(`[useConversation] Falha ao carregar mensagens para conversa: ${conversationId}`);
+        console.error(`[useConversation] Failed to load messages for conversation: ${conversationId}`);
         return false;
       }
     } catch (err) {
-      console.error("[useConversation] Erro ao carregar mensagens:", err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao carregar mensagens');
+      console.error("[useConversation] Error loading messages:", err);
+      setError(err instanceof Error ? err.message : 'Unknown error loading messages');
       return false;
     } finally {
-      // Sempre resetar flag de carregamento quando a operação terminar
-      loadingRef.current = false;
-      setLoading(false);
+      // Always reset loading flag when operation completes
+      setTimeout(() => {
+        loadingRef.current = false;
+        isOperationInProgressRef.current = false;
+        setLoading(false);
+      }, 500);
     }
   }, [clearMessages, setError, setLoading, setMessages]);
 
-  // Função para forçar o recarregamento de mensagens
+  // Function to force message reload
   const forceReloadMessages = useCallback(() => {
     if (currentConversationId) {
-      console.log(`[useConversation] Forçando recarregamento da conversa: ${currentConversationId}`);
+      console.log(`[useConversation] Forcing conversation reload: ${currentConversationId}`);
       // Reset tracking variables to force reload
       lastLoadedConversationRef.current = null;
       setInitialLoadDone(false);
@@ -136,51 +144,61 @@ export function useConversation() {
       // Load messages for the current conversation
       loadConversationMessages(currentConversationId);
     } else {
-      console.log('[useConversation] Não há conversa selecionada para recarregar');
+      console.log('[useConversation] No selected conversation to reload');
       // Just clear messages when no conversation is selected
       clearMessages();
     }
   }, [currentConversationId, loadConversationMessages, clearMessages]);
 
-  // Efeito para carregar mensagens quando a conversa muda
+  // Effect to load messages when conversation changes
   useEffect(() => {
-    console.log(`[useConversation] Efeito de carregamento de conversa acionado. ID atual: ${currentConversationId}`);
+    console.log(`[useConversation] Conversation loading effect triggered. Current ID: ${currentConversationId}`);
     
     if (!currentConversationId) {
-      // Se nenhuma conversa estiver selecionada, limpar mensagens
-      console.log('[useConversation] Nenhuma conversa selecionada, limpando mensagens');
+      // If no conversation is selected, clear messages
+      console.log('[useConversation] No conversation selected, clearing messages');
       clearMessages();
       lastLoadedConversationRef.current = null;
       setInitialLoadDone(false);
       return;
     }
     
-    // Verificar se precisamos carregar esta conversa
+    // Check if we need to load this conversation
     const needToLoadConversation = 
       currentConversationId !== lastLoadedConversationRef.current || 
       !initialLoadDone;
     
-    if (needToLoadConversation && !loadingRef.current) {
-      console.log(`[useConversation] Mudança detectada, carregando conversa: ${currentConversationId}`);
-      // Carregar mensagens para a conversa selecionada
+    if (needToLoadConversation && !loadingRef.current && !isOperationInProgressRef.current) {
+      console.log(`[useConversation] Change detected, loading conversation: ${currentConversationId}`);
+      // Load messages for the selected conversation
       loadConversationMessages(currentConversationId);
     } else {
-      console.log('[useConversation] Não é necessário recarregar a conversa atual');
+      console.log('[useConversation] No need to reload current conversation');
     }
   }, [currentConversationId, clearMessages, loadConversationMessages, initialLoadDone]);
 
-  // Criar uma nova conversa com navegação atualizada
+  // Create a new conversation with updated navigation
   const handleCreateNewConversation = async () => {
-    console.log('[useConversation] Criando nova conversa');
+    console.log('[useConversation] Creating new conversation');
+    
+    // Prevent creating a new conversation while an operation is in progress
+    if (isOperationInProgressRef.current) {
+      console.log('[useConversation] Operation already in progress, ignoring request');
+      toast.error('Operação em andamento, aguarde...');
+      return false;
+    }
     
     try {
-      // Forçar limpeza de mensagens imediatamente para feedback visual
+      // Set operation flag
+      isOperationInProgressRef.current = true;
+      
+      // Force immediate message clearing for visual feedback
       clearMessages();
       
-      // Definir estado de carregamento
+      // Set loading state
       setLoading(true);
       
-      // Criar a nova conversa
+      // Create the new conversation
       const { success, data } = await createNewConversation(
         setLoading, 
         addConversation, 
@@ -189,58 +207,80 @@ export function useConversation() {
       );
       
       if (success && data) {
-        console.log(`[useConversation] Nova conversa criada com sucesso com ID: ${data.id}`);
+        console.log(`[useConversation] New conversation created successfully with ID: ${data.id}`);
         
-        // Forçar limpeza de mensagens novamente após a conversa ser criada
+        // Force message clearing again after conversation is created
         clearMessages();
         
-        // Resetar variáveis de rastreamento para forçar uma atualização
+        // Reset tracking variables to force an update
         lastLoadedConversationRef.current = data.id;
         setInitialLoadDone(true);
         
-        // Definir o ID da conversa atual e atualizar a URL
+        // Set the current conversation ID and update the URL
         setCurrentConversationId(data.id);
-        navigateToNewConversation(data.id);
+        
+        // Allow some time for state updates before navigation
+        setTimeout(() => {
+          navigateToNewConversation(data.id);
+        }, 300);
         
         toast.success('Nova conversa criada');
         return true;
       } else {
-        console.error('[useConversation] Falha ao criar nova conversa');
+        console.error('[useConversation] Failed to create new conversation');
         toast.error('Erro ao criar nova conversa');
         return false;
       }
     } catch (err) {
-      console.error('[useConversation] Erro ao criar nova conversa:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao criar conversa');
+      console.error('[useConversation] Error creating new conversation:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error creating conversation');
       toast.error('Erro ao criar nova conversa');
       return false;
     } finally {
-      setLoading(false);
+      // Reset operation flags with delay
+      setTimeout(() => {
+        isOperationInProgressRef.current = false;
+        setLoading(false);
+      }, 500);
     }
   };
 
-  // Excluir conversa com atualização de navegação
+  // Delete conversation with navigation update
   const handleDeleteConversation = async (id: string) => {
+    // Prevent multiple delete operations or while other operations are in progress
+    if (isOperationInProgressRef.current || deletingRef.current || isDeleting) {
+      console.log('[useConversation] Operation already in progress, ignoring delete request');
+      toast.error('Operação em andamento, aguarde...');
+      return false;
+    }
+    
     try {
-      // Prevent multiple delete operations
-      if (deletingRef.current) {
-        console.log('[useConversation] Exclusão já em andamento, ignorando requisição');
-        return false;
-      }
-      
+      // Set deletion flags
       deletingRef.current = true;
+      isOperationInProgressRef.current = true;
+      setIsDeleting(true);
       
-      // Clear messages and reset current conversation ID first
+      // Show deletion in progress toast
+      const toastId = toast.loading('Excluindo conversa...');
+      
+      console.log(`[useConversation] Deleting conversation: ${id}`);
+      
+      // Clear messages and reset current conversation ID first for immediate UI feedback
       clearMessages();
       
-      if (id === currentConversationId) {
-        // Resetar o ID da conversa atual
+      const wasCurrentConversation = id === currentConversationId;
+      
+      if (wasCurrentConversation) {
+        // Reset the current conversation ID with delay to ensure UI updates
         setCurrentConversationId(null);
         lastLoadedConversationRef.current = null;
         setInitialLoadDone(false);
         
-        // Get next available conversation
+        // Find next available conversation
         const nextConversation = conversations.find(conv => conv.id !== id);
+        
+        // Wait a bit before actual deletion to let UI update
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         // Delete the current conversation
         const result = await deleteConversation(
@@ -251,24 +291,24 @@ export function useConversation() {
         );
         
         if (!result) {
-          console.error('[useConversation] Falha ao excluir conversa');
-          toast.error('Erro ao excluir conversa');
+          console.error('[useConversation] Failed to delete conversation');
+          toast.error('Erro ao excluir conversa', { id: toastId });
           return false;
         }
         
+        // Show success toast
+        toast.success('Conversa excluída com sucesso', { id: toastId });
+        
+        // Allow state to update before navigation
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Navigate to the next conversation or home page
         if (nextConversation) {
-          console.log(`[useConversation] Navegando para próxima conversa: ${nextConversation.id}`);
-          // Use setTimeout to ensure UI updates before navigation
-          setTimeout(() => {
-            navigateToConversation(nextConversation.id);
-          }, 100);
+          console.log(`[useConversation] Navigating to next conversation: ${nextConversation.id}`);
+          navigateToConversation(nextConversation.id);
         } else {
-          console.log('[useConversation] Não há mais conversas, navegando para página inicial');
-          // Use setTimeout to ensure UI updates before navigation
-          setTimeout(() => {
-            navigate('/', { replace: true });
-          }, 100);
+          console.log('[useConversation] No more conversations, navigating to home page');
+          navigate('/', { replace: true });
         }
       } else {
         // For non-active conversations, just delete
@@ -280,61 +320,94 @@ export function useConversation() {
         );
         
         if (!result) {
-          console.error('[useConversation] Falha ao excluir conversa');
-          toast.error('Erro ao excluir conversa');
+          console.error('[useConversation] Failed to delete conversation');
+          toast.error('Erro ao excluir conversa', { id: toastId });
           return false;
         }
+        
+        // Show success toast
+        toast.success('Conversa excluída com sucesso', { id: toastId });
       }
       
-      toast.success('Conversa excluída com sucesso');
       return true;
     } catch (err) {
-      console.error('[useConversation] Erro ao excluir conversa:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido ao excluir conversa');
+      console.error('[useConversation] Error deleting conversation:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error deleting conversation');
       toast.error('Erro ao excluir conversa');
       return false;
     } finally {
-      deletingRef.current = false;
+      // Reset deletion flags with delay
+      setTimeout(() => {
+        deletingRef.current = false;
+        isOperationInProgressRef.current = false;
+        setIsDeleting(false);
+      }, 600);
     }
   };
 
-  // Renomear conversa
+  // Rename conversation
   const handleRenameConversation = async (id: string, newTitle: string) => {
-    return await renameConversation(
-      id, 
-      newTitle, 
-      setLoading, 
-      updateConversationTitle,
-      setError
-    );
+    // Prevent renaming during operations
+    if (isOperationInProgressRef.current) {
+      console.log('[useConversation] Operation in progress, ignoring rename request');
+      toast.error('Operação em andamento, aguarde...');
+      return false;
+    }
+    
+    try {
+      isOperationInProgressRef.current = true;
+      return await renameConversation(
+        id, 
+        newTitle, 
+        setLoading, 
+        updateConversationTitle,
+        setError
+      );
+    } finally {
+      setTimeout(() => {
+        isOperationInProgressRef.current = false;
+      }, 300);
+    }
   };
 
-  // Atualizar título da conversa com base no conteúdo da mensagem
+  // Update conversation title based on message content
   const handleUpdateTitle = async (conversationId: string, content: string) => {
-    return await handleTitleUpdate(
-      conversations,
-      updateConversationTitle,
-      conversationId,
-      content
-    );
+    if (isOperationInProgressRef.current) {
+      return false;
+    }
+    
+    try {
+      isOperationInProgressRef.current = true;
+      return await handleTitleUpdate(
+        conversations,
+        updateConversationTitle,
+        conversationId,
+        content
+      );
+    } finally {
+      setTimeout(() => {
+        isOperationInProgressRef.current = false;
+      }, 300);
+    }
   };
 
   return {
-    // Estado
+    // State
     messages,
     conversations,
     currentConversationId,
     loading,
     error,
     initialLoadDone,
+    isDeleting,
     
-    // Setters de estado
+    // State setters
     setMessages,
     setCurrentConversationId,
     setLoading,
     setError,
     
-    // Ações de mensagem
+    // Message actions
     sendMessage,
     clearMessages,
     addUserMessage,
@@ -345,14 +418,14 @@ export function useConversation() {
     loadMessages: loadConversationMessages,
     forceReloadMessages,
     
-    // Ações de conversa
+    // Conversation actions
     updateConversations,
     createNewConversation: handleCreateNewConversation,
     deleteConversation: handleDeleteConversation,
     renameConversation: handleRenameConversation,
     updateTitle: handleUpdateTitle,
     
-    // Navegação
+    // Navigation
     navigateToConversation
   };
 }
