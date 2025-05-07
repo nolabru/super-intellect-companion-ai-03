@@ -12,7 +12,6 @@ import ConversationSidebar from '@/components/ConversationSidebar';
 import { MediaItem } from '@/types/gallery';
 import GalleryList from '@/components/gallery/GalleryList';
 import { useMediaGallery } from '@/hooks/useMediaGallery';
-
 export type GalleryFilters = {
   mediaType: string[];
   dateRange: {
@@ -20,7 +19,6 @@ export type GalleryFilters = {
     to?: Date;
   };
 };
-
 const MediaGallery: React.FC = () => {
   const {
     user
@@ -66,13 +64,11 @@ const MediaGallery: React.FC = () => {
       console.log('[MediaGallery] Componente desmontado, limpando listeners');
     };
   }, []);
-
   useEffect(() => {
     if (!user) {
       navigate('/auth');
       return;
     }
-    
     console.log('[MediaGallery] Iniciando fetchMedia, refreshTrigger:', refreshTrigger);
     fetchMedia();
   }, [user, navigate, refreshTrigger]); // Adicionado refreshTrigger às dependências
@@ -89,12 +85,10 @@ const MediaGallery: React.FC = () => {
       } = await supabase.from('media_gallery').select('*').eq('user_id', user?.id).order('created_at', {
         ascending: false
       });
-      
       if (galleryError) {
         console.error('[MediaGallery] Erro ao buscar galeria de mídia:', galleryError);
         throw galleryError;
       }
-
       console.log('[MediaGallery] Itens de galeria encontrados:', galleryItems?.length || 0);
 
       // Se não encontrar itens em media_gallery, tentar buscar de piapi_tasks
@@ -105,12 +99,10 @@ const MediaGallery: React.FC = () => {
         } = await supabase.from('piapi_tasks').select('id, media_url, media_type, created_at, prompt').eq('status', 'completed').order('created_at', {
           ascending: false
         });
-        
         if (piapiError) {
           console.error('[MediaGallery] Erro ao buscar tarefas PIAPI:', piapiError);
           throw piapiError;
         }
-        
         const formattedPiapiMedia = (piapiTasks || []).map(item => ({
           id: item.id,
           url: item.media_url || '',
@@ -121,7 +113,6 @@ const MediaGallery: React.FC = () => {
           prompt: item.prompt || '',
           user_id: user?.id || ''
         }));
-        
         console.log('[MediaGallery] Itens formatados de piapi_tasks:', formattedPiapiMedia.length);
         setMediaItems(formattedPiapiMedia);
       } else {
@@ -138,7 +129,6 @@ const MediaGallery: React.FC = () => {
           user_id: item.user_id,
           folder_id: item.folder_id
         }));
-        
         console.log('[MediaGallery] Itens formatados de media_gallery:', formattedGalleryMedia.length);
         setMediaItems(formattedGalleryMedia);
       }
@@ -149,7 +139,6 @@ const MediaGallery: React.FC = () => {
       setLoading(false);
     }
   };
-
   const handleDeleteMedia = useCallback(async (id: string) => {
     try {
       // Verificar se esta mídia já está em processo de exclusão
@@ -157,23 +146,21 @@ const MediaGallery: React.FC = () => {
         console.log('[MediaGallery] Exclusão já em andamento para o ID:', id);
         return;
       }
-      
       console.log('[MediaGallery] Iniciando exclusão de mídia com ID:', id);
-      
+
       // Adicionar ID à lista de exclusões em andamento
       setDeletingIds(prev => new Set(prev).add(id));
-      
+
       // Atualizar UI imediatamente removendo o item antes de fazer a operação
       setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
-      
+
       // Fechar o popup de detalhes se o item excluído estava selecionado
       if (selectedItem?.id === id) {
         setSelectedItem(null);
       }
-      
+
       // Usar a função de exclusão do hook
       const success = await deleteMediaFromGallery(id);
-      
       if (!success) {
         console.error('[MediaGallery] A função deleteMediaFromGallery retornou false');
         // Re-fetch para garantir que a UI está sincronizada com o banco de dados
@@ -197,11 +184,9 @@ const MediaGallery: React.FC = () => {
       });
     }
   }, [deleteMediaFromGallery, selectedItem, fetchMedia, deletingIds]);
-
   const handleItemClick = (item: MediaItem) => {
     setSelectedItem(item);
   };
-
   return <div className="flex min-h-screen w-full bg-inventu-darker">
       {!isMobile && <div className={cn("fixed inset-y-0 left-0 z-30 w-64 transform transition-transform duration-300", sidebarOpen ? "translate-x-0" : "-translate-x-full")}>
           <ConversationSidebar onToggleSidebar={toggleSidebar} isOpen={true} />
@@ -216,9 +201,9 @@ const MediaGallery: React.FC = () => {
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
         <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Galeria de Mídias" showHeader={true}>
           <ScrollArea className="h-[calc(100vh-4rem)]">
-            <div className="p-6 px-[12px] py-[20px]">
-              <div className="flex items-center mb-6 px-0 py-0">
-                <h1 className="text-[24px] font-bold px-[14px]">Galeria de Mídias</h1>
+            <div className="p-6 px-0 py-0">
+              <div className="flex items-center mb-0 px-0 py-0">
+                <h1 className="text-[22px] font-bold px-0">Galeria de Mídias</h1>
               </div>
               
               <GalleryList media={mediaItems} onDeleteItem={handleDeleteMedia} loading={loading} onItemClick={handleItemClick} selectedItem={selectedItem} onCloseDetails={() => setSelectedItem(null)} />
@@ -228,5 +213,4 @@ const MediaGallery: React.FC = () => {
       </div>
     </div>;
 };
-
 export default MediaGallery;

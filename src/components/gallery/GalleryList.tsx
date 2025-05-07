@@ -111,7 +111,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
     </div>;
   }
   return <>
-      <div className="flex justify-between items-center mb-4 px-3">
+      <div className="flex justify-between items-center mb-1 px-0">
         <div className="flex items-center gap-2">
           {currentFolderId && <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => {
           const currentFolder = folders.find(f => f.id === currentFolderId);
@@ -120,7 +120,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
               <FolderOpen className="h-4 w-4" />
               <span>Voltar</span>
             </Button>}
-          <h2 className="text-lg font-medium px-[4px]">
+          <h2 className="text-lg font-medium px-0">
             {currentFolderId ? currentFolder?.name : 'Todos os arquivos'}
           </h2>
         </div>
@@ -175,7 +175,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
             </ContextMenu>)}
         </div>}
       
-      {currentFolderMedia.length > 0 ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 p-3 sm:p-4 px-0 py-0">
+      {currentFolderMedia.length > 0 ? <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-4 p-3 sm:p-4 px-0 py-0">
           {currentFolderMedia.map(item => <GalleryMediaCard key={item.id} item={item} onDelete={onDeleteItem} onMove={handleMoveMedia} folders={folders} onClick={() => onItemClick?.(item)} />)}
         </div> : <div className="flex flex-col items-center justify-center text-center min-h-[30vh] px-6">
           <div className="bg-inventu-gray/5 rounded-full p-4 mb-4">
