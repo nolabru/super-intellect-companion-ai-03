@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,28 +7,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import TokenDisplay from './TokenDisplay';
 import { User, LogOut, Settings } from 'lucide-react';
-
 const UserMenu: React.FC = () => {
-  const { user, signOut } = useAuth();
-  const { isAdmin } = useAdminCheck();
+  const {
+    user,
+    signOut
+  } = useAuth();
+  const {
+    isAdmin
+  } = useAdminCheck();
   const navigate = useNavigate();
-  
   if (!user) {
-    return (
-      <Button variant="outline" onClick={() => navigate('/auth')} className="text-white border-inventu-gray/30 text-sm font-medium text-center bg-inventu-card">
+    return <Button variant="outline" onClick={() => navigate('/auth')} className="text-white border-inventu-gray/30 text-sm font-medium text-center bg-inventu-card">
         <User className="h-4 w-4 mr-2" />
         <span className="hidden sm:inline">Entrar</span>
-      </Button>
-    );
+      </Button>;
   }
-  
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
-  
-  return (
-    <div className="flex items-center gap-3 mx-[12px]">
+  return <div className="flex items-center gap-3 mx-[15px]">
       <TokenDisplay />
       
       <DropdownMenu>
@@ -44,12 +41,10 @@ const UserMenu: React.FC = () => {
         </DropdownMenuTrigger>
         
         <DropdownMenuContent align="end" className="w-56 bg-inventu-dark/95 backdrop-blur-lg border-inventu-gray/30">
-          {isAdmin && (
-            <DropdownMenuItem onClick={() => navigate('/services')} className="text-white/90 hover:text-white focus:text-white cursor-pointer">
+          {isAdmin && <DropdownMenuItem onClick={() => navigate('/services')} className="text-white/90 hover:text-white focus:text-white cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               <span>Serviços de IA</span>
-            </DropdownMenuItem>
-          )}
+            </DropdownMenuItem>}
           
           <DropdownMenuSeparator />
           
@@ -59,8 +54,6 @@ const UserMenu: React.FC = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
-  );
+    </div>;
 };
-
 export default UserMenu;
