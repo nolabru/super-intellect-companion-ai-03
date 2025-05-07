@@ -105,7 +105,7 @@ const TokensPlans = () => {
       <div className={cn("flex min-h-screen w-full flex-col transition-all duration-300", !isMobile && sidebarOpen && "pl-64")}>
         <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} isTouchDevice={isMobile} title="Token Management">
           <ScrollArea className="h-[calc(100vh-4rem)]">
-            <div className="container mx-auto px-4 py-8">
+            <div className="container mx-auto px-0 py-0">
               <div className="flex justify-between items-center mb-0 px-0 py-0 my-0 mx-0">
                 <h1 className="text-white text-xl font-medium">Token Management</h1>
                 <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading} className="flex items-center gap-1">
@@ -130,15 +130,15 @@ const TokensPlans = () => {
                       </Button>
                     </div>
                   </CardContent>
-                </Card> : <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <Card className="bg-inventu-dark border-inventu-gray/30">
-                    <CardHeader>
+                </Card> : <div className="grid grid-cols-2 gap-4 md:grid-cols-2">
+                  <Card className="bg-inventu-dark border-inventu-gray/30 px-0 py-0 mx-0 my-0">
+                    <CardHeader className="px-0 py-0 mx-0 my-0">
                       <CardTitle>Current Balance</CardTitle>
                       <CardDescription>Your current token usage and balance</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-0 py-0 mx-0 my-0">
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between px-0 py-0 my-0 mx-0">
                           <div className="flex items-center">
                             <Coins className="h-5 w-5 mr-2 text-inventu-blue" />
                             <span>Available Tokens</span>
@@ -146,7 +146,7 @@ const TokensPlans = () => {
                           <span className="text-xl font-bold">{tokenInfo?.tokensRemaining || 0}</span>
                         </div>
                         
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mx-0 px-0 my-0 py-0">
                           <div className="flex items-center">
                             <Clock className="h-5 w-5 mr-2 text-inventu-blue" />
                             <span>Next Reset</span>
@@ -164,17 +164,17 @@ const TokensPlans = () => {
                     </CardContent>
                   </Card>
                   
-                  <Card className="bg-inventu-dark border-inventu-gray/30">
-                    <CardHeader>
+                  <Card className="bg-inventu-dark border-inventu-gray/30 px-0 py-0">
+                    <CardHeader className="mx-0 my-0 px-0 py-0">
                       <CardTitle>Get More Tokens</CardTitle>
                       <CardDescription>Available plans and options</CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="px-0 mx-0 my-0 py-0">
                       <p className="text-inventu-gray">
                         Contact us for information about purchasing additional tokens or upgrading your plan.
                       </p>
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="mx-0 px-0 my-0 py-0">
                       <Button variant="default" className="w-full" disabled>
                         Coming Soon
                       </Button>
@@ -183,18 +183,18 @@ const TokensPlans = () => {
                 </div>}
               
               <div className="mt-8">
-                <h2 className="text-xl text-white mb-4 font-medium">Token Usage Guide</h2>
+                <h2 className="text-xl text-white mb-0 font-medium">Token Usage Guide</h2>
                 <Card className="bg-inventu-dark border-inventu-gray/30">
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-6 px-0 py-0">
                     <div className="space-y-4">
-                      <p>Tokens are consumed when you use AI features:</p>
-                      <ul className="list-disc pl-5 space-y-2">
+                      <p className="py-0 px-0 mx-0 my-0">Tokens are consumed when you use AI features:</p>
+                      <ul className="list-disc pl-5 space-y-2 px-0">
                         <li>Text generation: 50-100 tokens per request</li>
                         <li>Image generation: 100-200 tokens per image</li>
                         <li>Audio processing: 300 tokens per minute</li>
                         <li>Video processing: 500 tokens per minute</li>
                       </ul>
-                      <p className="text-inventu-gray text-sm mt-4">
+                      <p className="text-inventu-gray text-sm mt-0 px-0 mx-0 my-0 py-0">
                         Your tokens will reset automatically on a monthly basis.
                       </p>
                     </div>
