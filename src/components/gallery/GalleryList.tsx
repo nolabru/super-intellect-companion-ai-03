@@ -125,10 +125,11 @@ const GalleryList: React.FC<GalleryListProps> = ({
             {currentFolderId ? currentFolder?.name : 'Todos os arquivos'}
           </h2>
         </div>
-        <Button variant="outline" size="sm" className="border-inventu-gray/30" onClick={() => setNewFolderDialogOpen(true)}>
+        
+        {!currentFolderId && <Button variant="outline" size="sm" className="border-inventu-gray/30" onClick={() => setNewFolderDialogOpen(true)}>
           <FolderPlus className="h-4 w-4 mr-2" />
           Nova pasta
-        </Button>
+        </Button>}
       </div>
       
       {parentFolders.length > 0 && <div className="grid grid-cols-6 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 px-0">
