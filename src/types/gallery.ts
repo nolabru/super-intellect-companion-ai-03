@@ -1,4 +1,12 @@
 
+export interface MediaFolder {
+  id: string;
+  name: string;
+  user_id: string;
+  created_at: string;
+  parent_folder_id?: string | null;
+}
+
 export interface MediaItem {
   id: string;
   url?: string;
@@ -12,4 +20,5 @@ export interface MediaItem {
   model_id?: string;
   prompt?: string;
   metadata?: Record<string, any>;
+  folder_id?: string | null;
 }

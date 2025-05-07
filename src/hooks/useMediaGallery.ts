@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
@@ -231,6 +230,7 @@ export const useMediaGallery = () => {
         throw deleteError;
       }
 
+      console.log('Media deleted successfully:', mediaId);
       return true;
     } catch (error) {
       console.error('Error deleting media from gallery:', error);
