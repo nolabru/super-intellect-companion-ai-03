@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
-import { TrashIcon, FolderIcon, ExternalLinkIcon, MoreVertical } from 'lucide-react';
+import { TrashIcon, FolderIcon, ExternalLinkIcon, MoreVertical, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
   DropdownMenu, 
@@ -22,13 +22,15 @@ type GalleryMediaCardProps = {
   onDelete: (id: string) => Promise<void>;
   onMove?: (mediaId: string, folderId: string | null) => Promise<boolean>;
   folders?: MediaFolder[];
+  onClick?: () => void;
 };
 
 const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({ 
   item, 
   onDelete,
   onMove,
-  folders = []
+  folders = [],
+  onClick
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -45,6 +47,31 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
     if (onMove) {
       await onMove(item.id, folderId);
     }
+  };
+
+  const handleDownload = () => {
+    const url = item.url || item.media_url;
+    if (!url) return;
+    
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Get file extension from URL or use default based on media type
+    const mediaType = item.type || item.media_type;
+    const extension = 
+      mediaType === 'image' ? 'png' :
+      mediaType === 'video' ? 'mp4' :
+      'mp3';
+    
+    // Generate filename with timestamp to make it unique
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const title = item.title || item.prompt || 'media';
+    const safeTitle = title.replace(/[^a-z0-9]/gi, '-').substring(0, 30);
+    
+    link.download = `${safeTitle}-${timestamp}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getMediaContent = () => {
@@ -92,10 +119,13 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
   const formattedDate = format(createdDate, 'dd/MM/yyyy');
 
   return (
-    <div className="bg-inventu-card border border-inventu-gray/30 rounded-md overflow-hidden transition-all hover:border-inventu-gray/50">
+    <div 
+      className="bg-inventu-card border border-inventu-gray/30 rounded-md overflow-hidden transition-all hover:border-inventu-gray/50 cursor-pointer"
+      onClick={onClick}
+    >
       <div className="relative aspect-video">
         {getMediaContent()}
-        <div className="absolute top-2 right-2">
+        <div className="absolute top-2 right-2" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="bg-black/30 hover:bg-black/50 text-white rounded-full h-8 w-8">
@@ -109,6 +139,17 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
               >
                 <ExternalLinkIcon className="h-4 w-4 mr-2" />
                 Abrir em nova aba
+              </DropdownMenuItem>
+              
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload();
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Baixar arquivo
               </DropdownMenuItem>
               
               {onMove && folders && (

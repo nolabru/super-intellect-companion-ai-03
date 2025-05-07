@@ -8,17 +8,24 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import MediaDetailsDialog from './MediaDetailsDialog';
 
 type GalleryListProps = {
   media: MediaItem[];
   onDeleteItem: (id: string) => Promise<void>;
   loading?: boolean;
+  onItemClick?: (item: MediaItem) => void;
+  selectedItem?: MediaItem | null;
+  onCloseDetails?: () => void;
 };
 
 const GalleryList: React.FC<GalleryListProps> = ({
   media,
   onDeleteItem,
-  loading = false
+  loading = false,
+  onItemClick,
+  selectedItem,
+  onCloseDetails
 }) => {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [newFolderDialogOpen, setNewFolderDialogOpen] = useState(false);
@@ -141,6 +148,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
               onDelete={onDeleteItem}
               onMove={handleMoveMedia}
               folders={folders}
+              onClick={() => onItemClick?.(item)}
             />
           ))}
         </div>
@@ -187,6 +195,16 @@ const GalleryList: React.FC<GalleryListProps> = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {selectedItem && (
+        <MediaDetailsDialog 
+          item={selectedItem} 
+          onClose={onCloseDetails} 
+          onDelete={() => onDeleteItem(selectedItem.id)}
+          folders={folders}
+          onMove={handleMoveMedia}
+        />
+      )}
     </>
   );
 };

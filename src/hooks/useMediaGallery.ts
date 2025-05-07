@@ -227,6 +227,7 @@ export const useMediaGallery = () => {
         .eq('id', mediaId);
 
       if (deleteError) {
+        console.error('Error deleting media from database:', deleteError);
         throw deleteError;
       }
 

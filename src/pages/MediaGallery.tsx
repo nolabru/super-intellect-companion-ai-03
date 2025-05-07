@@ -30,6 +30,7 @@ const MediaGallery: React.FC = () => {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { deleteMediaFromGallery } = useMediaGallery();
+  const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -121,6 +122,10 @@ const MediaGallery: React.FC = () => {
         // Update UI immediately by filtering out the deleted item
         setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
         toast.success('Arquivo excluído com sucesso');
+        // Close the detail popup if the deleted item was selected
+        if (selectedItem?.id === id) {
+          setSelectedItem(null);
+        }
       } else {
         throw new Error('Falha ao excluir o arquivo');
       }
@@ -128,6 +133,10 @@ const MediaGallery: React.FC = () => {
       console.error('Error deleting media:', error);
       toast.error('Erro ao excluir o arquivo');
     }
+  };
+
+  const handleItemClick = (item: MediaItem) => {
+    setSelectedItem(item);
   };
   
   return (
@@ -156,7 +165,14 @@ const MediaGallery: React.FC = () => {
                 <h1 className="text-[24px] font-bold">Galeria de Mídias</h1>
               </div>
               
-              <GalleryList media={mediaItems} onDeleteItem={handleDeleteMedia} loading={loading} />
+              <GalleryList 
+                media={mediaItems} 
+                onDeleteItem={handleDeleteMedia} 
+                loading={loading} 
+                onItemClick={handleItemClick}
+                selectedItem={selectedItem}
+                onCloseDetails={() => setSelectedItem(null)}
+              />
             </div>
           </ScrollArea>
         </MainLayout>
