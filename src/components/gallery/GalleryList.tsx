@@ -130,7 +130,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
         </Button>
       </div>
       
-      {parentFolders.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-4 px-[15px]">
+      {parentFolders.length > 0 && <div className="grid grid-cols-6 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 px-0">
           {parentFolders.map(folder => <ContextMenu key={folder.id}>
               <ContextMenuTrigger>
                 <div className="relative bg-inventu-card border border-inventu-gray/10 rounded-lg p-6 cursor-pointer hover:border-inventu-gray/70 transition-colors flex flex-col items-center group">
