@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { ChatMode } from '@/components/ModeSelector';
 import { withRetry } from '@/utils/retryOperations';
 
@@ -153,20 +153,13 @@ export const useMediaGallery = () => {
       if (error) throw error;
 
       console.log('Mídia salva na galeria com sucesso');
-      toast({
-        title: "Sucesso",
-        description: "Mídia salva na galeria com sucesso",
-      });
+      toast.success("Mídia salva na galeria com sucesso");
       
       return true;
     } catch (error) {
       console.error('Erro ao salvar mídia na galeria:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível salvar a mídia na galeria: " + 
-          (error instanceof Error ? error.message : "Erro desconhecido"),
-        variant: "destructive",
-      });
+      toast.error("Não foi possível salvar a mídia na galeria: " + 
+        (error instanceof Error ? error.message : "Erro desconhecido"));
       return false;
     } finally {
       setSaving(false);
@@ -174,7 +167,7 @@ export const useMediaGallery = () => {
   };
 
   /**
-   * Deletes media from gallery and storage with retry mechanism
+   * Deletes media from gallery and storage with retry mechanism and enhanced verification
    */
   const deleteMediaFromGallery = async (mediaId: string): Promise<boolean> => {
     try {
@@ -182,6 +175,8 @@ export const useMediaGallery = () => {
       
       setDeleting(true);
       console.log('[deleteMediaFromGallery] Iniciando exclusão de mídia com ID:', mediaId);
+
+      toast.loading('Excluindo arquivo...');
 
       // Get the media item to find out storage path
       const { data: mediaItem, error: fetchError } = await supabase
@@ -192,21 +187,13 @@ export const useMediaGallery = () => {
 
       if (fetchError) {
         console.error('[deleteMediaFromGallery] Erro ao buscar item de mídia:', fetchError);
-        toast({
-          title: "Erro",
-          description: "Não foi possível encontrar o item para exclusão: " + fetchError.message,
-          variant: "destructive",
-        });
+        toast.error("Não foi possível encontrar o item para exclusão");
         return false;
       }
 
       if (!mediaItem) {
         console.error('[deleteMediaFromGallery] Item não encontrado com o ID:', mediaId);
-        toast({
-          title: "Erro",
-          description: "Item não encontrado no banco de dados",
-          variant: "destructive",
-        });
+        toast.error("Item não encontrado no banco de dados");
         return false;
       }
 
@@ -241,7 +228,8 @@ export const useMediaGallery = () => {
                 return true;
               },
               {
-                maxRetries: 3,
+                maxRetries: 5,
+                initialDelay: 500,
                 onRetry: (error, attemptNumber) => {
                   console.log(`[deleteMediaFromGallery] Tentativa ${attemptNumber} de excluir arquivo do storage após erro:`, error);
                 }
@@ -258,75 +246,99 @@ export const useMediaGallery = () => {
 
       // Delete the record from the database with retry
       let deleteSuccess = false;
+      let retryCount = 0;
+      const maxRetries = 5;
       
-      try {
-        await withRetry(
-          async () => {
-            const { error: deleteError } = await supabase
-              .from('media_gallery')
-              .delete()
-              .eq('id', mediaId);
+      while (!deleteSuccess && retryCount < maxRetries) {
+        try {
+          retryCount++;
+          
+          const { error: deleteError } = await supabase
+            .from('media_gallery')
+            .delete()
+            .eq('id', mediaId);
 
-            if (deleteError) {
-              console.error('[deleteMediaFromGallery] Erro ao excluir mídia do banco de dados:', deleteError);
-              throw deleteError;
+          if (deleteError) {
+            console.error(`[deleteMediaFromGallery] Erro ao excluir mídia do banco de dados (tentativa ${retryCount}/${maxRetries}):`, deleteError);
+            
+            if (retryCount < maxRetries) {
+              // Esperar antes de tentar novamente (exponential backoff)
+              const delay = 500 * Math.pow(2, retryCount - 1);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
             }
             
-            console.log('[deleteMediaFromGallery] Mídia excluída com sucesso do banco de dados:', mediaId);
-            deleteSuccess = true;
-            return true;
-          },
-          {
-            maxRetries: 3,
-            onRetry: (error, attemptNumber) => {
-              console.log(`[deleteMediaFromGallery] Tentativa ${attemptNumber} de excluir registro após erro:`, error);
-            }
+            throw deleteError;
           }
-        );
-      } catch (error) {
-        console.error('[deleteMediaFromGallery] Todas as tentativas de exclusão falharam:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível excluir o item após várias tentativas. Por favor, tente novamente.",
-          variant: "destructive",
-        });
-        return false;
+          
+          console.log('[deleteMediaFromGallery] Mídia excluída com sucesso do banco de dados (tentativa bem-sucedida)');
+          deleteSuccess = true;
+          break;
+        } catch (error) {
+          if (retryCount >= maxRetries) {
+            console.error('[deleteMediaFromGallery] Todas as tentativas de exclusão falharam:', error);
+            throw error;
+          }
+        }
       }
 
       // Verify deletion was successful by checking if item still exists
       if (deleteSuccess) {
-        const { data: checkItem } = await supabase
+        // Esperar um momento para garantir que o banco de dados tenha atualizado
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const { data: checkItem, error: checkError } = await supabase
           .from('media_gallery')
           .select('*')
           .eq('id', mediaId)
           .maybeSingle();
         
-        if (checkItem) {
-          console.error('[deleteMediaFromGallery] ALERTA: Item ainda existe no banco de dados após exclusão:', mediaId);
-          toast({
-            title: "Aviso",
-            description: "A operação de exclusão foi concluída, mas o item pode ainda estar no banco de dados.",
-            variant: "destructive",
-          });
-          return false;
+        if (checkError) {
+          console.warn('[deleteMediaFromGallery] Erro ao verificar exclusão:', checkError);
         }
         
-        console.log('[deleteMediaFromGallery] Confirmado: Item não existe mais no banco de dados');
-        toast({
-          title: "Sucesso",
-          description: "Item excluído permanentemente",
-        });
+        if (checkItem) {
+          console.error('[deleteMediaFromGallery] ALERTA: Item ainda existe no banco de dados após exclusão:', mediaId);
+          
+          // Última tentativa de exclusão forçada
+          const { error: forceDeleteError } = await supabase
+            .from('media_gallery')
+            .delete()
+            .eq('id', mediaId);
+          
+          if (forceDeleteError) {
+            console.error('[deleteMediaFromGallery] Erro na tentativa final de exclusão:', forceDeleteError);
+            toast.error("Falha ao excluir o arquivo");
+            return false;
+          }
+          
+          // Verificação final
+          const { data: finalCheck } = await supabase
+            .from('media_gallery')
+            .select('*')
+            .eq('id', mediaId)
+            .maybeSingle();
+            
+          if (finalCheck) {
+            toast.error("Erro ao excluir o arquivo");
+            return false;
+          }
+        }
+        
+        console.log('[deleteMediaFromGallery] Confirmado: Item excluído com sucesso');
+        toast.success("Arquivo excluído com sucesso");
         return true;
+      }
+      
+      if (!deleteSuccess) {
+        toast.error("Falha ao excluir o arquivo");
+        return false;
       }
       
       return deleteSuccess;
     } catch (error) {
       console.error('[deleteMediaFromGallery] Erro ao excluir mídia da galeria:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao excluir o arquivo: " + (error instanceof Error ? error.message : "Erro desconhecido"),
-        variant: "destructive",
-      });
+      toast.error("Erro ao excluir o arquivo: " + (error instanceof Error ? error.message : "Erro desconhecido"));
       return false;
     } finally {
       setDeleting(false);

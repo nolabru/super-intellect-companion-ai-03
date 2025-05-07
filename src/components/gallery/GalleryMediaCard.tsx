@@ -235,4 +235,25 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
     </div>;
 };
 
+const getMediaContent = () => {
+  const url = item.url || item.media_url;
+  if (!url) return null;
+  const mediaType = item.type || item.media_type;
+  if (mediaType === 'image') {
+    return <img src={url} alt={item.title || 'Media item'} className="absolute inset-0 w-full h-full object-cover rounded-t-md" />;
+  } else if (mediaType === 'video') {
+    return <video src={url} className="absolute inset-0 w-full h-full object-cover rounded-t-md" muted loop playsInline />;
+  } else if (mediaType === 'audio') {
+    return <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-inventu-card rounded-t-md">
+        <div className="w-16 h-16 bg-inventu-blue/30 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-inventu-blue rounded-full"></div>
+        </div>
+      </div>;
+  } else {
+    return <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-inventu-card rounded-t-md">
+        <div className="text-inventu-gray/50 text-xl">Arquivo não suportado</div>
+      </div>;
+  }
+};
+
 export default GalleryMediaCard;
