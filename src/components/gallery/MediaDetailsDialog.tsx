@@ -7,6 +7,7 @@ import { Download, X, Trash, FolderIcon, ExternalLink } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import MediaPreview from '@/components/media/MediaPreview';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 interface MediaDetailsDialogProps {
   item: MediaItem;
   onClose?: () => void;
@@ -14,6 +15,7 @@ interface MediaDetailsDialogProps {
   folders?: MediaFolder[];
   onMove?: (mediaId: string, folderId: string | null) => Promise<boolean>;
 }
+
 const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   item,
   onClose,
@@ -21,6 +23,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   folders = [],
   onMove
 }) => {
+  
   const handleDownload = () => {
     const url = item.url || item.media_url;
     if (!url) return;
@@ -57,6 +60,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   const formattedDate = format(createdDate, 'dd/MM/yyyy HH:mm');
   const mediaType = item.type || item.media_type || 'image';
   const mediaUrl = item.url || item.media_url || '';
+  
   return <Dialog open={true} onOpenChange={() => onClose?.()}>
       <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between my-0 px-0 mx-0 py-[6px]">
@@ -118,7 +122,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
                       Raiz (sem pasta)
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-inventu-gray/20" />
-                    {folders.map(folder => <DropdownMenuItem key={folder.id} className="cursor-pointer" disabled={item.folder_id === folder.id} onClick={() => handleMoveToFolder(folder.id)}>
+                    {folders.map(folder => <DropdownMenuItem key={folder.id} className="cursor-pointer" disabled={item.folder_id === item.id} onClick={() => handleMoveToFolder(folder.id)}>
                         {folder.name}
                       </DropdownMenuItem>)}
                   </DropdownMenuContent>
