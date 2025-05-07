@@ -137,7 +137,7 @@ const TokensPlans = () => {
                       <CardDescription className="text-stone-600">Your current token usage and balance</CardDescription>
                     </CardHeader>
                     <CardContent className="px-0 py-0 mx-0 my-0">
-                      <div className="space-y-3">
+                      <div className="mt-4">
                         <div className="flex items-center justify-between px-0 py-0 my-0 mx-0">
                           <div className="flex items-center">
                             <Coins className="h-5 w-5 mr-2 text-inventu-blue" />
@@ -170,7 +170,7 @@ const TokensPlans = () => {
                       <CardDescription className="text-stone-600">Available plans and options</CardDescription>
                     </CardHeader>
                     <CardContent className="px-0 mx-0 my-0 py-0">
-                      <p className="space-y-3 text-stone-400 py-0">
+                      <p className="mt-4">
                         Contact us for information about purchasing additional tokens or upgrading your plan.
                       </p>
                     </CardContent>
@@ -184,17 +184,17 @@ const TokensPlans = () => {
               
               <div className="mt-8">
                 <h2 className="text-xl text-white mb-3 font-medium px-0 mx-0 my-0 py-0">Token Usage Guide</h2>
-                <Card className="bg-inventu-dark border-inventu-gray/30 px-[18px] py-[18px]">
+                <Card className="bg-inventu-dark border-inventu-gray/30 px-0 py-0">
                   <CardContent className="pt-6 px-0 py-0">
                     <div className="space-y-0 my-0 mx-0 px-[18px] py-[18px]">
                       <p className="py-0 px-0 mx-0 my-0 text-base">Tokens are consumed when you use AI features:</p>
-                      <ul className="list-disc pl-5 space-y-2 px-0 py-0">
+                      <ul className="mt-4">
                         <li className="px-0 mx-0 my-0 py-0">Text generation: 50-100 tokens per request</li>
                         <li>Image generation: 100-200 tokens per image</li>
                         <li>Audio processing: 300 tokens per minute</li>
                         <li>Video processing: 500 tokens per minute</li>
                       </ul>
-                      <p className="text-sm mt-0 px-0 mx-0 my-0 text-stone-600 py-0 mt-4">
+                      <p className="mt-3">
                         Your tokens will reset automatically on a monthly basis.
                       </p>
                     </div>
