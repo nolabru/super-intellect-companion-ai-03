@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -62,11 +63,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
       }, 100);
     }).catch(error => {
       console.error('Download failed:', error);
-      toast({
-        title: "Erro ao baixar",
-        description: "Não foi possível baixar o arquivo.",
-        variant: "destructive"
-      });
+      toast.error("Não foi possível baixar o arquivo.");
     });
   };
 
@@ -95,7 +92,7 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
   };
 
   const handleDelete = () => {
-    console.log('[MediaDetailsDialog] Iniciando exclusão de mídia a partir do di��logo de detalhes, ID:', item.id);
+    console.log('[MediaDetailsDialog] Iniciando exclusão de mídia a partir do diálogo de detalhes, ID:', item.id);
     if (onDelete) {
       // Primeiro fechamos o diálogo para evitar problemas com estado inconsistente
       onClose?.();
