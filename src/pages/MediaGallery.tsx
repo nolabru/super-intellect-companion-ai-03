@@ -202,7 +202,7 @@ const MediaGallery: React.FC = () => {
         <MainLayout sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} title="Galeria de Mídias" showHeader={true}>
           <ScrollArea className="h-[calc(100vh-4rem)]">
             <div className="p-6 px-0 py-0">
-              <div className="flex items-center mb-0 px-0 py-0">
+              <div className="flex items-center mb-1 py-4 px-[14px]">
                 <h1 className="text-[22px] font-bold px-0">Galeria de Mídias</h1>
               </div>
               

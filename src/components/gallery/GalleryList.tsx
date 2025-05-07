@@ -111,7 +111,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
     </div>;
   }
   return <>
-      <div className="flex justify-between items-center mb-1 px-0">
+      <div className="flex justify-between items-center mb-1 px-[14px]">
         <div className="flex items-center gap-2">
           {currentFolderId && <Button variant="ghost" size="sm" className="flex items-center gap-2" onClick={() => {
           const currentFolder = folders.find(f => f.id === currentFolderId);
