@@ -133,7 +133,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
       {parentFolders.length > 0 && <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 px-3 mb-4">
           {parentFolders.map(folder => <ContextMenu key={folder.id}>
               <ContextMenuTrigger>
-                <div className="relative bg-inventu-card border border-inventu-gray/30 rounded-lg p-3 cursor-pointer hover:border-inventu-gray/50 transition-colors flex flex-col items-center group">
+                <div className="relative bg-inventu-card border border-inventu-gray/10 rounded-lg p-6 cursor-pointer hover:border-inventu-gray/70 transition-colors flex flex-col items-center group">
                   {/* Dropdown menu trigger (three dots) */}
                   <div className="absolute top-2 right-2">
                     <DropdownMenu>
