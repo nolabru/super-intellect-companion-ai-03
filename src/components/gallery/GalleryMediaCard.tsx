@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import { TrashIcon, FolderIcon, ExternalLinkIcon, MoreVertical, Download } from 'lucide-react';
@@ -133,6 +132,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-inventu-dark text-white border-inventu-gray/30">
+              {/* 1. Abrir em nova aba */}
               <DropdownMenuItem 
                 className="cursor-pointer"
                 onClick={() => window.open(item.url || item.media_url, '_blank')}
@@ -141,17 +141,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
                 Abrir em nova aba
               </DropdownMenuItem>
               
-              <DropdownMenuItem 
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDownload();
-                }}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Baixar arquivo
-              </DropdownMenuItem>
-              
+              {/* 2. Mover para pasta */}
               {onMove && folders && (
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="cursor-pointer">
@@ -183,6 +173,8 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
               )}
               
               <DropdownMenuSeparator className="bg-inventu-gray/20" />
+              
+              {/* 3. Excluir */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <DropdownMenuItem 
@@ -212,6 +204,20 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              
+              <DropdownMenuSeparator className="bg-inventu-gray/20" />
+              
+              {/* 4. Baixar */}
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload();
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Baixar
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
