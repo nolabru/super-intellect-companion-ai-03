@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Download, X, Trash, FolderIcon, ExternalLink } from 'lucide-react';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import MediaPreview from '@/components/media/MediaPreview';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MediaDetailsDialogProps {
   item: MediaItem;
@@ -81,13 +81,14 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
       await onMove(item.id, folderId);
     }
   };
+  
   const createdDate = new Date(item.created_at);
   const formattedDate = format(createdDate, 'dd/MM/yyyy HH:mm');
   const mediaType = item.type || item.media_type || 'image';
   const mediaUrl = item.url || item.media_url || '';
   
   return <Dialog open={true} onOpenChange={() => onClose?.()}>
-      <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-inventu-dark border-inventu-gray/30 sm:max-w-3xl max-h-[90vh] overflow-hidden">
         <DialogHeader className="flex flex-row items-center justify-between my-0 px-0 mx-0 py-[6px]">
           <DialogTitle className="text-white text-xl">Detalhes da mídia</DialogTitle>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full my-0">
@@ -95,24 +96,26 @@ const MediaDetailsDialog: React.FC<MediaDetailsDialogProps> = ({
           </Button>
         </DialogHeader>
         
-        <div className="grid gap-6 py-0">
-          <MediaPreview mediaUrl={mediaUrl} mediaType={mediaType as 'image' | 'video' | 'audio'} />
+        <ScrollArea className="pr-0 overflow-y-auto max-h-[calc(90vh-10rem)]">
+          <div className="grid gap-6 py-0 pr-4">
+            <MediaPreview mediaUrl={mediaUrl} mediaType={mediaType as 'image' | 'video' | 'audio'} />
 
-          <div className="space-y-2">
-            
-            {item.prompt && <div className="bg-inventu-darker p-3 rounded-md border border-inventu-gray/20">
-                <p className="text-inventu-gray/90 mb-1 font-normal text-sm">prompt</p>
-                <p className="text-sm text-white">{item.prompt}</p>
-              </div>}
-            <div className="flex flex-wrap gap-2 text-xs text-inventu-gray/70">
-              <span>Criado em: {formattedDate}</span>
-              {item.model_id && <span>• Modelo: {item.model_id}</span>}
-              <span>• Tipo: {mediaType}</span>
+            <div className="space-y-2">
+              
+              {item.prompt && <div className="bg-inventu-darker p-3 rounded-md border border-inventu-gray/20">
+                  <p className="text-inventu-gray/90 mb-1 font-normal text-sm">prompt</p>
+                  <p className="text-sm text-white">{item.prompt}</p>
+                </div>}
+              <div className="flex flex-wrap gap-2 text-xs text-inventu-gray/70">
+                <span>Criado em: {formattedDate}</span>
+                {item.model_id && <span>• Modelo: {item.model_id}</span>}
+                <span>• Tipo: {mediaType}</span>
+              </div>
             </div>
           </div>
-        </div>
+        </ScrollArea>
 
-        <DialogFooter className="flex justify-between items-center">
+        <DialogFooter className="flex justify-between items-center mt-4">
           <TooltipProvider>
             <div className="flex gap-2">
               {/* 1. Botão Abrir em nova aba */}
