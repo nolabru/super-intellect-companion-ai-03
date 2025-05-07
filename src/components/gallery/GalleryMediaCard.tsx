@@ -84,7 +84,7 @@ const GalleryMediaCard: React.FC<GalleryMediaCardProps> = ({
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-inventu-dark text-white border-inventu-gray/30">
+            <DropdownMenuContent align="end" className="bg-inventu-dark text-white border-inventu-gray/30 my-0 mx-0 py-[6px] px-[6px]">
               {/* 1. Abrir em nova aba */}
               <DropdownMenuItem className="cursor-pointer" onClick={() => window.open(item.url || item.media_url, '_blank')}>
                 <ExternalLinkIcon className="h-4 w-4 mr-2" />
