@@ -120,7 +120,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
               <FolderOpen className="h-4 w-4" />
               <span>Voltar</span>
             </Button>}
-          <h2 className="text-lg font-medium px-0">
+          <h2 className="px-0 text-stone-600 text-base font-medium">
             {currentFolderId ? currentFolder?.name : 'Todos os arquivos'}
           </h2>
         </div>
