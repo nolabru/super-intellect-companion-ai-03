@@ -216,8 +216,11 @@ export const deleteConversation = async (id: string): Promise<DbOperationResult>
     
     console.log(`[conversationUtils] Deleting conversation ${id}`);
     
-    // Use a transaction to ensure atomic operation
-    const { error: transactionError } = await supabase.rpc('delete_conversation_with_messages', { conversation_id: id });
+    // Use a transaction to ensure atomic operation - Fix TypeScript error by using a raw call
+    const { error: transactionError } = await supabase.rpc(
+      'delete_conversation_with_messages' as any, 
+      { conversation_id: id }
+    );
     
     if (transactionError) {
       console.error('[conversationUtils] Transaction error deleting conversation:', transactionError);
