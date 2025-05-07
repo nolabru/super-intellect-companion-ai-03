@@ -35,6 +35,7 @@ const MediaGallery: React.FC = () => {
   } = useMediaGallery();
   const [selectedItem, setSelectedItem] = useState<MediaItem | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Estado para forçar recarregamento
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set()); // Rastrear IDs em processo de exclusão
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -151,7 +152,16 @@ const MediaGallery: React.FC = () => {
 
   const handleDeleteMedia = useCallback(async (id: string) => {
     try {
+      // Verificar se esta mídia já está em processo de exclusão
+      if (deletingIds.has(id)) {
+        console.log('[MediaGallery] Exclusão já em andamento para o ID:', id);
+        return;
+      }
+      
       console.log('[MediaGallery] Iniciando exclusão de mídia com ID:', id);
+      
+      // Adicionar ID à lista de exclusões em andamento
+      setDeletingIds(prev => new Set(prev).add(id));
       
       // Atualizar UI imediatamente removendo o item antes de fazer a operação
       setMediaItems(prevItems => prevItems.filter(item => item.id !== id));
@@ -178,8 +188,15 @@ const MediaGallery: React.FC = () => {
       toast.error('Erro ao excluir o arquivo');
       // Re-fetch para restaurar o estado consistente da UI
       await fetchMedia();
+    } finally {
+      // Remover ID da lista de exclusões em andamento
+      setDeletingIds(prev => {
+        const updated = new Set(prev);
+        updated.delete(id);
+        return updated;
+      });
     }
-  }, [deleteMediaFromGallery, selectedItem, fetchMedia]);
+  }, [deleteMediaFromGallery, selectedItem, fetchMedia, deletingIds]);
 
   const handleItemClick = (item: MediaItem) => {
     setSelectedItem(item);
