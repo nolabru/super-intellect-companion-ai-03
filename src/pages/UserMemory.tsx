@@ -76,7 +76,7 @@ const UserMemory: React.FC = () => {
           <div className="px-0 py-0">
             {!isMobile && <h1 className="text-2xl font-bold mb-4 text-white px-0 mx-0 my-0 py-0">Gestão de Memória do Usuário</h1>}
             
-            {!isMobile && <p className="mb-2 text-gray-300 px-0 py-0 my-0 mx-0">
+            {!isMobile && <p className="mb-2 px-0 py-0 my-0 mx-0 font-medium text-stone-600">
                 Este sistema aprende automaticamente sobre você a partir das conversas e lembra informações importantes para futuros diálogos.
                 Você também pode adicionar, editar ou excluir itens de memória manualmente abaixo.
               </p>}
