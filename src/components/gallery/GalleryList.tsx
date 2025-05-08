@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
@@ -67,7 +66,7 @@ const GalleryList: React.FC<GalleryListProps> = ({
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    // Fix: pass object parameter instead of separate arguments
+    // Updated: pass object parameter instead of separate arguments
     const newFolder = await createFolder({ 
       name: newFolderName, 
       parentId: currentFolderId 
