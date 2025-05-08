@@ -11,6 +11,14 @@ export interface CreateFolderParams {
   parentId?: string | null;
 }
 
+// Define the folder insert type explicitly to avoid deep type instantiation
+interface FolderInsert {
+  name: string;
+  parent_id: string | null;
+  user_id: string | null;
+  created_at: string;
+}
+
 export const useMediaFolders = () => {
   const [folders, setFolders] = useState<MediaFolder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,15 +73,32 @@ export const useMediaFolders = () => {
         throw new Error(`Uma pasta com o nome "${name}" já existe neste local`);
       }
 
+      // Use explicit typing for the insert object to avoid deep type instantiation
+      const folderToInsert: FolderInsert = {
+        name,
+        parent_id: parentId,
+        user_id: user?.id || null,
+        created_at: new Date().toISOString()
+      };
+
+      // Split the operation to avoid chaining which can cause type depth issues
+      const insertResult = await supabase
+        .from('media_folders')
+        .insert(folderToInsert);
+      
+      if (insertResult.error) {
+        throw insertResult.error;
+      }
+      
+      // Perform a separate query to get the inserted data
       const { data, error } = await supabase
         .from('media_folders')
-        .insert({
-          name,
-          parent_id: parentId,
-          user_id: user?.id,
-          created_at: new Date().toISOString()
-        })
         .select()
+        .eq('name', name)
+        .eq('parent_id', parentId)
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .single();
 
       if (error) {
