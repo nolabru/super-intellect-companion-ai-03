@@ -2,11 +2,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { GoogleAuthProvider } from "@/contexts/GoogleAuthContext";
-import { MediaProvider } from "@/contexts/MediaContext";
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import Index from "./pages/Index";
@@ -20,76 +16,34 @@ import NewsFeed from "./pages/NewsFeed";
 import PostDetail from "./pages/PostDetail";
 import Analytics from "./pages/Analytics";
 import CreatePost from "./pages/CreatePost";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import AdminRoute from "./components/auth/AdminRoute";
 import IdeogramPage from "./pages/IdeogramPage";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 2,
-      refetchOnWindowFocus: false
-    }
-  }
-});
-
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <GoogleAuthProvider>
-        <MediaProvider>
-          <DndProvider backend={HTML5Backend}>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/c/:conversationId" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  
-                  {/* Rotas protegidas que exigem autenticação */}
-                  <Route path="/gallery" element={
-                    <ProtectedRoute>
-                      <MediaGallery />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/memory" element={
-                    <ProtectedRoute>
-                      <UserMemory />
-                    </ProtectedRoute>
-                  } />
-                  <Route path="/tokens" element={
-                    <ProtectedRoute>
-                      <TokensPlans />
-                    </ProtectedRoute>
-                  } />
-                  
-                  {/* Admin-protected routes */}
-                  <Route path="/admin" element={<AdminPanel />} />
-                  <Route path="/analytics" element={
-                    <AdminRoute>
-                      <Analytics />
-                    </AdminRoute>
-                  } />
-                  
-                  <Route path="/feed" element={<NewsFeed />} />
-                  <Route path="/feed/new" element={<CreatePost />} />
-                  <Route path="/post/:id" element={<PostDetail />} />
-                  
-                  {/* Ideogram route */}
-                  <Route path="/ideogram" element={<IdeogramPage />} />
-                  
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </DndProvider>
-        </MediaProvider>
-      </GoogleAuthProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <DndProvider backend={HTML5Backend}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/c/:conversationId" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/gallery" element={<MediaGallery />} />
+            <Route path="/memory" element={<UserMemory />} />
+            <Route path="/tokens" element={<TokensPlans />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/feed" element={<NewsFeed />} />
+            <Route path="/feed/new" element={<CreatePost />} />
+            <Route path="/post/:id" element={<PostDetail />} />
+            <Route path="/ideogram" element={<IdeogramPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </DndProvider>
+    </TooltipProvider>
+  </>
 );
 
 export default App;
