@@ -1,3 +1,4 @@
+
 -- Function to delete a conversation and all its messages in a single transaction
 CREATE OR REPLACE FUNCTION public.delete_conversation_with_messages(conversation_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$

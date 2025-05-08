@@ -1,70 +1,102 @@
 
 import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { MediaFolder } from '@/types/gallery';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useMediaFolders = () => {
   const [folders, setFolders] = useState<MediaFolder[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const deletingRef = useRef<string | null>(null);
+  const { user } = useAuth();
 
-  // Mock fetch folders function
+  // Fetch user's folders
   const fetchFolders = async () => {
-    setLoading(true);
+    if (!user) return;
+    
     try {
-      // Return empty mock data
-      setFolders([]);
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('media_folders')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('name');
+      
+      if (error) throw error;
+      
+      setFolders(data || []);
       setError(null);
     } catch (err) {
       console.error('Error fetching folders:', err);
-      setError('Failed to load folders (mock)');
+      setError('Failed to load folders');
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock create folder
+  // Create a new folder
   const createFolder = async (name: string, parentFolderId?: string): Promise<MediaFolder | null> => {
+    if (!user) {
+      toast.error('You must be logged in to create folders');
+      return null;
+    }
+    
     try {
-      const newFolder: MediaFolder = {
-        id: 'mock-' + Date.now(),
+      const newFolder = {
         name,
-        user_id: 'mock-user',
-        parent_folder_id: parentFolderId || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        user_id: user.id,
+        parent_folder_id: parentFolderId || null
       };
       
-      setFolders(prev => [...prev, newFolder]);
-      toast.success('Folder created successfully (mock)');
-      return newFolder;
+      const { data, error } = await supabase
+        .from('media_folders')
+        .insert([newFolder])
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setFolders(prev => [...prev, data]);
+        toast.success('Folder created successfully');
+        return data;
+      }
+      
+      return null;
     } catch (err) {
       console.error('Error creating folder:', err);
-      toast.error('Failed to create folder (mock)');
+      toast.error('Failed to create folder');
       return null;
     }
   };
 
-  // Mock rename folder
+  // Rename a folder
   const renameFolder = async (folderId: string, newName: string): Promise<boolean> => {
     try {
+      const { error } = await supabase
+        .from('media_folders')
+        .update({ name: newName })
+        .eq('id', folderId);
+      
+      if (error) throw error;
+      
       // Update state
       setFolders(prev => prev.map(folder => 
         folder.id === folderId ? { ...folder, name: newName } : folder
       ));
       
-      toast.success('Folder renamed successfully (mock)');
       return true;
     } catch (err) {
       console.error('Error renaming folder:', err);
-      toast.error('Failed to rename folder (mock)');
+      toast.error('Failed to rename folder');
       return false;
     }
   };
 
-  // Mock delete folder
+  // Delete a folder
   const deleteFolder = async (folderId: string): Promise<boolean> => {
     // Prevent multiple deletion operations on the same folder
     if (deleting || deletingRef.current === folderId) {
@@ -78,21 +110,47 @@ export const useMediaFolders = () => {
       deletingRef.current = folderId;
       
       // Show deletion in progress toast
-      const toastId = toast.loading('Deleting folder (mock)...');
+      const toastId = toast.loading('Deleting folder...');
       
-      // Simulate delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // First move all media in this folder back to root
+      const { error: updateError } = await supabase
+        .from('media_gallery')
+        .update({ folder_id: null })
+        .eq('folder_id', folderId);
       
-      // Update state
+      if (updateError) {
+        toast.error('Failed to update media in folder', { id: toastId });
+        throw updateError;
+      }
+      
+      // Allow UI to update before deletion
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Then delete the folder
+      const { error } = await supabase
+        .from('media_folders')
+        .delete()
+        .eq('id', folderId);
+      
+      if (error) {
+        toast.error('Failed to delete folder', { id: toastId });
+        throw error;
+      }
+      
+      // Update state - do this before showing success to prevent UI jumps
       setFolders(prev => prev.filter(folder => folder.id !== folderId));
       
       // Show success message
-      toast.success('Folder deleted successfully (mock)', { id: toastId });
+      toast.success('Folder deleted successfully', { id: toastId });
+      
+      // Add a small delay to allow state updates to propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       return true;
     } catch (err) {
       console.error('Error deleting folder:', err);
-      toast.error('Failed to delete folder (mock)');
+      toast.error('Failed to delete folder: ' + 
+        (err instanceof Error ? err.message : 'Unknown error'));
       return false;
     } finally {
       // Reset deletion state and reference with a slight delay
@@ -103,24 +161,33 @@ export const useMediaFolders = () => {
     }
   };
 
-  // Mock move media to folder
+  // Move a media item to a folder
   const moveMediaToFolder = async (mediaId: string, folderId: string | null): Promise<boolean> => {
     try {
+      const { error } = await supabase
+        .from('media_gallery')
+        .update({ folder_id: folderId })
+        .eq('id', mediaId);
+      
+      if (error) throw error;
+      
       toast.success(folderId 
-        ? 'Media moved to folder successfully (mock)' 
-        : 'Media moved to root successfully (mock)');
+        ? 'Media moved to folder successfully' 
+        : 'Media moved to root successfully');
       return true;
     } catch (err) {
       console.error('Error moving media to folder:', err);
-      toast.error('Failed to move media (mock)');
+      toast.error('Failed to move media');
       return false;
     }
   };
 
   // Load folders on component mount
   useEffect(() => {
-    fetchFolders();
-  }, []);
+    if (user) {
+      fetchFolders();
+    }
+  }, [user]);
 
   return {
     folders,
