@@ -51,6 +51,12 @@ export const openRouterService = {
     return true;
   },
   
+  // Added setApiKey method (returns true since we're using a fixed API key)
+  setApiKey(apiKey: string): boolean {
+    console.log('Using fixed OpenRouter API key, ignoring provided key:', apiKey);
+    return true;
+  },
+  
   async chatCompletion(params: OpenRouterChatParams): Promise<OpenRouterChatResponse> {
     try {
       console.log(`[openRouterService] Generating chat completion with model ${params.model}`);

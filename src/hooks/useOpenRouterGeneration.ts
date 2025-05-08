@@ -20,6 +20,19 @@ export function useOpenRouterGeneration(options: UseOpenRouterGenerationOptions 
   const isApiKeyConfigured = useCallback(() => {
     return openRouterService.isApiKeyConfigured();
   }, []);
+  
+  // Add configureApiKey method
+  const configureApiKey = useCallback((apiKey: string) => {
+    try {
+      return openRouterService.setApiKey(apiKey);
+    } catch (err) {
+      console.error('[useOpenRouterGeneration] Error configuring API key:', err);
+      if (options.showToasts) {
+        toast.error('Failed to configure API key');
+      }
+      return false;
+    }
+  }, [options.showToasts]);
 
   const generateText = useCallback(async (
     messages: OpenRouterChatMessage[],
@@ -143,6 +156,7 @@ export function useOpenRouterGeneration(options: UseOpenRouterGenerationOptions 
     generateText,
     cancelGeneration,
     isApiKeyConfigured,
+    configureApiKey,
     fetchAvailableModels
   };
 }

@@ -12,22 +12,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { NewsletterPost } from '@/types/newsletter';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
+
 interface PostFormProps {
   onSubmit: (postData: Partial<NewsletterPost>) => Promise<void>;
   initialData?: Partial<NewsletterPost>;
   submitLabel?: string;
   title?: string;
 }
+
 const PostForm: React.FC<PostFormProps> = ({
   onSubmit,
   initialData,
   submitLabel = "Publicar",
   title = "Nova Publicação"
 }) => {
-  const {
-    isAdmin,
-    loading: adminCheckLoading
-  } = useAdminCheck();
+  const { isAdmin, checkComplete, loading: adminCheckLoading } = useAdminCheck();
+  
   const [postTitle, setPostTitle] = useState(initialData?.title || '');
   const [content, setContent] = useState(initialData?.content || '');
   const [mediaType, setMediaType] = useState<'none' | 'image' | 'video'>(initialData?.media_type as any || 'none');
@@ -36,6 +36,7 @@ const PostForm: React.FC<PostFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleMediaTypeChange = (value: string) => {
     setMediaType(value as 'none' | 'image' | 'video');
     if (value === 'none') {
@@ -43,11 +44,13 @@ const PostForm: React.FC<PostFormProps> = ({
       setMediaUrl('');
     }
   };
+  
   const handleFileSelect = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
   };
+  
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -73,6 +76,7 @@ const PostForm: React.FC<PostFormProps> = ({
     const objectUrl = URL.createObjectURL(file);
     setMediaUrl(objectUrl);
   };
+  
   const uploadMedia = async (): Promise<string | null> => {
     if (!mediaFile || mediaType === 'none') return null;
     setIsUploading(true);
@@ -116,6 +120,7 @@ const PostForm: React.FC<PostFormProps> = ({
       setIsUploading(false);
     }
   };
+  
   const handleRemoveMedia = () => {
     setMediaFile(null);
     setMediaUrl('');
@@ -123,6 +128,7 @@ const PostForm: React.FC<PostFormProps> = ({
       fileInputRef.current.value = '';
     }
   };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
@@ -169,6 +175,7 @@ const PostForm: React.FC<PostFormProps> = ({
       setIsSubmitting(false);
     }
   };
+  
   if (adminCheckLoading) {
     return <Card className="border-white/10 bg-inventu-dark/80 backdrop-blur-sm shadow-md">
         <CardContent className="flex items-center justify-center py-8">
@@ -176,6 +183,7 @@ const PostForm: React.FC<PostFormProps> = ({
         </CardContent>
       </Card>;
   }
+  
   return <Card className="border-white/10 bg-inventu-dark/80 backdrop-blur-sm shadow-md">
       <CardHeader>
         <CardTitle className="text-white text-xl">{title}</CardTitle>
@@ -240,4 +248,5 @@ const PostForm: React.FC<PostFormProps> = ({
       </form>
     </Card>;
 };
+
 export default PostForm;

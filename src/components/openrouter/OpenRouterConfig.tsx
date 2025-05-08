@@ -20,8 +20,8 @@ const OpenRouterConfig: React.FC<OpenRouterConfigProps> = ({ onConfigChange }) =
   const [isLoading, setIsLoading] = useState(true);
   
   const { 
-    configureApiKey, 
     isApiKeyConfigured,
+    configureApiKey,
     generateText
   } = useOpenRouterGeneration({ showToasts: true });
 

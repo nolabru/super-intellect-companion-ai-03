@@ -67,7 +67,11 @@ const GalleryList: React.FC<GalleryListProps> = ({
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    const newFolder = await createFolder(newFolderName, currentFolderId);
+    // Fix: pass object parameter instead of separate arguments
+    const newFolder = await createFolder({ 
+      name: newFolderName, 
+      parentId: currentFolderId 
+    });
     if (newFolder) {
       setNewFolderDialogOpen(false);
       setNewFolderName('');

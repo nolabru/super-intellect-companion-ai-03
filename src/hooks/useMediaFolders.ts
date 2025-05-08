@@ -1,10 +1,12 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MediaFolder } from '@/types/gallery';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface CreateFolderParams {
+// Define the params type separately to avoid deep type instantiation
+export interface CreateFolderParams {
   name: string;
   parentId?: string | null;
 }
@@ -41,10 +43,11 @@ export const useMediaFolders = () => {
     }
   };
 
-  // Create a new folder
-  const createFolder = async ({ name, parentId = null }: CreateFolderParams) => {
+  // Create a new folder - Accept the params object instead of individual params
+  const createFolder = async (params: CreateFolderParams) => {
     try {
       setLoading(true);
+      const { name, parentId = null } = params;
 
       const { data: existingFolders, error: existingError } = await supabase
         .from('media_folders')
@@ -68,7 +71,6 @@ export const useMediaFolders = () => {
           parent_id: parentId,
           user_id: user?.id,
           created_at: new Date().toISOString()
-          // Remove updated_at as it's not in the MediaFolder type
         })
         .select()
         .single();

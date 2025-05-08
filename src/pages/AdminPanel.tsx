@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import AdminHeader from '@/components/admin/AdminHeader';
@@ -84,5 +83,24 @@ const AdminPanel: React.FC = () => {
     </div>
   );
 };
+
+function getSectionTitle(): string {
+  // Move the function definition outside of the component to avoid
+  // recreating it on every render
+  const activeSection = document.querySelector('[data-active-section]')?.getAttribute('data-active-section') || 'overview';
+  
+  switch(activeSection) {
+    case 'overview': return 'Painel Administrativo';
+    case 'users': return 'Gerenciamento de Usuários';
+    case 'plans': return 'Planos e Assinaturas';
+    case 'posts': return 'Gerenciamento de Posts';
+    case 'models': return 'Modelos de IA';
+    case 'tokens': return 'Gerenciamento de Tokens';
+    case 'stats': return 'Estatísticas';
+    case 'analytics': return 'Análises';
+    case 'settings': return 'Configurações do Sistema';
+    default: return 'Painel Administrativo';
+  }
+}
 
 export default AdminPanel;
