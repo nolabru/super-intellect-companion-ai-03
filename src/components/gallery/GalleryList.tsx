@@ -1,8 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import { MediaItem, MediaFolder } from '@/types/gallery';
 import GalleryMediaCard from './GalleryMediaCard';
 import { AlertCircle, Image, FolderPlus, FolderClosed, Trash2, MoreVertical, Pencil, ArrowLeft, Loader2 } from 'lucide-react';
-import { useMediaFolders } from '@/hooks/useMediaFolders';
+import { useMediaFolders, CreateFolderParams } from '@/hooks/useMediaFolders';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -66,11 +67,14 @@ const GalleryList: React.FC<GalleryListProps> = ({
 
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
-    // Updated: pass object parameter instead of separate arguments
-    const newFolder = await createFolder({ 
-      name: newFolderName, 
-      parentId: currentFolderId 
-    });
+    
+    const params: CreateFolderParams = {
+      name: newFolderName,
+      parentId: currentFolderId
+    };
+    
+    const newFolder = await createFolder(params);
+    
     if (newFolder) {
       setNewFolderDialogOpen(false);
       setNewFolderName('');

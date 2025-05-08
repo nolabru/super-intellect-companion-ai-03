@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MediaFolder } from '@/types/gallery';
@@ -42,8 +43,10 @@ export const useMediaFolders = () => {
     }
   };
 
-  // Create a new folder - Accept the params object instead of individual params
-  const createFolder = async ({ name, parentId = null }: CreateFolderParams) => {
+  // Create a new folder
+  const createFolder = async (params: CreateFolderParams) => {
+    const { name, parentId = null } = params;
+    
     try {
       setLoading(true);
 
