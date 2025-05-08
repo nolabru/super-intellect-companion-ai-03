@@ -1,8 +1,8 @@
 
-import React, { useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import React from 'react';
+import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,24 +10,22 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, sessionLoading } = useAuth();
-  const location = useLocation();
-
-  // Mostrar indicador de carregamento enquanto verifica o estado da sessão
+  
   if (sessionLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-inventu-darker">
-        <Loader2 className="h-8 w-8 animate-spin text-inventu-blue" />
+      <div className="flex items-center justify-center w-full h-screen bg-inventu-dark">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-inventu-blue" />
+          <p className="text-white/80 text-sm">Verificando login...</p>
+        </div>
       </div>
     );
   }
-
-  // Redirecionar para a página de login se o usuário não estiver autenticado
+  
   if (!user) {
-    // Salvar a URL atual para redirecionar de volta após o login
-    return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
+    return <Navigate to="/auth" state={{ from: location.pathname }} />;
   }
-
-  // Renderizar o conteúdo protegido se o usuário estiver autenticado
+  
   return <>{children}</>;
 };
 

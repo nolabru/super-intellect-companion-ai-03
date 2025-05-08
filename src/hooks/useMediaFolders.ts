@@ -1,9 +1,13 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { MediaFolder } from '@/types/gallery';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
+
+interface CreateFolderParams {
+  name: string;
+  parentId?: string | null;
+}
 
 export const useMediaFolders = () => {
   const [folders, setFolders] = useState<MediaFolder[]>([]);
@@ -38,38 +42,53 @@ export const useMediaFolders = () => {
   };
 
   // Create a new folder
-  const createFolder = async (name: string, parentFolderId?: string): Promise<MediaFolder | null> => {
-    if (!user) {
-      toast.error('You must be logged in to create folders');
-      return null;
-    }
-    
+  const createFolder = async ({ name, parentId = null }: CreateFolderParams) => {
     try {
-      const newFolder = {
-        name,
-        user_id: user.id,
-        parent_folder_id: parentFolderId || null
-      };
-      
+      setLoading(true);
+
+      const { data: existingFolders, error: existingError } = await supabase
+        .from('media_folders')
+        .select('id')
+        .eq('name', name)
+        .eq('parent_id', parentId)
+        .eq('user_id', user?.id);
+
+      if (existingError) {
+        throw existingError;
+      }
+
+      if (existingFolders && existingFolders.length > 0) {
+        throw new Error(`Uma pasta com o nome "${name}" já existe neste local`);
+      }
+
       const { data, error } = await supabase
         .from('media_folders')
-        .insert([newFolder])
+        .insert({
+          name,
+          parent_id: parentId,
+          user_id: user?.id,
+          created_at: new Date().toISOString()
+          // Remove updated_at as it's not in the MediaFolder type
+        })
         .select()
         .single();
-      
-      if (error) throw error;
-      
-      if (data) {
-        setFolders(prev => [...prev, data]);
-        toast.success('Folder created successfully');
-        return data;
+
+      if (error) {
+        throw error;
       }
-      
+
+      // Update the local folders state
+      setFolders(prev => [...prev, data]);
+
+      return data;
+    } catch (error: any) {
+      console.error('Error creating folder:', error.message);
+      toast.error('Erro ao criar pasta', {
+        description: error.message
+      });
       return null;
-    } catch (err) {
-      console.error('Error creating folder:', err);
-      toast.error('Failed to create folder');
-      return null;
+    } finally {
+      setLoading(false);
     }
   };
 

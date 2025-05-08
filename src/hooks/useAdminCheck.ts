@@ -1,11 +1,21 @@
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const useAdminCheck = () => {
-  const { profile, loading } = useAuth();
+  const { user, isAdmin, profile } = useAuth();
+  const [checkComplete, setCheckComplete] = useState(false);
+  
+  useEffect(() => {
+    // Set check complete once we have user data
+    if (user !== undefined) {
+      setCheckComplete(true);
+    }
+  }, [user]);
   
   return {
-    isAdmin: profile?.is_admin || false,
-    loading
+    isAdmin,
+    checkComplete,
+    isLoggedIn: !!user
   };
 };

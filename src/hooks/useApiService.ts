@@ -1,6 +1,8 @@
+
 import { apiRequestService } from './api/apiRequestService';
 import { mediaStorageService } from './api/mediaStorageService';
 import { useAuth } from '@/contexts/AuthContext';
+import { ChatMode } from '@/components/ModeSelector';
 
 /**
  * Interface para resposta da API
@@ -32,15 +34,15 @@ export function useApiService() {
   
   return {
     sendRequest: (
-      content, 
-      mode, 
-      modelId, 
-      files, 
-      params, 
-      enableStreaming, 
-      streamListener, 
-      conversationHistory, 
-      userId
+      content: string, 
+      mode: ChatMode, 
+      modelId: string, 
+      files?: string[], 
+      params?: any, 
+      enableStreaming?: boolean, 
+      streamListener?: (chunk: string) => void, 
+      conversationHistory?: string, 
+      userId?: string
     ) => apiRequestService.sendRequest(
       content, 
       mode, 

@@ -17,14 +17,6 @@ export function useOpenRouterGeneration(options: UseOpenRouterGenerationOptions 
   const abortControllerRef = useRef<AbortController | null>(null);
   const { user } = useAuth();
 
-  const configureApiKey = useCallback((key: string): boolean => {
-    const result = openRouterService.setApiKey(key);
-    if (result && options.showToasts) {
-      toast.success('API key configurada com sucesso');
-    }
-    return result;
-  }, [options.showToasts]);
-
   const isApiKeyConfigured = useCallback(() => {
     return openRouterService.isApiKeyConfigured();
   }, []);
@@ -150,7 +142,6 @@ export function useOpenRouterGeneration(options: UseOpenRouterGenerationOptions 
     generatedText,
     generateText,
     cancelGeneration,
-    configureApiKey,
     isApiKeyConfigured,
     fetchAvailableModels
   };

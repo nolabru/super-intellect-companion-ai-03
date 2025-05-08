@@ -41,7 +41,9 @@ export const getProviderDisplayName = (provider: string): string => {
     'minimax': 'MiniMax',
     'elevenlabs': 'ElevenLabs',
     'luma': 'Luma AI',
-    'suno': 'Suno AI'
+    'suno': 'Suno AI',
+    'x-ai': 'xAI',
+    'deepseek': 'DeepSeek'
   };
   
   return providerNames[provider] || provider;

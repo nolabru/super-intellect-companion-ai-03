@@ -1,7 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-let apiKey: string | null = null;
+// Fixed API key for OpenRouter
+const OPENROUTER_API_KEY = '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';
 
 export interface OpenRouterModel {
   id: string;
@@ -45,47 +46,19 @@ export interface OpenRouterChatResponse {
 }
 
 export const openRouterService = {
-  setApiKey(key: string): boolean {
-    if (!key || key.trim() === '') {
-      console.error('[openRouterService] Invalid API key provided');
-      return false;
-    }
-    
-    apiKey = key;
-    try {
-      // Store securely in localStorage for persistence across sessions
-      localStorage.setItem('openrouter_api_key', key);
-      return true;
-    } catch (err) {
-      console.error('[openRouterService] Error storing API key:', err);
-      return false;
-    }
-  },
-  
   isApiKeyConfigured(): boolean {
-    // Try to load from localStorage if not in memory
-    if (!apiKey) {
-      try {
-        apiKey = localStorage.getItem('openrouter_api_key');
-      } catch (err) {
-        console.error('[openRouterService] Error loading API key from localStorage:', err);
-      }
-    }
-    return apiKey !== null && apiKey.trim() !== '';
+    // Always return true as we're using a fixed API key
+    return true;
   },
   
   async chatCompletion(params: OpenRouterChatParams): Promise<OpenRouterChatResponse> {
     try {
       console.log(`[openRouterService] Generating chat completion with model ${params.model}`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
       const { data, error } = await supabase.functions.invoke('openrouter-chat', {
         body: { 
           params,
-          apiKey 
+          apiKey: OPENROUTER_API_KEY
         }
       });
       
@@ -108,10 +81,6 @@ export const openRouterService = {
     try {
       console.log(`[openRouterService] Streaming chat completion with model ${params.model}`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
       // Get the current session token
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData?.session?.access_token || '';
@@ -124,7 +93,7 @@ export const openRouterService = {
         },
         body: JSON.stringify({
           params,
-          apiKey
+          apiKey: OPENROUTER_API_KEY
         })
       });
       
@@ -176,13 +145,9 @@ export const openRouterService = {
     try {
       console.log(`[openRouterService] Fetching available models`);
       
-      if (!this.isApiKeyConfigured()) {
-        throw new Error('API key not configured');
-      }
-      
       const { data, error } = await supabase.functions.invoke('openrouter-models', {
         body: { 
-          apiKey 
+          apiKey: OPENROUTER_API_KEY
         }
       });
       
@@ -198,13 +163,3 @@ export const openRouterService = {
     }
   }
 };
-
-// Initialize API key from localStorage on module load
-try {
-  const storedKey = localStorage.getItem('openrouter_api_key');
-  if (storedKey) {
-    apiKey = storedKey;
-  }
-} catch (err) {
-  console.error('[openRouterService] Error loading API key from localStorage:', err);
-}
